@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Plan de com KEDGE</title>
+<meta name="description" content="Planifier la production et la diffusion autour des messages clés et des temps forts de l'année.">
+<meta name="theme-color" content="#F2F2EF" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0F1012" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Plan de com">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png" type="image/png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="preload" href="fonts/krc-serif.woff" as="font" type="font/woff" crossorigin>
+<link rel="stylesheet" href="theme/tokens.css">
+<link rel="stylesheet" href="theme/base.css">
+<link rel="stylesheet" href="components/components.css">
+<link rel="stylesheet" href="components/brand.css">
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+<div class="app" id="app">
+  <div class="views"></div>
+
+  <!-- écran d'accueil : la route vers le top SIGEM, puis la connexion -->
+  <div class="brand-screen" id="brand" role="dialog" aria-modal="true" aria-labelledby="bs-title">
+    <div class="bs-top"><img src="assets/kedge-logo-anthracite.png" alt="KEDGE Business School" height="34"><span class="badge" id="bs-badge"></span></div>
+    <div class="bs-art road" id="bs-road" role="img"></div>
+    <div class="bs-body">
+      <h2 class="display" id="bs-title"></h2>
+      <div id="bs-form"></div>
+    </div>
+  </div>
+</div>
+
+<script src="components/icons.js"></script>
+<script src="components/ui.js"></script>
+<script src="vendor/supabase-2.117.3.js"></script>
+<script src="config.js"></script>
+<script src="store.js"></script>
+<script src="app.js"></script>
+<script src="boot.js"></script>
+</body>
+</html>

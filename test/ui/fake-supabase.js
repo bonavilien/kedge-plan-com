@@ -1,0 +1,122 @@
+// Faux client Supabase pour tester l'interface sans réseau : les mêmes appels que store.js,
+// les données dans le navigateur (localStorage), quelques règles de droits pour tester les refus.
+(() => {
+  const KEY = "kplan-fake";
+  const U = (n) => `00000000-0000-0000-0000-00000000000${n}`;
+  const seed = () => ({
+    periods: [
+      { n: 1, nom: "Installer", du: "2026-09-01", au: "2026-10-31", lib: "Sept. – oct. 2026" },
+      { n: 2, nom: "Considérer", du: "2026-11-01", au: "2026-12-31", lib: "Nov. – déc. 2026" },
+      { n: 3, nom: "Préférer", du: "2027-01-01", au: "2027-03-31", lib: "Janv. – mars 2027" },
+      { n: 4, nom: "Convertir", du: "2027-04-01", au: "2027-05-31", lib: "Avril – mai 2027" },
+      { n: 5, nom: "Décider", du: "2027-06-01", au: "2027-07-15", lib: "Juin – mi-juillet 2027" },
+    ],
+    messages: [
+      { n: 1, nom: "Filières", info: "" }, { n: 2, nom: "Alumni", info: "" }, { n: 3, nom: "International", info: "" },
+      { n: 4, nom: "Continuum", info: "" }, { n: 5, nom: "Réputation", info: "" },
+    ],
+    services: [{ k: "rp", nom: "Relations presse", court: "RP", ordre: 1 }, { k: "rs", nom: "Réseaux sociaux", court: "RS", ordre: 2 }, { k: "video", nom: "Production vidéo", court: "Vidéo", ordre: 3 }],
+    partners: [],
+    profiles: [
+      { id: U(1), nom: "Julien", fonction: "Chef de projet", svc: null, chef: true, media: true, notif_all: true },
+      { id: U(2), nom: "Estelle", fonction: "Responsable de l'offre", svc: null, chef: true, media: false, notif_all: false },
+      { id: U(3), nom: "Aurélie", fonction: "", svc: "rp", chef: false, media: false, notif_all: false },
+      { id: U(4), nom: "Stéphane", fonction: "", svc: "rs", chef: false, media: false, notif_all: false },
+      { id: U(5), nom: "Louise", fonction: "", svc: "video", chef: false, media: false, notif_all: false },
+      { id: U(6), nom: "Nouveau", fonction: "", svc: null, chef: false, media: false, notif_all: false },
+    ],
+    items: [], links: [], reqs: [], blocks: [], answers: [], seen: [], push_subs: [],
+    meta: [{ k: "last_meeting", v: "2026-10-01" }],
+    users: ["julien", "estelle", "aurelie", "stephane", "louise", "nouveau"].map((n, i) => ({ id: U(i + 1), email: `${n}@kedgebs.com`, password: "motdepasse" })),
+    session: null,
+  });
+  let db = null;
+  try { db = JSON.parse(localStorage.getItem(KEY) || "null"); } catch (e) {}
+  db = db || seed();
+  const save = () => localStorage.setItem(KEY, JSON.stringify(db));
+  window.__fake = { get db() { return db; }, save, reset: () => { db = seed(); save(); }, failNext: null, rt: null, calls: [] };
+
+  const PK = { answers: ["user_id", "key"], seen: ["user_id", "item"], meta: ["k"], push_subs: ["endpoint"], partners: ["k"] };
+  const AUTHOR = { items: "author", links: "author", reqs: "asker", blocks: "author", answers: "user_id", seen: "user_id", push_subs: "user_id" };
+  const me = () => db.profiles.find((p) => p.id === db.session?.user.id);
+  const denied = { message: "new row violates row-level security policy", code: "42501" };
+  // les règles de la base, en raccourci
+  function allowed(t, op, row) {
+    const p = me();
+    if (t === "items") {
+      if (row.partner) return p.media;
+      return p.chef || (!!p.svc && row.svc === p.svc);
+    }
+    if (["periods", "messages", "services", "meta"].includes(t)) return p.chef;
+    if (t === "partners") return p.media || p.chef;
+    return true;
+  }
+  function exec(q) {
+    window.__fake.calls.push({ t: q.t, op: q.op });
+    if (!db.session) return { data: null, error: { message: "JWT expired" } };
+    if (window.__fake.failNext && q.op !== "select") { const e = window.__fake.failNext; window.__fake.failNext = null; return { data: null, error: e === true ? denied : e }; }
+    const tab = db[q.t]; const match = (r) => q.filters.every(([c, v]) => r[c] === v);
+    if (q.op === "select") {
+      let rows = tab.filter(match);
+      if (q.order) rows = rows.slice().sort((a, b) => String(a[q.order]).localeCompare(String(b[q.order])));
+      return { data: JSON.parse(JSON.stringify(rows)), error: null };
+    }
+    const fill = (row) => {
+      const r = { ...row };
+      if (AUTHOR[q.t] && r[AUTHOR[q.t]] == null) r[AUTHOR[q.t]] = db.session.user.id;
+      if (["items", "links", "reqs", "blocks"].includes(q.t)) { r.id = r.id || crypto.randomUUID(); r.at = r.at || new Date().toISOString(); }
+      if (q.t === "partners") r.k = r.k || crypto.randomUUID().replace(/-/g, "");
+      if (q.t === "reqs") r.st = r.st || "ouverte";
+      if (q.t === "blocks") r.leve = r.leve || false;
+      return r;
+    };
+    if (q.op === "insert") {
+      const r = fill(q.row);
+      if (!allowed(q.t, "insert", r)) return { data: null, error: denied };
+      tab.push(r); save();
+      return { data: q.single ? r : [r], error: null };
+    }
+    if (q.op === "update") {
+      const rows = tab.filter(match);
+      for (const r of rows) { if (!allowed(q.t, "update", { ...r, ...q.row })) return { data: null, error: denied }; }
+      rows.forEach((r) => Object.assign(r, q.row)); save();
+      return { data: null, error: null };
+    }
+    if (q.op === "upsert") {
+      const r = fill(q.row), keys = PK[q.t] || ["id"];
+      if (!allowed(q.t, "upsert", r)) return { data: null, error: denied };
+      const old = tab.find((x) => keys.every((k) => x[k] === r[k]));
+      old ? Object.assign(old, r) : tab.push(r); save();
+      return { data: null, error: null };
+    }
+    if (q.op === "delete") { db[q.t] = tab.filter((r) => !match(r)); save(); return { data: null, error: null }; }
+  }
+  function from(t) {
+    const q = { t, op: "select", filters: [], order: null, single: false };
+    const api = {
+      select() { return api; }, order(c) { q.order = c; return api; }, eq(c, v) { q.filters.push([c, v]); return api; },
+      insert(row) { q.op = "insert"; q.row = row; return api; }, update(row) { q.op = "update"; q.row = row; return api; },
+      upsert(row) { q.op = "upsert"; q.row = row; return api; }, delete() { q.op = "delete"; return api; }, single() { q.single = true; return api; },
+      then(ok, ko) { return new Promise((r) => setTimeout(r, 40)).then(() => exec(q)).then(ok, ko); },
+    };
+    return api;
+  }
+  const auth = {
+    async getSession() { return { data: { session: db.session } }; },
+    async signInWithPassword({ email, password }) {
+      await new Promise((r) => setTimeout(r, 80));
+      const u = db.users.find((x) => x.email === email.toLowerCase() && x.password === password);
+      if (!u) return { data: {}, error: { message: "Invalid login credentials", code: "invalid_credentials" } };
+      db.session = { user: { id: u.id, email: u.email } }; save();
+      return { data: { user: db.session.user, session: db.session }, error: null };
+    },
+    async signOut() { db.session = null; save(); return { error: null }; },
+    async updateUser({ password }) {
+      const u = db.users.find((x) => x.id === db.session.user.id);
+      if (u.password === password) return { data: null, error: { message: "New password should be different from the old password." } };
+      u.password = password; save(); return { data: { user: db.session.user }, error: null };
+    },
+  };
+  const channel = () => { const c = { on: (a, b, cb) => { window.__fake.rt = cb; return c; }, subscribe: () => c }; return c; };
+  window.KPLAN_CLIENT = { auth, from, channel };
+})();

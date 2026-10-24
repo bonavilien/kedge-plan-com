@@ -1,0 +1,134 @@
+/* =====================================================================
+   KEDGE UI · jetons de thème (couleurs, typo, rayons, espacements, mouvement)
+   Identité issue de KEDGE Run Club. Accent de marque : jaune KEDGE #FFD452.
+   Deux systèmes (iOS, Android/Material 3) × deux thèmes (clair, sombre).
+   Les composants n'utilisent que les rôles sémantiques (--bg, --text, --accent, --sel…),
+   jamais les palettes brutes : changer de système ou de thème ne touche aucun composant.
+   ===================================================================== */
+
+@font-face {
+  font-family: "KRC Serif"; /* sous-ensemble renommé de Source Serif 4 (SIL OFL 1.1), substitut de Season */
+  src: url("../fonts/krc-serif.woff") format("woff");
+  font-weight: 600 700; font-style: normal; font-display: swap;
+}
+
+:root {
+  /* ---------- marque ---------- */
+  --yellow: #FFD452;          /* jaune KEDGE */
+  --anth: #333539;            /* anthracite KEDGE */
+  --anth-deep: #26282B;
+  --brand: var(--yellow);     /* accent de marque : un seul jeton à changer pour une variante produit */
+  --on-brand: var(--anth);    /* texte posé sur l'accent */
+
+  /* ---------- panneau anthracite : surfaces de marque, identiques en clair et en sombre ---------- */
+  --panel: var(--anth);
+  --panel-ink: #F4F4F2;       /* texte principal sur panneau (11,2:1) */
+  --panel-muted: #C3C4C7;     /* texte secondaire sur panneau (7,1:1) */
+  --panel-raise: #45474C;     /* contrôle posé sur panneau */
+  --panel-edge: #A3A5AA;      /* contours fins sur panneau */
+
+  /* ---------- arcs et piste (signature « grands arcs sombres ») ---------- */
+  --lane-ground: #3E4045;
+  --lane-zone: #4B4A46;
+  --lane-mine: #57533F;       /* couloir mis en avant, anthracite teinté de jaune */
+  --lane-line: #B3B4B6;
+
+  /* ---------- états ---------- */
+  --red: #C62828;
+  --ios-green: #34C759;
+  --snack-bg: #2F3034;
+  --snack-ink: #F2F2EF;
+
+  /* ---------- iOS, clair ---------- */
+  --ios-bg: #F2F2EF;
+  --ios-card: #FFFFFF;
+  --ios-label: #2B2D31;
+  --ios-label2: #6A6C71;
+  --ios-sep: #DADAD5;
+  --ios-tint: #333539;
+  --ios-fill: #E6E6E2;
+  --ios-bar: rgba(247, 247, 244, .88);
+  --ios-seg-on: #FFFFFF;
+
+  /* ---------- Android (Material 3), clair ---------- */
+  --and-surface: #FBFBF9;
+  --and-cont: #F1F1EE;
+  --and-cont-high: #E7E7E3;
+  --and-on: #2B2D31;
+  --and-on2: #5C5E64;
+  --and-outline: #85878D;
+  --and-outline-var: #D3D3CE;
+  --and-primary: #333539;
+  --and-on-primary: #FFFFFF;
+  --and-sec: #FFD452;
+  --and-on-sec: #333539;
+  --and-snack: #313033;
+
+  /* ---------- typographie ---------- */
+  --serif: "KRC Serif", Georgia, serif;
+  --sans-ios: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Inter, Roboto, system-ui, sans-serif;
+  --sans-android: Roboto, "Segoe UI", Inter, system-ui, sans-serif;
+
+  /* ---------- espacements (pas de 4, rythme de 8) ---------- */
+  --sp-1: 4px; --sp-2: 8px; --sp-3: 12px; --sp-4: 16px; --sp-5: 20px; --sp-6: 24px; --sp-7: 28px; --sp-8: 32px;
+  --gutter: 16px;             /* marge latérale des écrans */
+  --content-max: 720px;       /* largeur de lecture sur ordinateur */
+  --touch: 44px;              /* cible tactile minimale (48 px sur Android) */
+
+  /* ---------- rayons ---------- */
+  --r-xs: 4px; --r-s: 6px; --r-m: 8px; --r-input: 10px; --r-l: 12px; --r-xl: 16px; --r-pill: 999px;
+
+  /* ---------- mouvement ---------- */
+  --ease-out: cubic-bezier(.2, .9, .3, 1);          /* entrées, feuilles, poussées iOS */
+  --ease-emph: cubic-bezier(.22, 1, .36, 1);        /* apparitions en cascade, glissements longs */
+  --ease-press: cubic-bezier(.3, .7, .4, 1);        /* retour au toucher */
+  --ease-bounce: cubic-bezier(.3, .7, .4, 1.5);     /* confirmation (« pop ») */
+  --ease-in: cubic-bezier(.4, 0, .6, 1);            /* sorties iOS */
+  --ease-m3: cubic-bezier(.2, 0, 0, 1);             /* entrées Material */
+  --ease-m3-exit: cubic-bezier(.3, 0, .8, .15);     /* sorties Material */
+  --dur-press: .14s; --dur-fast: .2s; --dur: .25s; --dur-sheet: .32s; --dur-push: .35s;
+
+  /* ---------- profondeur ---------- */
+  --z-nav: 2; --z-tabbar: 3; --z-fab: 4; --z-brand-screen: 40; --z-scrim: 41; --z-sheet: 42; --z-snack: 46; --z-alert: 50;
+  --shadow-snack: 0 8px 24px rgba(0, 0, 0, .25);
+  --shadow-fab: 0 3px 8px rgba(0, 0, 0, .18), 0 1px 3px rgba(0, 0, 0, .12);
+  --shadow-pop: 0 12px 32px rgba(0, 0, 0, .38);
+  --shadow-drawer: 0 -10px 30px rgba(0, 0, 0, .25);
+}
+
+/* ---------- thème sombre : suit le téléphone, sauf choix forcé (data-theme sur <html>) ---------- */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --ios-bg: #0F1012; --ios-card: #1E1F22; --ios-label: #F1F1EE; --ios-label2: #A4A6AB; --ios-sep: #34363B; --ios-tint: #FFD452; --ios-fill: #2C2E33; --ios-bar: rgba(24, 25, 28, .88); --ios-seg-on: #5A5C61;
+    --and-surface: #141518; --and-cont: #1F2023; --and-cont-high: #2A2C30; --and-on: #ECECE8; --and-on2: #B4B6BA; --and-outline: #8E9095; --and-outline-var: #3B3D42;
+    --and-primary: #FFD452; --and-on-primary: #333539; --and-sec: #4E4A33; --and-on-sec: #FFE7A0;
+    --red: #FF8A80;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="light"] { color-scheme: light; }
+:root[data-theme="dark"] {
+  --ios-bg: #0F1012; --ios-card: #1E1F22; --ios-label: #F1F1EE; --ios-label2: #A4A6AB; --ios-sep: #34363B; --ios-tint: #FFD452; --ios-fill: #2C2E33; --ios-bar: rgba(24, 25, 28, .88); --ios-seg-on: #5A5C61;
+  --and-surface: #141518; --and-cont: #1F2023; --and-cont-high: #2A2C30; --and-on: #ECECE8; --and-on2: #B4B6BA; --and-outline: #8E9095; --and-outline-var: #3B3D42;
+  --and-primary: #FFD452; --and-on-primary: #333539; --and-sec: #4E4A33; --and-on-sec: #FFE7A0;
+  --red: #FF8A80;
+  color-scheme: dark;
+}
+
+/* ---------- rôles sémantiques : chaque système relie ses couleurs aux mêmes noms ---------- */
+.app[data-os="ios"] {
+  --bg: var(--ios-bg); --surface: var(--ios-card); --text: var(--ios-label); --text2: var(--ios-label2); --sep: var(--ios-sep);
+  --accent: var(--ios-tint); --on-accent: var(--ios-card);     /* teinte : liens, icônes, bouton principal */
+  --sel: var(--brand); --on-sel: var(--on-brand);              /* sélection et surlignage : jaune */
+  --fill: var(--ios-fill); --bar: var(--ios-bar); --outline: var(--ios-sep);
+  --font: var(--sans-ios);
+  --r-btn: 12px; --r-card: 14px; --r-panel: 22px; --r-sheet: 12px; --r-dialog: 14px;
+}
+.app[data-os="android"] {
+  --bg: var(--and-surface); --surface: var(--and-cont); --text: var(--and-on); --text2: var(--and-on2); --sep: var(--and-outline-var);
+  --accent: var(--and-primary); --on-accent: var(--and-on-primary);
+  --sel: var(--and-sec); --on-sel: var(--and-on-sec);
+  --fill: var(--and-cont-high); --bar: var(--and-cont); --outline: var(--and-outline);
+  --font: var(--sans-android);
+  --r-btn: 999px; --r-card: 16px; --r-panel: 28px; --r-sheet: 28px; --r-dialog: 28px;
+}

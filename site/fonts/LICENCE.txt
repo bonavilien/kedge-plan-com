@@ -1,0 +1,6 @@
+KRC Serif : sous-ensemble (caractères latins, graisses 600 à 700) de Source Serif 4,
+renommé conformément à la licence (le nom « Source » est réservé).
+
+Source Serif 4 : © 2014 - 2021 Adobe Systems Incorporated (http://www.adobe.com/), with Reserved Font Name 'Source'.
+This Font Software is licensed under the SIL Open Font License, Version 1.1.
+This license is available with a FAQ at: https://openfontlicense.org

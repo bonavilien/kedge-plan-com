@@ -1,0 +1,52 @@
+/* =====================================================================
+   KEDGE UI · base : remise à zéro, coque d'appli plein écran, typographie
+   À charger après tokens.css.
+   ===================================================================== */
+
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body {
+  margin: 0; background: var(--ios-bg); color: var(--ios-label);
+  font-family: var(--sans-ios); -webkit-font-smoothing: antialiased; overflow: hidden;
+}
+button, input, select, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; -webkit-tap-highlight-color: transparent; }
+img, svg { display: block; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.tnum { font-variant-numeric: tabular-nums; }
+::selection { background: var(--brand); color: var(--on-brand); }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition-duration: 1ms !important; animation-duration: 1ms !important; animation-iteration-count: 1 !important; }
+}
+
+/* ---------- coque : l'appli occupe toute la fenêtre (téléphone, appli installée ou ordinateur) ---------- */
+.app {
+  position: fixed; inset: 0; overflow: clip; display: flex; flex-direction: column;
+  background: var(--bg); color: var(--text); font-family: var(--font); font-size: 17px; line-height: 1.35;
+  --focus: var(--accent);
+}
+.app :focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; border-radius: 6px; }
+.views { position: relative; flex: 1; min-height: 0; overflow: hidden; overflow: clip; }
+.view { position: absolute; inset: 0; z-index: 0; display: flex; flex-direction: column; background: var(--bg); padding-top: env(safe-area-inset-top, 0px); }
+.view[hidden] { display: none; }
+.scroll {
+  flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; scrollbar-width: none;
+  padding: 0 max(var(--gutter), env(safe-area-inset-right, 0px)) 24px max(var(--gutter), env(safe-area-inset-left, 0px));
+  padding-inline: max(var(--gutter), env(safe-area-inset-left, 0px), calc((100% - var(--content-max)) / 2));
+}
+.scroll::-webkit-scrollbar { display: none; }
+
+/* ---------- typographie ---------- */
+.serif { font-family: var(--serif); font-weight: 700; }
+.large-title { margin: 2px 0 12px; font-family: var(--serif); font-weight: 700; font-size: 34px; line-height: 1.1; letter-spacing: -.01em; }
+.app[data-os="android"] .large-title { display: none; } /* Android : le titre est dans la barre du haut */
+.hero { padding: 4px 0 16px; }
+.hero-title { margin: 0 0 8px; font-family: var(--serif); font-weight: 700; font-size: 30px; line-height: 1.1; letter-spacing: -.01em; }
+.hero p { margin: 0; font-size: 16px; color: var(--text2); }
+.intro { margin: 0 0 14px; font-size: 15px; color: var(--text2); }
+.sec-h { margin: 22px 4px 7px; font-size: 13px; font-weight: 500; letter-spacing: .02em; text-transform: uppercase; color: var(--text2); }
+.app[data-os="android"] .sec-h { margin: 22px 0 6px; text-transform: none; letter-spacing: .01em; font-size: 14px; font-weight: 600; color: var(--text); }
+.sec-f { margin: 7px 4px 0; font-size: 13px; color: var(--text2); line-height: 1.35; }
+.app[data-os="android"] .sec-f { margin: 6px 0 0; font-size: 12px; }
+.tint { color: var(--accent); }
+.danger { color: var(--red) !important; }

@@ -1,0 +1,117 @@
+/* =====================================================================
+   KEDGE UI · signatures de marque
+   Panneau anthracite, grands chiffres jaunes en serif, titres serif + capitales,
+   surlignage jaune, écran de marque jaune, grands arcs sombres.
+   Ces surfaces sont identiques en clair et en sombre, sur iOS comme sur Android.
+   ===================================================================== */
+
+/* ---------- panneau anthracite (carte de marque) ---------- */
+.panel { position: relative; display: grid; gap: 8px; padding: 16px; border-radius: var(--r-card); background: var(--panel); color: var(--panel-ink); --focus: var(--brand); }
+.panel.lg { border-radius: var(--r-panel); padding: 16px 16px 14px; }
+.panel + .panel { margin-top: 12px; }
+.panel p { margin: 0; font-size: 14px; color: var(--panel-muted); }
+.panel-title { margin: 0; padding-right: 20px; font-family: var(--serif); font-weight: 700; font-size: 21px; line-height: 1.2; }
+.panel-title.big { font-size: 26px; padding-right: 0; }
+.panel-meta { font-size: 14px; color: var(--panel-muted); }
+.panel-acts { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 6px; font-size: 14px; color: var(--panel-muted); }
+.panel b { color: var(--panel-ink); }
+.panel .hl { color: var(--brand); font-weight: 600; }
+.panel .btn { position: relative; z-index: 1; flex: none; background: var(--brand); color: var(--on-brand); }
+.panel .btn.on { background: transparent; color: var(--brand); box-shadow: inset 0 0 0 1.5px var(--brand); }
+.panel .tag { margin-left: 4px; background: transparent; border: 1px solid var(--panel-edge); border-radius: var(--r-xs); color: var(--panel-muted); font-size: 11px; letter-spacing: .06em; text-transform: uppercase; vertical-align: 1px; }
+.panel .avs i { background: var(--panel-raise); color: var(--panel-ink); box-shadow: 0 0 0 2px var(--panel); }
+.panel .avs i.hl, .panel .avs i.me { background: var(--brand); color: var(--on-brand); }
+.panel .mini-stack { margin: 0; color: var(--panel-muted); white-space: normal; }
+.panel .src { margin: 8px 0 0; font-size: 13px; color: var(--panel-muted); }
+.panel .link, .panel .src button { border: 0; background: none; padding: 0; color: var(--panel-ink); font-size: 13px; font-weight: 600; text-decoration: underline; text-decoration-color: var(--brand); text-underline-offset: 3px; min-height: 32px; }
+/* toute la carte cliquable, sans imbriquer de boutons : un bouton titre dont le ::after couvre la carte */
+.panel-link { margin: 0; padding: 0; border: 0; background: none; color: inherit; font: inherit; text-align: left; }
+.panel-link::after { content: ""; position: absolute; inset: 0; border-radius: inherit; }
+.panel-link:focus-visible { outline: none; }
+.panel-link:focus-visible::after { outline: 3px solid var(--brand); outline-offset: 2px; }
+.panel .chev-c { position: absolute; top: 20px; right: 14px; width: 16px; height: 16px; color: var(--panel-muted); }
+
+/* ---------- grands chiffres jaunes en serif ---------- */
+.bignum { margin: 0; font-family: var(--serif); font-weight: 700; font-size: 40px; line-height: 1; letter-spacing: -.02em; color: var(--brand); font-variant-numeric: lining-nums tabular-nums; }
+.bignum.xl { font-size: 56px; }
+.bignum.l { font-size: 46px; }
+.bignum small { margin-left: 4px; font-family: var(--font); font-size: 15px; font-weight: 500; letter-spacing: 0; color: var(--panel-ink); }
+.metric { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; column-gap: 12px; }
+.metric .src { grid-column: 1 / -1; }
+
+/* ---------- capitales, badge, surlignage ---------- */
+.kicker { font-size: 12px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: var(--text2); }
+.panel .kicker { color: var(--brand); }
+.badge { display: inline-block; padding: 3px 8px; background: var(--anth); color: var(--brand); font-size: 12px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; }
+.mark { display: inline-block; padding: 2px 8px; background: var(--brand); color: var(--on-brand); font-size: 12px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
+.mark-text { background: linear-gradient(transparent 58%, var(--brand) 58%, var(--brand) 92%, transparent 92%); color: inherit; padding: 0 .1em; }
+.hl-ic { flex: none; width: 30px; height: 30px; border-radius: var(--r-m); display: grid; place-items: center; background: var(--anth); color: var(--brand); }
+.hl-ic svg { width: 19px; height: 19px; }
+.hl-ic.big { width: 52px; height: 52px; border-radius: 14px; }
+.hl-ic.big svg { width: 30px; height: 30px; }
+
+/* ---------- titres : serif gras + italique ; capitales sans + serif ---------- */
+.display { margin: 0 0 10px; font-family: var(--serif); font-weight: 700; font-size: clamp(30px, 9.6vw, 38px); line-height: 1.05; letter-spacing: -.01em; }
+.display em, .title-mix em { font-style: italic; }
+.title-mix { margin: 0; font-family: var(--serif); font-weight: 700; font-size: 28px; line-height: 1.1; }
+.title-mix .caps { font-family: var(--font); font-weight: 500; font-size: .62em; letter-spacing: .09em; text-transform: uppercase; vertical-align: .12em; margin-right: .2em; }
+
+/* ---------- écran de marque jaune (accueil, connexion, chargement) ---------- */
+.brand-screen { position: absolute; inset: 0; z-index: var(--z-brand-screen); display: flex; flex-direction: column; overflow-y: auto; overflow-x: clip; overscroll-behavior: contain; background: var(--brand); color: var(--anth); --focus: var(--anth); transition: transform .35s var(--ease-out), opacity .35s; }
+.brand-screen[hidden] { display: none; }
+.brand-screen.leaving { transform: translateY(100%); }
+.bs-top { flex: none; padding: max(24px, env(safe-area-inset-top, 0px)) 24px 0; }
+.bs-top img { height: 34px; width: auto; }
+.bs-top .badge { margin-top: 10px; }
+.bs-art { flex: 1; min-height: 0; position: relative; margin: 12px 0 8px; }
+.bs-art svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.bs-body { flex: none; display: flex; flex-direction: column; padding: 0 24px calc(24px + env(safe-area-inset-bottom, 0px)); }
+.bs-body p { margin: 0 0 18px; font-size: 16px; line-height: 1.45; }
+.brand-screen .in { background: #FFFFFF; color: var(--anth); box-shadow: none; border-radius: 12px; }
+.brand-screen .in::placeholder { color: #6E7075; }
+.brand-screen .in:focus { outline: 2px solid var(--anth); outline-offset: 2px; }
+.brand-screen .btn { width: 100%; margin-top: 12px; min-height: 52px; border-radius: 12px; background: var(--anth); color: #FFFFFF; }
+.brand-screen .err { color: #8A1C12; }
+.brand-screen .link { margin-top: 8px; min-height: 44px; border: 0; background: none; color: var(--anth); font-size: 15px; font-weight: 600; text-decoration: underline; text-underline-offset: 3px; }
+.brand-screen .seg { background: rgba(51, 53, 57, .12); }
+.brand-screen .seg button { color: var(--anth); }
+.app[data-os] .brand-screen .seg button[aria-pressed="true"] { background: #FFFFFF; color: var(--anth); }
+.app[data-os="android"] .brand-screen .seg { box-shadow: inset 0 0 0 1px var(--anth); }
+.app[data-os="android"] .brand-screen .seg button[aria-pressed="true"] { background: var(--anth); color: var(--brand); }
+.app[data-os="android"] .brand-screen .seg button + button { box-shadow: inset 1px 0 0 var(--anth); }
+.brand-screen .field { display: grid; gap: 6px; margin-bottom: 12px; }
+.brand-screen .field > span { font-size: 14px; font-weight: 600; }
+.brand-screen .panel { margin-bottom: 10px; }
+@media (min-width: 700px) { .brand-screen > .bs-top, .brand-screen > .bs-body { width: 100%; max-width: 480px; margin-inline: auto; } .brand-screen > .bs-art { width: 100%; max-width: 640px; margin-inline: auto; } }
+.dots { display: flex; gap: 6px; margin-bottom: 18px; }
+.dots i { width: 6px; height: 6px; border-radius: 3px; background: rgba(51, 53, 57, .3); transition: width .2s; }
+.dots i.on { width: 18px; background: var(--anth); }
+.steps { display: grid; gap: 10px; margin: 0 0 6px; padding: 0; list-style: none; counter-reset: st; }
+.steps li { display: grid; grid-template-columns: 28px minmax(0, 1fr); align-items: center; gap: 12px; font-size: 15px; line-height: 1.35; counter-increment: st; }
+.steps li::before { content: counter(st); display: grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; background: var(--anth); color: var(--brand); font-size: 14px; font-weight: 700; }
+.sheet .steps li::before, .scroll .steps li::before { background: var(--sel); color: var(--on-sel); }
+.consent { display: flex; align-items: flex-start; gap: 14px; margin: 6px 0 4px; padding: 12px 14px; border-radius: 14px; background: rgba(255, 255, 255, .5); cursor: pointer; }
+.consent > span { flex: 1; min-width: 0; }
+.consent b { display: block; font-size: 16px; font-weight: 600; }
+.consent small { display: block; margin-top: 2px; font-size: 13px; line-height: 1.4; }
+.consent .switch { margin-top: 2px; background: rgba(51, 53, 57, .25); }
+.consent .switch:checked { background: var(--anth); }
+
+/* ---------- grands arcs sombres et virage de piste ---------- */
+.arcs svg, .bend svg { display: block; width: 100%; height: auto; }
+.bd-ground { fill: var(--lane-ground); }
+.bd-zone { fill: var(--lane-zone); }
+.bd-mine { fill: var(--lane-mine); }
+.bd-line { fill: none; stroke: var(--lane-line); stroke-width: 1.5; }
+.bd-edge { fill: none; stroke: var(--lane-line); stroke-width: 2.5; }
+.bd-start { stroke: var(--panel-ink); stroke-width: 3; }
+.bd-num { fill: var(--panel-ink); font-family: var(--font); font-size: 13px; font-weight: 700; text-anchor: middle; }
+.bd-num.mine { fill: var(--brand); }
+.bd-tok circle { fill: var(--lane-ground); stroke: var(--panel-edge); stroke-width: 1.5; }
+.bd-tok text { fill: var(--panel-muted); font-family: var(--font); font-size: 9px; font-weight: 700; text-anchor: middle; }
+.bd-tok.hl circle { fill: var(--brand); stroke: var(--brand); }
+.bd-tok.hl text { fill: var(--on-brand); }
+.bd-me circle { fill: var(--panel-ink); stroke: var(--brand); stroke-width: 2.5; }
+.bd-me text { fill: var(--anth); font-family: var(--font); font-size: 7.5px; font-weight: 700; letter-spacing: .02em; text-anchor: middle; }
+.bd-label { fill: var(--panel-muted); font-family: var(--font); font-size: 11px; text-anchor: end; font-variant-numeric: tabular-nums; }
+.bd-label.mine { fill: var(--brand); font-weight: 700; }

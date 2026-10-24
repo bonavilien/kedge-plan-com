@@ -1,0 +1,981 @@
+// Plan de com KEDGE : l'appli, une fois connecté. boot.js charge les données puis appelle KPlan.
+// Trois objets qui ne se ressemblent pas : le temps fort (un moment de l'année, en jaune), l'action de diffusion (neutre, rangée par message)
+// et le partenariat payant (anthracite, marqué « Payant »). Les messages sont écrits en toutes lettres, sans code à apprendre.
+// Un sujet (Salle Bloomberg, Top UP…) est un temps fort sans date : on le valorise sur une ou plusieurs périodes entières.
+// Les données viennent de la base (store.js) ; chaque écriture part tout de suite, et les changements des autres arrivent en temps réel.
+window.KPlan = (DATA, { greet = false } = {}) => {
+  const K = window.KUI, I = K.icons, esc = K.esc, Store = window.KStore, CFG = window.KPLAN_CONFIG;
+  const app = document.getElementById("app");
+  // les tableaux et DB sont remplacés en place à chaque rechargement
+  const { MESSAGES, PERIODS, SERVICES, CHEF, PEOPLE, PARTNERS, me: ME } = DATA;
+  const DB = DATA.db;
+
+  // ---------- dates ----------
+  const D = (s) => { const [y, m, d] = s.split("-").map(Number); return new Date(y, m - 1, d); };
+  const iso = (dt) => `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, "0")}-${String(dt.getDate()).padStart(2, "0")}`;
+  const TODAY = iso(new Date());
+  const T0 = D(TODAY);
+  const days = (s) => Math.round((D(s) - T0) / 864e5);
+  const addDays = (s, n) => { const x = D(s); x.setDate(x.getDate() + n); return iso(x); };
+  const fmtShort = (s) => D(s).toLocaleDateString("fr-FR", { weekday: "short", day: "numeric", month: "short" });
+  const fmtDay = (s) => D(s).toLocaleDateString("fr-FR", { day: "numeric", month: "long" }).replace(/^1 /, "1er ");
+  const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
+  const monShort = (s) => D(s).toLocaleDateString("fr-FR", { month: "short" });
+  const monLong = (m) => cap(D(m + "-01").toLocaleDateString("fr-FR", { month: "long", year: "numeric" }));
+  const isSujet = (it) => !!(it.per && it.per.length);
+  const when = (it) => (isSujet(it) ? K.fr.list(it.per.map((i) => PERIODS[i].nom)) : it.flou || fmtShort(it.date));
+  const ago = (s) => { const n = -days(s); return n <= 0 ? "aujourd'hui" : n === 1 ? "hier" : `il y a ${n} jours`; };
+  const precise = (it) => !isSujet(it) && (!it.flou || /^\d/.test(it.flou)); // « Oct. » ou « Date à confirmer » : on ne connaît que le mois
+  const isPast = (it) => (isSujet(it) ? PERIODS[Math.max(...it.per)].au < TODAY : precise(it) ? it.date < TODAY : it.date.slice(0, 7) < TODAY.slice(0, 7));
+  const norm = (s) => s.toLowerCase().replace(/\./g, "");
+  const FIRST = PERIODS[0], LAST = PERIODS[PERIODS.length - 1];
+  const MONTHS = (() => { const a = []; for (let d = D(FIRST.du.slice(0, 7) + "-01"); d <= D(LAST.au); d.setMonth(d.getMonth() + 1)) a.push(iso(d).slice(0, 7)); return a; })();
+
+  // ---------- référentiels ----------
+  const ST = { idee: "Idée", confirmer: "À confirmer", planifie: "Planifié", production: "En production", diffuse: "Diffusé", retire: "Retiré" };
+  const TYPES = ["Programme", "Contexte", "Éléments de langage", "Visuels", "Contact", "Rushs", "Autre"];
+  const ASK = { "Programme": "le programme", "Contexte": "du contexte", "Éléments de langage": "des éléments de langage", "Visuels": "des visuels", "Contact": "un contact", "Rushs": "des rushs", "Autre": "des éléments" };
+  const svcOf = (k) => SERVICES.find((s) => s.k === k) || CHEF;
+  const fonctionOf = (p) => p.fonction || (p.svc ? svcOf(p.svc).nom : "");
+  const person = (k) => PEOPLE.find((p) => p.k === k) || { k, nom: "Ancien compte", svc: "", fonction: "" };
+  const me = () => person(ME);
+  const isMedia = () => !!me().media; // saisit les partenariats média
+  const canAdd = () => me().chef || !!me().svc; // un compte sans service lit tout et demande des éléments
+  // qui est qui : les noms viennent des profils
+  const names = (f) => K.fr.list(PEOPLE.filter(f).map((p) => p.nom));
+  const mediaNames = () => names((p) => p.media) || "le chef de projet";
+  const toldAll = () => PEOPLE.filter((p) => p.notifAll && p.k !== ME).map((p) => p.nom); // prévenus de chaque ajout
+  const periodOf = (s) => PERIODS.findIndex((p) => s >= p.du && s <= p.au);
+  // la période en cours, ou la prochaine entre deux périodes, ou la dernière une fois l'année finie
+  const CUR = (() => { const i = PERIODS.findIndex((p) => p.au >= TODAY); return i < 0 ? PERIODS.length - 1 : i; })();
+  const byId = (id) => DB.items.find((i) => i.id === id);
+  const isTF = (it) => it.kind === "tf";
+  const isPay = (it) => !!it.partner;
+  const isInc = (it) => it.m.includes("INC");
+  const typeOf = (it) => (isSujet(it) ? "suj" : isTF(it) ? "tf" : isPay(it) ? "pay" : "act");
+  const kindName = (it) => (isSujet(it) ? "Sujet" : isTF(it) ? "Temps fort" : isPay(it) ? "Partenariat" : "Action");
+  const root = (it) => (!isTF(it) && it.tf && byId(it.tf)) || it;
+  const canEdit = (it) => (isPay(it) ? isMedia() : me().chef || (!!me().svc && it.svc === me().svc));
+  const partnerName = (it) => (PARTNERS.find((p) => p.k === it.partner) || { nom: "Partenaire" }).nom;
+  const svcLabel = (it) => (isPay(it) ? partnerName(it) : svcOf(it.svc).court);
+  const svcWord = (it) => (isTF(it) ? kindName(it) : svcLabel(it));
+  const sortKey = (it) => (precise(it) ? it.date : it.date.slice(0, 7) + "-00"); // les dates à préciser ouvrent leur mois
+  const sortDate = (a, b) => sortKey(a).localeCompare(sortKey(b));
+  const reqTxt = (r) => (r.quoi && r.quoi !== r.type ? `${r.type} : ${r.quoi}` : r.type);
+  const stWord = (it) => ({ confirmer: "à confirmer", idee: "idée", production: "en production", retire: "retiré" }[it.st] || "");
+  const stAfter = (it, txt) => (it.st === "confirmer" && /confirmer|définir/i.test(txt || "") ? "" : stWord(it)); // évite « Date à confirmer · à confirmer »
+  const seeMore = (n, word) => (n === 1 ? `Voir ${word === "autres" ? "l'autre" : "le passé"}` : `Voir les ${n} ${word}`);
+  // messages en toutes lettres ; « Incontournable » pour une action à couvrir hors message
+  const msgNames = (it) => it.m.filter((x) => x !== "INC").map((n) => MESSAGES[n - 1].nom);
+  const msgText = (it) => K.fr.list([...msgNames(it), ...(isInc(it) ? ["Incontournable"] : [])]);
+  const editors = (it) => (isPay(it) ? mediaNames() : SERVICES.some((s) => s.k === it.svc) ? `${svcOf(it.svc).court}, ${CHEF.qui}` : CHEF.qui);
+  const hostOf = (u) => { try { return /sharepoint\.com$/.test(new URL(u).hostname) ? "SharePoint" : new URL(u).hostname.replace(/^www\./, ""); } catch (e) { return "Lien"; } };
+
+  // ---------- écritures ----------
+  // identifiant fait ici : la fiche s'ouvre tout de suite, la base garde le même
+  const uid = () => crypto.randomUUID?.() || "10000000-1000-4000-8000-100000000000".replace(/[018]/g, (c) => (c ^ (crypto.getRandomValues(new Uint8Array(1))[0] & (15 >> (c / 4)))).toString(16));
+  const errText = (e) => (e?.code === "42501" ? "tu n'as pas les droits pour ça" : /fetch|network|load failed/i.test(e?.message || "") ? "pas de connexion" : /jwt|token/i.test(e?.message || "") ? "reconnecte-toi" : e?.message || "erreur inconnue");
+  // une écriture refusée : on le dit, et on remet l'écran d'accord avec la base
+  const fail = (e) => { console.error(e); K.snack(`Pas enregistré : ${esc(errText(e))}. Réessaie.`, 5000); sync(); };
+  // petites écritures : l'écran change tout de suite, la base suit
+  const quick = (p, msg) => { K.refresh(); if (msg) K.snack(msg); p.catch(fail); };
+
+  // une date proposée dans l'année du plan
+  const inPlan = (s) => (s < FIRST.du ? FIRST.du : s > LAST.au ? LAST.au : s);
+  const newDraft = (kind = "action") => ({ kind, per: [S.period], t: "", prec: "jour", date: inPlan(addDays(TODAY, 14)), mois: inPlan(TODAY).slice(0, 7), m: [], cc: [], svc: me().chef ? SERVICES[0]?.k || "" : me().svc, partner: PARTNERS[0]?.k || "", newPartner: "", tf: "", link: "", note: "", more: false });
+  // ordinateur et tablette : trois colonnes de services dès 768 px, fiche en panneau à droite dès 1100 px
+  const MQ_COLS = matchMedia("(min-width: 768px)"), MQ_PANEL = matchMedia("(min-width: 1100px)");
+  const cols = () => MQ_COLS.matches, panel = () => MQ_PANEL.matches;
+  const S = { period: CUR, filter: null, msgF: null, pastP: false, zoom: "periode", gx: null, gxZoom: null, past: { tf: false, media: false }, open: {}, draft: null, edit: null };
+
+  // ---------- petits gabarits ----------
+  const chip = (label, on, value) => `<button type="button" class="chip" value="${esc(value ?? label)}" aria-pressed="${!!on}">${I.check}${esc(label)}</button>`;
+  const pressed = (sel, root = document) => [...root.querySelectorAll(`${sel} .chip[aria-pressed="true"]`)].map((b) => b.value);
+  const down = `<span class="down" aria-hidden="true">${I.chevL}</span>`;
+  const profileBtn = () => K.iconBtn("user", "Profil", 'data-act="profil"');
+  const payBadge = `<span class="pay">Payant</span>`;
+  const tfBadge = `<span class="tf-b">Temps fort</span>`, sujBadge = `<span class="tf-b suj">Sujet</span>`;
+  // ligne d'identité d'un objet : le type se voit avant de se lire
+  const metaHTML = (it) => isTF(it) ? `${isSujet(it) ? sujBadge : tfBadge}${esc(cap(when(it)))}`
+    : isPay(it) ? `${payBadge}${esc(partnerName(it))} · ${esc(cap(when(it)))}` : `${esc(cap(when(it)))} · ${esc(svcLabel(it))}`;
+  function relais(tf) {
+    const linked = DB.items.filter((a) => a.tf === tf.id && a.st !== "retire" && !isPay(a));
+    const c = Object.fromEntries(SERVICES.map((s) => [s.k, 0])); linked.forEach((a) => { if (c[a.svc] != null) c[a.svc]++; });
+    const keys = Object.keys(c);
+    return { linked, has: keys.filter((k) => c[k]).map((k) => svcOf(k).court), miss: keys.filter((k) => !c[k]).map((k) => svcOf(k).court) };
+  }
+  // on montre les relais existants, sans dire ce qui manque : chaque service décide
+  const relaisTxt = (it) => {
+    if (isPast(it)) return "";
+    const r = relais(it);
+    return r.has.length ? `Relais ${K.fr.list(r.has)}` : "";
+  };
+
+  // une ligne d'agenda : date à gauche, titre, une ligne secondaire.
+  // who : "all" nomme le service ; "tf" le tait (liste d'un seul service)
+  function agRow(it, { date = true, mode = "week", who = "all", mark = true } = {}) {
+    const t = typeOf(it), dt = D(it.date), p = precise(it), mon = monShort(it.date);
+    const dcol = !date ? "" : t === "suj" ? `<b class="ic">${I.bookmark}</b>` : p ? `<b>${dt.getDate()}</b><span>${esc(mode === "week" ? dt.toLocaleDateString("fr-FR", { weekday: "short" }) : mon)}</span>` : `<b class="m">${esc(mon)}</b>`;
+    const flouTxt = it.flou && (p || norm(it.flou) !== norm(mon)) ? it.flou : "";
+    const ev = t === "tf" || t === "suj";
+    const parts = ev ? [relaisTxt(it), flouTxt, stAfter(it, flouTxt)]
+      : [t === "pay" ? partnerName(it) : who === "all" ? svcLabel(it) : "", msgText(it), flouTxt, stAfter(it, flouTxt)];
+    // hiérarchie de la 2e ligne : qui (service, partenaire ou relais) en noir, messages en pastilles, état en gris
+    const lead = ev ? relaisTxt(it) : t === "pay" ? partnerName(it) : who === "all" ? svcLabel(it) : "";
+    const tags = ev ? "" : [...msgNames(it), ...(isInc(it) ? ["Incontournable"] : [])].map((n) => `<span class="ag-msg${n === "Incontournable" ? " inc" : ""}">${esc(n)}</span>`).join("");
+    const st = [flouTxt, stAfter(it, flouTxt)].filter(Boolean).join(" · ");
+    const line = `${lead ? `<span class="ag-who">${esc(lead)}</span>` : ""}${tags}${st ? `<span class="ag-st">${esc(st)}</span>` : ""}`;
+    const badge = t === "pay" && mark ? payBadge : "";
+    const isNew = me().chef && it.by !== me().k && it.at >= addDays(TODAY, -7);
+    const done = it.st === "diffuse" || (ev && isPast(it));
+    const kind = t === "pay" ? "Partenariat payant" : kindName(it);
+    const label = [kind, cap(when(it)), it.t, parts.filter(Boolean).join(", "), done ? "fait" : "", isNew ? "nouveau" : ""].filter(Boolean).join(". ");
+    const side = done ? `<span class="done">${I.check}</span>` : t === "tf" ? `<span class="ag-flag">${I.flag}</span>` : "";
+    return `<button type="button" class="row ag-row is-${t}${it.st === "retire" ? " retire" : ""}" data-open="${it.id}" aria-label="${esc(label)}">
+      <span class="ag-date">${dcol}</span>
+      <span class="row-main"><b>${isNew ? `<i class="new-dot"></i>` : ""}${esc(it.t)}</b>${line || badge ? `<span class="ag-sub">${badge}${line}</span>` : ""}</span>
+      ${side ? `<span class="ag-side">${side}</span>` : ""}</button>`;
+  }
+  // la date ne s'affiche qu'une fois par jour
+  function rows(list, opts = {}) {
+    let last = "", lastT = "";
+    return list.slice().sort(sortDate).map((it) => { const key = sortKey(it), t = typeOf(it); const h = agRow(it, { ...opts, date: key !== last || (t !== "act" && t !== lastT) || t === "suj" }); last = key; lastT = t; return h; }).join("");
+  }
+  function agenda(list, opts = {}) {
+    const by = new Map();
+    list.slice().sort(sortDate).forEach((it) => { const m = it.date.slice(0, 7); by.set(m, [...(by.get(m) || []), it]); });
+    return [...by].map(([m, l]) => `<h3 class="ag-month">${cap(D(m + "-01").toLocaleDateString("fr-FR", { month: "long" }))}</h3><div class="group">${rows(l, opts)}</div>`).join("");
+  }
+
+  // =====================================================================
+  // À faire : tout ce qui attend une réponse, chaque carte commence par l'action concernée
+  // =====================================================================
+  function jalons(svc) {
+    return DB.items.filter((it) => it.svc === svc && !isTF(it) && (!isPay(it) || isMedia()) && !["retire", "diffuse"].includes(it.st) && days(it.date) > 0 && days(it.date) <= 30)
+      .map((it) => { const n = days(it.date), j = n <= 7 ? 7 : n <= 15 ? 15 : 30; return { it, n, j, key: `${it.id}-${j}` }; })
+      .sort((a, b) => a.n - b.n);
+  }
+  function todo() {
+    const p = me(), vu = DB.vu[p.k] || [];
+    const mine = (r) => r.from === p.k || (!!p.svc && person(r.from).svc === p.svc);
+    const demandes = DB.reqs.filter((r) => r.to === p.svc && r.st === "ouverte" && !mine(r) && byId(r.item)).sort((a, b) => a.pour.localeCompare(b.pour));
+    const rappels = jalons(p.svc).filter((j) => !DB.answers[j.key]);
+    const cites = DB.items.filter((it) => it.cc.includes(p.svc) && it.svc !== p.svc && person(it.by).svc !== p.svc && it.at >= addDays(TODAY, -30)
+      && days(it.date) >= 0 && it.st !== "retire" && !vu.includes(it.id)).sort((a, b) => b.at.localeCompare(a.at));
+    const blocages = DB.blocks.filter((b) => !b.leve && byId(b.item) && (p.chef || byId(b.item).svc === p.svc));
+    const envoyees = DB.reqs.filter((r) => mine(r) && r.st === "ouverte" && byId(r.item)).sort((a, b) => a.pour.localeCompare(b.pour));
+    return { demandes, rappels, cites, blocages, envoyees, count: demandes.length + rappels.length + cites.length + blocages.length };
+  }
+  function syncBadge() {
+    syncSide();
+    const n = todo().count, tab = app.querySelector('.tab[data-kui-tab="afaire"]'); if (!tab) return;
+    let b = tab.querySelector(".tab-badge");
+    if (!n) { b?.remove(); tab.removeAttribute("aria-label"); return; }
+    if (!b) { b = document.createElement("span"); b.className = "tab-badge"; b.setAttribute("aria-hidden", "true"); tab.append(b); }
+    b.textContent = n; tab.setAttribute("aria-label", `À faire, ${n} en attente`);
+  }
+
+  function renderAfaire(el) {
+    const T = todo();
+    const head = (it) => `<button type="button" class="todo-act" data-open="${it.id}"><span><b>${esc(it.t)}</b><span class="todo-meta">${metaHTML(it)}</span></span>${I.chevR}</button>`;
+    const card = (it, { body = "", left = "", acts = "" }) => `<article class="todo is-${typeOf(it)}">${head(it)}${body ? `<p class="todo-body">${body}</p>` : ""}<div class="todo-foot"><span class="due">${left}</span>${acts}</div></article>`;
+    const section = (k, title, list, render) => {
+      if (!list.length) return "";
+      const all = S.open[k], shown = all ? list : list.slice(0, 3);
+      return `<section class="todo-sec"><h2 class="sec-h">${title} · ${list.length}</h2><div class="todos">${shown.map(render).join("")}</div>
+        ${list.length > 3 ? `<p class="more-p"><button type="button" class="link" data-act="more" data-k="${k}">${all ? "Voir moins" : seeMore(list.length - 3, "autres")}</button></p>` : ""}</section>`;
+    };
+    const demande = (r) => { const it = byId(r.item), late = r.pour < TODAY;
+      return card(it, { body: `<b>${esc(person(r.from).nom)}</b> demande ${esc(ASK[r.type] || "des éléments")}${r.quoi && r.quoi !== r.type ? ` : « ${esc(r.quoi)} »` : ""}.`,
+        left: late ? `<span class="late">En retard</span>, prévu le ${fmtDay(r.pour)}` : `Pour le ${fmtDay(r.pour)}`,
+        acts: `<button type="button" class="btn small" data-act="recu" data-r="${r.id}">C'est envoyé</button>` }); };
+    const rappel = ({ it, j, key }) => card(it, { left: `<span class="jal">J-${j}</span>`,
+      acts: `<button type="button" class="btn small" data-act="ask" data-id="${it.id}" data-key="${key}">Oui, je demande</button><button type="button" class="btn small outline" data-act="nope" data-key="${key}">Pas besoin</button>` });
+    const cite = (it) => card(it, { left: `Ajouté par ${esc(person(it.by).nom)}, ${ago(it.at)}`, acts: `<button type="button" class="btn small tonal" data-act="vu" data-id="${it.id}">Vu</button>` });
+    const blocage = (b) => { const it = byId(b.item);
+      return card(it, { body: `<span class="blk-l">Bloqué</span>${esc(b.why)}`, left: `${esc(person(b.by).nom)}, ${ago(b.at)}`,
+        acts: canEdit(it) ? `<button type="button" class="btn small tonal" data-act="unblock" data-b="${b.id}">Lever</button>` : "" }); };
+    const sent = T.envoyees.length ? `<section class="todo-sec"><h2 class="sec-h">Tes demandes en attente · ${T.envoyees.length}</h2><div class="group">${T.envoyees.map((r) => { const it = byId(r.item), late = r.pour < TODAY;
+      return `<button type="button" class="row" data-open="${it.id}"><span class="row-main"><b>${esc(it.t)}</b><span>${esc(r.type)} · demandé à ${esc(svcOf(r.to).qui)} · pour le ${fmtDay(r.pour)}</span></span>${late ? `<span class="tag st-retard">En retard</span>` : ""}${I.chevR}</button>`; }).join("")}</div></section>` : "";
+
+    el.innerHTML = K.navbar({ title: "À faire", actions: profileBtn() }) + `<div class="scroll page-wide">
+      <h1 class="large-title">À faire</h1>
+      ${T.count ? "" : `<div class="all-good"><span class="hl-ic big">${I.check}</span><b>Tout est à jour.</b><span>Rien n'attend ta réponse.</span></div>`}
+      <div class="todo-board">
+      ${section("demandes", "Demandes reçues", T.demandes, demande)}
+      ${section("blocages", "Blocages", T.blocages, blocage)}
+      ${section("rappels", "Besoin d'éléments ?", T.rappels, rappel)}
+      ${section("cites", "Ton service est cité", T.cites, cite)}
+      ${sent}
+      </div>
+    </div>`;
+    syncBadge();
+  }
+
+  // =====================================================================
+  // Ma période : ce qui arrive, rien d'autre
+  // =====================================================================
+  const defFilter = () => (me().chef || !me().svc ? "all" : "mine");
+  const curFilter = () => S.filter || defFilter();
+  const filterLabel = (f) => ({ mine: "Mon service", all: "Tous les services" }[f] || svcOf(f).nom);
+  // temps forts et partenariats ont leur onglet : ici, seulement les actions de diffusion
+  const isAct = (it) => !isTF(it) && !isPay(it);
+  function scoped() {
+    const p = me(), f = curFilter();
+    let list = DB.items.filter((it) => isAct(it) && periodOf(it.date) === S.period);
+    if (f === "mine") list = list.filter((it) => it.svc === p.svc);
+    else if (f !== "all") list = list.filter((it) => it.svc === f);
+    return list;
+  }
+  const newItems = () => DB.items.filter((it) => isAct(it) && it.by !== me().k && it.at >= addDays(TODAY, -7)).sort((a, b) => b.at.localeCompare(a.at));
+  const newRow = (it) => { const b = person(it.by);
+    return `<button type="button" class="row nv-row" data-open="${it.id}"><span class="av sm" aria-hidden="true">${K.initials(b.nom)}</span><span class="row-main"><b>${esc(it.t)}</b><span>${esc(b.nom)} · ${esc(svcLabel(it))} · ${ago(it.at)}</span></span>${I.chevR}</button>`; };
+
+  function renderPeriode(el) {
+    const wide = cols(), P = PERIODS[S.period], cur = S.period === CUR, chef = me().chef;
+    const base = wide ? DB.items.filter((it) => isAct(it) && periodOf(it.date) === S.period) : scoped(); // en colonnes, tous les services sont visibles
+    const list = S.msgF ? base.filter((it) => it.m.includes(+S.msgF)) : base;
+    const past = cur ? list.filter(isPast) : [];
+    const shown = cur && !S.pastP ? list.filter((it) => !isPast(it)) : list;
+    const rest = cur ? `encore ${days(P.au)} jours` : S.period < CUR ? "terminée" : `dans ${days(P.du)} jours`;
+
+    // actions par message (chefs de projet) : les messages à zéro ressortent
+    const live = base.filter((it) => it.st !== "retire");
+    const counts = MESSAGES.map((m) => live.filter((it) => it.m.includes(m.n)).length);
+    const cover = chef ? `<div class="cov" role="group" aria-label="Actions par message sur la période, touche un message pour filtrer">
+        ${MESSAGES.map((m, i) => `<button type="button" class="cov-i${counts[i] ? "" : " zero"}" data-msgf="${m.n}" aria-pressed="${S.msgF == m.n}">${esc(m.nom)}<b>${counts[i]}</b></button>`).join("")}
+      </div>` : "";
+
+    const nv = chef && cur ? newItems() : [];
+    const authors = [...new Set(nv.map((it) => it.by))];
+    const news = nv.length ? `<div class="group news"><button type="button" class="row nv-sum" data-act="allnew">
+        <span class="avs" aria-hidden="true">${authors.slice(0, 3).map((k) => `<i>${K.initials(person(k).nom)}</i>`).join("")}</span>
+        <span class="row-main"><b>${nv.length} ${nv.length > 1 ? "nouveautés" : "nouveauté"} cette semaine</b><span>${esc(K.fr.list(authors.map((k) => person(k).nom)))}</span></span>${I.chevR}</button></div>` : "";
+
+    const f = curFilter();
+    const bar = `<div class="ag-bar">
+      ${wide ? "" : `<button type="button" class="filter-btn" data-act="filter" aria-haspopup="dialog" aria-label="Afficher : ${esc(filterLabel(f))}">${esc(filterLabel(f))}${down}</button>`}
+      ${S.msgF ? `<button type="button" class="chip" aria-pressed="true" data-act="clearf" aria-label="Retirer le filtre ${esc(MESSAGES[S.msgF - 1].nom)}">${esc(MESSAGES[S.msgF - 1].nom)}<span class="x" aria-hidden="true">${I.close}</span></button>` : ""}
+      ${past.length ? `<button type="button" class="link" data-act="pastp">${S.pastP ? "Masquer les passés" : seeMore(past.length, "passés")}</button>` : ""}
+    </div>`;
+    const empty = `<div class="group"><div class="empty"><span>${S.msgF ? "Rien pour ce message sur cette période." : cur && past.length && !S.pastP ? "Plus rien à venir sur cette période." : "Rien sur cette période."}</span>${canAdd() ? `<button type="button" class="btn small" data-act="goadd">Ajouter une action</button>` : ""}</div></div>`;
+
+    // grand écran : une colonne par service
+    const colsH = () => `<div class="svc-cols">${SERVICES.map((s) => { const l = shown.filter((it) => it.svc === s.k);
+      return `<section class="svc-col" aria-label="${esc(s.nom)}"><h2 class="col-h">${esc(s.nom)}<span>${l.length}</span></h2>${l.length ? agenda(l, { who: "tf" }) : `<p class="col-empty">Rien sur cette période.</p>`}</section>`; }).join("")}</div>`;
+    el.innerHTML = K.navbar({ title: "Ma période", actions: (chef ? `<button type="button" class="txt-btn strong wide-only" data-act="meeting">Mode réunion</button>` : "") + profileBtn() }) + `<div class="scroll${wide ? " page-wide" : ""}"><div class="swipe" id="swipe">
+      <section class="panel lg phead" aria-label="${esc(`Période ${S.period + 1} sur ${PERIODS.length}`)}">
+        <div class="ph-nav">
+          <button type="button" class="ph-arrow" data-act="prev" aria-label="Période précédente"${S.period === 0 ? " disabled" : ""}>${I.chevL}</button>
+          <div class="ph-t"><h1 class="ph-title"><em>${esc(P.nom)}</em></h1><p>${esc(P.lib)} · ${rest}</p></div>
+          <button type="button" class="ph-arrow" data-act="next" aria-label="Période suivante"${S.period === PERIODS.length - 1 ? " disabled" : ""}><span class="flip">${I.chevL}</span></button>
+        </div>
+        <div class="pdots" aria-hidden="true">${PERIODS.map((x, i) => `<i${i === S.period ? ' class="on"' : ""}></i>`).join("")}</div>
+        ${cover}
+      </section>
+      ${cur ? "" : `<p class="back-now"><button type="button" class="link" data-act="now">Revenir à ${esc(PERIODS[CUR].nom)}</button></p>`}
+      ${news}
+      ${bar}
+      ${!shown.length ? empty : wide ? colsH() : agenda(shown, { who: f === "all" ? "all" : "tf" })}
+    </div></div>`;
+    wireSwipe(el.querySelector("#swipe"));
+    syncBadge();
+  }
+  function filterSheet() {
+    const p = me(), cur = curFilter();
+    const opts = [...(p.chef || !p.svc ? [] : [["mine", `Mon service (${svcOf(p.svc).court})`]]), ["all", "Tous les services"],
+      ...SERVICES.filter((s) => s.k !== p.svc).map((s) => [s.k, s.nom])];
+    K.sheet.open({ title: "Afficher", cancel: "Fermer", body: `<div class="group">${opts.map(([k, l]) => `<button type="button" class="row" data-setf="${k}" aria-pressed="${cur === k}"><span class="row-main"><b>${esc(l)}</b></span>${cur === k ? `<span class="tick" aria-hidden="true">${I.check}</span>` : ""}</button>`).join("")}</div>` });
+  }
+
+  // swipe intentionnel : il faut tirer franchement (30 % de la largeur ou un geste vif)
+  function wireSwipe(sw) {
+    if (!sw) return;
+    let x0 = 0, y0 = 0, t0 = 0, dx = 0, lock = null, id = null, moved = false;
+    sw.addEventListener("pointerdown", (e) => { if (e.pointerType === "mouse" && e.button !== 0) return; x0 = e.clientX; y0 = e.clientY; t0 = performance.now(); dx = 0; lock = null; id = e.pointerId; moved = false; });
+    sw.addEventListener("pointermove", (e) => {
+      if (e.pointerId !== id) return;
+      const ddx = e.clientX - x0, ddy = e.clientY - y0;
+      if (!lock && (Math.abs(ddx) > 10 || Math.abs(ddy) > 10)) { lock = Math.abs(ddx) > Math.abs(ddy) * 1.3 ? "x" : "y"; if (lock === "x") { sw.setPointerCapture(e.pointerId); sw.classList.add("dragging"); } }
+      if (lock !== "x") return;
+      moved = true; dx = ddx;
+      const edge = (dx > 0 && S.period === 0) || (dx < 0 && S.period === PERIODS.length - 1);
+      sw.style.transform = `translateX(${edge ? dx * 0.25 : dx}px)`;
+    });
+    const end = (e) => {
+      if (e.pointerId !== id) return; id = null;
+      sw.classList.remove("dragging");
+      if (lock !== "x") return;
+      const w = sw.clientWidth, v = Math.abs(dx) / Math.max(1, performance.now() - t0), dir = dx < 0 ? 1 : -1;
+      const ok = (Math.abs(dx) > w * 0.3 || (v > 0.6 && Math.abs(dx) > 70)) && S.period + dir >= 0 && S.period + dir < PERIODS.length;
+      if (ok) changePeriod(dir, sw); else { sw.classList.add("anim"); sw.style.transform = ""; setTimeout(() => sw.classList.remove("anim"), 240); }
+    };
+    sw.addEventListener("pointerup", end); sw.addEventListener("pointercancel", end);
+    sw.addEventListener("click", (e) => { if (moved) { e.stopPropagation(); e.preventDefault(); moved = false; } }, true);
+  }
+  function changePeriod(dir, sw) {
+    const n = S.period + dir; if (!dir || n < 0 || n >= PERIODS.length) return;
+    const go = () => { S.period = n; S.msgF = null; K.refresh(); const v = document.getElementById("v-periode"); v.querySelector(".scroll").scrollTop = 0; v.querySelector("#swipe")?.classList.add(dir > 0 ? "in-r" : "in-l"); };
+    if (!sw || K.reduceMotion()) return go();
+    sw.classList.add("anim"); sw.style.transform = `translateX(${dir > 0 ? "-" : ""}${Math.round(sw.clientWidth * 0.6)}px)`; sw.style.opacity = "0";
+    setTimeout(go, 180);
+  }
+
+  // =====================================================================
+  // Grille de diffusion : la couleur dit le type (jaune temps fort, anthracite payant, neutre diffusion)
+  // =====================================================================
+  // du lundi de la semaine où commence la première période jusqu'à la fin de la dernière
+  const G0 = (() => { const d = D(FIRST.du); d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); return iso(d); })();
+  const GN = Math.floor((D(LAST.au) - D(G0)) / 864e5 / 7) + 1;
+  const wk = (s) => Math.max(0, Math.min(GN - 1, Math.floor((D(s) - D(G0)) / 864e5 / 7)));
+  const colW = () => (S.zoom === "annee" ? 26 : 140);
+
+  function renderGrille(el) {
+    const year = S.zoom === "annee", col = colW(), lab = year ? 104 : 112;
+    const lanes = [
+      { k: "suj", nom: "Sujets", items: DB.items.filter(isSujet) },
+      { k: "tf", nom: "Temps forts", items: DB.items.filter((it) => isTF(it) && !isSujet(it)) },
+      ...SERVICES.map((s) => ({ k: s.k, nom: s.court, items: DB.items.filter((it) => !isTF(it) && !isPay(it) && it.svc === s.k) })),
+      { k: "partners", nom: "Partenariats", items: DB.items.filter(isPay) },
+    ];
+    // un sujet s'étale sur toute sa période
+    const sujBlk = (it) => it.per.map((i) => `<button type="button" class="blk b-suj${it.st === "retire" ? " retire" : ""}" style="grid-column:${wk(PERIODS[i].du) + 1}/${Math.max(wk(PERIODS[i].du) + 2, wk(addDays(PERIODS[i].au, 1)) + 1)}" data-open="${it.id}" aria-label="${esc(`${it.t}, ${PERIODS[i].nom}`)}"><span class="t">${esc(it.t)}</span></button>`).join("");
+    const blk = (it) => {
+      if (isSujet(it)) return sujBlk(it);
+      const soft = it.st === "confirmer" || it.st === "idee";
+      return `<button type="button" class="blk b-${typeOf(it)}${it.st === "retire" ? " retire" : ""}${soft ? " soft" : ""}" style="grid-column:${wk(it.date) + 1}" data-open="${it.id}" aria-label="${esc(`${it.t}, ${when(it)}`)}">${year ? `<i class="sq"></i>` : `<span class="t">${esc(it.t)}</span>`}</button>`;
+    };
+    const months = MONTHS.map((m) => m + "-01");
+    const head = `<div class="grow ghead"><div class="glab"></div><div class="gcells gper">${PERIODS.map((P) => `<div class="gp" style="grid-column:${wk(P.du) + 1}/${wk(P.au) + 2}">${esc(P.nom)}</div>`).join("")}</div></div>
+      <div class="grow ghead"><div class="glab"></div><div class="gcells gmon">${months.map((m, i) => `<div style="grid-column:${wk(m) + 1}/${i < months.length - 1 ? wk(months[i + 1]) + 1 : GN + 1}">${D(m).toLocaleDateString("fr-FR", { month: year ? "narrow" : "long" })}</div>`).join("")}</div></div>
+      ${year ? "" : `<div class="grow ghead"><div class="glab"></div><div class="gcells gwk">${Array.from({ length: GN }, (_, i) => `<div>${D(addDays(G0, i * 7)).getDate()}</div>`).join("")}</div></div>`}`;
+    const bands = [...new Set(DB.items.filter((it) => isTF(it) && !isSujet(it)).map((it) => wk(it.date)))].map((w) => `<div class="band" style="left:calc(var(--lab) + ${w} * var(--col))"></div>`).join("");
+    const todayX = (D(TODAY) - D(G0)) / 864e5 / 7;
+    const body = lanes.map((l) => `<div class="grow lane-${l.k}">${l.k === "partners" ? `<button type="button" class="glab" data-act="partners"><b>${l.nom}</b></button>` : `<div class="glab"><b>${esc(l.nom)}</b></div>`}<div class="gcells">${l.items.sort(sortDate).map(blk).join("")}</div></div>`).join("");
+
+    el.innerHTML = K.navbar({ title: "Grille", actions: profileBtn() }) + `<div class="scroll page-full">
+      <h1 class="large-title">Grille</h1>
+      <div class="g-ctrl"><div class="seg" data-seg id="g-zoom" role="group" aria-label="Zoom"><button type="button" value="periode" aria-pressed="${!year}">${I.check}Période</button><button type="button" value="annee" aria-pressed="${year}">${I.check}Année</button></div>
+        <button type="button" class="txt-btn strong" data-act="today">Aujourd'hui</button></div>
+      <div class="gwrap" id="gwrap" aria-hidden="true"><div class="ginner${year ? " z-year" : ""}" style="--n:${GN};--col:${col}px;--lab:${lab}px">
+        ${bands}<div class="today" style="left:calc(var(--lab) + ${todayX.toFixed(2)} * var(--col))"><span>Aujourd'hui</span></div>
+        ${head}${body}
+      </div></div>
+      <div class="legend"><span><i class="lgd b-tf"></i>Temps fort</span><span><i class="lgd b-suj"></i>Sujet</span><span><i class="lgd b-act"></i>Action de diffusion</span><span><i class="lgd b-pay"></i>Partenariat payant</span><span><i class="lgd soft"></i>À confirmer</span></div>
+      <div class="sr"><h2>Version texte de la grille</h2>${lanes.map((l) => `<h3>${esc(l.nom)}</h3><ul>${l.items.map((it) => `<li><button type="button" data-open="${it.id}">${esc(`${when(it)} : ${it.t}`)}</button></li>`).join("")}</ul>`).join("")}</div>
+    </div>`;
+    const gw = el.querySelector("#gwrap");
+    requestAnimationFrame(() => {
+      gw.scrollLeft = S.gx != null && S.gxZoom === S.zoom ? S.gx : Math.max(0, (todayX - (year ? 4 : 0.5)) * col);
+      gw.addEventListener("scroll", () => { S.gx = gw.scrollLeft; S.gxZoom = S.zoom; }, { passive: true });
+    });
+    syncBadge();
+  }
+
+  // =====================================================================
+  // Temps forts, et partenariats média (visibles par tous, remplis par les comptes média)
+  // =====================================================================
+  // grand écran : un tableau par période, des colonnes alignées qu'on parcourt d'un coup d'œil
+  const tdDate = (it) => {
+    const p = precise(it), dt = D(it.date), mon = monShort(it.date);
+    const main = p ? `<b class="dp">${dt.getDate()}</b><span>${esc(dt.toLocaleDateString("fr-FR", { weekday: "short" }))} ${esc(mon)}</span>` : `<b class="dp m">${esc(mon)}</b>`;
+    const flou = it.flou && (p || norm(it.flou) !== norm(mon)) ? `<small>${esc(it.flou)}</small>` : "";
+    return `<span class="td td-date">${main}${flou}</span>`;
+  };
+  const stCell = (it) => { const past = isPast(it) || it.st === "diffuse";
+    return `<span class="td td-st">${past ? `<span class="done">${I.check}</span>${it.st === "diffuse" ? "Diffusé" : "Passé"}` : esc(cap(stWord(it)))}</span>`; };
+  const isNewIt = (it) => me().chef && it.by !== me().k && it.at >= addDays(TODAY, -7);
+  const RCOLS = [...SERVICES.map((s) => ({ nom: s.court, f: (a) => !isPay(a) && a.svc === s.k })), { nom: "Partenariats", f: isPay }];
+  function tfRow(it) {
+    const linked = DB.items.filter((a) => a.tf === it.id && a.st !== "retire"), rl = relaisTxt(it), past = isPast(it);
+    const label = [cap(when(it)), it.t, rl, past ? "passé" : stWord(it)].filter(Boolean).join(". ");
+    return `<button type="button" class="tr${past ? " past" : ""}${it.st === "confirmer" ? " soft" : ""}" data-open="${it.id}" aria-label="${esc(label)}">
+      ${tdDate(it)}<span class="td td-t"><b>${isNewIt(it) ? `<i class="new-dot"></i>` : ""}${esc(it.t)}</b>${rl ? `<span class="td-sub">${esc(rl)}</span>` : ""}</span>
+      ${RCOLS.map((c) => { const n = linked.filter(c.f).length; return `<span class="td td-n">${n ? `<i>${n}</i>` : ""}</span>`; }).join("")}${stCell(it)}</button>`;
+  }
+  function payRow(it) {
+    const tags = [...msgNames(it), ...(isInc(it) ? ["Incontournable"] : [])].map((n) => `<span class="ag-msg${n === "Incontournable" ? " inc" : ""}">${esc(n)}</span>`).join("");
+    const past = isPast(it) || it.st === "diffuse";
+    return `<button type="button" class="tr${past ? " past" : ""}${it.st === "confirmer" ? " soft" : ""}" data-open="${it.id}" aria-label="${esc([cap(when(it)), it.t, partnerName(it), msgText(it), past ? "passé" : stWord(it)].filter(Boolean).join(". "))}">
+      ${tdDate(it)}<span class="td td-t"><b>${esc(it.t)}</b><span class="td-sub"><span class="ag-who">${esc(partnerName(it))}</span>${tags}</span></span>
+      <span class="td td-p">${esc(partnerName(it))}</span><span class="td td-m">${tags}</span>${stCell(it)}</button>`;
+  }
+  const tfHead = `<div class="tr th" aria-hidden="true"><span class="td th-a">Date</span><span class="td th-b">Temps fort</span><span class="td th-g">Relais</span>${RCOLS.map((c, i) => `<span class="td td-n" style="grid-column:${i + 3}">${c.nom}</span>`).join("")}<span class="td td-st th-z">Statut</span></div>`;
+  const payHead = `<div class="tr th" aria-hidden="true"><span class="td">Date</span><span class="td">Dispositif</span><span class="td td-p">Partenaire</span><span class="td td-m">Message</span><span class="td td-st">Statut</span></div>`;
+  const sujCard = (it) => { const rl = relaisTxt(it);
+    return `<button type="button" class="suj-card" data-open="${it.id}" aria-label="${esc(["Sujet", cap(when(it)), it.t, rl].filter(Boolean).join(". "))}"><span class="sc-ic" aria-hidden="true">${I.bookmark}</span><span><b>${esc(it.t)}</b>${rl ? `<span>${esc(rl)}</span>` : ""}</span></button>`; };
+
+  function byPeriod(el, { k, title, all, action, lead = "", mark = true, empty = "", add = "" }) {
+    const pastN = all.filter(isPast).length, open = S.past[k], wide = cols();
+    const list = open ? all : all.filter((it) => !isPast(it));
+    const secs = PERIODS.map((P, i) => ({ P, i, suj: list.filter((it) => isSujet(it) && it.per.includes(i)), l: list.filter((it) => !isSujet(it) && periodOf(it.date) === i).sort(sortDate) })).filter((g) => g.suj.length || g.l.length);
+    const phone = (g) => `<h2 class="ag-month">${esc(g.P.nom)} <span>${esc(g.P.lib)}</span></h2>
+      ${g.suj.length ? `<h3 class="sec-h suj-h">Sujets de la période</h3><div class="group">${rows(g.suj, { mode: "month", mark })}</div>` : ""}
+      ${g.l.length ? `${g.suj.length ? `<h3 class="sec-h suj-h">Temps forts</h3>` : ""}<div class="group">${rows(g.l, { mode: "month", mark })}</div>` : ""}`;
+    const desk = (g) => `<section class="tbl-sec" id="per-${k}-${g.i}" aria-label="${esc(g.P.nom)}"><h2 class="ag-month">${esc(g.P.nom)} <span>${esc(g.P.lib)}</span></h2>
+      ${g.suj.length ? `<h3 class="sec-h suj-h">Sujets de la période · ${g.suj.length}</h3><div class="suj-grid">${g.suj.map(sujCard).join("")}</div>` : ""}
+      ${g.l.length ? `${g.suj.length ? `<h3 class="sec-h suj-h">Temps forts · ${g.l.length}</h3>` : ""}<div class="tbl tbl-${k}">${k === "tf" ? tfHead + g.l.map(tfRow).join("") : payHead + g.l.map(payRow).join("")}</div>` : ""}</section>`;
+    const nav = wide && secs.length > 1 ? `<nav class="per-nav" aria-label="Aller à une période">${secs.map((g) => `<button type="button" class="per-l${g.i === CUR ? " now" : ""}" data-act="goper" data-k="${k}" data-i="${g.i}">${esc(g.P.nom)}</button>`).join("")}
+      ${pastN ? `<button type="button" class="link" data-act="past" data-k="${k}">${open ? "Masquer les passés" : seeMore(pastN, "passés")}</button>` : ""}</nav>` : "";
+    el.innerHTML = K.navbar({ title, actions: action + profileBtn() }) + `<div class="scroll${wide ? " page-wide" : ""}">
+      <h1 class="large-title">${title}</h1>${lead}
+      ${wide && secs.length > 1 ? nav : pastN ? `<p class="past-p"><button type="button" class="link" data-act="past" data-k="${k}">${open ? "Masquer les passés" : seeMore(pastN, "passés")}</button></p>` : ""}
+      ${secs.length ? secs.map(wide ? desk : phone).join("") : `<div class="group"><div class="empty"><span>${pastN ? "Plus rien à venir." : empty}</span>${pastN ? "" : add}</div></div>`}
+    </div>`;
+    syncBadge();
+  }
+  const renderTF = (el) => byPeriod(el, { k: "tf", title: "Temps forts", all: DB.items.filter(isTF),
+    action: canAdd() ? `<button type="button" class="txt-btn strong" data-act="addtf">${me().chef ? "Ajouter" : "Proposer"}</button>` : "",
+    empty: "Aucun temps fort pour l'instant.", add: canAdd() ? `<button type="button" class="btn small" data-act="addtf">${me().chef ? "Ajouter un temps fort" : "Proposer un temps fort"}</button>` : "" });
+  const renderMedia = (el) => byPeriod(el, { k: "media", title: "Partenariats média", all: DB.items.filter(isPay), mark: false,
+    action: isMedia() ? `<button type="button" class="txt-btn strong" data-act="addpartner">Ajouter</button>` : "",
+    lead: isMedia() ? "" : `<p class="sec-f lead">Rempli par ${esc(mediaNames())}. Tu peux y demander des éléments.</p>`,
+    empty: "Aucun partenariat pour l'instant.", add: isMedia() ? `<button type="button" class="btn small" data-act="addpartner">Ajouter un partenariat</button>` : "" });
+
+  // =====================================================================
+  // Formulaire commun : ajouter (préfixe f) et modifier (préfixe e)
+  // =====================================================================
+  function formHTML(d, px, edit) {
+    const p = me(), suj = d.kind === "sujet", tf = d.kind === "tf" || suj, pay = d.kind === "partner", mois = d.prec === "mois";
+    const kinds = [["action", "Action"], ["tf", "Temps fort"], ["sujet", "Sujet"], ...(isMedia() ? [["partner", "Partenariat"]] : [])];
+    const told = K.fr.list(toldAll());
+    const tfs = DB.items.filter((it) => isTF(it) && it.st !== "retire" && ((isSujet(it) ? !isPast(it) : days(it.date) >= -7) || it.id === d.tf)).sort(sortDate);
+    const opt = (it) => `<option value="${it.id}"${d.tf === it.id ? " selected" : ""}>${esc(`${when(it)} · ${it.t}`)}</option>`;
+    const open = d.more || !!d.tf || !!d.link || !!d.note;
+    const ph = suj ? "Ex. Salle Bloomberg" : tf ? "Ex. Venue de Columbia à Bordeaux" : pay ? "Ex. Article sur le consortium" : "Ex. Reel alumni chez EY";
+    return `${edit ? "" : `<div class="seg" data-seg id="${px}-kind" role="group" aria-label="Type d'ajout">${kinds.map(([k, l]) => `<button type="button" value="${k}" aria-pressed="${d.kind === k}">${I.check}${l}</button>`).join("")}</div>`}
+      <label class="lbl" for="${px}-t">${pay ? "Dispositif" : "Titre"}</label><input class="in" id="${px}-t" value="${esc(d.t)}" placeholder="${ph}" aria-describedby="${px}-t-err"><p class="err" id="${px}-t-err" hidden>Donne un titre.</p>
+      ${pay ? `<span class="lbl" id="${px}-pt-l">Partenaire</span>${PARTNERS.length ? `<div class="chips" data-chips id="${px}-pt" role="group" aria-labelledby="${px}-pt-l">${PARTNERS.map((x) => chip(x.nom, d.partner === x.k && !d.newPartner, x.k)).join("")}</div>` : ""}
+        <input class="in np-in" id="${px}-np" value="${esc(d.newPartner)}" placeholder="${PARTNERS.length ? "Ou un nouveau partenaire" : "Ex. Major Prépa"}" aria-labelledby="${px}-pt-l" aria-describedby="${px}-pt-err"><p class="err" id="${px}-pt-err" hidden>Choisis ou écris un partenaire.</p>` : ""}
+      ${!tf && !pay && p.chef ? `<span class="lbl" id="${px}-svc-l">Porté par</span><div class="chips" data-chips id="${px}-svc" role="group" aria-labelledby="${px}-svc-l">${SERVICES.map((s) => chip(s.court, d.svc === s.k, s.k)).join("")}</div>` : ""}
+      ${suj ? `<span class="lbl" id="${px}-per-l">Période</span><div class="chips" data-chips="multi" id="${px}-per" role="group" aria-labelledby="${px}-per-l" aria-describedby="${px}-per-err">${PERIODS.map((P, i) => chip(P.nom, d.per.includes(i), i)).join("")}</div>
+        <p class="err" id="${px}-per-err" hidden>Choisis au moins une période.</p>` : `<div id="${px}-jour"${mois ? " hidden" : ""}><label class="lbl" for="${px}-date">Date</label>${dateField(`${px}-date`, d.date)}</div>
+      <div id="${px}-moisw"${mois ? "" : " hidden"}><label class="lbl" for="${px}-mois">Mois</label><select class="in" id="${px}-mois">${MONTHS.map((m) => `<option value="${m}"${d.mois === m ? " selected" : ""}>${monLong(m)}</option>`).join("")}</select></div>
+      <div class="group conf-row"><label class="row" for="${px}-prec"><span class="row-main"><b>Date à préciser</b></span><input type="checkbox" class="switch" id="${px}-prec" data-prec="${px}"${mois ? " checked" : ""}></label></div>`}
+      ${tf ? "" : `<span class="lbl" id="${px}-m-l">Message</span><div class="chips" data-chips="multi" id="${px}-m" role="group" aria-labelledby="${px}-m-l" aria-describedby="${px}-m-err ${px}-m-f">${MESSAGES.map((m) => chip(m.nom, d.m.includes(String(m.n)), m.n)).join("")}${chip("Incontournable", d.m.includes("INC"), "INC")}</div>
+        <p class="err" id="${px}-m-err" hidden>Choisis un message, ou « Incontournable ».</p><p class="sec-f" id="${px}-m-f">Incontournable : à couvrir même sans message (admissibles, JPO…).</p>`}
+      ${pay ? "" : `<span class="lbl" id="${px}-cc-l">Qui prévenir ?</span><div class="chips" data-chips="multi" id="${px}-cc" role="group" aria-labelledby="${px}-cc-l">${SERVICES.filter((s) => s.k !== p.svc).map((s) => chip(s.court, d.cc.includes(s.k), s.k)).join("")}</div>
+        <p class="sec-f">${told ? `Ils reçoivent une notification, ${esc(told)} aussi.` : "Ils reçoivent une notification."}</p>`}
+      <details class="more" id="${px}-more"${open ? " open" : ""}><summary>Plus d'options${down}</summary>
+        ${tf ? "" : `<label class="lbl" for="${px}-tf">Temps fort ou sujet lié</label><select class="in" id="${px}-tf"><option value="">Aucun</option>
+          <optgroup label="Temps forts">${tfs.filter((it) => !isSujet(it)).map(opt).join("")}</optgroup><optgroup label="Sujets">${tfs.filter(isSujet).map(opt).join("")}</optgroup></select>`}
+        ${edit ? "" : `<label class="lbl" for="${px}-link">Lien SharePoint</label><input class="in" id="${px}-link" type="url" inputmode="url" value="${esc(d.link)}" placeholder="https://kedgebs.sharepoint.com/…" aria-describedby="${px}-link-err"><p class="err" id="${px}-link-err" hidden>Colle un lien qui commence par https://</p>`}
+        <label class="lbl" for="${px}-note">Note</label><textarea class="in" id="${px}-note" rows="3" placeholder="Contexte, contact…">${esc(d.note)}</textarea>
+      </details>
+      <div class="cta"><button type="button" class="btn block" data-act="${edit ? "save" : "publish"}"${edit ? ` data-id="${d.id}"` : ""}>${edit ? "Enregistrer" : "Publier"}</button></div>`;
+  }
+  function readForm(el, px, base) {
+    const q = (id) => el.querySelector(`#${px}-${id}`);
+    return { ...base, t: q("t")?.value ?? base.t, prec: q("prec")?.checked ? "mois" : "jour", date: q("date")?.value || base.date, mois: q("mois")?.value || base.mois,
+      m: q("m") ? pressed(`#${px}-m`, el) : base.m, per: q("per") ? pressed(`#${px}-per`, el).map(Number) : base.per, cc: q("cc") ? pressed(`#${px}-cc`, el) : base.cc,
+      svc: q("svc") ? pressed(`#${px}-svc`, el)[0] || base.svc : base.svc, partner: q("pt") ? pressed(`#${px}-pt`, el)[0] || base.partner : base.partner, newPartner: q("np")?.value ?? base.newPartner,
+      tf: q("tf") ? q("tf").value : base.tf, link: q("link")?.value ?? base.link, note: q("note")?.value ?? base.note, more: !!q("more")?.open };
+  }
+  function validate(el, px, d) {
+    const t = el.querySelector(`#${px}-t`), okT = !!d.t.trim(), okM = d.kind === "tf" || d.kind === "sujet" || d.m.length > 0, mErr = el.querySelector(`#${px}-m-err`);
+    const okP = d.kind !== "sujet" || d.per.length > 0, pErr = el.querySelector(`#${px}-per-err`);
+    const okPt = d.kind !== "partner" || !!(d.newPartner.trim() || PARTNERS.some((x) => x.k === d.partner)), ptErr = el.querySelector(`#${px}-pt-err`);
+    const link = el.querySelector(`#${px}-link`), okL = !d.link.trim() || /^https?:\/\/\S+$/.test(d.link.trim()), lErr = el.querySelector(`#${px}-link-err`);
+    el.querySelector(`#${px}-t-err`).hidden = okT; t.setAttribute("aria-invalid", String(!okT)); if (mErr) mErr.hidden = okM; if (pErr) pErr.hidden = okP; if (ptErr) ptErr.hidden = okPt;
+    if (lErr) { lErr.hidden = okL; link.setAttribute("aria-invalid", String(!okL)); }
+    if (!okT) { t.focus(); return false; }
+    if (!okPt) { el.querySelector(`#${px}-np`).focus(); return false; }
+    if (!okP) { el.querySelector(`#${px}-per .chip`).focus(); return false; }
+    if (!okM) { el.querySelector(`#${px}-m .chip`).focus(); return false; }
+    if (!okL) { el.querySelector(`#${px}-more`).open = true; link.focus(); return false; }
+    return true;
+  }
+  // date précise, ou seulement le mois (« Date à préciser »)
+  const dateFields = (d, prev) => {
+    if (d.kind === "sujet") { const per = [...d.per].sort(); return { date: PERIODS[per[0]].du, flou: "", per }; }
+    if (d.prec === "mois") return prev && !precise(prev) && prev.date.slice(0, 7) === d.mois ? { date: prev.date, flou: prev.flou } : { date: `${d.mois}-01`, flou: cap(monShort(`${d.mois}-01`)) };
+    return { date: d.date, flou: prev && precise(prev) && prev.date === d.date ? prev.flou : "" };
+  };
+  const msgsOf = (d) => (d.kind === "tf" || d.kind === "sujet" ? [] : d.m.map((x) => (x === "INC" ? "INC" : +x)));
+
+  function renderAjouter(el) {
+    if (!S.draft) S.draft = newDraft();
+    el.innerHTML = K.navbar({ title: "Ajouter", actions: profileBtn() }) + `<div class="scroll"><h1 class="large-title">Ajouter</h1>${canAdd() ? formHTML(S.draft, "f", false)
+      : `<div class="group"><div class="empty"><span>Ton compte n'est rattaché à aucun service : tu peux tout consulter et demander des éléments. Pour publier, demande à ${esc(CHEF.qui)} de t'ajouter à ton service.</span></div></div>`}</div>`;
+    syncBadge();
+  }
+  // partenaire choisi, ou nouveau partenaire créé au passage
+  async function partnerOf(d) {
+    const nom = d.newPartner.trim(); if (!nom) return d.partner;
+    const known = PARTNERS.find((x) => norm(x.nom) === norm(nom)); if (known) return known.k;
+    const x = await Store.addPartner(nom); PARTNERS.push(x); return x.k;
+  }
+  async function publish(btn) {
+    const el = document.getElementById("v-ajouter"), d = (S.draft = readForm(el, "f", S.draft));
+    if (!validate(el, "f", d)) return;
+    const p = me(), tf = d.kind === "tf" || d.kind === "sujet", pay = d.kind === "partner";
+    const it = { id: uid(), kind: tf ? "tf" : "action", per: [], svc: tf ? p.svc : pay ? "chef" : p.chef ? d.svc : p.svc, ...dateFields(d), t: d.t.trim(), m: msgsOf(d),
+      st: "planifie", cc: pay ? [] : d.cc, tf: tf ? "" : d.tf, partner: "", by: p.k, at: TODAY, ts: new Date().toISOString(), lieu: "", note: d.note.trim(), links: [] };
+    btn.disabled = true;
+    try {
+      if (pay) it.partner = await partnerOf(d);
+      await Store.addItem(it);
+      DB.items.push(it);
+      // un lien posé sur une action liée va sur son temps fort, partagé avec tous ses relais
+      if (d.link.trim()) { const r = root(it); r.links.push(await Store.addLink(r.id, "Document SharePoint", d.link.trim())); }
+    } catch (e) { return fail(e); } finally { btn.disabled = false; }
+    const told = pay ? [] : [...d.cc.map((k) => svcOf(k).court), ...toldAll()];
+    S.draft = newDraft();
+    K.refresh();
+    K.snack(told.length ? `C'est publié. ${esc(K.fr.list(told))} ${told.length > 1 ? "sont prévenus" : "est prévenu"}.` : "C'est publié.");
+    openItem(it.id);
+  }
+  const draftOf = (it) => ({ id: it.id, kind: isSujet(it) ? "sujet" : isTF(it) ? "tf" : isPay(it) ? "partner" : "action", t: it.t, prec: precise(it) ? "jour" : "mois", date: it.date, mois: it.date.slice(0, 7),
+    m: it.m.map(String), per: isSujet(it) ? [...it.per] : [S.period], cc: [...it.cc], svc: it.svc, partner: it.partner || PARTNERS[0]?.k || "", newPartner: "", tf: it.tf, link: "", note: it.note, more: !!(it.tf || it.note) });
+  function openEdit(id) { const it = byId(id); if (!it) return; S.edit = draftOf(it); K.push((el, o) => renderEdit(el, o, id), { title: "Modifier" }); }
+  function renderEdit(el, { back }) {
+    el.innerHTML = K.navbar({ title: "Modifier", back }) + `<div class="scroll"><h1 class="large-title">Modifier</h1>${formHTML(S.edit, "e", true)}</div>`;
+  }
+  async function saveEdit(id, btn) {
+    const it = byId(id), el = K.topView(), d = readForm(el, "e", S.edit);
+    if (!it || !validate(el, "e", d)) return;
+    const next = { ...it, ...dateFields(d, it), t: d.t.trim(), m: msgsOf(d), cc: d.kind === "partner" ? [] : d.cc, tf: d.kind === "tf" || d.kind === "sujet" ? "" : d.tf, note: d.note.trim() };
+    if (d.kind === "action" && me().chef) next.svc = d.svc;
+    btn.disabled = true;
+    try {
+      if (d.kind === "partner") next.partner = await partnerOf(d);
+      await Store.updateItem(id, next);
+    } catch (e) { return fail(e); } finally { btn.disabled = false; }
+    Object.assign(it, next);
+    S.edit = null; K.pop(); K.refresh(); K.snack("Modifié.");
+  }
+
+  // =====================================================================
+  // Fiche : l'essentiel en haut, une rubrique n'apparaît que si elle a du contenu
+  // =====================================================================
+  function openItem(id) { const it = byId(id); if (!it) return; K.push((el, o) => renderItem(el, o, id), { title: kindName(it) }); }
+  function renderItem(el, { back }, id) {
+    const it = byId(id);
+    if (!it) { el.innerHTML = K.navbar({ title: "Fiche", back }) + `<div class="scroll"><div class="empty"><span>Cette fiche n'existe plus.</span></div></div>`; return; }
+    const r = root(it), edit = canEdit(it), links = r.links || [], linkedTF = !isTF(it) && it.tf ? byId(it.tf) : null, past = isTF(it) && isPast(it);
+    const reqs = DB.reqs.filter((q) => q.item === id), blocks = DB.blocks.filter((b) => b.item === id && !b.leve);
+    const kv = (k, v) => `<div class="row"><span class="row-main"><b>${k}</b></span><span class="row-value">${v}</span></div>`;
+    const choices = isTF(it) ? ["confirmer", "planifie"] : isPay(it) ? ["confirmer", "planifie", "diffuse"] : ["idee", "confirmer", "planifie", "production", "diffuse"];
+    const status = edit && !past && it.st !== "retire"
+      ? `<div class="row field-row"><label for="st-${id}">Statut</label><select id="st-${id}" data-st="${id}">${choices.map((k) => `<option value="${k}"${it.st === k ? " selected" : ""}>${ST[k]}</option>`).join("")}</select></div>`
+      : kv("Statut", past ? "Passé" : ST[it.st]);
+    const tags = !isTF(it) && it.m.length ? `<div class="mtags">${msgNames(it).map((n) => `<span class="mtag">${esc(n)}</span>`).join("")}${isInc(it) ? `<span class="mtag inc">Incontournable</span>` : ""}</div>` : "";
+    let relay = "";
+    if (isTF(it)) {
+      const rl = relais(it);
+      relay = `<h2 class="sec-h">Relais · ${rl.linked.length}</h2><div class="group">${rows(rl.linked, { mode: "month" })}
+        <button type="button" class="row add-row" data-act="addlinked" data-id="${id}"><span class="add-ic">${I.plus}</span><span class="row-main"><b>Ajouter une action liée</b></span></button></div>`;
+    }
+    const kindTitle = kindName(it);
+    el.innerHTML = K.navbar({ title: kindTitle, back, actions: edit && it.st !== "retire" ? `<button type="button" class="txt-btn strong" data-act="edit" data-id="${id}">Modifier</button>` : "" }) + `<div class="scroll">
+      <div class="hero hero-${typeOf(it)}">
+        <h1 class="hero-title${it.st === "retire" ? " struck" : ""}">${esc(it.t)}</h1>
+        <p class="hero-meta">${isTF(it) || isPay(it) ? metaHTML(it) : `${esc(svcOf(it.svc).nom)} · ${esc(cap(when(it)))}`}${isSujet(it) ? " · toute la période" : precise(it) || /confirmer|définir|préciser/i.test(it.flou) ? "" : ` · date à préciser`}</p>
+        ${tags}
+      </div>
+      ${it.st === "retire" ? "" : `<div class="cta fiche-cta"><button type="button" class="btn block" data-act="ask" data-id="${id}">${I.chat}Demander des éléments</button></div>`}
+      ${blocks.length ? `<div class="group blk-group">${blocks.map((b) => `<div class="row"><span class="row-main"><b><span class="blk-l">Bloqué</span>${esc(b.why)}</b><span>${esc(person(b.by).nom)}, ${ago(b.at)}</span></span>${edit ? `<button type="button" class="btn small tonal" data-act="unblock" data-b="${b.id}">Lever</button>` : ""}</div>`).join("")}</div>` : ""}
+      <div class="group facts">
+        ${status}
+        ${it.cc.length ? kv("Concernés", esc(K.fr.list(it.cc.map((k) => svcOf(k).court)))) : ""}
+        ${linkedTF ? `<button type="button" class="row" data-open="${linkedTF.id}"><span class="row-main"><b>${isSujet(linkedTF) ? "Sujet lié" : "Temps fort lié"}</b><span>${esc(linkedTF.t)}</span></span>${I.chevR}</button>` : ""}
+        ${it.lieu ? kv("Lieu", esc(it.lieu)) : ""}
+      </div>
+      ${it.note ? `<p class="sec-f">${esc(it.note)}</p>` : ""}
+      ${reqs.length ? `<h2 class="sec-h">Demandes d'éléments · ${reqs.length}</h2><div class="group">${reqs.map((q) => `<div class="row wrap"><span class="row-main"><b>${esc(reqTxt(q))}</b><span>De ${esc(person(q.from).nom)} à ${esc(svcOf(q.to).qui)} · pour le ${fmtDay(q.pour)}</span></span>${q.st === "recue" ? `<span class="tag">Reçu</span>` : q.pour < TODAY ? `<span class="tag st-retard">En retard</span>` : ""}</div>`).join("")}</div>` : ""}
+      <h2 class="sec-h">Documents${links.length ? ` · ${links.length}` : ""}</h2><div class="group">${links.map((l) => `<button type="button" class="row" data-link="${esc(l.url)}"><span class="row-main"><b>${esc(l.nom)}</b><span>${esc(hostOf(l.url))}</span></span><span class="ext" aria-hidden="true">${I.external}</span></button>`).join("")}
+        <button type="button" class="row add-row" data-act="addlink" data-id="${id}"><span class="add-ic">${I.plus}</span><span class="row-main"><b>Ajouter un lien SharePoint</b></span></button></div>
+        ${links.length && r !== it ? `<p class="sec-f">Partagés avec le ${isSujet(r) ? "sujet" : "temps fort"} « ${esc(r.t)} ».</p>` : links.length && isTF(it) ? `<p class="sec-f">Visibles aussi sur ses relais.</p>` : ""}
+      ${relay}
+      <p class="foot-note">Ajouté par ${esc(person(it.by).nom)} le ${fmtDay(it.at)}.${edit ? "" : ` Modifiable par ${esc(editors(it))}.`}</p>
+      ${it.st === "retire" ? "" : `<p class="retire-p"><button type="button" class="txt-btn" data-act="block" data-id="${id}">Signaler un blocage</button>${edit ? `<button type="button" class="txt-btn danger" data-act="retire" data-id="${id}">Retirer ${isSujet(it) ? "ce sujet" : isTF(it) ? "ce temps fort" : "cette action"}</button>` : ""}</p>`}
+    </div>`;
+  }
+
+  // ---------- date en français ----------
+  // le champ date natif suit la langue du navigateur (souvent mois/jour/année) : on écrit la date en toutes lettres
+  // et on la choisit dans un calendrier français, semaine du lundi au dimanche, jours de temps fort marqués en jaune
+  const DMIN = FIRST.du, DMAX = LAST.au;
+  const fmtLong = (s) => cap(D(s).toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", year: "numeric" }));
+  const dateField = (id, value) => `<button type="button" class="in date-in" id="${id}" value="${value}" data-date-pick aria-expanded="false" aria-controls="${id}-cal">${I.calendar}<span>${esc(fmtLong(value))}</span></button><div class="cal" id="${id}-cal" hidden></div>`;
+  function calHTML(id, sel, month) {
+    const first = D(month + "-01"), y = first.getFullYear(), mo = first.getMonth(), n = new Date(y, mo + 1, 0).getDate(), lead = (first.getDay() + 6) % 7;
+    const prev = iso(new Date(y, mo - 1, 1)).slice(0, 7), next = iso(new Date(y, mo + 1, 1)).slice(0, 7);
+    const tf = new Set(DB.items.filter((it) => isTF(it) && precise(it) && it.st !== "retire").map((it) => it.date));
+    const nav = (m, dir, off) => `<button type="button" class="cal-nav" data-cal-nav="${m}" data-for="${id}" aria-label="${dir}"${off ? " disabled" : ""}>${dir === "Mois suivant" ? `<span class="flip">${I.chevL}</span>` : I.chevL}</button>`;
+    const cells = Array.from({ length: n }, (_, i) => {
+      const d = `${month}-${String(i + 1).padStart(2, "0")}`;
+      return `<button type="button" class="cal-d${d === sel ? " on" : ""}${d === TODAY ? " now" : ""}${tf.has(d) ? " tf" : ""}" data-cal-day="${d}" data-for="${id}"${d < DMIN || d > DMAX ? " disabled" : ""} aria-label="${esc(fmtLong(d) + (tf.has(d) ? ", temps fort" : ""))}"${d === sel ? ' aria-current="date"' : ""}>${i + 1}</button>`;
+    }).join("");
+    return `<div class="cal-h">${nav(prev, "Mois précédent", prev < DMIN.slice(0, 7))}<b>${esc(monLong(month))}</b>${nav(next, "Mois suivant", next > DMAX.slice(0, 7))}</div>
+      <div class="cal-w" aria-hidden="true">${["L", "M", "M", "J", "V", "S", "D"].map((x) => `<span>${x}</span>`).join("")}</div><div class="cal-g">${"<span></span>".repeat(lead)}${cells}</div>`;
+  }
+  document.addEventListener("click", (e) => {
+    const pick = e.target.closest("[data-date-pick]"), nav = e.target.closest("[data-cal-nav]"), day = e.target.closest("[data-cal-day]");
+    if (pick) {
+      const cal = document.getElementById(pick.id + "-cal"), open = cal.hidden;
+      cal.hidden = !open; pick.setAttribute("aria-expanded", String(open));
+      if (open) cal.innerHTML = calHTML(pick.id, pick.value, pick.value.slice(0, 7));
+    } else if (nav) {
+      const id = nav.dataset.for;
+      document.getElementById(id + "-cal").innerHTML = calHTML(id, document.getElementById(id).value, nav.dataset.calNav);
+      document.querySelector(`#${id}-cal [data-cal-nav="${nav.dataset.calNav}"]`)?.focus();
+    } else if (day) {
+      const f = document.getElementById(day.dataset.for);
+      f.value = day.dataset.calDay; f.querySelector("span").textContent = fmtLong(f.value);
+      document.getElementById(f.id + "-cal").hidden = true; f.setAttribute("aria-expanded", "false"); f.focus();
+    }
+  });
+
+  // ---------- feuilles ----------
+  const sheetFor = (it) => `<p class="sheet-for"><b>${esc(it.t)}</b><span>${metaHTML(it)}</span></p>`;
+  function askSheet(id, key) {
+    const it = byId(id), p = me(); if (!it) return;
+    const pour = [addDays(it.date, -7), addDays(TODAY, 3)].sort().pop();
+    const to = [...(p.chef ? [] : [CHEF]), ...SERVICES.filter((s) => s.k !== p.svc)];
+    K.sheet.open({ title: "Demander des éléments", ok: "Envoyer", full: true, body: `${sheetFor(it)}
+      <span class="lbl" id="ask-type-l">Quoi ?</span><div class="chips" data-chips id="ask-type" role="group" aria-labelledby="ask-type-l">${TYPES.map((t, i) => chip(t, i === 0)).join("")}</div>
+      <span class="lbl" id="ask-to-l">À qui ?</span><div class="chips" data-chips id="ask-to" role="group" aria-labelledby="ask-to-l">${to.map((s, i) => chip(s === CHEF ? CHEF.qui : s.court, i === 0, s.k)).join("")}</div>
+      <label class="lbl" for="ask-pour">Pour quand ?</label>${dateField("ask-pour", pour)}
+      <label class="lbl" for="ask-quoi">Précision <span class="opt">facultatif</span></label><textarea class="in" id="ask-quoi" rows="2" placeholder="Ex. les éléments de langage validés"></textarea>`,
+      onOk: async (s) => {
+        const type = pressed("#ask-type", s)[0] || "Autre", dest = pressed("#ask-to", s)[0] || to[0].k;
+        const r = { id: uid(), item: id, from: p.k, to: dest, type, quoi: s.querySelector("#ask-quoi").value.trim(), pour: s.querySelector("#ask-pour").value || pour, st: "ouverte", at: TODAY, ts: new Date().toISOString() };
+        try { await Store.addReq(r); if (key) await Store.answer(key, "oui"); } catch (e) { fail(e); return false; }
+        DB.reqs.push(r); if (key) DB.answers[key] = "oui";
+        K.refresh(); K.snack(`Demande envoyée à ${esc(svcOf(dest).qui)}.`);
+      } });
+  }
+  function blockSheet(id) {
+    const it = byId(id);
+    K.sheet.open({ title: "Signaler un blocage", ok: "Signaler", body: `${sheetFor(it)}<label class="lbl" for="bl-why">Qu'est-ce qui bloque ?</label><textarea class="in" id="bl-why" rows="3" placeholder="Ex. rushs pas encore reçus du partenaire" aria-describedby="bl-err"></textarea><p class="err" id="bl-err" hidden>Écris en une phrase ce qui bloque.</p>`,
+      onOk: async (s) => { const w = s.querySelector("#bl-why"); if (!w.value.trim()) { w.setAttribute("aria-invalid", "true"); s.querySelector("#bl-err").hidden = false; w.focus(); return false; }
+        const b = { id: uid(), item: id, by: me().k, why: w.value.trim(), at: TODAY, ts: new Date().toISOString(), leve: false };
+        try { await Store.addBlock(b); } catch (e) { fail(e); return false; }
+        DB.blocks.push(b); K.refresh(); K.snack("Blocage signalé. Il remontera en réunion."); } });
+  }
+  function linkSheet(id) {
+    const it = byId(id), r = root(it);
+    K.sheet.open({ title: "Ajouter un lien", ok: "Ajouter", body: `<label class="lbl" for="ln-nom">Nom du document</label><input class="in" id="ln-nom" placeholder="Ex. Dossier de presse">
+      <label class="lbl" for="ln-url">Lien SharePoint</label><input class="in" id="ln-url" type="url" inputmode="url" placeholder="https://kedgebs.sharepoint.com/…" aria-describedby="ln-err"><p class="err" id="ln-err" hidden>Colle un lien qui commence par https://</p>
+      ${r !== it ? `<p class="sec-f">Visible aussi sur le ${isSujet(r) ? "sujet" : "temps fort"} « ${esc(r.t)} » et ses relais.</p>` : isTF(it) ? `<p class="sec-f">Visible aussi sur ses relais.</p>` : ""}`,
+      onOk: async (s) => { const u = s.querySelector("#ln-url"); if (!/^https:\/\/\S+$/.test(u.value.trim())) { u.setAttribute("aria-invalid", "true"); s.querySelector("#ln-err").hidden = false; u.focus(); return false; }
+        try { r.links.push(await Store.addLink(r.id, s.querySelector("#ln-nom").value.trim() || "Document SharePoint", u.value.trim())); } catch (e) { fail(e); return false; }
+        K.refresh(); K.snack("Lien ajouté."); } });
+  }
+
+  // =====================================================================
+  // Écrans poussés : nouveautés, profil
+  // =====================================================================
+  function renderAllNew(el, { back }) {
+    el.innerHTML = K.navbar({ title: "Nouveautés", back }) + `<div class="scroll"><h1 class="large-title">Nouveautés</h1><div class="group">${newItems().map(newRow).join("")}</div></div>`;
+  }
+  function renderProfil(el, { back }) {
+    const p = me(), ps = Push.state();
+    el.innerHTML = K.navbar({ title: "Profil", back }) + `<div class="scroll">
+      <div class="profile-head"><span class="av big hl" aria-hidden="true">${K.initials(p.nom)}</span><h2>${esc(p.nom)}</h2><p>${esc(fonctionOf(p))}</p></div>
+      <div class="group"><label class="row" for="pf-push"><span class="row-main"><b>Notifications sur cet appareil</b></span><input type="checkbox" class="switch" id="pf-push"${ps.on ? " checked" : ""}${ps.can ? "" : " disabled"}></label></div>
+      <p class="sec-f">${esc(ps.hint)}</p>
+      <h2 class="sec-h">Apparence</h2>
+      <div class="seg" data-seg id="pf-theme" role="group" aria-label="Apparence">${[["system", "Système"], ["light", "Clair"], ["dark", "Sombre"]].map(([k, l]) => `<button type="button" value="${k}" aria-pressed="${K.theme === k}">${I.check}${l}</button>`).join("")}</div>
+      <h2 class="sec-h">Compte</h2>
+      <div class="group">${p.chef ? `<button type="button" class="row" data-act="team"><span class="row-main"><b>Équipe</b><span>Services et droits de chacun</span></span>${I.chevR}</button>` : ""}
+        <button type="button" class="row" data-act="password"><span class="row-main"><b>Changer de mot de passe</b></span>${I.chevR}</button>
+        <button type="button" class="row" data-act="logout"><span class="row-main"><b class="danger" style="font-weight:400">Se déconnecter</b></span></button></div>
+      <p class="sec-f">Connecté avec ${esc(DATA.email)}.</p>
+    </div>`;
+  }
+  function passwordSheet() {
+    K.sheet.open({ title: "Mot de passe", ok: "Enregistrer", body: `<label class="lbl" for="pw-new">Nouveau mot de passe</label><input class="in" id="pw-new" type="password" autocomplete="new-password" aria-describedby="pw-err"><p class="err" id="pw-err" hidden></p>`,
+      onOk: async (s) => {
+        const w = s.querySelector("#pw-new"), err = s.querySelector("#pw-err");
+        const say = (t) => { err.textContent = t; err.hidden = false; w.setAttribute("aria-invalid", "true"); w.focus(); return false; };
+        if (w.value.length < 8) return say("8 caractères au moins.");
+        try { await Store.setPassword(w.value); } catch (e) { return say(/same|different/i.test(e.message) ? "C'est déjà ton mot de passe." : `Pas changé : ${errText(e)}.`); }
+        K.snack("Mot de passe changé.");
+      } });
+  }
+
+  // ---------- équipe (chefs de projet) : service et droits de chaque compte ----------
+  // les comptes se créent dans Supabase ; on règle ici qui fait quoi
+  const rights = (p) => [...new Set([p.fonction, p.chef ? "Chef de projet" : p.ownSvc ? svcOf(p.ownSvc).nom : "Sans service", p.media ? "Partenariats" : "", p.notifAll ? "Prévenu de tout" : ""].filter(Boolean))].join(" · ");
+  function renderTeam(el, { back }) {
+    const list = [...PEOPLE].sort((a, b) => a.nom.localeCompare(b.nom, "fr"));
+    el.innerHTML = K.navbar({ title: "Équipe", back }) + `<div class="scroll"><h1 class="large-title">Équipe</h1>
+      <div class="group">${list.map((p) => `<button type="button" class="row" data-act="person" data-id="${p.k}"><span class="av sm" aria-hidden="true">${K.initials(p.nom)}</span><span class="row-main"><b>${esc(p.nom)}${p.k === ME ? " (toi)" : ""}</b><span>${esc(rights(p))}</span></span>${I.chevR}</button>`).join("")}</div>
+      <p class="sec-f">Pour ajouter quelqu'un : crée son compte dans Supabase (Authentication, Add user, avec Auto Confirm), puis règle-le ici.</p></div>`;
+  }
+  function personSheet(id) {
+    const p = person(id), self = id === ME;
+    const sw = (k, label, sub, on, off) => `<label class="row" for="pp-${k}"><span class="row-main"><b>${label}</b><span>${sub}</span></span><input type="checkbox" class="switch" id="pp-${k}"${on ? " checked" : ""}${off ? " disabled" : ""}></label>`;
+    K.sheet.open({ title: p.nom, ok: "Enregistrer", full: true, body: `<label class="lbl" for="pp-nom">Prénom</label><input class="in" id="pp-nom" value="${esc(p.nom)}">
+      <label class="lbl" for="pp-fn">Fonction <span class="opt">facultatif</span></label><input class="in" id="pp-fn" value="${esc(p.fonction)}" placeholder="Ex. Responsable de l'offre">
+      <span class="lbl" id="pp-svc-l">Service</span><div class="chips" data-chips id="pp-svc" role="group" aria-labelledby="pp-svc-l">${[{ k: "", court: "Aucun" }, ...SERVICES].map((s) => chip(s.court, p.ownSvc === s.k, s.k)).join("")}</div>
+      <div class="group" style="margin-top:16px">${sw("chef", "Chef de projet", "Modifie tout, anime la réunion", p.chef, self)}${sw("media", "Partenariats média", "Saisit les partenariats payants", p.media)}${sw("all", "Prévenu de chaque ajout", "Une notification à chaque nouveauté", p.notifAll)}</div>
+      ${self ? `<p class="sec-f">Un autre chef de projet peut changer tes droits de chef.</p>` : ""}`,
+      onOk: async (s) => {
+        const v = { nom: s.querySelector("#pp-nom").value.trim() || p.nom, fonction: s.querySelector("#pp-fn").value.trim(), ownSvc: pressed("#pp-svc", s)[0] || "",
+          chef: s.querySelector("#pp-chef").checked, media: s.querySelector("#pp-media").checked, notifAll: s.querySelector("#pp-all").checked };
+        try { await Store.setProfile(id, v); } catch (e) { fail(e); return false; }
+        Object.assign(p, v, { svc: v.chef ? "chef" : v.ownSvc });
+        K.refresh(); K.snack(`${esc(v.nom)} : c'est enregistré.`); sync();
+      } });
+  }
+
+  // ---------- notifications push sur cet appareil ----------
+  const Push = (() => {
+    const ok = "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
+    const ios = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+    const home = navigator.standalone || matchMedia("(display-mode: standalone)").matches;
+    let on = false;
+    const key = (b64) => { const s = atob((b64 + "=".repeat((4 - (b64.length % 4)) % 4)).replace(/-/g, "+").replace(/_/g, "/")); return Uint8Array.from(s, (c) => c.charCodeAt(0)); };
+    const current = async () => { const r = ok && (await navigator.serviceWorker.getRegistration()); return r ? r.pushManager.getSubscription() : null; };
+    current().then((sub) => { on = !!sub && Notification.permission === "granted"; }).catch(() => {});
+    return {
+      state() {
+        if (!ok) return { can: false, on: false, hint: ios && !home ? "Sur iPhone, ajoute d'abord l'appli à l'écran d'accueil (Partager, puis Sur l'écran d'accueil) et ouvre-la depuis son icône." : "Ce navigateur ne reçoit pas les notifications." };
+        if (!CFG.vapidPublicKey) return { can: false, on: false, hint: "Les notifications ne sont pas encore branchées sur le serveur." };
+        if (Notification.permission === "denied") return { can: false, on: false, hint: "Les notifications sont bloquées pour ce site dans les réglages du navigateur." };
+        return { can: true, on, hint: "Rappels J-30, J-15 et J-7, demandes d'éléments, et ce qui concerne ton service." };
+      },
+      async enable() {
+        if ((await Notification.requestPermission()) !== "granted") throw new Error("Notifications refusées");
+        const r = await navigator.serviceWorker.ready;
+        const sub = (await r.pushManager.getSubscription()) || (await r.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: key(CFG.vapidPublicKey) }));
+        await Store.savePush(sub.toJSON()); on = true;
+      },
+      async disable() {
+        const sub = await current();
+        if (sub) { await Store.removePush(sub.endpoint).catch(() => {}); await sub.unsubscribe(); }
+        on = false;
+      },
+    };
+  })();
+
+  // =====================================================================
+  // Écran réunion (ordinateur)
+  // =====================================================================
+  const meeting = (() => { app.insertAdjacentHTML("beforeend", `<div class="meeting" id="meeting" hidden role="dialog" aria-modal="true" aria-label="Écran réunion"></div>`); return document.getElementById("meeting"); })();
+  // La réunion répond à une question : chaque temps fort a-t-il ses relais ? Un temps fort par ligne, un service par colonne,
+  // les trous (service prévenu, rien de prévu) ressortent. Le reste de la production vient ensuite, replié.
+  const laneOf = (it) => (isSujet(it) ? "Sujets" : isTF(it) ? "Temps forts" : isPay(it) ? "Partenariats" : svcOf(it.svc).court);
+  const MT = { contrib: false, free: {} };
+  function renderMeeting() {
+    const P = PERIODS[CUR], N = PERIODS[CUR + 1], cm = TODAY.slice(0, 7);
+    const monthsOf = (p) => MONTHS.filter((m) => m >= p.du.slice(0, 7) && m <= p.au.slice(0, 7));
+    const groups = [{ P, i: CUR, now: true, months: monthsOf(P).filter((m) => m >= cm) }, ...(N ? [{ P: N, i: CUR + 1, now: false, months: monthsOf(N) }] : [])];
+    const COLS = [...SERVICES.map((s) => ({ k: s.k, nom: s.court, f: (a) => !isPay(a) && a.svc === s.k })), { k: "pay", nom: "Partenariats", f: isPay }];
+    const alive = (it) => it.st !== "retire";
+    const dayOf = (it) => (isSujet(it) ? I.bookmark : precise(it) ? String(D(it.date).getDate()) : `<small>${esc(monShort(it.date))}</small>`);
+    const stTxt = (it) => (it.st === "diffuse" ? "" : stWord(it));
+    const relay = (a, tf) => {
+      const label = isPay(a) ? `${partnerName(a)} · ${a.t}` : a.t;
+      const done = a.st === "diffuse";
+      return `<button type="button" class="rl${done ? " fait" : ""}${a.st === "confirmer" || a.st === "idee" ? " soft" : ""}" data-mt-open="${a.id}" aria-label="${esc([fmtDay(a.date), laneOf(a), a.t, stTxt(a), done ? "fait" : ""].filter(Boolean).join(". "))}">
+        <span class="rl-d">${dayOf(a)}</span><span class="rl-t">${esc(label)}${stTxt(a) ? `<i> · ${esc(stTxt(a))}</i>` : ""}</span>${done ? `<span class="ml-ok">${I.check}</span>` : ""}</button>`;
+    };
+    const section = (g) => {
+      const inMonths = (it) => g.months.includes(it.date.slice(0, 7));
+      // les sujets de la période d'abord, puis les temps forts datés
+      const tfs = [...DB.items.filter((it) => isSujet(it) && alive(it) && it.per.includes(g.i)), ...DB.items.filter((it) => isTF(it) && !isSujet(it) && alive(it) && inMonths(it)).sort(sortDate)];
+      const ids = new Set(tfs.map((t) => t.id));
+      // couverture des messages sur toute la période, comme dans Ma période
+      const acts = DB.items.filter((it) => !isTF(it) && !isPay(it) && alive(it) && periodOf(it.date) === g.i);
+      const cov = MESSAGES.map((m) => ({ m, n: acts.filter((it) => it.m.includes(m.n)).length }));
+      const rowsH = tfs.map((tf) => {
+        const past = isPast(tf), linked = DB.items.filter((a) => a.tf === tf.id && alive(a));
+        const when = isSujet(tf) ? "Toute la période" : precise(tf) ? cap(D(tf.date).toLocaleDateString("fr-FR", { weekday: "short", day: "numeric", month: "short" })) : cap(tf.flou);
+        const cells = COLS.map((c) => {
+          const l = linked.filter(c.f).sort(sortDate);
+          if (l.length) return `<div class="mx-c">${l.map((a) => relay(a, tf)).join("")}</div>`;
+          return `<div class="mx-c"></div>`;
+        }).join("");
+        return `<div class="mx-row${past ? " past" : ""}"><button type="button" class="mx-tf${tf.st === "confirmer" ? " soft" : ""}${isSujet(tf) ? " suj" : ""}" data-mt-open="${tf.id}">
+            <span class="mx-d">${dayOf(tf)}</span><span><b>${esc(tf.t)}</b><span>${esc([precise(tf) || isSujet(tf) ? when : norm(tf.flou) !== norm(monShort(tf.date)) ? tf.flou : "", stAfter(tf, tf.flou), past ? "passé" : ""].filter(Boolean).join(" · "))}</span></span>${past ? `<span class="ml-ok">${I.check}</span>` : ""}</button>${cells}</div>`;
+      }).join("");
+      // production hors temps fort : le nombre d'abord, le détail à la demande
+      const free = COLS.map((c) => DB.items.filter((a) => !isTF(a) && alive(a) && inMonths(a) && c.f(a) && !ids.has(a.tf)).sort(sortDate));
+      const nFree = free.reduce((s, l) => s + l.length, 0), open = MT.free[g.i];
+      const freeRow = nFree ? `<div class="mx-row mx-free"><button type="button" class="mx-tf" data-mt="free" data-k="${g.i}" aria-expanded="${!!open}">
+          <span class="mx-d"><span class="down${open ? " up" : ""}" aria-hidden="true">${I.chevL}</span></span><span><b>Hors temps fort</b><span>${nFree} ${nFree > 1 ? "actions" : "action"} · ${open ? "masquer le détail" : "voir le détail"}</span></span></button>
+          ${free.map((l) => `<div class="mx-c">${open ? l.map((a) => relay(a, { t: "" })).join("") : l.length ? `<span class="mx-n">${l.length} ${l.length > 1 ? "actions" : "action"}</span>` : ""}</div>`).join("")}</div>` : "";
+      return `<section class="mp${g.now ? " now" : ""}" aria-label="${esc(g.P.nom)}">
+        <header class="mp-h"><h2>${esc(g.P.nom)}</h2><span class="mp-tag${g.now ? " on" : ""}">${g.now ? `En cours, encore ${days(g.P.au)} jours` : `Dès le ${fmtDay(g.P.du)}`}</span></header>
+        <div class="mp-cov" aria-label="Actions par message sur la période">${cov.map((c) => `<span class="${c.n ? "" : "zero"}">${esc(c.m.nom)} <b>${c.n}</b></span>`).join("")}</div>
+        <div class="mx" role="table">
+          <div class="mx-row mx-head"><span>Temps forts et sujets</span>${COLS.map((c) => `<span>${esc(c.nom)}</span>`).join("")}</div>
+          ${rowsH}${freeRow}
+        </div></section>`;
+    };
+
+    const bl = DB.blocks.filter((b) => !b.leve && byId(b.item));
+    const late = DB.reqs.filter((r) => r.st === "ouverte" && r.pour < TODAY && byId(r.item));
+    const row = (it, sub, k) => `<button type="button" class="ma-item ${k}" data-mt-open="${it.id}"><b>${esc(it.t)}</b><span>${esc(sub)}</span></button>`;
+    const since = (x) => Date.parse(x.ts) > Date.parse(DB.lastMeetingTs);
+    const contrib = [
+      ...DB.items.filter((it) => isTF(it) && since(it)).map((it) => ({ at: it.at, ts: it.ts, it, sub: `${person(it.by).nom} · nouveau ${isSujet(it) ? "sujet" : "temps fort"}` })),
+      ...DB.reqs.filter((r) => since(r) && byId(r.item)).map((r) => ({ at: r.at, ts: r.ts, it: byId(r.item), sub: `${person(r.from).nom} demande ${ASK[r.type] || "des éléments"} à ${svcOf(r.to).qui}` })),
+    ].sort((a, b) => Date.parse(b.ts) - Date.parse(a.ts));
+    const shownC = MT.contrib ? contrib : contrib.slice(0, 3);
+    const aside = `<aside class="mt-aside panel lg" aria-label="À traiter en réunion">
+      <section class="ma-sec"><h2>À débloquer <span class="tnum">${bl.length + late.length}</span></h2>
+        ${bl.map((b) => row(byId(b.item), `${b.why} ${person(b.by).nom}, ${laneOf(byId(b.item))}.`, "bloq")).join("")}
+        ${late.map((r) => row(byId(r.item), `${person(r.from).nom} attend ${ASK[r.type] || "des éléments"} depuis le ${fmtDay(r.pour)}.`, "late")).join("")}
+        ${bl.length + late.length ? "" : `<p class="ma-empty">Rien ne bloque.</p>`}</section>
+      <section class="ma-sec"><h2>Contributions <span class="tnum">${contrib.length}</span></h2><p class="ma-since">Depuis la réunion du ${fmtDay(DB.lastMeeting)}</p>
+        ${shownC.map((c) => row(c.it, `${c.sub}, ${ago(c.at)}`, "ctb")).join("") || `<p class="ma-empty">Rien de nouveau.</p>`}
+        ${contrib.length > 3 ? `<button type="button" class="ma-more" data-mt="more" data-k="contrib">${MT.contrib ? "Voir moins" : seeMore(contrib.length - 3, "autres")}</button>` : ""}</section>
+    </aside>`;
+
+    meeting.innerHTML = `<div class="mt-small"><p>L'écran réunion est prévu pour un ordinateur. Agrandis la fenêtre ou ouvre l'appli sur ton ordinateur.</p><button type="button" class="btn small" data-mt="close">Fermer</button></div>
+      <header class="mt-head"><img class="logo-l" src="assets/kedge-logo-anthracite.png" alt="KEDGE Business School" height="30"><img class="logo-d" src="assets/kedge-logo-blanc.png" alt="" height="30">
+        <div class="mt-title"><h1>Réunion de quinzaine</h1><p>${esc(cap(K.fr.day(T0)))} · <em>${esc(P.nom)}</em>${N ? ` puis <em>${esc(N.nom)}</em>` : ""}</p></div>
+        <button type="button" class="btn small tonal" data-mt="held">Réunion tenue</button><button type="button" class="btn small" data-mt="close">Quitter</button></header>
+      <div class="mt-body"><div class="mt-main">${groups.map(section).join("")}</div>${aside}</div>`;
+  }
+  const openMeeting = () => { renderMeeting(); meeting.hidden = false; meeting.querySelector(".mt-head [data-mt='close']")?.focus(); };
+  const closeMeeting = () => { meeting.hidden = true; };
+  meeting.addEventListener("click", (e) => {
+    const b = e.target.closest("[data-mt],[data-mt-open]"); if (!b) return;
+    if (b.dataset.mt === "close") closeMeeting();
+    if (b.dataset.mt === "held") { const ts = new Date().toISOString(); Object.assign(DB, { lastMeeting: TODAY, lastMeetingTs: ts }); renderMeeting(); K.snack("Les contributions repartent de zéro."); Store.setMeta("last_meeting", ts).catch(fail); }
+    if (b.dataset.mt === "more") { MT[b.dataset.k] = !MT[b.dataset.k]; renderMeeting(); }
+    if (b.dataset.mt === "free") { const sc = meeting.querySelector(".mt-main").scrollTop; MT.free[b.dataset.k] = !MT.free[b.dataset.k]; renderMeeting(); meeting.querySelector(".mt-main").scrollTop = sc; }
+    if (b.dataset.mtOpen) { closeMeeting(); openItem(b.dataset.mtOpen); }
+  });
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !meeting.hidden) { e.stopImmediatePropagation(); closeMeeting(); } }, true);
+
+  function syncSide() {
+    const f = document.getElementById("side-foot"); if (!f) return;
+    const p = me();
+    f.innerHTML = `${p.chef ? `<button type="button" class="side-btn" data-act="meeting">${I.people}<span>Mode réunion</span></button>` : ""}
+      <button type="button" class="side-me" data-act="profil" aria-label="Profil de ${esc(p.nom)}"><span class="av sm" aria-hidden="true">${K.initials(p.nom)}</span><span><b>${esc(p.nom)}</b><small>${esc(fonctionOf(p))}</small></span></button>`;
+  }
+  const markSel = (id) => { app.querySelectorAll(".sel[data-open]").forEach((x) => x.classList.remove("sel")); app.querySelectorAll(`#v-${app.dataset.tab} [data-open="${id}"]`).forEach((x) => x.classList.add("sel")); };
+
+  // =====================================================================
+  // Démarrage et événements
+  // =====================================================================
+  K.tabs({
+    periode: { label: "Ma période", icon: "home", render: renderPeriode },
+    tf: { label: "Temps forts", icon: "flag", render: renderTF },
+    media: { label: "Partenariats", icon: "megaphone", render: renderMedia },
+    ajouter: { label: "Ajouter", icon: "plus", render: renderAjouter },
+    grille: { label: "Grille", icon: "calendar", render: renderGrille },
+    afaire: { label: "À faire", icon: "bell", render: renderAfaire },
+  });
+
+  // ordinateur et tablette : la barre d'onglets devient un menu latéral, la marque en haut, le profil et la réunion en bas
+  const side = app.querySelector(".tabbar");
+  side.setAttribute("aria-label", "Menu");
+  side.insertAdjacentHTML("afterbegin", `<div class="side-head"><img class="logo-l" src="assets/kedge-logo-anthracite.png" alt="KEDGE Business School" height="28"><img class="logo-d" src="assets/kedge-logo-blanc.png" alt="" height="28"><span>Plan de com 2026-2027</span></div>`);
+  side.insertAdjacentHTML("beforeend", `<div class="side-foot" id="side-foot"></div>`);
+  syncSide();
+  // la liste reste cliquable pendant qu'une fiche est ouverte dans le panneau ; la ligne ouverte reste marquée
+  new MutationObserver(() => {
+    const base = document.getElementById("v-" + app.dataset.tab);
+    if (panel() && base) base.inert = false;
+    if (app.dataset.pushed !== "1") app.querySelectorAll(".sel[data-open]").forEach((x) => x.classList.remove("sel"));
+  }).observe(app, { attributes: true, attributeFilter: ["data-pushed"] });
+  [MQ_COLS, MQ_PANEL].forEach((m) => m.addEventListener("change", () => K.refresh()));
+
+  app.addEventListener("click", async (e) => {
+    const t = e.target.closest("[data-open],[data-act],[data-msgf],[data-link],[data-setf]"); if (!t || !app.contains(t) || meeting.contains(t)) return;
+    if (t.dataset.open) {
+      if (panel() && !t.closest(".view.pushed")) { while (app.dataset.pushed === "1") K.pop(); markSel(t.dataset.open); }
+      return openItem(t.dataset.open);
+    }
+    if (t.dataset.msgf) { S.msgF = S.msgF === t.dataset.msgf ? null : t.dataset.msgf; return K.refresh(); }
+    if (t.dataset.link) return window.open(t.dataset.link, "_blank", "noopener");
+    if (t.dataset.setf) { S.filter = t.dataset.setf; S.msgF = null; K.sheet.close(); return K.refresh(); }
+    const a = t.dataset.act, id = t.dataset.id;
+    if (a === "prev" || a === "next") changePeriod(a === "next" ? 1 : -1, document.getElementById("swipe"));
+    if (a === "now") changePeriod(CUR - S.period, document.getElementById("swipe"));
+    if (a === "clearf") { S.msgF = null; K.refresh(); }
+    if (a === "pastp") { S.pastP = !S.pastP; K.refresh(); }
+    if (a === "filter") filterSheet();
+    if (a === "profil") K.push(renderProfil, { title: "Profil" });
+    if (a === "partners") K.showTab("media");
+    if (a === "goper") document.getElementById(`per-${t.dataset.k}-${t.dataset.i}`)?.scrollIntoView({ behavior: K.reduceMotion() ? "auto" : "smooth", block: "start" });
+    if (a === "allnew") K.push(renderAllNew, { title: "Nouveautés" });
+    if (a === "meeting") openMeeting();
+    if (a === "today") { const gw = document.getElementById("gwrap"), x = ((D(TODAY) - D(G0)) / 864e5 / 7 - (S.zoom === "annee" ? 4 : 0.5)) * colW(); gw?.scrollTo({ left: Math.max(0, x), behavior: K.reduceMotion() ? "auto" : "smooth" }); }
+    if (a === "goadd") { S.draft = newDraft(); K.showTab("ajouter"); }
+    if (a === "addtf") { S.draft = newDraft("tf"); K.showTab("ajouter"); }
+    if (a === "addpartner") { S.draft = newDraft("partner"); K.showTab("ajouter"); }
+    if (a === "addlinked") { const tf = byId(id); S.draft = { ...newDraft(), tf: id, more: true }; K.showTab("ajouter"); K.snack(`Rattachée à « ${esc(tf.t)} ».`); }
+    if (a === "edit") openEdit(id);
+    if (a === "save") saveEdit(id, t);
+    if (a === "past") { S.past[t.dataset.k] = !S.past[t.dataset.k]; K.refresh(); }
+    if (a === "more") { S.open[t.dataset.k] = !S.open[t.dataset.k]; K.refresh(); }
+    if (a === "publish") publish(t);
+    if (a === "ask") askSheet(id, t.dataset.key);
+    if (a === "nope") { DB.answers[t.dataset.key] = "non"; quick(Store.answer(t.dataset.key, "non"), "Noté, pas besoin d'éléments."); }
+    if (a === "vu") { DB.vu[ME] = [...(DB.vu[ME] || []), id]; quick(Store.markSeen(id)); }
+    if (a === "recu") { const r = DB.reqs.find((x) => x.id === t.dataset.r); if (r) { r.st = "recue"; quick(Store.setReq(r.id, "recue"), `${esc(person(r.from).nom)} est prévenu.`); } }
+    if (a === "block") blockSheet(id);
+    if (a === "unblock") { const b = DB.blocks.find((x) => x.id === t.dataset.b); if (b) { b.leve = true; quick(Store.liftBlock(b.id), "Blocage levé."); } }
+    if (a === "addlink") linkSheet(id);
+    if (a === "retire") { const it = byId(id); if (await K.alert({ title: `Retirer « ${it.t} » ?`, text: "Elle reste barrée dans l'historique et ne sera pas diffusée.", ok: "Retirer", danger: true })) { it.st = "retire"; quick(Store.setStatus(id, "retire"), "Retirée."); } }
+    if (a === "password") passwordSheet();
+    if (a === "team") K.push(renderTeam, { title: "Équipe" });
+    if (a === "person") personSheet(id);
+    if (a === "logout") {
+      if (!(await K.alert({ title: "Se déconnecter ?", text: "Cet appareil ne recevra plus tes notifications.", ok: "Se déconnecter" }))) return;
+      await Push.disable().catch(() => {}); await Store.signOut().catch(() => {}); location.reload();
+    }
+  });
+  app.addEventListener("change", (e) => {
+    const t = e.target;
+    if (t.dataset.st) { const it = byId(t.dataset.st); if (it) { it.st = t.value; quick(Store.setStatus(it.id, it.st), `Statut : ${ST[it.st]}.`); } }
+    if (t.id === "pf-push") {
+      const want = t.checked; t.disabled = true;
+      (want ? Push.enable() : Push.disable())
+        .then(() => K.snack(want ? "Notifications activées sur cet appareil." : "Notifications coupées sur cet appareil."))
+        .catch((e) => K.snack(`Pas fait : ${esc(e.message === "Notifications refusées" ? "les notifications ont été refusées" : errText(e))}.`, 5000))
+        .finally(() => K.refresh());
+    }
+    // « Date à préciser » : le choix du jour laisse la place au choix du mois
+    if (t.dataset.prec) { const px = t.dataset.prec; document.getElementById(`${px}-jour`).hidden = t.checked; document.getElementById(`${px}-moisw`).hidden = !t.checked; }
+  });
+  app.addEventListener("kui:change", (e) => {
+    const t = e.target;
+    if (t.id === "f-kind") { const d = readForm(document.getElementById("v-ajouter"), "f", S.draft); S.draft = { ...d, kind: e.detail }; K.refresh(); }
+    if (t.id === "g-zoom") { S.zoom = e.detail; S.gx = null; K.refresh(); }
+    if (t.id === "pf-theme") K.setTheme(e.detail);
+    // partenaire : choisir une pastille efface le nom tapé, et inversement
+    if (t.id === "f-pt" || t.id === "e-pt") { const np = document.getElementById(t.id.replace("pt", "np")); if (np) np.value = ""; }
+  });
+  app.addEventListener("input", (e) => {
+    const t = e.target;
+    if ((t.id === "f-np" || t.id === "e-np") && t.value.trim()) document.querySelectorAll(`#${t.id.replace("np", "pt")} .chip`).forEach((c) => c.setAttribute("aria-pressed", "false"));
+  });
+
+  // =====================================================================
+  // Temps réel : les changements des autres arrivent tout seuls
+  // =====================================================================
+  // on ne redessine pas sous les doigts de quelqu'un qui écrit : la donnée est à jour, l'écran suivra
+  const busy = () => { const a = document.activeElement; return !!(app.querySelector(".sheet.show") || K.topView()?.querySelector("#f-t, #e-t") || (a && app.contains(a) && a.matches("input, textarea, select"))); };
+  async function sync() {
+    let fresh; try { fresh = await Store.load(); } catch (e) { return; }
+    Object.assign(DB, fresh.db);
+    [[PEOPLE, fresh.PEOPLE], [PARTNERS, fresh.PARTNERS], [SERVICES, fresh.SERVICES]].forEach(([a, b]) => a.splice(0, a.length, ...b));
+    CHEF.qui = fresh.CHEF.qui;
+    if (!meeting.hidden) { const sc = meeting.querySelector(".mt-main")?.scrollTop || 0; renderMeeting(); meeting.querySelector(".mt-main").scrollTop = sc; }
+    if (busy()) syncBadge(); else K.refresh();
+  }
+  Store.watch(sync);
+
+  // un lien de notification : #item=… ouvre la fiche, #afaire l'onglet À faire
+  function route(hash) {
+    const m = /^#item=([\w-]+)/.exec(hash || "");
+    if (m && byId(m[1])) { if (!meeting.hidden) closeMeeting(); openItem(m[1]); }
+    else if (hash === "#afaire") { closeMeeting(); K.showTab("afaire"); }
+  }
+  const routeHash = () => { if (!location.hash) return; route(location.hash); history.replaceState(null, "", location.pathname + location.search); };
+  routeHash();
+  addEventListener("hashchange", routeHash);
+  navigator.serviceWorker?.addEventListener("message", (e) => { if (e.data?.type === "open") route(new URL(e.data.url).hash); });
+
+  if (greet) K.snack(`Bonjour ${esc(me().nom)}. ${cols() ? "Les flèches du bandeau changent de période." : "Glisse l'écran pour changer de période."}`, 4200);
+};
