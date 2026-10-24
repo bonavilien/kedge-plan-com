@@ -25,7 +25,7 @@
       { id: U(5), nom: "Louise", fonction: "", svc: "video", chef: false, media: false, notif_all: false },
       { id: U(6), nom: "Nouveau", fonction: "", svc: null, chef: false, media: false, notif_all: false },
     ],
-    items: [], links: [], reqs: [], blocks: [], answers: [], seen: [], push_subs: [],
+    items: [], links: [], reqs: [], blocks: [], answers: [], seen: [], push_subs: [], journal: [], outbox: [],
     meta: [{ k: "last_meeting", v: "2026-10-01" }],
     users: ["julien", "estelle", "aurelie", "stephane", "louise", "nouveau"].map((n, i) => ({ id: U(i + 1), email: `${n}@kedgebs.com`, password: "motdepasse" })),
     session: null,
@@ -33,6 +33,7 @@
   let db = null;
   try { db = JSON.parse(localStorage.getItem(KEY) || "null"); } catch (e) {}
   db = db || seed();
+  db.journal = db.journal || []; db.outbox = db.outbox || [];
   const save = () => localStorage.setItem(KEY, JSON.stringify(db));
   window.__fake = { get db() { return db; }, save, reset: () => { db = seed(); save(); }, failNext: null, rt: null, calls: [] };
 
@@ -51,6 +52,16 @@
     if (t === "partners") return p.media || p.chef;
     return true;
   }
+  // les déclencheurs de la migration 0003 : l'historique se remplit tout seul
+  const FIELDS = ["t", "date", "flou", "per", "svc", "cc", "m", "st", "tf", "partner", "lieu", "note"];
+  const jot = (item, kind, diff = {}, author = db.session.user.id, at = new Date().toISOString()) =>
+    db.journal.push({ id: (db.journal.at(-1)?.id || 0) + 1, item, author, at, kind, diff });
+  const norm = (v) => (v === undefined || v === "" ? null : v);
+  function journalUpdate(old, row) {
+    const d = {};
+    FIELDS.forEach((k) => { if (k in row && JSON.stringify(norm(old[k])) !== JSON.stringify(norm(row[k]))) d[k] = [norm(old[k]), norm(row[k])]; });
+    if (Object.keys(d).length) jot(old.id, "modif", d);
+  }
   function exec(q) {
     window.__fake.calls.push({ t: q.t, op: q.op });
     if (!db.session) return { data: null, error: { message: "JWT expired" } };
@@ -58,7 +69,7 @@
     const tab = db[q.t]; const match = (r) => q.filters.every(([c, v]) => r[c] === v);
     if (q.op === "select") {
       let rows = tab.filter(match);
-      if (q.order) rows = rows.slice().sort((a, b) => String(a[q.order]).localeCompare(String(b[q.order])));
+      if (q.order) rows = rows.slice().sort((a, b) => (typeof a[q.order] === "number" ? a[q.order] - b[q.order] : String(a[q.order]).localeCompare(String(b[q.order]))));
       return { data: JSON.parse(JSON.stringify(rows)), error: null };
     }
     const fill = (row) => {
@@ -73,13 +84,16 @@
     if (q.op === "insert") {
       const r = fill(q.row);
       if (!allowed(q.t, "insert", r)) return { data: null, error: denied };
-      tab.push(r); save();
+      tab.push(r);
+      if (q.t === "items") jot(r.id, "creation", {}, r.author, r.at);
+      if (q.t === "links") jot(r.item, "document", { nom: r.nom }, r.author);
+      save();
       return { data: q.single ? r : [r], error: null };
     }
     if (q.op === "update") {
       const rows = tab.filter(match);
       for (const r of rows) { if (!allowed(q.t, "update", { ...r, ...q.row })) return { data: null, error: denied }; }
-      rows.forEach((r) => Object.assign(r, q.row)); save();
+      rows.forEach((r) => { if (q.t === "items") journalUpdate(r, q.row); Object.assign(r, q.row); }); save();
       return { data: null, error: null };
     }
     if (q.op === "upsert") {
@@ -117,6 +131,20 @@
       u.password = password; save(); return { data: { user: db.session.user }, error: null };
     },
   };
+  // prévenir à nouveau : mêmes destinataires et mêmes droits que la fonction de la base
+  async function rpc(fn, { p_item, p_quoi }) {
+    await new Promise((r) => setTimeout(r, 40));
+    window.__fake.calls.push({ t: fn, op: "rpc" });
+    if (window.__fake.failNext) { const e = window.__fake.failNext; window.__fake.failNext = null; return { data: null, error: e === true ? denied : e }; }
+    const it = db.items.find((x) => x.id === p_item);
+    if (!it || !allowed("items", "update", it)) return { data: null, error: denied };
+    const svcs = new Set([...it.cc, it.svc, ...db.items.filter((a) => a.tf === it.id && a.st !== "retire").map((a) => a.svc)]);
+    const dests = db.profiles.filter((p) => p.id !== db.session.user.id && (p.notif_all || (p.svc && svcs.has(p.svc))));
+    const who = me().nom;
+    dests.forEach((p) => db.outbox.push({ user_id: p.id, title: `Modifié : ${it.t}`, body: `${who} : ${p_quoi}`, url: `#item=${it.id}` }));
+    jot(it.id, "prevenu", { quoi: p_quoi, n: dests.length }); save();
+    return { data: dests.length, error: null };
+  }
   const channel = () => { const c = { on: (a, b, cb) => { window.__fake.rt = cb; return c; }, subscribe: () => c }; return c; };
-  window.KPLAN_CLIENT = { auth, from, channel };
+  window.KPLAN_CLIENT = { auth, from, rpc, channel };
 })();

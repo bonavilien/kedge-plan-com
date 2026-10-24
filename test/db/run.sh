@@ -13,4 +13,6 @@ $D -f test/db/planif-stub.sql
 # pg_cron et pg_net n'existent pas en local : remplacés par planif-stub.sql
 grep -v "^create extension" supabase/migrations/0002_planification.sql | $D -f - > /dev/null
 $D -f test/db/planif.sql
+$D -f supabase/migrations/0003_historique.sql
+$D -f test/db/historique.sql
 echo "Base : tout est bon"

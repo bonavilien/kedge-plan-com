@@ -524,6 +524,8 @@ window.KPlan = (DATA, { greet = false } = {}) => {
       if (pay) it.partner = await partnerOf(d);
       await Store.addItem(it);
       DB.items.push(it);
+      // la base note la création ; on l'affiche sans attendre le temps réel
+      (DB.journal ||= []).push({ id: 0, item: it.id, by: p.k, kind: "creation", diff: {}, at: TODAY, ts: it.ts });
       // un lien posé sur une action liée va sur son temps fort, partagé avec tous ses relais
       if (d.link.trim()) { const r = root(it); r.links.push(await Store.addLink(r.id, "Document SharePoint", d.link.trim())); }
     } catch (e) { return fail(e); } finally { btn.disabled = false; }
@@ -549,13 +551,75 @@ window.KPlan = (DATA, { greet = false } = {}) => {
       if (d.kind === "partner") next.partner = await partnerOf(d);
       await Store.updateItem(id, next);
     } catch (e) { return fail(e); } finally { btn.disabled = false; }
+    const before = { ...it };
     Object.assign(it, next);
     S.edit = null; K.pop(); K.refresh(); K.snack("Modifié.");
+    sync();
+    offerNotify(before, it);
+  }
+  // une date, un titre ou des précisions qui changent : on propose de prévenir ceux qui suivent la fiche,
+  // sans relancer d'office (pas de notification pour une faute de frappe)
+  async function offerNotify(a, b) {
+    const ch = [];
+    if (when(a) !== when(b)) ch.push(["date", `${when(a)} → ${when(b)}`]);
+    if (a.t !== b.t) ch.push(["titre", `« ${a.t} » → « ${b.t} »`]);
+    if (a.note !== b.note) ch.push(["précisions", b.note ? `« ${clip(b.note, 120)} »` : "retirées"]);
+    if (!ch.length) return;
+    // les mêmes personnes que la base : prévenus de tout, services cités, service porteur, services des relais
+    const svcs = new Set([...b.cc, b.svc, ...DB.items.filter((x) => x.tf === b.id && x.st !== "retire").map((x) => x.svc)]);
+    const who = PEOPLE.filter((p) => p.k !== ME && (p.notifAll || (p.ownSvc && svcs.has(p.ownSvc)))).map((p) => p.nom);
+    if (!who.length) return;
+    const ok = await K.alert({ title: "Prévenir du changement ?", cancel: "Pas besoin", ok: "Prévenir",
+      text: `${ch.map(([k, v]) => `<b>${cap(k)}</b> : ${esc(v)}`).join("<br>")}<br><br>${esc(K.fr.list(who))} ${who.length > 1 ? "recevront" : "recevra"} une notification.` });
+    if (!ok) return;
+    try { await Store.renotify(b.id, ch.map(([k, v]) => `${k} : ${v}`).join(" ; ")); } catch (e) { return fail(e); }
+    K.snack(`${esc(K.fr.list(who))} ${who.length > 1 ? "sont prévenus" : "est prévenu"}.`);
+    sync();
   }
 
   // =====================================================================
   // Fiche : l'essentiel en haut, une rubrique n'apparaît que si elle a du contenu
   // =====================================================================
+  // ---------- historique d'une fiche ----------
+  // la base garde les valeurs brutes (numéros de période et de message, codes) : on les écrit en toutes lettres
+  const FIELDS = { t: "titre", date: "date", per: "périodes", svc: "porté par", cc: "prévenus", m: "messages", st: "statut", tf: "lié à", partner: "partenaire", lieu: "lieu", note: "précisions" };
+  const clip = (s, n = 90) => (s.length > n ? s.slice(0, n - 1).trimEnd() + "…" : s);
+  const quote = (s) => `« ${clip(s)} »`;
+  function valTxt(k, v) {
+    if (v == null || v === "" || (Array.isArray(v) && !v.length)) return "—";
+    if (k === "per") return K.fr.list(v.map((n) => PERIODS.find((P) => P.n === n)?.nom || String(n)));
+    if (k === "svc") return svcOf(v).court;
+    if (k === "cc") return K.fr.list(v.map((x) => svcOf(x).court));
+    if (k === "m") return K.fr.list(v.map((x) => (x === "INC" ? "Incontournable" : MESSAGES[+x - 1]?.nom || x)));
+    if (k === "st") return ST[v] || v;
+    if (k === "tf") return byId(v) ? quote(byId(v).t) : "une fiche effacée";
+    if (k === "partner") return (PARTNERS.find((x) => x.k === v) || { nom: "—" }).nom;
+    return quote(String(v));
+  }
+  const stamp = (ts) => { const d = new Date(ts), day = iso(d); return `${day === TODAY ? "aujourd'hui" : fmtDay(day)} à ${d.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}`; };
+  // une ligne par événement : quoi (gras), qui et quand (gris), puis le détail avant → après
+  function histOf(it) {
+    const det = (k, v) => `<span class="h-d"><i>${esc(k)}</i>${esc(v)}</span>`;
+    return (DB.journal || []).filter((j) => j.item === it.id).sort((a, b) => b.ts.localeCompare(a.ts) || b.id - a.id).map((j) => {
+      const d = j.diff || {};
+      if (j.kind === "creation") return { j, main: "Création" };
+      if (j.kind === "document") return { j, main: "Document ajouté", det: d.nom ? det("", quote(d.nom)) : "" };
+      // le détail est sur la modification juste en dessous
+      if (j.kind === "prevenu") return { j, main: d.n ? `Changement signalé à ${d.n} ${d.n > 1 ? "personnes" : "personne"}` : "Changement signalé" };
+      // la date et sa précision (« Nov. », « Date à confirmer ») forment une seule ligne
+      const dt = (i) => { const f = d.flou ? d.flou[i] : it.flou, x = d.date ? d.date[i] : it.date; return f || (x ? fmtShort(x) : "—"); };
+      const ks = Object.keys(FIELDS).filter((k) => d[k] || (k === "date" && d.flou));
+      return { j, main: `Modification : ${K.fr.list(ks.map((k) => FIELDS[k]))}`,
+        det: ks.map((k) => (k === "date" ? det("date", `${dt(0)} → ${dt(1)}`) : k === "note" ? det("précisions", d.note[1] ? quote(d.note[1]) : "retirées") : det(FIELDS[k], `${valTxt(k, d[k][0])} → ${valTxt(k, d[k][1])}`))).join("") };
+    });
+  }
+  function histHTML(it) {
+    const all = histOf(it); if (!all.length) return "";
+    const k = `h-${it.id}`, open = S.open[k], list = open ? all : all.slice(0, 3);
+    return `<h2 class="sec-h">Historique</h2><div class="group hist">${list.map(({ j, main, det = "" }) => `<div class="row wrap"><span class="row-main"><b>${esc(main)}</b><span>${esc([j.by ? person(j.by).nom : "", stamp(j.ts)].filter(Boolean).join(", "))}</span>${det}</span></div>`).join("")}</div>
+      ${all.length > 3 ? `<p class="more-p"><button type="button" class="link" data-act="more" data-k="${k}">${open ? "Voir moins" : `Voir tout l'historique (${all.length})`}</button></p>` : ""}`;
+  }
+
   function openItem(id) { const it = byId(id); if (!it) return; K.push((el, o) => renderItem(el, o, id), { title: kindName(it) }); }
   function renderItem(el, { back }, id) {
     const it = byId(id);
@@ -574,7 +638,7 @@ window.KPlan = (DATA, { greet = false } = {}) => {
       relay = `<h2 class="sec-h">Relais · ${n}</h2>${gs.map((g) => `<h3 class="sec-h rl-h">${esc(g.nom)} · ${g.l.length}</h3><div class="group">${rows(g.l, { mode: "month", who: "tf" })}</div>`).join("")}
         <div class="group"><button type="button" class="row add-row" data-act="addlinked" data-id="${id}"><span class="add-ic">${I.plus}</span><span class="row-main"><b>Ajouter une action liée</b></span></button></div>`;
     }
-    const kindTitle = kindName(it);
+    const kindTitle = kindName(it), hist = histHTML(it);
     el.innerHTML = K.navbar({ title: kindTitle, back, actions: edit && it.st !== "retire" ? `<button type="button" class="txt-btn strong" data-act="edit" data-id="${id}">Modifier</button>` : "" }) + `<div class="scroll">
       <div class="hero hero-${typeOf(it)}">
         <h1 class="hero-title${it.st === "retire" ? " struck" : ""}">${esc(it.t)}</h1>
@@ -595,7 +659,8 @@ window.KPlan = (DATA, { greet = false } = {}) => {
         <button type="button" class="row add-row" data-act="addlink" data-id="${id}"><span class="add-ic">${I.plus}</span><span class="row-main"><b>Ajouter un lien SharePoint</b></span></button></div>
         ${links.length && r !== it ? `<p class="sec-f">Partagés avec le ${isSujet(r) ? "sujet" : "temps fort"} « ${esc(r.t)} ».</p>` : links.length && isTF(it) ? `<p class="sec-f">Visibles aussi sur ses relais.</p>` : ""}
       ${relay}
-      <p class="foot-note">Ajouté par ${esc(person(it.by).nom)} le ${fmtDay(it.at)}.${edit ? "" : ` Modifiable par ${esc(editors(it))}.`}</p>
+      ${hist}
+      ${hist && edit ? "" : `<p class="foot-note">${hist ? "" : `Ajouté par ${esc(person(it.by).nom)} le ${fmtDay(it.at)}. `}${edit ? "" : `Modifiable par ${esc(editors(it))}.`}</p>`}
       ${it.st === "retire" ? "" : `<p class="retire-p"><button type="button" class="txt-btn" data-act="block" data-id="${id}">Signaler un blocage</button>${edit ? `<button type="button" class="txt-btn danger" data-act="retire" data-id="${id}">Retirer ${isSujet(it) ? "ce sujet" : isTF(it) ? "ce temps fort" : "cette action"}</button>` : ""}</p>`}
     </div>`;
   }

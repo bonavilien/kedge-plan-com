@@ -112,6 +112,9 @@ await p.goto(URL0 + "#item=" + cp.id); await p.waitForTimeout(800);
 ok(await topv(p).locator("text=CP rentrée").first().isVisible(), "lien #item= ouvre la fiche");
 ok(await topv(p).locator('[data-act="edit"]').isVisible(), "Aurélie peut modifier l'action RP");
 await topv(p).locator('[data-act="edit"]').click(); await p.waitForTimeout(300); await p.fill("#e-t", "CP de rentrée"); await p.click('[data-act="save"]'); await p.waitForTimeout(500);
+// le titre a changé : l'appli propose de prévenir (voir historique.mjs) ; ici, pas besoin
+ok(await p.isVisible(".alert-wrap.show"), "titre modifié : l'appli propose de prévenir");
+await p.click(".alert .acts button:first-child"); await p.waitForTimeout(200);
 db = await fake(p);
 ok(db.items.find((i) => i.id === cp.id).t === "CP de rentrée", "modification enregistrée");
 // demande d'éléments au chef de projet sur le temps fort

@@ -27,10 +27,12 @@ window.KStore = (() => {
   // ---------- lecture : tout, d'un coup (l'équipe est petite) ----------
   async function load() {
     const all = (t, order) => run(sb.from(t).select("*").order(order));
-    const [per, msg, svc, prt, prof, items, links, reqs, blocks, answers, seen, meta] = await Promise.all([
+    const [per, msg, svc, prt, prof, items, links, reqs, blocks, answers, seen, meta, journal] = await Promise.all([
       all("periods", "n"), all("messages", "n"), all("services", "ordre"), all("partners", "nom"), all("profiles", "nom"),
       all("items", "date"), all("links", "at"), all("reqs", "at"), all("blocks", "at"),
       run(sb.from("answers").select("key,val").eq("user_id", user.id)), run(sb.from("seen").select("item").eq("user_id", user.id)), all("meta", "k"),
+      // sans la migration 0003, l'appli marche quand même, sans historique
+      all("journal", "id").catch(() => []),
     ]);
     PERIODS = per.map((p) => ({ n: p.n, nom: p.nom, du: p.du, au: p.au, lib: p.lib }));
     // svc vaut « chef » pour les chefs de projet ; ownSvc garde le service réglé dans le profil
@@ -59,6 +61,8 @@ window.KStore = (() => {
         blocks: blocks.map((b) => ({ id: b.id, item: b.item, by: b.author || "", why: b.why, leve: b.leve, at: day(b.at), ts: b.at })),
         answers: Object.fromEntries(answers.map((a) => [a.key, a.val])),
         vu: { [user.id]: seen.map((s) => s.item) },
+        // historique : la base note chaque création, modification, document et relance
+        journal: journal.map((j) => ({ id: j.id, item: j.item, by: j.author || "", kind: j.kind, diff: j.diff || {}, at: day(j.at), ts: j.at })),
         lastMeeting: day(lastTs.length === 10 ? lastTs + "T12:00:00" : lastTs), lastMeetingTs: lastTs,
       },
     };
@@ -84,6 +88,8 @@ window.KStore = (() => {
   const markSeen = (item) => run(sb.from("seen").upsert({ item }, { onConflict: "user_id,item" }));
   const setMeta = (k, v) => run(sb.from("meta").upsert({ k, v }));
   const setProfile = (id, p) => run(sb.from("profiles").update({ nom: p.nom, fonction: p.fonction, svc: p.ownSvc || null, chef: p.chef, media: p.media, notif_all: p.notifAll }).eq("id", id));
+  // prévenir à nouveau après un changement : la base choisit les destinataires, renvoie leur nombre
+  const renotify = (item, quoi) => run(sb.rpc("renotify", { p_item: item, p_quoi: quoi }));
   const addPartner = (nom) => run(sb.from("partners").insert({ nom }).select().single()).then((x) => ({ k: x.k, nom: x.nom }));
 
   // ---------- notifications : l'abonnement push de ce téléphone ----------
@@ -99,5 +105,5 @@ window.KStore = (() => {
     document.addEventListener("visibilitychange", () => { if (!document.hidden) kick(); });
   }
 
-  return { ready, session, signIn, signOut, setPassword, load, addItem, updateItem, setStatus, addLink, addReq, setReq, addBlock, liftBlock, answer, markSeen, setMeta, setProfile, addPartner, savePush, removePush, watch };
+  return { ready, session, signIn, signOut, setPassword, load, addItem, updateItem, setStatus, addLink, addReq, setReq, addBlock, liftBlock, answer, markSeen, setMeta, setProfile, addPartner, renotify, savePush, removePush, watch };
 })();
