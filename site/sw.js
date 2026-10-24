@@ -9,7 +9,8 @@ self.addEventListener("activate", (e) => e.waitUntil((async () => {
 self.addEventListener("fetch", (e) => {
   const r = e.request;
   if (r.method !== "GET" || new URL(r.url).origin !== location.origin) return;
-  e.respondWith(fetch(r).then((res) => {
+  // no-cache : revalide auprès de GitHub Pages au lieu de reprendre une copie du navigateur vieille de 10 minutes
+  e.respondWith(fetch(r, { cache: "no-cache" }).then((res) => {
     if (res.ok) { const copy = res.clone(); caches.open(CACHE).then((c) => c.put(r, copy)); }
     return res;
   }).catch(async () => (await caches.match(r)) || (r.mode === "navigate" ? caches.match("./") : Response.error())));
