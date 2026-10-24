@@ -98,12 +98,20 @@ window.KPlan = (DATA, { greet = false } = {}) => {
   // ligne d'identité d'un objet : le type se voit avant de se lire
   const metaHTML = (it) => isTF(it) ? `${isSujet(it) ? sujBadge : tfBadge}${esc(cap(when(it)))}`
     : isPay(it) ? `${payBadge}${esc(partnerName(it))} · ${esc(cap(when(it)))}` : `${esc(cap(when(it)))} · ${esc(svcLabel(it))}`;
+  // une action portée par le chef de projet (svc « chef ») n'a pas de service : elle compte à part
+  const isChefAct = (a) => !isPay(a) && !SERVICES.some((s) => s.k === a.svc);
   function relais(tf) {
     const linked = DB.items.filter((a) => a.tf === tf.id && a.st !== "retire" && !isPay(a));
     const c = Object.fromEntries(SERVICES.map((s) => [s.k, 0])); linked.forEach((a) => { if (c[a.svc] != null) c[a.svc]++; });
-    const keys = Object.keys(c);
-    return { linked, has: keys.filter((k) => c[k]).map((k) => svcOf(k).court), miss: keys.filter((k) => !c[k]).map((k) => svcOf(k).court) };
+    const keys = Object.keys(c), chef = linked.some(isChefAct);
+    return { linked, has: [...keys.filter((k) => c[k]).map((k) => svcOf(k).court), ...(chef ? [CHEF.court] : [])], miss: keys.filter((k) => !c[k]).map((k) => svcOf(k).court) };
   }
+  // les relais d'un temps fort rangés par porteur : services, chef de projet, puis partenariats
+  const relaisGroups = (tf) => {
+    const linked = DB.items.filter((a) => a.tf === tf.id && a.st !== "retire");
+    return [...SERVICES.map((s) => ({ nom: s.nom, l: linked.filter((a) => !isPay(a) && a.svc === s.k) })),
+      { nom: CHEF.nom, l: linked.filter(isChefAct) }, { nom: "Partenariats média", l: linked.filter(isPay) }].filter((g) => g.l.length);
+  };
   // on montre les relais existants, sans dire ce qui manque : chaque service décide
   const relaisTxt = (it) => {
     if (isPast(it)) return "";
@@ -385,7 +393,7 @@ window.KPlan = (DATA, { greet = false } = {}) => {
   const stCell = (it) => { const past = isPast(it) || it.st === "diffuse";
     return `<span class="td td-st">${past ? `<span class="done">${I.check}</span>${it.st === "diffuse" ? "Diffusé" : "Passé"}` : esc(cap(stWord(it)))}</span>`; };
   const isNewIt = (it) => me().chef && it.by !== me().k && it.at >= addDays(TODAY, -7);
-  const RCOLS = [...SERVICES.map((s) => ({ nom: s.court, f: (a) => !isPay(a) && a.svc === s.k })), { nom: "Partenariats", f: isPay }];
+  const RCOLS = [...SERVICES.map((s) => ({ nom: s.court, f: (a) => !isPay(a) && a.svc === s.k })), { nom: "Chef", f: isChefAct }, { nom: "Partenariats", f: isPay }];
   function tfRow(it) {
     const linked = DB.items.filter((a) => a.tf === it.id && a.st !== "retire"), rl = relaisTxt(it), past = isPast(it);
     const label = [cap(when(it)), it.t, rl, past ? "passé" : stWord(it)].filter(Boolean).join(". ");
@@ -414,7 +422,7 @@ window.KPlan = (DATA, { greet = false } = {}) => {
       ${g.l.length ? `${g.suj.length ? `<h3 class="sec-h suj-h">Temps forts</h3>` : ""}<div class="group">${rows(g.l, { mode: "month", mark })}</div>` : ""}`;
     const desk = (g) => `<section class="tbl-sec" id="per-${k}-${g.i}" aria-label="${esc(g.P.nom)}"><h2 class="ag-month">${esc(g.P.nom)} <span>${esc(g.P.lib)}</span></h2>
       ${g.suj.length ? `<h3 class="sec-h suj-h">Sujets de la période · ${g.suj.length}</h3><div class="suj-grid">${g.suj.map(sujCard).join("")}</div>` : ""}
-      ${g.l.length ? `${g.suj.length ? `<h3 class="sec-h suj-h">Temps forts · ${g.l.length}</h3>` : ""}<div class="tbl tbl-${k}">${k === "tf" ? tfHead + g.l.map(tfRow).join("") : payHead + g.l.map(payRow).join("")}</div>` : ""}</section>`;
+      ${g.l.length ? `${g.suj.length ? `<h3 class="sec-h suj-h">Temps forts · ${g.l.length}</h3>` : ""}<div class="tbl tbl-${k}" style="--nr:${RCOLS.length - 1}">${k === "tf" ? tfHead + g.l.map(tfRow).join("") : payHead + g.l.map(payRow).join("")}</div>` : ""}</section>`;
     const nav = wide && secs.length > 1 ? `<nav class="per-nav" aria-label="Aller à une période">${secs.map((g) => `<button type="button" class="per-l${g.i === CUR ? " now" : ""}" data-act="goper" data-k="${k}" data-i="${g.i}">${esc(g.P.nom)}</button>`).join("")}
       ${pastN ? `<button type="button" class="link" data-act="past" data-k="${k}">${open ? "Masquer les passés" : seeMore(pastN, "passés")}</button>` : ""}</nav>` : "";
     el.innerHTML = K.navbar({ title, actions: action + profileBtn() }) + `<div class="scroll${wide ? " page-wide" : ""}">
@@ -562,9 +570,9 @@ window.KPlan = (DATA, { greet = false } = {}) => {
     const tags = !isTF(it) && it.m.length ? `<div class="mtags">${msgNames(it).map((n) => `<span class="mtag">${esc(n)}</span>`).join("")}${isInc(it) ? `<span class="mtag inc">Incontournable</span>` : ""}</div>` : "";
     let relay = "";
     if (isTF(it)) {
-      const rl = relais(it);
-      relay = `<h2 class="sec-h">Relais · ${rl.linked.length}</h2><div class="group">${rows(rl.linked, { mode: "month" })}
-        <button type="button" class="row add-row" data-act="addlinked" data-id="${id}"><span class="add-ic">${I.plus}</span><span class="row-main"><b>Ajouter une action liée</b></span></button></div>`;
+      const gs = relaisGroups(it), n = gs.reduce((s, g) => s + g.l.length, 0);
+      relay = `<h2 class="sec-h">Relais · ${n}</h2>${gs.map((g) => `<h3 class="sec-h rl-h">${esc(g.nom)} · ${g.l.length}</h3><div class="group">${rows(g.l, { mode: "month", who: "tf" })}</div>`).join("")}
+        <div class="group"><button type="button" class="row add-row" data-act="addlinked" data-id="${id}"><span class="add-ic">${I.plus}</span><span class="row-main"><b>Ajouter une action liée</b></span></button></div>`;
     }
     const kindTitle = kindName(it);
     el.innerHTML = K.navbar({ title: kindTitle, back, actions: edit && it.st !== "retire" ? `<button type="button" class="txt-btn strong" data-act="edit" data-id="${id}">Modifier</button>` : "" }) + `<div class="scroll">
@@ -764,7 +772,7 @@ window.KPlan = (DATA, { greet = false } = {}) => {
     const P = PERIODS[CUR], N = PERIODS[CUR + 1], cm = TODAY.slice(0, 7);
     const monthsOf = (p) => MONTHS.filter((m) => m >= p.du.slice(0, 7) && m <= p.au.slice(0, 7));
     const groups = [{ P, i: CUR, now: true, months: monthsOf(P).filter((m) => m >= cm) }, ...(N ? [{ P: N, i: CUR + 1, now: false, months: monthsOf(N) }] : [])];
-    const COLS = [...SERVICES.map((s) => ({ k: s.k, nom: s.court, f: (a) => !isPay(a) && a.svc === s.k })), { k: "pay", nom: "Partenariats", f: isPay }];
+    const COLS = [...SERVICES.map((s) => ({ k: s.k, nom: s.court, f: (a) => !isPay(a) && a.svc === s.k })), { k: "chef", nom: "Chef", f: isChefAct }, { k: "pay", nom: "Partenariats", f: isPay }];
     const alive = (it) => it.st !== "retire";
     const dayOf = (it) => (isSujet(it) ? I.bookmark : precise(it) ? String(D(it.date).getDate()) : `<small>${esc(monShort(it.date))}</small>`);
     const stTxt = (it) => (it.st === "diffuse" ? "" : stWord(it));
@@ -802,7 +810,7 @@ window.KPlan = (DATA, { greet = false } = {}) => {
       return `<section class="mp${g.now ? " now" : ""}" aria-label="${esc(g.P.nom)}">
         <header class="mp-h"><h2>${esc(g.P.nom)}</h2><span class="mp-tag${g.now ? " on" : ""}">${g.now ? `En cours, encore ${days(g.P.au)} jours` : `Dès le ${fmtDay(g.P.du)}`}</span></header>
         <div class="mp-cov" aria-label="Actions par message sur la période">${cov.map((c) => `<span class="${c.n ? "" : "zero"}">${esc(c.m.nom)} <b>${c.n}</b></span>`).join("")}</div>
-        <div class="mx" role="table">
+        <div class="mx" role="table" style="--nc:${COLS.length}">
           <div class="mx-row mx-head"><span>Temps forts et sujets</span>${COLS.map((c) => `<span>${esc(c.nom)}</span>`).join("")}</div>
           ${rowsH}${freeRow}
         </div></section>`;
