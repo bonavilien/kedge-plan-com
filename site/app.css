@@ -442,11 +442,13 @@ button.glab b { text-decoration: underline; text-decoration-color: var(--yellow)
 
 /* écran d'accueil sur grand écran : la route à gauche, la connexion à droite */
 @media (min-width: 900px) {
-  .brand-screen { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(340px, 440px); grid-template-rows: auto minmax(0, 1fr); column-gap: clamp(40px, 6vw, 96px); padding: 40px clamp(32px, 6vw, 96px); align-content: center; }
+  .brand-screen { display: grid; grid-template-columns: minmax(0, 1fr) minmax(360px, 500px); grid-template-rows: auto minmax(0, 1fr); column-gap: clamp(32px, 5vw, 80px); padding: 32px clamp(32px, 6vw, 112px); align-content: stretch; }
   .brand-screen > .bs-top { grid-column: 1; grid-row: 1; width: auto; max-width: none; margin: 0; padding: 0; }
-  .brand-screen > .bs-art.road { grid-column: 1; grid-row: 2; width: 100%; max-width: 640px; height: min(62vh, 560px); margin: 24px 0 0; }
+  /* la route occupe toute la hauteur de la colonne de gauche */
+  .brand-screen > .bs-art.road { grid-column: 1; grid-row: 2; justify-self: center; width: 100%; max-width: none; height: clamp(420px, calc(100vh - 120px), 1000px); margin: 8px 0 0; }
   .brand-screen > .bs-body { grid-column: 2; grid-row: 1 / span 2; align-self: center; width: auto; max-width: none; margin: 0; padding: 0; }
-  .brand-screen .display { font-size: clamp(40px, 3.6vw, 54px); }
+  .brand-screen .display { font-size: clamp(44px, 4vw, 64px); }
+  .brand-screen .login .btn { min-height: 52px; }
   .brand-screen .display em { white-space: nowrap; }
 }
 

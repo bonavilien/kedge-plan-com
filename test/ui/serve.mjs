@@ -2,8 +2,10 @@
 import http from "http";
 import fs from "fs";
 import path from "path";
-const root = path.resolve(path.dirname(new URL(import.meta.url).pathname), "../../site");
-const fake = path.resolve(path.dirname(new URL(import.meta.url).pathname), "fake-supabase.js");
+import { fileURLToPath } from "url";
+const here = path.dirname(fileURLToPath(import.meta.url));
+const root = path.resolve(here, "../../site");
+const fake = path.resolve(here, "fake-supabase.js");
 const types = { ".html": "text/html", ".js": "text/javascript", ".css": "text/css", ".png": "image/png", ".woff": "font/woff", ".webmanifest": "application/manifest+json", ".txt": "text/plain" };
 const port = +process.argv[2] || 8790;
 http.createServer((req, res) => {
