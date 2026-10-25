@@ -246,8 +246,10 @@ window.KPlan = (DATA, { greet = false } = {}) => {
     const blocage = (b) => { const it = byId(b.item);
       return card(it, { body: `<span class="blk-l">Bloqué</span>${esc(b.why)}`, left: `${esc(person(b.by).nom)}, ${ago(b.at)}`,
         acts: canLift(b, it) ? `<button type="button" class="btn small tonal" data-act="unblock" data-b="${b.id}">Lever</button>` : "" }); };
-    const sent = T.envoyees.length ? `<section class="todo-sec"><h2 class="sec-h">Tes demandes en attente · ${T.envoyees.length}</h2><div class="group">${T.envoyees.map((r) => { const it = byId(r.item);
-      return `<div class="row wrap rq"><span class="row-main"><button type="button" class="rq-open" data-open="${it.id}"><b>${esc(it.t)}</b><span>${esc(r.type)} · demandé à ${esc(svcOf(r.to).qui)}</span></button>${dlTag(r)}${canPour(r) ? `<button type="button" class="txt-btn rq-x" data-act="unreq" data-r="${r.id}">Retirer la demande</button>` : ""}</span></div>`; }).join("")}</div></section>` : "";
+    // les demandes d'un ou d'une collègue du service s'y voient aussi, avec son prénom
+    const sentH = T.envoyees.some((r) => r.from !== ME) ? "Demandes de ton service en attente" : "Tes demandes en attente";
+    const sent = T.envoyees.length ? `<section class="todo-sec"><h2 class="sec-h">${sentH} · ${T.envoyees.length}</h2><div class="group">${T.envoyees.map((r) => { const it = byId(r.item);
+      return `<div class="row wrap rq"><span class="row-main"><button type="button" class="rq-open" data-open="${it.id}"><b>${esc(it.t)}</b><span>${esc(r.type)}${r.from !== ME ? ` · par ${esc(person(r.from).nom)}` : ""} · demandé à ${esc(svcOf(r.to).qui)}</span></button>${dlTag(r)}${canPour(r) ? `<button type="button" class="txt-btn rq-x" data-act="unreq" data-r="${r.id}">Retirer la demande</button>` : ""}</span></div>`; }).join("")}</div></section>` : "";
 
     el.innerHTML = K.navbar({ title: "À faire", actions: profileBtn() }) + `<div class="scroll page-wide">
       <h1 class="large-title">À faire</h1>
@@ -922,7 +924,7 @@ window.KPlan = (DATA, { greet = false } = {}) => {
     K.sheet.open({ title: p.nom, ok: "Enregistrer", full: true, body: `<label class="lbl" for="pp-nom">Prénom</label><input class="in" id="pp-nom" value="${esc(p.nom)}">
       <label class="lbl" for="pp-fn">Fonction <span class="opt">facultatif</span></label><input class="in" id="pp-fn" value="${esc(p.fonction)}" placeholder="Ex. Responsable de l'offre">
       <span class="lbl" id="pp-svc-l">Service</span><div class="chips" data-chips id="pp-svc" role="group" aria-labelledby="pp-svc-l">${[{ k: "", court: "Aucun" }, ...SERVICES].map((s) => chip(s.court, p.ownSvc === s.k, s.k)).join("")}</div>
-      <div class="group" style="margin-top:16px">${sw("chef", "Chef de projet", "Modifie tout, anime la réunion", p.chef, self)}${sw("media", "Partenariats média", isMedia() ? "Saisit les partenariats payants" : `Saisit les partenariats payants. Seul ${mediaNames()} peut changer ce droit.`, p.media, !isMedia())}${sw("all", "Prévenu de chaque ajout", "Une notification à chaque nouveauté", p.notifAll)}${self ? "" : sw("visit", "Visiteur", "Voit tout, ne modifie rien", p.visiteur)}</div>
+      <div class="group" style="margin-top:16px">${sw("chef", "Chef de projet", "Modifie tout, anime la réunion", p.chef, self)}${sw("media", "Partenariats média", isMedia() ? "Saisit les partenariats payants" : `Saisit les partenariats payants. Seul ${mediaNames()} peut changer ce droit.`, p.media, !isMedia())}${sw("all", "Prévenu de chaque ajout", "Une notification à chaque nouveauté", p.notifAll)}${self ? "" : sw("visit", "Visiteur", p.media && !isMedia() ? `Voit tout, ne modifie rien. Seul ${mediaNames()} peut retirer ses droits de partenariats.` : "Voit tout, ne modifie rien", p.visiteur, p.media && !isMedia())}</div>
       ${self ? `<p class="sec-f">Un autre chef de projet peut changer tes droits de chef.</p>` : ""}`,
       onOk: async (s) => {
         const v = { nom: s.querySelector("#pp-nom").value.trim() || p.nom, fonction: s.querySelector("#pp-fn").value.trim(), ownSvc: pressed("#pp-svc", s)[0] || "",
@@ -1216,11 +1218,13 @@ window.KPlan = (DATA, { greet = false } = {}) => {
     if (a === "retire") {
       const it = byId(id), tf = isTF(it), n = tf ? DB.items.filter((x) => x.tf === id && x.st !== "retire").length : 0;
       const what = isSujet(it) ? "Le sujet" : tf ? "Le temps fort" : "L'action";
-      const text = `${what} reste ${tf ? "barré" : "barrée"} dans l'historique${tf ? "" : " et ne sera pas diffusée"}. ${n ? `${n > 1 ? `Ses ${n} relais restent` : "Son relais reste"} en place. ` : ""}Les services concernés sont prévenus.`;
+      // ses demandes encore ouvertes partent avec elle (la base fait pareil), sauf un relais d'un temps fort actif : elles servent au temps fort
+      const live = !tf && it.tf && byId(it.tf) && byId(it.tf).st !== "retire", open = live ? [] : DB.reqs.filter((q) => q.item === id && q.st === "ouverte");
+      const text = `${what} reste ${tf ? "barré" : "barrée"} dans l'historique${tf ? "" : " et ne sera pas diffusée"}. ${n ? `${n > 1 ? `Ses ${n} relais restent` : "Son relais reste"} en place. ` : ""}${open.length ? `${open.length > 1 ? `Ses ${open.length} demandes d'éléments en cours sont retirées` : "Sa demande d'éléments en cours est retirée"}. ` : ""}Les services concernés sont prévenus.`;
       if (await K.alert({ title: `Retirer « ${it.t} » ?`, text, ok: "Retirer", danger: true })) {
         // noté tout de suite dans l'historique local : « Remettre » retrouve le statut d'avant sans attendre la base
         (DB.journal ||= []).push({ id: 0, item: id, by: ME, kind: "modif", diff: { st: [it.st, "retire"] }, at: TODAY, ts: new Date().toISOString() });
-        it.st = "retire"; quick(Store.setStatus(id, "retire"), tf ? "Retiré." : "Retirée.");
+        it.st = "retire"; open.forEach((q) => { q.st = "annulee"; }); quick(Store.setStatus(id, "retire"), tf ? "Retiré." : "Retirée.");
       }
     }
     if (a === "unretire") {

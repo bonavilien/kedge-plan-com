@@ -99,7 +99,14 @@
       const rows = tab.filter(match).filter((r) => allowed(q.t, "update", { ...r, ...q.row }));
       // migration 0006 : retirer revient à la personne qui a demandé (ou à un chef) ; la réponse est signée et notée dans l'historique
       if (q.t === "reqs" && q.row.st === "annulee" && rows.some((r) => r.st === "ouverte" && !me().chef && r.asker !== me().id)) return { data: null, error: denied };
+      // migration 0007 : une demande reçue reste reçue, une demande retirée reste retirée
+      if (q.t === "reqs") rows.forEach((r) => { if (["recue", "annulee"].includes(r.st) && q.row.st && q.row.st !== r.st) q.row = { ...q.row, st: r.st }; });
+      // migration 0007 : le droit média ne se retire, même par un passage en visiteur, que par un compte média
+      if (q.t === "profiles" && rows.some((r) => r.media && (q.row.visiteur || q.row.media === false)) && !me().media) return { data: null, error: { message: "seul un compte « Partenariats média » peut changer ce droit", code: "42501" } };
       rows.forEach((r) => { if (q.t === "items") journalUpdate(r, q.row);
+        // migration 0007 : une fiche retirée retire ses demandes ouvertes, sauf un relais d'un temps fort actif
+        if (q.t === "items" && q.row.st === "retire" && r.st !== "retire" && !(r.tf && db.items.some((t) => t.id === r.tf && t.st !== "retire")))
+          db.reqs.forEach((x) => { if (x.item === r.id && x.st === "ouverte") { x.st = "annulee"; jot(r.id, "retrait", { type: x.type, dest: x.dest }); } });
         if (q.t === "reqs" && r.st === "ouverte" && q.row.st === "recue") { Object.assign(r, { repondu_par: me().id, repondu_at: new Date().toISOString() }); jot(r.item, "reponse", { type: r.type, dest: r.dest, reponse: q.row.reponse || "" }); }
         if (q.t === "reqs" && r.st === "ouverte" && q.row.st === "annulee") jot(r.item, "retrait", { type: r.type, dest: r.dest });
         Object.assign(r, q.row);
