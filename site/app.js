@@ -55,6 +55,10 @@ window.KPlan = (DATA, { greet = false } = {}) => {
   const typeOf = (it) => (isSujet(it) ? "suj" : isTF(it) ? "tf" : isPay(it) ? "pay" : "act");
   const kindName = (it) => (isSujet(it) ? "Sujet" : isTF(it) ? "Temps fort" : isPay(it) ? "Partenariat" : "Action");
   const root = (it) => (!isTF(it) && it.tf && byId(it.tf)) || it;
+  // une demande d'éléments faite pour un relais profite à tout le temps fort : on la retrouve sur lui et sur chacun de ses relais
+  const famille = (it) => { const r = root(it); return isTF(r) ? [r, ...DB.items.filter((a) => a.tf === r.id && (a.st !== "retire" || a.id === it.id))] : [it]; };
+  const reqsOf = (it) => { const ids = new Set(famille(it).map((x) => x.id));
+    return DB.reqs.filter((q) => ids.has(q.item)).sort((a, b) => (a.st === "recue") - (b.st === "recue") || a.pour.localeCompare(b.pour)); };
   const canEdit = (it) => (isPay(it) ? isMedia() : me().chef || (!!me().svc && it.svc === me().svc));
   const partnerName = (it) => (PARTNERS.find((p) => p.k === it.partner) || { nom: "Partenaire" }).nom;
   const svcLabel = (it) => (isPay(it) ? partnerName(it) : svcOf(it.svc).court);
@@ -193,8 +197,8 @@ window.KPlan = (DATA, { greet = false } = {}) => {
       return `<section class="todo-sec"><h2 class="sec-h">${title} · ${list.length}</h2><div class="todos">${shown.map(render).join("")}</div>
         ${list.length > 3 ? `<p class="more-p"><button type="button" class="link" data-act="more" data-k="${k}">${all ? "Voir moins" : seeMore(list.length - 3, "autres")}</button></p>` : ""}</section>`;
     };
-    const demande = (r) => { const it = byId(r.item), late = r.pour < TODAY;
-      return card(it, { body: `<b>${esc(person(r.from).nom)}</b> demande ${esc(ASK[r.type] || "des éléments")}${r.quoi && r.quoi !== r.type ? ` : « ${esc(r.quoi)} »` : ""}.`,
+    const demande = (r) => { const it = byId(r.item), tf = root(it), late = r.pour < TODAY;
+      return card(it, { body: `<b>${esc(person(r.from).nom)}</b> demande ${esc(ASK[r.type] || "des éléments")}${r.quoi && r.quoi !== r.type ? ` : « ${esc(r.quoi)} »` : ""}.${tf !== it ? `<span class="todo-tf">Pour le ${isSujet(tf) ? "sujet" : "temps fort"} « ${esc(tf.t)} »</span>` : ""}`,
         left: late ? `<span class="late">En retard</span>, prévu le ${fmtDay(r.pour)}` : `Pour le ${fmtDay(r.pour)}`,
         acts: `<button type="button" class="btn small" data-act="recu" data-r="${r.id}">C'est envoyé</button>` }); };
     const rappel = ({ it, j, key }) => card(it, { left: `<span class="jal">J-${j}</span>`,
@@ -620,12 +624,15 @@ window.KPlan = (DATA, { greet = false } = {}) => {
       ${all.length > 3 ? `<p class="more-p"><button type="button" class="link" data-act="more" data-k="${k}">${open ? "Voir moins" : `Voir tout l'historique (${all.length})`}</button></p>` : ""}`;
   }
 
+  // une demande : pour quel relais (s'il ne s'agit pas de cette fiche), quoi, de qui à qui et pour quand ; le service sollicité peut répondre d'ici
+  const reqRow = (q, id) => { const o = q.item !== id && byId(q.item);
+    return `<div class="row wrap rq"><span class="row-main">${o ? `<button type="button" class="rq-for" data-open="${o.id}">${esc(o.t)}</button>` : ""}<b>${esc(reqTxt(q))}</b><span>De ${esc(person(q.from).nom)} à ${esc(svcOf(q.to).qui)} · pour le ${fmtDay(q.pour)}</span></span>${q.st === "recue" ? `<span class="tag">Reçu</span>` : q.to === me().svc ? `<button type="button" class="btn small" data-act="recu" data-r="${q.id}">C'est envoyé</button>` : q.pour < TODAY ? `<span class="tag st-retard">En retard</span>` : ""}</div>`; };
   function openItem(id) { const it = byId(id); if (!it) return; K.push((el, o) => renderItem(el, o, id), { title: kindName(it) }); }
   function renderItem(el, { back }, id) {
     const it = byId(id);
     if (!it) { el.innerHTML = K.navbar({ title: "Fiche", back }) + `<div class="scroll"><div class="empty"><span>Cette fiche n'existe plus.</span></div></div>`; return; }
     const r = root(it), edit = canEdit(it), links = r.links || [], linkedTF = !isTF(it) && it.tf ? byId(it.tf) : null, past = isTF(it) && isPast(it);
-    const reqs = DB.reqs.filter((q) => q.item === id), blocks = DB.blocks.filter((b) => b.item === id && !b.leve);
+    const reqs = reqsOf(it), blocks = DB.blocks.filter((b) => b.item === id && !b.leve);
     const kv = (k, v) => `<div class="row"><span class="row-main"><b>${k}</b></span><span class="row-value">${v}</span></div>`;
     const choices = isTF(it) ? ["confirmer", "planifie"] : isPay(it) ? ["confirmer", "planifie", "diffuse"] : ["idee", "confirmer", "planifie", "production", "diffuse"];
     const status = edit && !past && it.st !== "retire"
@@ -654,7 +661,8 @@ window.KPlan = (DATA, { greet = false } = {}) => {
         ${it.lieu ? kv("Lieu", esc(it.lieu)) : ""}
       </div>
       ${it.note ? `<p class="sec-f">${esc(it.note)}</p>` : ""}
-      ${reqs.length ? `<h2 class="sec-h">Demandes d'éléments · ${reqs.length}</h2><div class="group">${reqs.map((q) => `<div class="row wrap"><span class="row-main"><b>${esc(reqTxt(q))}</b><span>De ${esc(person(q.from).nom)} à ${esc(svcOf(q.to).qui)} · pour le ${fmtDay(q.pour)}</span></span>${q.st === "recue" ? `<span class="tag">Reçu</span>` : q.pour < TODAY ? `<span class="tag st-retard">En retard</span>` : ""}</div>`).join("")}</div>` : ""}
+      ${reqs.length ? `<h2 class="sec-h">Demandes d'éléments · ${reqs.length}</h2><div class="group">${reqs.map((q) => reqRow(q, id)).join("")}</div>
+        ${r !== it ? `<p class="sec-f">Partagées avec le ${isSujet(r) ? "sujet" : "temps fort"} « ${esc(r.t)} » et ses relais.</p>` : reqs.some((q) => q.item !== id) ? `<p class="sec-f">Avec celles de ses relais.</p>` : ""}` : ""}
       <h2 class="sec-h">Documents${links.length ? ` · ${links.length}` : ""}</h2><div class="group">${links.map((l) => `<button type="button" class="row" data-link="${esc(l.url)}"><span class="row-main"><b>${esc(l.nom)}</b><span>${esc(hostOf(l.url))}</span></span><span class="ext" aria-hidden="true">${I.external}</span></button>`).join("")}
         <button type="button" class="row add-row" data-act="addlink" data-id="${id}"><span class="add-ic">${I.plus}</span><span class="row-main"><b>Ajouter un lien SharePoint</b></span></button></div>
         ${links.length && r !== it ? `<p class="sec-f">Partagés avec le ${isSujet(r) ? "sujet" : "temps fort"} « ${esc(r.t)} ».</p>` : links.length && isTF(it) ? `<p class="sec-f">Visibles aussi sur ses relais.</p>` : ""}
@@ -704,18 +712,20 @@ window.KPlan = (DATA, { greet = false } = {}) => {
   const sheetFor = (it) => `<p class="sheet-for"><b>${esc(it.t)}</b><span>${metaHTML(it)}</span></p>`;
   function askSheet(id, key) {
     const it = byId(id), p = me(); if (!it) return;
-    const pour = [addDays(it.date, -7), addDays(TODAY, 3)].sort().pop();
+    const pour = [addDays(it.date, -7), addDays(TODAY, 3)].sort().pop(), r = root(it), deja = reqsOf(it).filter((q) => q.st === "ouverte");
     const to = [...(p.chef ? [] : [CHEF]), ...SERVICES.filter((s) => s.k !== p.svc)];
     K.sheet.open({ title: "Demander des éléments", ok: "Envoyer", full: true, body: `${sheetFor(it)}
+      ${deja.length ? `<div class="deja"><span class="lbl">Déjà demandé</span><ul>${deja.map((q) => `<li><b>${esc(reqTxt(q))}</b><span>${esc(svcOf(q.to).court)} · pour le ${fmtDay(q.pour)}${q.item !== id ? ` · ${esc(byId(q.item).t)}` : ""}</span></li>`).join("")}</ul></div>` : ""}
       <span class="lbl" id="ask-type-l">Quoi ?</span><div class="chips" data-chips id="ask-type" role="group" aria-labelledby="ask-type-l">${TYPES.map((t, i) => chip(t, i === 0)).join("")}</div>
       <span class="lbl" id="ask-to-l">À qui ?</span><div class="chips" data-chips id="ask-to" role="group" aria-labelledby="ask-to-l">${to.map((s, i) => chip(s === CHEF ? CHEF.qui : s.court, i === 0, s.k)).join("")}</div>
       <label class="lbl" for="ask-pour">Pour quand ?</label>${dateField("ask-pour", pour)}
-      <label class="lbl" for="ask-quoi">Précision <span class="opt">facultatif</span></label><textarea class="in" id="ask-quoi" rows="2" placeholder="Ex. les éléments de langage validés"></textarea>`,
+      <label class="lbl" for="ask-quoi">Précision <span class="opt">facultatif</span></label><textarea class="in" id="ask-quoi" rows="2" placeholder="Ex. les éléments de langage validés"></textarea>
+      ${r !== it ? `<p class="sec-f">Visible aussi sur le ${isSujet(r) ? "sujet" : "temps fort"} « ${esc(r.t)} » et ses relais.</p>` : isTF(it) ? `<p class="sec-f">Visible aussi sur ses relais.</p>` : ""}`,
       onOk: async (s) => {
         const type = pressed("#ask-type", s)[0] || "Autre", dest = pressed("#ask-to", s)[0] || to[0].k;
-        const r = { id: uid(), item: id, from: p.k, to: dest, type, quoi: s.querySelector("#ask-quoi").value.trim(), pour: s.querySelector("#ask-pour").value || pour, st: "ouverte", at: TODAY, ts: new Date().toISOString() };
-        try { await Store.addReq(r); if (key) await Store.answer(key, "oui"); } catch (e) { fail(e); return false; }
-        DB.reqs.push(r); if (key) DB.answers[key] = "oui";
+        const q = { id: uid(), item: id, from: p.k, to: dest, type, quoi: s.querySelector("#ask-quoi").value.trim(), pour: s.querySelector("#ask-pour").value || pour, st: "ouverte", at: TODAY, ts: new Date().toISOString() };
+        try { await Store.addReq(q); if (key) await Store.answer(key, "oui"); } catch (e) { fail(e); return false; }
+        DB.reqs.push(q); if (key) DB.answers[key] = "oui";
         K.refresh(); K.snack(`Demande envoyée à ${esc(svcOf(dest).qui)}.`);
       } });
   }

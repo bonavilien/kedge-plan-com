@@ -51,5 +51,5 @@ Rappels J-30, J-15 et J-7 avant chaque action datée au jour près (chaque matin
 ## Tests
 
 - Base : `PSQL="psql -h localhost -U postgres" sh test/db/run.sh` (une base Postgres locale suffit).
-- Interface : `node test/ui/serve.mjs` puis `node test/ui/flows.mjs <dossier des captures>` (et `historique.mjs`, `copil.mjs`).
+- Interface : `node test/ui/serve.mjs` puis `node test/ui/flows.mjs <dossier des captures>` (et `historique.mjs`, `copil.mjs`, `demandes.mjs`).
 - Notifications : `node test/push/run.mjs <dossier avec deno, web-push et http_ece installés>`.
