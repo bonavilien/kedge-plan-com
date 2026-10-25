@@ -348,6 +348,8 @@ button.glab b { text-decoration: underline; text-decoration-color: var(--yellow)
 .ma-item.date::before { border-radius: 2px; background: transparent; box-shadow: inset 0 0 0 1.5px var(--panel-muted); }
 .ma-item.date.is-tf::before { background: var(--yellow); box-shadow: none; }
 .ma-item.ctb::before { width: 6px; height: 6px; left: 2px; top: 17px; }
+.ma-item.ctb.soon::before { background: var(--yellow); }
+.ma-item.ctb.late::before { background: #FF6B5E; box-shadow: none; }
 .ma-item b { font-size: 15px; font-weight: 600; line-height: 1.3; }
 .ma-item span { font-size: 13px; line-height: 1.4; color: var(--panel-muted); }
 .ma-more { min-height: 36px; margin-left: 18px; padding: 0; border: 0; background: none; color: var(--panel-ink); font: inherit; font-size: 14px; font-weight: 600; text-decoration: underline; text-decoration-color: var(--yellow); text-decoration-thickness: 2px; text-underline-offset: 3px; cursor: pointer; }

@@ -54,7 +54,7 @@ ok(/Titre : « Reportage JPO » → « Reportage JPO Bordeaux »/.test(at) && /P
 ok(at.includes("Julien et Stéphane recevront une notification"), "elle dit qui sera prévenu");
 await p.screenshot({ path: `${OUT}/h1-prevenir.png` });
 await p.click(".alert .acts button:last-child"); await p.waitForTimeout(600);
-ok((await p.textContent(".snack")).includes("Julien et Stéphane sont prévenus"), "confirmation après l'envoi");
+ok((await p.textContent(".snack")).includes("Notification envoyée à Julien et Stéphane"), "confirmation après l'envoi");
 let db = await fake();
 ok(db.outbox.length === 2 && db.outbox.every((o) => o.title === "Modifié : Reportage JPO Bordeaux" && o.body.startsWith("Aurélie : titre : « Reportage JPO » → « Reportage JPO Bordeaux » ; précisions :")), "deux notifications, avec le changement");
 h = await hist();

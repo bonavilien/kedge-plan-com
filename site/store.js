@@ -28,7 +28,7 @@ window.KStore = (() => {
   async function load() {
     const all = (t, order) => run(sb.from(t).select("*").order(order));
     const [per, msg, svc, prt, prof, items, links, reqs, blocks, answers, seen, meta, journal] = await Promise.all([
-      all("periods", "n"), all("messages", "n"), all("services", "ordre"), all("partners", "nom"), all("profiles", "nom"),
+      all("periods", "du"), all("messages", "n"), all("services", "ordre"), all("partners", "nom"), all("profiles", "nom"),
       all("items", "date"), all("links", "at"), all("reqs", "at"), all("blocks", "at"),
       run(sb.from("answers").select("key,val").eq("user_id", user.id)), run(sb.from("seen").select("item").eq("user_id", user.id)), all("meta", "k"),
       // sans la migration 0003, l'appli marche quand même, sans historique
@@ -75,8 +75,10 @@ window.KStore = (() => {
   });
   const addItem = (it) => run(sb.from("items").insert({ id: it.id, kind: it.kind, ...itemRow(it) }));
   // keys : seuls ces champs partent (une modification faite entre-temps par quelqu'un d'autre n'est pas écrasée)
-  const updateItem = (id, it, keys) => { const row = itemRow(it); return run(sb.from("items").update(keys ? Object.fromEntries(keys.map((k) => [k, row[k]])) : row).eq("id", id)); };
-  const setStatus = (id, st) => run(sb.from("items").update({ st }).eq("id", id));
+  // la base ne dit rien quand une modification n'est plus permise (fiche passée à un autre service entre-temps) : aucune ligne changée
+  const changed = async (q) => { const rows = await run(q.select("id")); if (!rows?.length) throw Object.assign(new Error("la fiche a changé entre-temps, tu ne peux plus la modifier"), { code: "0ROWS" }); };
+  const updateItem = (id, it, keys) => { const row = itemRow(it); return changed(sb.from("items").update(keys ? Object.fromEntries(keys.map((k) => [k, row[k]])) : row).eq("id", id)); };
+  const setStatus = (id, st) => changed(sb.from("items").update({ st }).eq("id", id));
   async function addLink(item, nom, url) {
     const l = await run(sb.from("links").insert({ item, nom, url }).select().single());
     return { id: l.id, nom: l.nom, url: l.url, by: l.author || "" };

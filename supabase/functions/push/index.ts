@@ -22,7 +22,8 @@ Deno.serve(async (req) => {
   let sent = 0;
   const gone = new Set<number>();
   // une notification trop lourde est refusée par les services push (4 Ko) : titre et texte raccourcis
-  const cut = (x: string, n: number) => (x.length > n ? x.slice(0, n - 1).trimEnd() + "…" : x);
+  // coupé par caractère (Array.from) : un emoji n'est jamais coupé en deux
+  const cut = (x: string, n: number) => { const c = Array.from(x); return c.length > n ? c.slice(0, n - 1).join("").trimEnd() + "…" : x; };
   for (const r of rows as Row[]) {
     const mine = ((subs ?? []) as Sub[]).filter((s) => s.user_id === r.user_id && !gone.has(s.id));
     const errs: string[] = [];
@@ -38,7 +39,9 @@ Deno.serve(async (req) => {
         if (code === 404 || code === 410) { gone.add(s.id); await sb.from("push_subs").delete().eq("id", s.id); errs.push("abonnement expiré"); }
         else {
           // panne passagère (réseau, 429, 5xx) : on réessaiera
-          if (!code || code === 429 || code >= 500) retry = true;
+          // une clé d'abonnement invalide n'est pas passagère : inutile de réessayer
+          const badKey = !code && /p256dh|auth secret|public key|invalid key|keys? (must|should)/i.test((e as Error).message);
+          if ((!code && !badKey) || code === 429 || (code ?? 0) >= 500) retry = true;
           errs.push(`${code ?? ""} ${(e as Error).message}`.trim());
         }
       }

@@ -69,7 +69,7 @@ const jpo = db.items.find((i) => i.t === "Journées portes ouvertes"), cp = db.i
 ok(jpo && jpo.kind === "tf" && jpo.cc.join() === "rs,video", "temps fort enregistré avec les services prévenus");
 ok(suj && suj.per.join() === "1,2" && suj.kind === "tf", "sujet enregistré sur les périodes 1 et 2");
 ok(cp && cp.tf === jpo.id && cp.m.join() === "3" && cp.svc === "rp", "action liée au temps fort, message International");
-ok(db.links.length === 1 && db.links[0].item === jpo.id, "lien d'une action liée posé sur son temps fort");
+ok(db.links.length === 1 && db.links[0].item === cp.id, "lien d'une action liée gardé sur l'action (le temps fort le montre aussi)");
 ok(await topv(p).locator("text=SharePoint").first().isVisible(), "fiche : le lien s'affiche");
 await p.screenshot({ path: `${OUT}/f1-fiche.png` });
 // lien invalide

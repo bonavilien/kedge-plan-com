@@ -50,6 +50,6 @@ Rappels J-30, J-15 et J-7 avant chaque action datée au jour près (chaque matin
 
 ## Tests
 
-- Base : `PSQL="psql -h localhost -U postgres" sh test/db/run.sh` (une base Postgres locale suffit).
-- Interface : `node test/ui/serve.mjs` puis `node test/ui/flows.mjs <dossier des captures>` (et `historique.mjs`, `copil.mjs`, `demandes.mjs`, `corrections.mjs`).
+- Base : `PSQL="psql -h localhost -U postgres" sh test/db/run.sh` (une base Postgres locale suffit). Puis, sur la base `kplan_test` qu'il laisse : `droits.sql` et `contenu.sql` (`$PSQL -d kplan_test -f test/db/droits.sql`) ; `sh test/db/besoins.sh` crée sa propre base (rappels, demandes, deadlines).
+- Interface : `node test/ui/serve.mjs` puis `node test/ui/flows.mjs <dossier des captures>` (et `historique.mjs`, `copil.mjs`, `demandes.mjs`, `corrections.mjs`, `contenu.mjs`, `droits.mjs`, `sansprofil.mjs`, `besoins.mjs`, `periodes.mjs`, `notifs.mjs`).
 - Notifications : `node test/push/run.mjs <dossier avec deno, web-push et http_ece installés>`.

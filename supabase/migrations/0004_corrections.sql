@@ -50,23 +50,52 @@ create function public.keep_reqs() returns trigger
 language plpgsql set search_path = public as $$
 begin
   if auth.uid() is null then return new; end if;
+  -- l'heure de la base, pas celle envoyée par le téléphone (la limite de 10 demandes en dépend)
+  if tg_op = 'INSERT' then new.at := now(); return new; end if;
   new.item := old.item; new.asker := old.asker; new.at := old.at;
   if not (public.is_chef() or old.asker = auth.uid()) then
     new.dest := old.dest; new.type := old.type; new.quoi := old.quoi; new.pour := old.pour;
   end if;
+  if (new.dest, new.type) is distinct from (old.dest, old.type) and new.st = 'ouverte' and exists (select 1 from public.reqs
+      where id <> new.id and item = new.item and dest = new.dest and type = new.type and st = 'ouverte') then
+    raise exception 'déjà demandé' using errcode = '23505';
+  end if;
   return new;
 end $$;
-create trigger reqs_keep before update on public.reqs for each row execute function public.keep_reqs();
+create trigger reqs_keep before insert or update on public.reqs for each row execute function public.keep_reqs();
 
 -- un blocage se lève, il ne se réécrit pas
 create function public.keep_blocks() returns trigger
 language plpgsql set search_path = public as $$
 begin
   if auth.uid() is null then return new; end if;
+  if tg_op = 'INSERT' then new.at := now(); return new; end if;
   new.item := old.item; new.author := old.author; new.why := old.why; new.at := old.at;
   return new;
 end $$;
-create trigger blocks_keep before update on public.blocks for each row execute function public.keep_blocks();
+create trigger blocks_keep before insert or update on public.blocks for each row execute function public.keep_blocks();
+
+-- un document : l'heure de la base, et un lien SharePoint sécurisé (https), comme dans l'appli
+create function public.keep_links() returns trigger
+language plpgsql set search_path = public as $$
+begin
+  if auth.uid() is null then return new; end if;
+  if new.url !~* '^https://' then raise exception 'le lien doit commencer par https://' using errcode = '23514'; end if;
+  new.at := now();
+  return new;
+end $$;
+create trigger links_keep before insert on public.links for each row execute function public.keep_links();
+
+-- un document retiré se voit dans l'historique, comme un document ajouté
+create function public.on_unlink_journal() returns trigger
+language plpgsql security definer set search_path = public as $$
+begin
+  if exists (select 1 from public.items where id = old.item) then
+    insert into public.journal (item, kind, diff) values (old.item, 'document', jsonb_build_object('nom', old.nom, 'retire', true));
+  end if;
+  return old;
+end $$;
+create trigger links_unjournal after delete on public.links for each row execute function public.on_unlink_journal();
 
 -- le droit « média » ne se donne et ne se retire que par un compte média (Julien reste seul à saisir les partenariats)
 create function public.keep_profiles() returns trigger
@@ -104,7 +133,8 @@ begin
   if new.svc <> 'chef' and not exists (select 1 from public.services where k = new.svc) then
     raise exception 'service inconnu : %', new.svc using errcode = '23503';
   end if;
-  if new.tf is not null and (new.tf = new.id or not exists (select 1 from public.items where id = new.tf and kind = 'tf')) then
+  -- un temps fort ou un sujet n'est lié à rien : seules les actions sont des relais
+  if new.tf is not null and (new.kind = 'tf' or new.tf = new.id or not exists (select 1 from public.items where id = new.tf and kind = 'tf')) then
     raise exception 'une fiche ne peut être liée qu''à un temps fort ou un sujet' using errcode = '23514';
   end if;
   if not new.m <@ array['1', '2', '3', '4', '5', 'INC'] then
@@ -122,15 +152,29 @@ create function public.on_service_rename() returns trigger
 language plpgsql security definer set search_path = public as $$
 begin
   if new.k is distinct from old.k then
+    -- un renommage n'est pas une nouvelle : les fiches suivent sans prévenir personne
+    perform set_config('kplan.renommage', '1', true);
     update public.items set svc = new.k where svc = old.k;
     update public.items set cc = array_replace(cc, old.k, new.k) where old.k = any (cc);
     update public.reqs set dest = new.k where dest = old.k;
+    perform set_config('kplan.renommage', '', true);
   end if;
   return new;
 end $$;
 create trigger services_rename after update of k on public.services for each row execute function public.on_service_rename();
 
--- les périodes ne se chevauchent pas
+-- un service qui porte encore des fiches ou des demandes ouvertes ne se supprime pas (elles n'auraient plus de service)
+create function public.check_service_delete() returns trigger
+language plpgsql security definer set search_path = public as $$
+begin
+  if exists (select 1 from public.items where svc = old.k) or exists (select 1 from public.reqs where dest = old.k and st = 'ouverte') then
+    raise exception 'ce service porte encore des fiches : passe-les à un autre service avant de le supprimer' using errcode = '23503';
+  end if;
+  return old;
+end $$;
+create trigger services_delete before delete on public.services for each row execute function public.check_service_delete();
+
+-- les périodes ne se chevauchent pas ; vérifié à la fin de la requête, pour qu'une frontière se déplace en une fois
 create function public.check_period() returns trigger
 language plpgsql set search_path = public as $$
 begin
@@ -139,7 +183,8 @@ begin
   end if;
   return new;
 end $$;
-create trigger periods_check before insert or update on public.periods for each row execute function public.check_period();
+create constraint trigger periods_no_overlap after insert or update on public.periods deferrable initially immediate
+  for each row execute function public.check_period();
 
 -- =====================================================================
 -- Notifications
@@ -157,19 +202,27 @@ begin
   perform public.notify(
     array(select id from public.profiles where id is distinct from new.author and (
       notif_all or svc = any (new.cc)
-      or (new.kind = 'action' and new.partner is null and (svc = new.svc or (new.svc = 'chef' and chef)))
+      or (new.partner is null and (svc = new.svc or (new.svc = 'chef' and chef)))
       or (new.partner is not null and media))),
     quoi, public.nom_de(new.author) || ' : ' || new.t, '#item=' || new.id);
   return new;
 end $$;
 
--- après coup : un service ajouté à « Qui prévenir » est prévenu ; une fiche retirée prévient ceux qui la suivaient
+-- après coup : un service ajouté à « Qui prévenir » est prévenu, un nouveau service porteur aussi ;
+-- une fiche retirée prévient ceux qui la suivaient (les chefs pour une fiche du chef de projet, les comptes média pour un partenariat)
 create function public.on_item_changed() returns trigger
 language plpgsql security definer set search_path = public as $$
 declare
   added text[] := array(select x from unnest(new.cc) as x where not (x = any (old.cc)));
   quoi text := case when new.kind = 'tf' and cardinality(new.per) > 0 then 'le sujet' when new.kind = 'tf' then 'le temps fort' else 'l''action' end;
 begin
+  if coalesce(current_setting('kplan.renommage', true), '') = '1' then return new; end if;
+  if new.svc is distinct from old.svc and new.st <> 'retire' and new.partner is null then
+    perform public.notify(
+      array(select id from public.profiles where id is distinct from auth.uid() and (svc = new.svc or (new.svc = 'chef' and chef))),
+      'Confié à ton service', public.nom_de(auth.uid()) || ' : ' || new.t, '#item=' || new.id,
+      'porte:' || new.id || ':' || new.svc || ':' || to_char(now(), 'YYYY-MM-DD'));
+  end if;
   if cardinality(added) > 0 and new.st <> 'retire' then
     perform public.notify(
       array(select id from public.profiles where id is distinct from auth.uid() and svc = any (added)),
@@ -179,16 +232,24 @@ begin
   if new.st = 'retire' and old.st <> 'retire' then
     perform public.notify(
       array(select id from public.profiles where id is distinct from auth.uid() and (
-        notif_all or svc = any (new.cc) or svc = new.svc or (new.svc = 'chef' and chef) or (new.partner is not null and media)
+        notif_all or svc = any (new.cc) or svc = new.svc or (new.svc = 'chef' and new.partner is null and chef) or (new.partner is not null and media)
         or svc in (select a.svc from public.items a where a.tf = new.id and a.st <> 'retire'))),
       'Retiré : ' || new.t, public.nom_de(auth.uid()) || ' a retiré ' || quoi || '.', '#item=' || new.id,
       'retire:' || new.id || ':' || to_char(now(), 'YYYY-MM-DD HH24:MI'));
   end if;
+  if old.st = 'retire' and new.st <> 'retire' then
+    perform public.notify(
+      array(select id from public.profiles where id is distinct from auth.uid() and (
+        notif_all or svc = any (new.cc) or svc = new.svc or (new.svc = 'chef' and new.partner is null and chef) or (new.partner is not null and media)
+        or svc in (select a.svc from public.items a where a.tf = new.id and a.st <> 'retire'))),
+      'Remis : ' || new.t, public.nom_de(auth.uid()) || ' a remis ' || quoi || '.', '#item=' || new.id,
+      'remis:' || new.id || ':' || to_char(now(), 'YYYY-MM-DD HH24:MI'));
+  end if;
   return new;
 end $$;
-create trigger items_changed after update of cc, st on public.items for each row execute function public.on_item_changed();
+create trigger items_changed after update of svc, cc, st on public.items for each row execute function public.on_item_changed();
 
--- demande d'éléments : la même demande deux fois le même jour ne notifie qu'une fois ;
+-- demande d'éléments : une notification par demande (une demande identique encore ouverte est refusée plus bas) ;
 -- « éléments reçus » ne prévient pas la personne qui le note elle-même
 create or replace function public.on_req() returns trigger
 language plpgsql security definer set search_path = public as $$
@@ -198,23 +259,27 @@ begin
     perform public.notify(
       array(select id from public.profiles where id is distinct from new.asker and ((new.dest = 'chef' and chef) or svc = new.dest)),
       'Demande d''éléments', public.nom_de(new.asker) || ' demande : ' || new.type || ' pour « ' || titre || ' », avant le ' || to_char(new.pour, 'DD/MM'),
-      '#item=' || new.item, 'req:' || new.item || ':' || new.dest || ':' || new.type || ':' || to_char(now(), 'YYYY-MM-DD'));
+      '#item=' || new.item, 'req:' || new.id);
   elsif new.st = 'recue' and old.st <> 'recue' and new.asker is distinct from auth.uid() then
     perform public.notify(array[new.asker], 'Éléments reçus', new.type || ' pour « ' || titre || ' »', '#item=' || new.item);
   end if;
   return new;
 end $$;
 
--- une deadline changée : le service sollicité est prévenu
+-- une deadline changée : le service sollicité est prévenu, et la personne qui a demandé si c'est un chef qui change la date ;
+-- le changement s'inscrit dans l'historique de la fiche
+alter table public.journal drop constraint journal_kind_check;
+alter table public.journal add constraint journal_kind_check check (kind in ('creation', 'modif', 'document', 'prevenu', 'deadline'));
 create function public.on_req_pour() returns trigger
 language plpgsql security definer set search_path = public as $$
 declare titre text := (select t from public.items where id = new.item);
 begin
   if new.pour is distinct from old.pour and new.st = 'ouverte' then
     perform public.notify(
-      array(select id from public.profiles where id is distinct from auth.uid() and ((new.dest = 'chef' and chef) or svc = new.dest)),
+      array(select id from public.profiles where id is distinct from auth.uid() and ((new.dest = 'chef' and chef) or svc = new.dest or id = new.asker)),
       'Nouvelle deadline', new.type || ' pour « ' || titre || ' » : avant le ' || to_char(new.pour, 'DD/MM'), '#item=' || new.item,
-      'pour:' || new.id || ':' || new.pour);
+      'pour:' || new.id || ':' || old.pour || ':' || new.pour || ':' || to_char(now(), 'YYYY-MM-DD HH24:MI'));
+    insert into public.journal (item, kind, diff) values (new.item, 'deadline', jsonb_build_object('type', new.type, 'dest', new.dest, 'pour', jsonb_build_array(old.pour, new.pour)));
   end if;
   return new;
 end $$;
@@ -225,6 +290,9 @@ create function public.check_req() returns trigger
 language plpgsql set search_path = public as $$
 begin
   if auth.uid() is null then return new; end if;
+  if new.dest <> 'chef' and not exists (select 1 from public.services where k = new.dest) then
+    raise exception 'service inconnu : %', new.dest using errcode = '23503';
+  end if;
   if exists (select 1 from public.reqs where item = new.item and dest = new.dest and type = new.type and st = 'ouverte') then
     raise exception 'déjà demandé' using errcode = '23505';
   end if;
@@ -244,9 +312,21 @@ begin
   select id, t, svc, cc, partner into it from public.items where id = new.item;
   perform public.notify(
     array(select id from public.profiles where id is distinct from new.author and (
-      notif_all or svc = it.svc or svc = any (it.cc) or (it.svc = 'chef' and chef) or (it.partner is not null and media)
+      notif_all or svc = it.svc or svc = any (it.cc) or (it.svc = 'chef' and it.partner is null and chef) or (it.partner is not null and media)
       or svc in (select a.svc from public.items a where a.tf = it.id and a.st <> 'retire'))),
     'Nouveau document', public.nom_de(new.author) || ' a ajouté « ' || new.nom || ' » sur « ' || it.t || ' »', '#item=' || new.item);
+  return new;
+end $$;
+
+-- blocage : les chefs, le service de la fiche, et les comptes média pour un partenariat (seuls à pouvoir le modifier)
+create or replace function public.on_block() returns trigger
+language plpgsql security definer set search_path = public as $$
+declare it record;
+begin
+  select t, svc, partner into it from public.items where id = new.item;
+  perform public.notify(
+    array(select id from public.profiles where id is distinct from new.author and (chef or svc = it.svc or (it.partner is not null and media))),
+    'Blocage', public.nom_de(new.author) || ' : « ' || it.t || ' » ' || new.why, '#item=' || new.item);
   return new;
 end $$;
 
@@ -260,18 +340,22 @@ declare
 begin
   select * into it from public.items where id = p_item;
   if it.id is null then raise exception 'fiche introuvable'; end if;
-  if not ((it.partner is null and (public.is_chef() or it.svc = public.my_svc())) or (it.partner is not null and public.is_media())) then
+  -- coalesce : sans service, my_svc() est vide et la comparaison ne vaut ni vrai ni faux
+  if not coalesce((it.partner is null and (public.is_chef() or it.svc = public.my_svc())) or (it.partner is not null and public.is_media()), false) then
     raise exception 'pas le droit de prévenir pour cette fiche' using errcode = '42501';
   end if;
   p_quoi := left(btrim(coalesce(p_quoi, '')), 300);
   if p_quoi = '' then raise exception 'rien à dire'; end if;
   k := 'modif:' || it.id || ':' || md5(p_quoi || to_char(now(), 'YYYY-MM-DD HH24:MI'));
-  if exists (select 1 from public.outbox where dedupe like k || ':%') then return 0; end if;
+  if exists (select 1 from public.outbox where dedupe like k || ':%')
+     or exists (select 1 from public.journal where item = it.id and kind = 'prevenu' and author = auth.uid() and diff ->> 'quoi' = p_quoi and at > now() - interval '1 minute') then
+    return 0;
+  end if;
   if (select count(*) from public.journal where item = it.id and kind = 'prevenu' and author = auth.uid() and at > now() - interval '1 hour') >= 5 then
     raise exception 'déjà prévenu plusieurs fois cette heure-ci' using errcode = '54000';
   end if;
   dests := array(select id from public.profiles where id is distinct from auth.uid() and (
-    notif_all or svc = any (it.cc) or svc = it.svc or (it.svc = 'chef' and chef) or (it.partner is not null and media)
+    notif_all or svc = any (it.cc) or svc = it.svc or (it.svc = 'chef' and it.partner is null and chef) or (it.partner is not null and media)
     or svc in (select a.svc from public.items a where a.tf = it.id and a.st <> 'retire')));
   perform public.notify(dests, 'Modifié : ' || it.t, public.nom_de(auth.uid()) || ' : ' || p_quoi, '#item=' || it.id, k);
   insert into public.journal (item, kind, diff) values (it.id, 'prevenu', jsonb_build_object('quoi', p_quoi, 'n', cardinality(dests)));
@@ -291,6 +375,8 @@ begin
     insert into public.journal (item, author, at, kind) values (new.id, coalesce(new.author, auth.uid()), now(), 'creation');
     return new;
   end if;
+  -- un service renommé n'est pas une modification de la fiche
+  if coalesce(current_setting('kplan.renommage', true), '') = '1' then return new; end if;
   foreach k in array array['t', 'date', 'flou', 'per', 'svc', 'cc', 'm', 'st', 'tf', 'partner', 'lieu', 'note'] loop
     if o -> k is distinct from n -> k then
       d := d || jsonb_build_object(k, jsonb_build_array(o -> k, n -> k));
@@ -332,8 +418,12 @@ begin
               and not exists (select 1 from public.answers a where a.user_id = p.id and a.key = r.id || '-' || r.date || '-' || r.jal)
               and not exists (select 1 from public.reqs q left join public.profiles qa on qa.id = q.asker
                               where (q.item = r.id or q.item = r.tf or q.item in (select s.id from public.items s where r.tf is not null and s.tf = r.tf))
-                                and (q.asker = p.id or (p.svc is not null and qa.svc = p.svc)))
-              and not exists (select 1 from public.outbox o where o.dedupe = 'rappel:' || r.id || ':' || r.jal || ':' || p.id)),
+                                and (q.asker = p.id or (p.svc is not null and qa.svc = p.svc)
+                                     -- une action du chef de projet : un chef a demandé, c'est fait pour tous les chefs
+                                     or (r.svc = 'chef' and p.chef and qa.chef)))
+              -- rappels envoyés avant 0004 (clé sans date) : comptés seulement pendant 15 jours, le temps qu'ils changent de jalon
+              and not exists (select 1 from public.outbox o where o.dedupe = 'rappel:' || r.id || ':' || r.jal || ':' || p.id
+                              and o.created_at > now() - interval '15 days')),
       'J-' || r.j || ' : ' || r.t, 'As-tu besoin d''éléments ? C''est le moment de les demander.', '#afaire',
       'rappel:' || r.id || ':' || r.date || ':' || r.jal);
     n := n + 1;
@@ -348,6 +438,12 @@ revoke execute on function public.queue_reminders() from public, anon, authentic
 alter table public.outbox add column tries smallint not null default 0;
 
 revoke execute on function public.keep_items() from public, anon, authenticated;
+revoke execute on function public.keep_links() from public, anon, authenticated;
+revoke execute on function public.on_unlink_journal() from public, anon, authenticated;
+revoke execute on function public.check_service_delete() from public, anon, authenticated;
+-- un nom ne se lit qu'une fois connecté
+revoke execute on function public.nom_de(uuid) from public, anon;
+grant execute on function public.nom_de(uuid) to authenticated;
 revoke execute on function public.keep_reqs() from public, anon, authenticated;
 revoke execute on function public.keep_blocks() from public, anon, authenticated;
 revoke execute on function public.keep_profiles() from public, anon, authenticated;

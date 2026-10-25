@@ -93,10 +93,10 @@
       return { data: q.single ? r : [r], error: null };
     }
     if (q.op === "update") {
-      const rows = tab.filter(match);
-      for (const r of rows) { if (!allowed(q.t, "update", { ...r, ...q.row })) return { data: null, error: denied }; }
+      // comme la vraie base : une ligne qu'on n'a pas le droit de modifier est ignorée, sans erreur
+      const rows = tab.filter(match).filter((r) => allowed(q.t, "update", { ...r, ...q.row }));
       rows.forEach((r) => { if (q.t === "items") journalUpdate(r, q.row); Object.assign(r, q.row); }); save();
-      return { data: null, error: null };
+      return { data: rows.map((r) => ({ ...r })), error: null };
     }
     if (q.op === "upsert") {
       const r = fill(q.row), keys = PK[q.t] || ["id"];
@@ -105,7 +105,10 @@
       old ? Object.assign(old, r) : tab.push(r); save();
       return { data: null, error: null };
     }
-    if (q.op === "delete") { db[q.t] = tab.filter((r) => !match(r)); save(); return { data: null, error: null }; }
+    if (q.op === "delete") {
+      if (q.t === "links") tab.filter(match).forEach((r) => jot(r.item, "document", { nom: r.nom, retire: true }));
+      db[q.t] = tab.filter((r) => !match(r)); save(); return { data: null, error: null };
+    }
   }
   function from(t) {
     const q = { t, op: "select", filters: [], order: null, single: false };

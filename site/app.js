@@ -46,11 +46,13 @@ window.KPlan = (DATA, { greet = false } = {}) => {
   const toldAll = () => PEOPLE.filter((p) => p.notifAll && p.k !== ME).map((p) => p.nom); // prévenus de chaque ajout
   // la période d'une date : celle qui la contient ; entre deux périodes, celle qui vient de finir ; avant la première, la première
   const periodOf = (s) => { let i = 0; PERIODS.forEach((p, k) => { if (p.du <= s) i = k; }); return i; };
-  const perState = (P) => (P.au < TODAY ? "fini" : P.du > TODAY ? "avenir" : "encours");
+  // entre deux périodes, celle qui vient de finir reste « en cours » : ses dernières actions sont encore à venir (après la dernière, c'est fini)
+  const perState = (P) => (P.du > TODAY ? "avenir" : P.au >= TODAY || (PERIODS[CUR] === P && PERIODS[CUR + 1]) ? "encours" : "fini");
   const nJours = (n) => `${n} ${n > 1 ? "jours" : "jour"}`;
   // « encore 12 jours », « dernier jour », « dans 3 jours », « terminée »
   const restTxt = (P) => { const s = perState(P), n = s === "avenir" ? days(P.du) : days(P.au);
-    return s === "fini" ? "terminée" : s === "avenir" ? (n === 1 ? "commence demain" : `dans ${nJours(n)}`) : n === 0 ? "dernier jour" : `encore ${nJours(n)}`; };
+    const nx = PERIODS[PERIODS.indexOf(P) + 1];
+    return s === "fini" ? "terminée" : s === "avenir" ? (n === 1 ? "commence demain" : `dans ${nJours(n)}`) : n < 0 ? `finie le ${fmtDay(P.au)}${nx ? `, la suivante commence le ${fmtDay(nx.du)}` : ""}` : n === 0 ? "dernier jour" : `encore ${nJours(n)}`; };
   // année scolaire d'une période (septembre à août) : l'écran copil montre une année à la fois
   const yearOf = (P) => { const [y, m] = P.du.split("-").map(Number); return m >= 8 ? y : y - 1; };
   const perName = (P) => (PERIODS.filter((x) => x.nom === P.nom).length > 1 ? `${P.nom} ${yearOf(P)}-${String(yearOf(P) + 1).slice(2)}` : P.nom);
@@ -58,8 +60,8 @@ window.KPlan = (DATA, { greet = false } = {}) => {
     TODAY = iso(new Date()); T0 = D(TODAY);
     FIRST = PERIODS[0]; LAST = PERIODS[PERIODS.length - 1]; DMIN = FIRST.du; DMAX = LAST.au;
     MONTHS = []; for (let d = D(FIRST.du.slice(0, 7) + "-01"); d <= D(LAST.au); d.setMonth(d.getMonth() + 1)) MONTHS.push(iso(d).slice(0, 7));
-    // la période en cours, ou la prochaine entre deux périodes, ou la dernière une fois l'année finie
-    const i = PERIODS.findIndex((p) => p.au >= TODAY); CUR = i < 0 ? PERIODS.length - 1 : i;
+    // la période en cours : celle d'aujourd'hui, comme pour les fiches (entre deux périodes, celle qui vient de finir)
+    CUR = periodOf(TODAY);
     // grille : du lundi de la semaine où commence la première période jusqu'à la fin de la dernière
     const g = D(FIRST.du); g.setDate(g.getDate() - ((g.getDay() + 6) % 7)); G0 = iso(g);
     GN = Math.floor(Math.round((D(LAST.au) - D(G0)) / 864e5) / 7) + 1;
@@ -205,7 +207,8 @@ window.KPlan = (DATA, { greet = false } = {}) => {
     : `<span class="dl${dlCls(q)}">${I.calendar}${esc(dlTxt(q.pour))}</span>`);
   function todo() {
     const p = me(), vu = DB.vu[p.k] || [];
-    const mine = (r) => r.from === p.k || (!!p.svc && person(r.from).svc === p.svc);
+    // envoyée par moi ou par mon service (pas par « les chefs » : une demande d'un autre chef à mon service est pour moi)
+    const mine = (r) => r.from === p.k || (!!p.ownSvc && person(r.from).ownSvc === p.ownSvc);
     const demandes = DB.reqs.filter((r) => forMe(r, p) && r.st === "ouverte" && !mine(r) && byId(r.item)).sort((a, b) => a.pour.localeCompare(b.pour));
     const rappels = jalons(p).filter((j) => !DB.answers[j.key]);
     const cites = DB.items.filter((it) => it.cc.includes(p.svc) && it.svc !== p.svc && person(it.by).svc !== p.svc && it.at >= addDays(TODAY, -30)
@@ -236,7 +239,7 @@ window.KPlan = (DATA, { greet = false } = {}) => {
     const demande = (r) => { const it = byId(r.item), tf = root(it);
       return card(it, { body: `<b>${esc(person(r.from).nom)}</b> demande ${esc(ASK[r.type] || "des éléments")}${r.quoi && r.quoi !== r.type ? ` : « ${esc(r.quoi)} »` : ""}.${tf !== it ? `<span class="todo-tf">Pour le ${isSujet(tf) ? "sujet" : "temps fort"} « ${esc(tf.t)} »</span>` : ""}`,
         left: dlTag(r), acts: `<button type="button" class="btn small" data-act="recu" data-r="${r.id}">C'est envoyé</button>` }); };
-    const rappel = ({ it, j, key }) => card(it, { left: `<span class="jal">J-${j}</span>`,
+    const rappel = ({ it, n, key }) => card(it, { left: `<span class="jal">J-${n}</span>`,
       acts: `<button type="button" class="btn small" data-act="ask" data-id="${it.id}" data-key="${key}">Oui, je demande</button><button type="button" class="btn small outline" data-act="nope" data-key="${key}">Pas besoin</button>` });
     const cite = (it) => card(it, { left: `Ajouté par ${esc(person(it.by).nom)}, ${ago(it.at)}`, acts: `<button type="button" class="btn small tonal" data-act="vu" data-id="${it.id}">Vu</button>` });
     const blocage = (b) => { const it = byId(b.item);
@@ -322,7 +325,7 @@ window.KPlan = (DATA, { greet = false } = {}) => {
         <div class="pdots" aria-hidden="true">${PERIODS.map((x, i) => `<i${i === S.period ? ' class="on"' : ""}></i>`).join("")}</div>
         ${cover}
       </section>
-      ${cur ? "" : `<p class="back-now"><button type="button" class="link" data-act="now">Revenir à ${esc(PERIODS[CUR].nom)}</button></p>`}
+      ${cur ? "" : `<p class="back-now"><button type="button" class="link" data-act="now">Revenir à ${esc(perName(PERIODS[CUR]))}</button></p>`}
       ${news}
       ${bar}
       ${!shown.length ? empty : wide ? colsH() : agenda(shown, { who: f === "all" ? "all" : "tf" })}
@@ -396,7 +399,7 @@ window.KPlan = (DATA, { greet = false } = {}) => {
     };
     const months = MONTHS.map((m) => m + "-01");
     const perEnd = (i) => (i < PERIODS.length - 1 ? Math.max(wkStart(i) + 1, wkStart(i + 1)) : GN);
-    const head = `<div class="grow ghead"><div class="glab"></div><div class="gcells gper">${PERIODS.map((P, i) => `<div class="gp" style="grid-row:1;grid-column:${wkStart(i) + 1}/${perEnd(i) + 1}">${esc(P.nom)}</div>`).join("")}</div></div>
+    const head = `<div class="grow ghead"><div class="glab"></div><div class="gcells gper">${PERIODS.map((P, i) => `<div class="gp" style="grid-row:1;grid-column:${wkStart(i) + 1}/${perEnd(i) + 1}">${esc(perName(P))}</div>`).join("")}</div></div>
       <div class="grow ghead"><div class="glab"></div><div class="gcells gmon">${months.map((m, i) => `<div style="grid-column:${wk(m) + 1}/${i < months.length - 1 ? wk(months[i + 1]) + 1 : GN + 1}">${D(m).toLocaleDateString("fr-FR", { month: year ? "narrow" : "long" })}</div>`).join("")}</div></div>
       ${year ? "" : `<div class="grow ghead"><div class="glab"></div><div class="gcells gwk">${Array.from({ length: GN }, (_, i) => `<div>${D(addDays(G0, i * 7)).getDate()}</div>`).join("")}</div></div>`}`;
     const bands = [...new Set(DB.items.filter((it) => isTF(it) && !isSujet(it)).map((it) => wk(it.date)))].map((w) => `<div class="band" style="left:calc(var(--lab) + ${w} * var(--col))"></div>`).join("");
@@ -487,7 +490,7 @@ window.KPlan = (DATA, { greet = false } = {}) => {
   // =====================================================================
   function formHTML(d, px, edit) {
     const p = me(), suj = d.kind === "sujet", tf = d.kind === "tf" || suj, pay = d.kind === "partner", mois = d.prec === "mois";
-    const kinds = [["action", "Action"], ["tf", "Temps fort"], ["sujet", "Sujet"], ...(isMedia() ? [["partner", "Partenariat"]] : [])];
+    const kinds = [...(canAdd() ? [["action", "Action"], ["tf", "Temps fort"], ["sujet", "Sujet"]] : []), ...(isMedia() ? [["partner", "Partenariat"]] : [])];
     const told = K.fr.list(toldAll());
     // le temps fort déjà lié reste dans la liste, même retiré ou passé : enregistrer ne doit pas le détacher
     const tfs = DB.items.filter((it) => isTF(it) && (it.id === d.tf || (it.st !== "retire" && (precise(it) ? days(it.date) >= -7 : !isPast(it))))).sort(sortDate);
@@ -538,15 +541,16 @@ window.KPlan = (DATA, { greet = false } = {}) => {
   }
   // date précise, ou seulement le mois (« Date à préciser »)
   const dateFields = (d, prev) => {
-    if (d.kind === "sujet") { const per = [...d.per].sort(); return { date: PERIODS[per[0]].du, flou: "", per }; }
+    if (d.kind === "sujet") { const per = [...d.per].sort((a, b) => a - b); return { date: PERIODS[per[0]].du, flou: "", per }; }
     if (d.prec === "mois") return prev && !precise(prev) && prev.date.slice(0, 7) === d.mois ? { date: prev.date, flou: prev.flou } : { date: `${d.mois}-01`, flou: cap(monShort(`${d.mois}-01`)) };
     return { date: d.date, flou: prev && precise(prev) && prev.date === d.date ? prev.flou : "" };
   };
   const msgsOf = (d) => (d.kind === "tf" || d.kind === "sujet" ? [] : d.m.map((x) => (x === "INC" ? "INC" : +x)));
 
   function renderAjouter(el) {
-    if (!S.draft) S.draft = newDraft();
-    el.innerHTML = K.navbar({ title: "Ajouter", actions: profileBtn() }) + `<div class="scroll"><h1 class="large-title">Ajouter</h1>${canAdd() ? formHTML(S.draft, "f", false)
+    // un compte média sans service ne saisit que des partenariats
+    if (!S.draft || (!canAdd() && S.draft.kind !== "partner")) S.draft = newDraft(canAdd() ? "action" : "partner");
+    el.innerHTML = K.navbar({ title: "Ajouter", actions: profileBtn() }) + `<div class="scroll"><h1 class="large-title">Ajouter</h1>${canAdd() || isMedia() ? formHTML(S.draft, "f", false)
       : `<div class="group"><div class="empty"><span>Ton compte n'est rattaché à aucun service : tu peux tout consulter et demander des éléments. Pour publier, demande à ${esc(CHEF.qui)} de t'ajouter à ton service.</span></div></div>`}</div>`;
     syncBadge();
   }
@@ -572,15 +576,15 @@ window.KPlan = (DATA, { greet = false } = {}) => {
     (DB.journal ||= []).push({ id: 0, item: it.id, by: p.k, kind: "creation", diff: {}, at: TODAY, ts: it.ts });
     // la fiche est enregistrée : un lien refusé ne doit pas faire republier (doublon)
     let linkErr = null;
-    // un lien posé sur une action liée va sur son temps fort, partagé avec tous ses relais
-    if (d.link.trim()) { const r = root(it); try { r.links.push(await Store.addLink(r.id, "Document SharePoint", d.link.trim())); } catch (e) { console.error(e); linkErr = e; } }
+    // le lien reste sur la fiche créée : la fiche du temps fort et celles des relais le montrent aussi
+    if (d.link.trim()) { try { it.links.push(await Store.addLink(it.id, "Document SharePoint", d.link.trim())); } catch (e) { console.error(e); linkErr = e; } }
     btn.disabled = false;
     // prévenus par la base : services cités, service porteur (s'il n'est pas le mien), prévenus de tout
     const told = pay ? [] : [...new Set([...d.cc, ...(it.svc !== p.svc && it.svc !== "chef" && !tf ? [it.svc] : [])])].map((k) => svcOf(k).court).concat(toldAll());
     S.draft = newDraft();
     K.refresh();
     K.snack(linkErr ? `C'est publié, mais le lien n'a pas été ajouté (${esc(errText(linkErr))}). Ajoute-le depuis la fiche.`
-      : told.length ? `C'est publié. ${esc(K.fr.list(told))} ${told.length > 1 ? "sont prévenus" : "est prévenu"}.` : "C'est publié.", linkErr ? 6000 : undefined);
+      : told.length ? `C'est publié. Notification envoyée à ${esc(K.fr.list(told))}.` : "C'est publié.", linkErr ? 6000 : undefined);
     openItem(it.id);
   }
   const draftOf = (it) => ({ id: it.id, kind: isSujet(it) ? "sujet" : isTF(it) ? "tf" : isPay(it) ? "partner" : "action", t: it.t, prec: precise(it) ? "jour" : "mois", date: it.date, mois: it.date.slice(0, 7),
@@ -608,7 +612,7 @@ window.KPlan = (DATA, { greet = false } = {}) => {
     S.edit = null; K.pop(); K.refresh();
     // un service ajouté à « Qui prévenir » est prévenu par la base
     const added = it.cc.filter((k) => !before.cc.includes(k)).map((k) => svcOf(k).court);
-    K.snack(added.length ? `Modifié. ${esc(K.fr.list(added))} ${added.length > 1 ? "sont prévenus" : "est prévenu"}.` : "Modifié.");
+    K.snack(added.length ? `Modifié. Notification envoyée à ${esc(K.fr.list(added))}.` : "Modifié.");
     sync();
     offerNotify(before, it);
   }
@@ -628,7 +632,7 @@ window.KPlan = (DATA, { greet = false } = {}) => {
       text: `${ch.map(([k, v]) => `<b>${cap(k)}</b> : ${esc(v)}`).join("<br>")}<br><br>${esc(K.fr.list(who))} ${who.length > 1 ? "recevront" : "recevra"} une notification.` });
     if (!ok) return;
     try { await Store.renotify(b.id, ch.map(([k, v]) => `${k} : ${v}`).join(" ; ")); } catch (e) { return fail(e); }
-    K.snack(`${esc(K.fr.list(who))} ${who.length > 1 ? "sont prévenus" : "est prévenu"}.`);
+    K.snack(`Notification envoyée à ${esc(K.fr.list(who))}.`);
     sync();
   }
 
@@ -658,8 +662,9 @@ window.KPlan = (DATA, { greet = false } = {}) => {
     return (DB.journal || []).filter((j) => j.item === it.id).sort((a, b) => b.ts.localeCompare(a.ts) || b.id - a.id).map((j) => {
       const d = j.diff || {};
       if (j.kind === "creation") return { j, main: "Création" };
-      if (j.kind === "document") return { j, main: "Document ajouté", det: d.nom ? det("", quote(d.nom)) : "" };
+      if (j.kind === "document") return { j, main: d.retire ? "Document retiré" : "Document ajouté", det: d.nom ? det("", quote(d.nom)) : "" };
       // le détail est sur la modification juste en dessous
+      if (j.kind === "deadline") return { j, main: `Deadline changée : ${d.type || "demande"} à ${svcOf(d.dest).court}`, det: d.pour ? det("", `${fmtDay(d.pour[0])} → ${fmtDay(d.pour[1])}`) : "" };
       if (j.kind === "prevenu") return { j, main: d.n ? `Changement signalé à ${d.n} ${d.n > 1 ? "personnes" : "personne"}` : "Changement signalé" };
       // la date et sa précision (« Nov. », « Date à confirmer ») forment une seule ligne
       const dt = (i) => { const f = d.flou ? d.flou[i] : it.flou, x = d.date ? d.date[i] : it.date; return f || (x ? fmtShort(x) : "—"); };
@@ -766,6 +771,8 @@ window.KPlan = (DATA, { greet = false } = {}) => {
 
   // ---------- feuilles ----------
   const sheetFor = (it) => `<p class="sheet-for"><b>${esc(it.t)}</b><span>${metaHTML(it)}</span></p>`;
+  // une deadline déjà passée, ou après une action datée au jour près, ne sert à rien
+  const pourErr = (it, v) => (v < TODAY ? "Cette deadline est déjà passée." : precise(it) && it.date >= TODAY && v > it.date ? `La deadline tombe après l'action (${fmtDay(it.date)}).` : "");
   function askSheet(id, key) {
     const it = byId(id), p = me(); if (!it) return;
     // deadline proposée : une semaine avant, au plus tôt dans trois jours, et jamais après l'action elle-même
@@ -785,8 +792,9 @@ window.KPlan = (DATA, { greet = false } = {}) => {
         const type = pressed("#ask-type", s)[0] || "Autre", dest = pressed("#ask-to", s)[0] || to[0].k;
         // la même demande, au même service, déjà ouverte pour ce temps fort ou ses relais : on ne la renvoie pas
         const twin = deja.find((q) => q.to === dest && q.type === type);
-        if (twin) { const e = s.querySelector("#ask-err"); e.textContent = `Déjà demandé à ${svcOf(dest).qui}, deadline ${fmtDay(twin.pour)}. Change la deadline depuis la fiche si besoin.`; e.hidden = false; return false; }
-        const q = { id: uid(), item: id, from: p.k, to: dest, type, quoi: s.querySelector("#ask-quoi").value.trim(), pour: s.querySelector("#ask-pour").value || pour, st: "ouverte", at: TODAY, ts: new Date().toISOString() };
+        const e = s.querySelector("#ask-err"), v = s.querySelector("#ask-pour").value || pour, bad = pourErr(it, v);
+        if (twin || bad) { e.textContent = twin ? `Déjà demandé à ${svcOf(dest).qui}, deadline ${fmtDay(twin.pour)}. Change la deadline depuis la fiche si besoin.` : bad; e.hidden = false; return false; }
+        const q = { id: uid(), item: id, from: p.k, to: dest, type, quoi: s.querySelector("#ask-quoi").value.trim(), pour: v, st: "ouverte", at: TODAY, ts: new Date().toISOString() };
         try { await Store.addReq(q); if (key) await Store.answer(key, "oui"); } catch (e) { fail(e); return false; }
         DB.reqs.push(q); if (key) DB.answers[key] = "oui";
         K.refresh(); K.snack(`Demande envoyée à ${esc(svcOf(dest).qui)}.`);
@@ -813,10 +821,13 @@ window.KPlan = (DATA, { greet = false } = {}) => {
   function pourSheet(rid) {
     const q = DB.reqs.find((x) => x.id === rid), it = q && byId(q.item); if (!it) return;
     K.sheet.open({ title: "Deadline", ok: "Enregistrer", body: `${sheetFor(it)}<p class="sec-f">${esc(reqTxt(q))}, demandé à ${esc(svcOf(q.to).qui)}.</p>
-      <label class="lbl" for="pour-d">Nouvelle deadline</label>${dateField("pour-d", q.pour)}`,
+      <label class="lbl" for="pour-d">Nouvelle deadline</label>${dateField("pour-d", q.pour)}<p class="err" id="pour-err" hidden></p>`,
       onOk: async (s) => { const v = s.querySelector("#pour-d").value; if (!v || v === q.pour) return;
+        const bad = pourErr(it, v); if (bad) { const e = s.querySelector("#pour-err"); e.textContent = bad; e.hidden = false; return false; }
         try { await Store.setReqPour(q.id, v); } catch (e) { fail(e); return false; }
-        q.pour = v; K.refresh(); K.snack(`Deadline : ${fmtDay(v)}. ${esc(svcOf(q.to).qui)} ${svcOf(q.to).qui.includes(" et ") ? "sont prévenus" : "est prévenu"}.`); } });
+        // la base prévient le service sollicité, et la personne qui a demandé quand c'est un chef qui change la date
+        const who = [svcOf(q.to).qui, ...(q.from !== ME ? [person(q.from).nom] : [])];
+        q.pour = v; K.refresh(); K.snack(`Deadline : ${fmtDay(v)}. Notification envoyée à ${esc(K.fr.list(who))}.`); } });
   }
 
   // =====================================================================
@@ -970,7 +981,8 @@ window.KPlan = (DATA, { greet = false } = {}) => {
     const since = (x) => Date.parse(x.ts) > Date.parse(DB.lastMeetingTs);
     const contrib = [
       ...DB.items.filter((it) => isTF(it) && since(it)).map((it) => ({ at: it.at, ts: it.ts, it, sub: `${person(it.by).nom} · nouveau ${isSujet(it) ? "sujet" : "temps fort"}` })),
-      ...DB.reqs.filter((r) => since(r) && byId(r.item)).map((r) => ({ at: r.at, ts: r.ts, it: byId(r.item), sub: `${person(r.from).nom} demande ${ASK[r.type] || "des éléments"} à ${svcOf(r.to).qui}` })),
+      ...DB.reqs.filter((r) => since(r) && byId(r.item)).map((r) => ({ at: r.at, ts: r.ts, it: byId(r.item), k: dlCls(r).trim(),
+        sub: `${person(r.from).nom} demande ${ASK[r.type] || "des éléments"} à ${svcOf(r.to).qui}${r.st === "recue" ? " (reçu)" : `, deadline ${fmtDay(r.pour)}`}` })),
     ].sort((a, b) => Date.parse(b.ts) - Date.parse(a.ts));
     const shownC = MT.contrib ? contrib : contrib.slice(0, 3);
     const aside = `<aside class="mt-aside panel lg" aria-label="À traiter en réunion">
@@ -979,7 +991,7 @@ window.KPlan = (DATA, { greet = false } = {}) => {
         ${late.map((r) => row(byId(r.item), `${person(r.from).nom} attend ${ASK[r.type] || "des éléments"} de ${svcOf(r.to).qui} : deadline dépassée (${fmtDay(r.pour)}).`, "late")).join("")}
         ${bl.length + late.length ? "" : `<p class="ma-empty">Rien ne bloque.</p>`}</section>
       <section class="ma-sec"><h2>Contributions <span class="tnum">${contrib.length}</span></h2><p class="ma-since">Depuis la réunion du ${fmtDay(DB.lastMeeting)}</p>
-        ${shownC.map((c) => row(c.it, `${c.sub}, ${ago(c.at)}`, "ctb")).join("") || `<p class="ma-empty">Rien de nouveau.</p>`}
+        ${shownC.map((c) => row(c.it, `${c.sub}, ${ago(c.at)}`, `ctb ${c.k || ""}`)).join("") || `<p class="ma-empty">Rien de nouveau.</p>`}
         ${contrib.length > 3 ? `<button type="button" class="ma-more" data-mt="more" data-k="contrib">${MT.contrib ? "Voir moins" : seeMore(contrib.length - 3, "autres")}</button>` : ""}</section>
     </aside>`;
 
@@ -1030,7 +1042,7 @@ window.KPlan = (DATA, { greet = false } = {}) => {
       const leg = [["d", b.done, "diffusée", "diffusées"], ["l", b.late, "pas encore diffusée", "pas encore diffusées"], ["n", b.next, "à venir", "à venir"]].filter(([, x]) => x.length);
       const nTF = b.tfs.filter((x) => !isSujet(x)).length, nS = b.tfs.length - nTF;
       return `<button type="button" class="cp-card ${st}${CP.sel === i ? " sel" : ""}" data-cp="per" data-i="${i}" aria-pressed="${CP.sel === i}">
-        <span class="cp-tag">${esc(tag)}</span><h2>${esc(P.nom)}</h2><span class="cp-dates">${esc(P.lib)}</span>${big}
+        <span class="cp-tag">${esc(tag)}</span><h2>${esc(perName(P))}</h2><span class="cp-dates">${esc(P.lib)}</span>${big}
         ${n ? `<span class="cp-bar" aria-hidden="true"><i class="d" style="width:${w(b.done)}%"></i><i class="l" style="width:${w(b.late)}%"></i><i class="n" style="width:${w(b.next)}%"></i></span>` : ""}
         ${leg.length ? `<span class="cp-leg">${leg.map(([k, x, one, many]) => `<span class="${k}">${plur(x.length, one, many)}</span>`).join("")}</span>` : ""}
         ${nTF + nS ? `<span class="cp-tfn">${esc([nTF ? plur(nTF, "temps fort", "temps forts") : "", nS ? plur(nS, "sujet", "sujets") : ""].filter(Boolean).join(" · "))}</span>` : ""}</button>`;
@@ -1051,7 +1063,7 @@ window.KPlan = (DATA, { greet = false } = {}) => {
       <div class="cp-body">
         <div class="cp-cards" style="--np:${shownP.length}">${shownP.map(card).join("")}</div>
         <section class="cp-detail" aria-label="${esc(P.nom)}">
-          <header class="cp-dh"><h2>${esc(P.nom)}</h2><span>${esc(P.lib)}</span></header>
+          <header class="cp-dh"><h2>${esc(perName(P))}</h2><span>${esc(P.lib)}</span></header>
           ${b.tfs.length ? `<div class="cp-tfs" aria-label="Temps forts et sujets">${b.tfs.map(chip).join("")}</div>` : ""}
           <div class="cp-cols">${col("d", "Diffusé", b.done, "Rien de diffusé pour l'instant.")}${col("l", "Pas encore diffusé", b.late, "Rien en attente.")}${col("n", "À venir", b.next, "Plus rien à venir.")}</div>
           ${acts.length ? `<div class="mp-cov" aria-label="Actions par message sur la période">${cov.map((c) => `<span class="${c.n ? "" : "zero"}">${esc(c.m.nom)} <b>${c.n}</b></span>`).join("")}</div>` : ""}
@@ -1143,20 +1155,33 @@ window.KPlan = (DATA, { greet = false } = {}) => {
     if (a === "ask") askSheet(id, t.dataset.key);
     if (a === "nope") { DB.answers[t.dataset.key] = "non"; quick(Store.answer(t.dataset.key, "non"), "Noté, pas besoin d'éléments."); }
     if (a === "vu") { DB.vu[ME] = [...(DB.vu[ME] || []), id]; quick(Store.markSeen(id)); }
-    if (a === "recu") { const r = DB.reqs.find((x) => x.id === t.dataset.r); if (r) { r.st = "recue"; quick(Store.setReq(r.id, "recue"), r.from === ME ? "Noté comme reçu." : `${esc(person(r.from).nom)} est prévenu.`); } }
+    if (a === "recu") { const r = DB.reqs.find((x) => x.id === t.dataset.r); if (r) { r.st = "recue"; quick(Store.setReq(r.id, "recue"), r.from === ME ? "Noté comme reçu." : `Noté. Notification envoyée à ${esc(person(r.from).nom)}.`); } }
     if (a === "block") blockSheet(id);
     if (a === "unblock") { const b = DB.blocks.find((x) => x.id === t.dataset.b); if (b) { b.leve = true; quick(Store.liftBlock(b.id), "Blocage levé."); } }
     if (a === "addlink") linkSheet(id);
     if (a === "unlink") { const on = byId(id), l = on?.links.find((x) => x.id === t.dataset.l);
-      if (l && (await K.alert({ title: `Retirer « ${l.nom} » ?`, text: "Le lien disparaît de la fiche. Le document reste sur SharePoint.", ok: "Retirer", danger: true }))) { on.links = on.links.filter((x) => x !== l); quick(Store.removeLink(l.id), "Document retiré."); } }
+      if (l && (await K.alert({ title: `Retirer « ${l.nom} » ?`, text: "Le lien disparaît de la fiche. Le document reste sur SharePoint.", ok: "Retirer", danger: true }))) {
+        on.links = on.links.filter((x) => x !== l);
+        (DB.journal ||= []).push({ id: 0, item: on.id, by: ME, kind: "document", diff: { nom: l.nom, retire: true }, at: TODAY, ts: new Date().toISOString() });
+        quick(Store.removeLink(l.id), "Document retiré.");
+      } }
     if (a === "pour") pourSheet(t.dataset.r);
     if (a === "retire") {
       const it = byId(id), tf = isTF(it), n = tf ? DB.items.filter((x) => x.tf === id && x.st !== "retire").length : 0;
       const what = isSujet(it) ? "Le sujet" : tf ? "Le temps fort" : "L'action";
       const text = `${what} reste ${tf ? "barré" : "barrée"} dans l'historique${tf ? "" : " et ne sera pas diffusée"}. ${n ? `${n > 1 ? `Ses ${n} relais restent` : "Son relais reste"} en place. ` : ""}Les services concernés sont prévenus.`;
-      if (await K.alert({ title: `Retirer « ${it.t} » ?`, text, ok: "Retirer", danger: true })) { it.st = "retire"; quick(Store.setStatus(id, "retire"), tf ? "Retiré." : "Retirée."); }
+      if (await K.alert({ title: `Retirer « ${it.t} » ?`, text, ok: "Retirer", danger: true })) {
+        // noté tout de suite dans l'historique local : « Remettre » retrouve le statut d'avant sans attendre la base
+        (DB.journal ||= []).push({ id: 0, item: id, by: ME, kind: "modif", diff: { st: [it.st, "retire"] }, at: TODAY, ts: new Date().toISOString() });
+        it.st = "retire"; quick(Store.setStatus(id, "retire"), tf ? "Retiré." : "Retirée.");
+      }
     }
-    if (a === "unretire") { const it = byId(id); it.st = "planifie"; quick(Store.setStatus(id, "planifie"), `Remis : ${ST.planifie}.`); }
+    if (a === "unretire") {
+      // le statut d'avant le retrait, d'après l'historique
+      const it = byId(id), j = (DB.journal || []).filter((x) => x.item === id && x.diff?.st?.[1] === "retire").sort((a, b) => b.ts.localeCompare(a.ts) || b.id - a.id)[0];
+      it.st = j && ST[j.diff.st[0]] && j.diff.st[0] !== "retire" ? j.diff.st[0] : "planifie";
+      quick(Store.setStatus(id, it.st), `Remis : ${ST[it.st]}.`);
+    }
     if (a === "password") passwordSheet();
     if (a === "team") K.push(renderTeam, { title: "Équipe" });
     if (a === "person") personSheet(id);
@@ -1204,24 +1229,33 @@ window.KPlan = (DATA, { greet = false } = {}) => {
   const busy = () => { const a = document.activeElement; return !!(app.querySelector(".sheet.show") || K.topView()?.querySelector("#f-t, #e-t") || (a && app.contains(a) && a.matches("input, textarea, select"))); };
   let pendingHash = null;
   // un nouveau jour (appli restée ouverte après minuit) : la date, la période en cours et les compteurs suivent
-  function newDay() {
-    const was = CUR; recalc();
-    if (S.period === was || S.period >= PERIODS.length) S.period = CUR;
-    if (CP.sel >= PERIODS.length) CP.sel = CUR;
+  // les périodes choisies sont retenues par leur numéro : une période ajoutée ou retirée ne fait pas changer d'écran
+  const perKeys = () => ({ p: PERIODS[S.period]?.n, c: PERIODS[CP.sel]?.n, cur: PERIODS[CUR]?.n, g0: G0 });
+  function newDay(k = perKeys()) {
+    recalc();
+    const at = (n) => PERIODS.findIndex((P) => P.n === n);
+    S.period = k.p === k.cur || at(k.p) < 0 ? CUR : at(k.p);
+    CP.sel = at(k.c) < 0 ? CUR : at(k.c);
+    if (k.g0 !== G0) S.gx = null; // la grille ne commence plus la même semaine
+  }
+  // réunion et copil ouverts : redessinés en gardant le défilement
+  function redrawOverlays() {
+    if (!meeting.hidden) { const sc = meeting.querySelector(".mt-main")?.scrollTop || 0; renderMeeting(); meeting.querySelector(".mt-main").scrollTop = sc; }
+    if (!copil.hidden) { const sc = copil.querySelector(".cp-body")?.scrollTop || 0; renderCopil(); copil.querySelector(".cp-body").scrollTop = sc; }
   }
   async function sync() {
     let fresh; try { fresh = await Store.load(); } catch (e) { return; }
+    const k = perKeys();
     Object.assign(DB, fresh.db);
     [[PEOPLE, fresh.PEOPLE], [PARTNERS, fresh.PARTNERS], [SERVICES, fresh.SERVICES], [PERIODS, fresh.PERIODS], [MESSAGES, fresh.MESSAGES]].forEach(([a, b]) => a.splice(0, a.length, ...b));
     CHEF.qui = fresh.CHEF.qui;
-    newDay();
+    newDay(k);
     if (pendingHash) { const h = pendingHash; pendingHash = null; route(h, true); }
-    if (!meeting.hidden) { const sc = meeting.querySelector(".mt-main")?.scrollTop || 0; renderMeeting(); meeting.querySelector(".mt-main").scrollTop = sc; }
-    if (!copil.hidden) { const sc = copil.querySelector(".cp-body")?.scrollTop || 0; renderCopil(); copil.querySelector(".cp-body").scrollTop = sc; }
+    redrawOverlays();
     if (busy()) syncBadge(); else K.refresh();
   }
   Store.watch(sync);
-  setInterval(() => { if (iso(new Date()) !== TODAY) { newDay(); if (!busy()) K.refresh(); } }, 60e3);
+  setInterval(() => { if (iso(new Date()) !== TODAY) { newDay(); redrawOverlays(); if (!busy()) K.refresh(); } }, 60e3);
 
   // un lien de notification : #item=… ouvre la fiche, #afaire l'onglet À faire
   // une fiche toute neuve n'est peut-être pas encore chargée : on recharge une fois, puis on l'ouvre

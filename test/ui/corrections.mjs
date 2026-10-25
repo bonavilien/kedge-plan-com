@@ -12,13 +12,14 @@ let k = 0;
 const it = (o) => ({ id: `50000000-0000-4000-8000-${String(++k).padStart(12, "0")}`, kind: "action", flou: "", per: [], svc: "rp", cc: [], m: ["1"], st: "planifie", tf: null, partner: null, lieu: "", note: "", author: U(2), at: "2026-08-01T10:00:00.000Z", ...o });
 const rq = (o) => ({ id: `51000000-0000-4000-8000-${String(++k).padStart(12, "0")}`, quoi: "", st: "ouverte", at: "2026-10-20T10:00:00.000Z", ...o });
 
-async function open(now, { vp = { width: 390, height: 844 }, items = [], reqs = [], who = "julien" } = {}) {
+async function open(now, { vp = { width: 390, height: 844 }, items = [], reqs = [], who = "julien", periods = null, patch = null } = {}) {
   const ctx = await b.newContext({ viewport: vp, deviceScaleFactor: 1, timezoneId: "Europe/Paris", locale: "fr-FR" });
   const p = await ctx.newPage();
   p.on("pageerror", (e) => errs.push(e.message));
   await p.clock.install({ time: new Date(now) });
   await p.goto(URL0); await p.evaluate(() => localStorage.clear()); await p.goto(URL0); await p.waitForSelector("#login");
-  await p.evaluate(({ items, reqs }) => { const f = window.__fake; f.db.items.push(...items); f.db.reqs.push(...reqs); f.save(); }, { items, reqs });
+  await p.evaluate(({ items, reqs, periods, patch }) => { const f = window.__fake; f.db.items.push(...items); f.db.reqs.push(...reqs);
+    if (periods) f.db.periods = periods; if (patch) Object.assign(f.db.profiles.find((x) => x.nom === patch.nom), patch); f.save(); }, { items, reqs, periods, patch });
   await p.fill("#lg-mail", `${who}@kedgebs.com`); await p.fill("#lg-pw", "motdepasse"); await p.click("#login button");
   await p.waitForFunction(() => document.getElementById("brand").hidden); await p.waitForTimeout(300);
   return p;
@@ -161,6 +162,25 @@ const openItem = async (p, id) => { await p.evaluate((id) => { location.hash = "
   await close(p);
 }
 
+// ---------- entre deux périodes : on reste sur celle qui vient de finir, ce qui arrive se voit ----------
+{
+  const per = [
+    { n: 1, nom: "Installer", du: "2026-09-01", au: "2026-10-31", lib: "Sept. – oct. 2026" },
+    { n: 2, nom: "Considérer", du: "2026-11-01", au: "2026-12-18", lib: "Nov. – mi-déc. 2026" },
+    { n: 3, nom: "Préférer", du: "2027-01-04", au: "2027-03-31", lib: "Janv. – mars 2027" },
+  ];
+  const p = await open("2026-12-22T10:00:00+01:00", { periods: per, items: [it({ t: "Vœux vidéo", date: "2026-12-30", svc: "video" })] });
+  ok(/Considérer/.test(await p.textContent("#v-periode .ph-title")) && /Vœux vidéo/.test(await p.textContent("#v-periode")), "dans un trou : Considérer, avec l'action du 30 décembre");
+  await close(p);
+}
+// ---------- compte média sans service : il saisit des partenariats ----------
+{
+  const p = await open("2026-10-25T10:00:00+01:00", { who: "nouveau", patch: { nom: "Nouveau", media: true } });
+  await tab(p, "ajouter");
+  const kinds = await p.$$eval("#f-kind button", (bs) => bs.map((x) => x.value));
+  ok(kinds.length === 1 && kinds[0] === "partner", "média sans service : Ajouter propose le partenariat seulement", kinds.join(","));
+  await close(p);
+}
 ok(!errs.length, "pas d'erreur JS", errs.join(" | "));
 await b.close();
 console.log(fails ? `${fails} échec(s)` : "Corrections : tout est bon");

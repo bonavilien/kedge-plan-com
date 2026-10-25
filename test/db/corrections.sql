@@ -185,4 +185,51 @@ update public.items set date = '2027-01-25' where id = '63000000-0000-0000-0000-
 select pg_temp.remind_on('2027-01-20');
 select pg_temp.ok((select count(*) = 1 from public.outbox), '« Pas besoin » ne masque pas les jalons d''une nouvelle date');
 
+-- ===================== Retest (2e passage) =====================
+-- un compte sans service ne relance pas
+select pg_temp.as_user(:'N');
+select pg_temp.refused($$select public.renotify('60000000-0000-0000-0000-000000000002', 'spam')$$, 'un compte sans service ne relance pas');
+select pg_temp.admin();
+-- double appui sans destinataire : une seule ligne d'historique
+insert into public.items (id, kind, t, date, svc, m, author) values ('64000000-0000-0000-0000-000000000001', 'action', 'Seule', current_date + 60, 'video', '{1}', :'J');
+update public.profiles set notif_all = false where id = :'J';
+select pg_temp.as_user(:'J');
+select public.renotify('64000000-0000-0000-0000-000000000001', 'titre : a → b');
+select public.renotify('64000000-0000-0000-0000-000000000001', 'titre : a → b');
+select pg_temp.admin();
+update public.profiles set notif_all = true where id = :'J';
+select pg_temp.ok((select count(*) = 1 from public.journal where item = '64000000-0000-0000-0000-000000000001' and kind = 'prevenu'), 'double appui sans destinataire : une ligne d''historique');
+-- un chef confie l'action à un autre service : ce service est prévenu
+truncate public.outbox;
+select pg_temp.as_user(:'E');
+update public.items set svc = 'rs' where id = '64000000-0000-0000-0000-000000000001';
+select pg_temp.admin();
+select pg_temp.ok(pg_temp.dest() = '{Stephane}' and (select title from public.outbox) = 'Confié à ton service', 'nouveau service porteur prévenu');
+-- un temps fort du chef de projet prévient les autres chefs
+truncate public.outbox;
+select pg_temp.as_user(:'E');
+insert into public.items (id, kind, t, date, svc) values ('64000000-0000-0000-0000-000000000002', 'tf', 'Forum', current_date + 40, 'chef');
+select pg_temp.admin();
+select pg_temp.ok(pg_temp.dest() = '{Julien}', 'temps fort du chef de projet : les autres chefs sont prévenus');
+-- partenariat : retrait et blocage vont aux comptes média, pas aux chefs non média
+truncate public.outbox;
+select pg_temp.as_user(:'A');
+insert into public.blocks (item, why) values ('60000000-0000-0000-0000-000000000001', 'Visuels manquants');
+select pg_temp.admin();
+select pg_temp.ok(pg_temp.dest() @> '{Julien}', 'blocage d''un partenariat : le compte média est prévenu');
+truncate public.outbox;
+update public.profiles set notif_all = false where id = :'J';
+select pg_temp.as_user(:'J');
+update public.items set st = 'retire' where id = '60000000-0000-0000-0000-000000000001';
+select pg_temp.admin();
+update public.profiles set notif_all = true where id = :'J';
+select pg_temp.ok(not (pg_temp.dest() @> '{Estelle}'), 'partenariat retiré : pas de notification à un chef non média');
+-- renommer un service ne prévient personne
+truncate public.outbox;
+select pg_temp.as_user(:'J');
+update public.services set k = 'social' where k = 'rs';
+update public.services set k = 'rs' where k = 'social';
+select pg_temp.admin();
+select pg_temp.ok(pg_temp.dest() = '{}', 'service renommé : aucune notification');
+
 select 'Corrections : tout est bon';
