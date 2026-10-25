@@ -836,6 +836,16 @@ window.KPlan = (DATA, { greet = false } = {}) => {
   function renderAllNew(el, { back }) {
     el.innerHTML = K.navbar({ title: "Nouveautés", back }) + `<div class="scroll"><h1 class="large-title">Nouveautés</h1><div class="group">${newItems().map(newRow).join("")}</div></div>`;
   }
+  // le bouton Profil ouvre le profil, et le referme s'il est déjà ouvert (avec ce qui a été ouvert par-dessus, comme Équipe)
+  let profEl = null;
+  function toggleProfil() {
+    if (profEl?.isConnected && !profEl.classList.contains("leave")) {
+      for (let n = 0; n < 20 && K.topView() !== profEl; n++) K.pop();
+      if (K.topView() === profEl) K.pop();
+      profEl = null; return;
+    }
+    profEl = K.push(renderProfil, { title: "Profil" });
+  }
   function renderProfil(el, { back }) {
     const p = me(), ps = Push.state();
     el.innerHTML = K.navbar({ title: "Profil", back }) + `<div class="scroll">
@@ -1136,7 +1146,7 @@ window.KPlan = (DATA, { greet = false } = {}) => {
     if (a === "clearf") { S.msgF = null; K.refresh(); }
     if (a === "pastp") { S.pastP = !S.pastP; K.refresh(); }
     if (a === "filter") filterSheet();
-    if (a === "profil") K.push(renderProfil, { title: "Profil" });
+    if (a === "profil") toggleProfil();
     if (a === "partners") K.showTab("media");
     if (a === "goper") document.getElementById(`per-${t.dataset.k}-${t.dataset.i}`)?.scrollIntoView({ behavior: K.reduceMotion() ? "auto" : "smooth", block: "start" });
     if (a === "allnew") K.push(renderAllNew, { title: "Nouveautés" });
