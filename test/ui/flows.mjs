@@ -106,7 +106,7 @@ await tab(p, "afaire"); await p.screenshot({ path: `${OUT}/f4-aurelie-afaire.png
 ok(await p.isVisible("text=Besoin d'éléments ?"), "Aurélie : rappel J-15 sur son action");
 await p.click('[data-act="nope"]'); await p.waitForTimeout(400);
 db = await fake(p);
-ok(db.answers.some((a) => a.key === `${cp.id}-15` && a.val === "non" && a.user_id.endsWith("3")), "réponse « pas besoin » enregistrée pour elle");
+ok(db.answers.some((a) => a.key === `${cp.id}-${cp.date}-15` && a.val === "non" && a.user_id.endsWith("3")), "réponse « pas besoin » enregistrée pour elle");
 await p.evaluate((id) => { location.hash = ""; }, null);
 await p.goto(URL0 + "#item=" + cp.id); await p.waitForTimeout(800);
 ok(await topv(p).locator("text=CP rentrée").first().isVisible(), "lien #item= ouvre la fiche");

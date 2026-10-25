@@ -15,4 +15,6 @@ grep -v "^create extension" supabase/migrations/0002_planification.sql | $D -f -
 $D -f test/db/planif.sql
 $D -f supabase/migrations/0003_historique.sql
 $D -f test/db/historique.sql
+$D -f supabase/migrations/0004_corrections.sql
+$D -f test/db/corrections.sql
 echo "Base : tout est bon"

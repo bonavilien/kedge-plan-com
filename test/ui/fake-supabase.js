@@ -49,7 +49,9 @@
       return p.chef || (!!p.svc && row.svc === p.svc);
     }
     if (["periods", "messages", "services", "meta"].includes(t)) return p.chef;
-    if (t === "partners") return p.media || p.chef;
+    if (t === "partners") return p.media;
+    if (t === "links" && op === "insert") return p.chef || p.media || !!p.svc;
+    if (t === "reqs" && op === "insert" && db.reqs.some((q) => q.item === row.item && q.dest === row.dest && q.type === row.type && q.st === "ouverte")) return false;
     return true;
   }
   // les déclencheurs de la migration 0003 : l'historique se remplit tout seul
@@ -132,10 +134,16 @@
     },
   };
   // prévenir à nouveau : mêmes destinataires et mêmes droits que la fonction de la base
-  async function rpc(fn, { p_item, p_quoi }) {
+  async function rpc(fn, { p_item, p_quoi, p_endpoint, p_p256dh, p_auth }) {
     await new Promise((r) => setTimeout(r, 40));
     window.__fake.calls.push({ t: fn, op: "rpc" });
     if (window.__fake.failNext) { const e = window.__fake.failNext; window.__fake.failNext = null; return { data: null, error: e === true ? denied : e }; }
+    // un abonnement de téléphone passe à la personne connectée
+    if (fn === "save_push") {
+      db.push_subs = db.push_subs.filter((s) => s.endpoint !== p_endpoint);
+      db.push_subs.push({ user_id: db.session.user.id, endpoint: p_endpoint, p256dh: p_p256dh, auth: p_auth }); save();
+      return { data: null, error: null };
+    }
     const it = db.items.find((x) => x.id === p_item);
     if (!it || !allowed("items", "update", it)) return { data: null, error: denied };
     const svcs = new Set([...it.cc, it.svc, ...db.items.filter((a) => a.tf === it.id && a.st !== "retire").map((a) => a.svc)]);

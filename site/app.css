@@ -595,3 +595,19 @@ button.glab b { text-decoration: underline; text-decoration-color: var(--yellow)
   .tbl .td-sub { display: block; }
   .tbl-media .td-sub { display: flex; }
 }
+
+/* deadline d'une demande d'éléments : toujours visible, jaune à trois jours, rouge une fois passée */
+.dl { display: inline-flex; align-items: center; gap: 6px; align-self: flex-start; margin-top: 6px; padding: 4px 10px; border: 0; border-radius: 8px; background: var(--fill); color: var(--text); font: inherit; font-size: 13px; font-weight: 600; line-height: 1.3; }
+.dl svg { width: 15px; height: 15px; flex: none; }
+.dl.soon { background: var(--yellow); color: var(--anth); }
+.dl.late { background: var(--red); color: var(--bg); }
+button.dl { cursor: pointer; }
+button.dl:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.due .dl { margin-top: 0; }
+.rq .row-main { display: flex; flex-direction: column; align-items: flex-start; }
+.rq-open { display: flex; flex-direction: column; border: 0; background: none; padding: 0; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.rq-open span { color: var(--text2); font-size: 15px; }
+/* un document : l'ouvrir, ou le retirer */
+.row.lk { gap: 10px; }
+.lk-open { flex: 1; min-width: 0; display: flex; flex-direction: column; border: 0; background: none; padding: 0; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.lk-x { flex: none; color: var(--text2); }

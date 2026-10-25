@@ -55,7 +55,7 @@ ok((await p.textContent(".sheet.show")).includes("Visible aussi sur le temps for
 ok(!(await p.locator(".sheet.show .deja").count()), "rien de déjà demandé pour l'instant");
 await p.click('.sheet [data-kui="ok"]'); await p.waitForTimeout(500);
 let r = await reqs();
-ok(r.length === 1 && r[0].startsWith("Visuels : Photos du campus en journée") && /De Aurélie à Louise · pour le/.test(r[0]), "la demande est sur la fiche du reportage");
+ok(r.length === 1 && r[0].startsWith("Visuels : Photos du campus en journée") && /De Aurélie à Louise/.test(r[0]) && /Deadline/.test(r[0]), "la demande est sur la fiche du reportage");
 ok((await topv().innerText()).includes("Partagées avec le temps fort « Journées portes ouvertes » et ses relais."), "la fiche dit qu'elle est partagée avec le temps fort");
 await logout();
 
@@ -74,7 +74,7 @@ r = await reqs();
 ok(r.length === 1 && r[0].startsWith("Reportage JPO\nVisuels"), "sa propre action liée montre la demande du reportage");
 await ask("Contexte", "Julien");
 const deja = await p.locator(".sheet.show .deja").innerText();
-ok(/Déjà demandé/i.test(deja) && /Visuels : Photos du campus en journée/.test(deja) && /Vidéo · pour le .* · Reportage JPO/.test(deja), "la feuille montre ce qui est déjà demandé pour le temps fort");
+ok(/Déjà demandé/i.test(deja) && /Visuels : Photos du campus en journée/.test(deja) && /Vidéo · deadline .* · Reportage JPO/.test(deja), "la feuille montre ce qui est déjà demandé pour le temps fort");
 await p.screenshot({ path: `${OUT}/d2-deja-demande.png` });
 await p.click('.sheet [data-kui="ok"]'); await p.waitForTimeout(500);
 r = await reqs();

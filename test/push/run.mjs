@@ -1,4 +1,4 @@
-// Teste la fonction push sous Deno : une fausse API Supabase et deux faux services push (un actif, un expiré),
+// Teste la fonction push sous Deno : une fausse API Supabase et trois faux services push (un actif, un expiré, un en panne),
 // puis déchiffre la notification reçue comme le ferait le téléphone.
 // Deno.serve écoute sur le port 8000.
 // node test/push/run.mjs <dossier contenant node_modules avec deno, web-push, http_ece>
@@ -20,22 +20,26 @@ const b64u = (b) => Buffer.from(b).toString("base64url");
 const vapid = webpush.generateVAPIDKeys();
 const phone = crypto.createECDH("prime256v1"); phone.generateKeys();
 const auth = crypto.randomBytes(16);
-const PORT = 8791, PUSH = 8793, A = "aaaaaaaa-0000-0000-0000-000000000001", B = "bbbbbbbb-0000-0000-0000-000000000002";
+const PORT = 8791, PUSH = 8793, A = "aaaaaaaa-0000-0000-0000-000000000001", B = "bbbbbbbb-0000-0000-0000-000000000002", C = "cccccccc-0000-0000-0000-000000000003";
 const outbox = [
   { id: 1, user_id: A, title: "J-15 : CP de rentrée", body: "As-tu besoin d'éléments ?", url: "#afaire", sent_at: null, error: null },
   { id: 2, user_id: B, title: "Nouvelle action", body: "Julien : Reel alumni", url: "#item=x", sent_at: null, error: null },
-];
+  { id: 3, user_id: C, title: "Demande d'éléments", body: "x".repeat(5000), url: "#item=y", sent_at: null, error: null },
+].map((r) => ({ ...r, tries: 0 }));
 let subs = [
   { id: 10, user_id: A, endpoint: `https://localhost:${PUSH}/push/ok`, p256dh: b64u(phone.getPublicKey()), auth: b64u(auth) },
   { id: 11, user_id: A, endpoint: `https://localhost:${PUSH}/push/gone`, p256dh: b64u(phone.getPublicKey()), auth: b64u(auth) },
+  { id: 12, user_id: C, endpoint: `https://localhost:${PUSH}/push/down`, p256dh: b64u(phone.getPublicKey()), auth: b64u(auth) },
 ];
+let down = true;
 const received = [];
 // les services push parlent https : un certificat jetable pour le faux service
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "kplan-push-"));
 execFileSync("openssl", ["req", "-x509", "-newkey", "rsa:2048", "-nodes", "-keyout", `${tmp}/k.pem`, "-out", `${tmp}/c.pem`, "-days", "1", "-subj", "/CN=localhost", "-addext", "subjectAltName=DNS:localhost"], { stdio: "ignore" });
 const pushServer = https.createServer({ key: fs.readFileSync(`${tmp}/k.pem`), cert: fs.readFileSync(`${tmp}/c.pem`) }, (req, res) => {
   const body = []; req.on("data", (c) => body.push(c)); req.on("end", () => {
-    if (req.url === "/push/ok") { received.push({ headers: req.headers, body: Buffer.concat(body) }); res.writeHead(201); return res.end(); }
+    if (req.url === "/push/ok" || (req.url === "/push/down" && !down)) { received.push({ url: req.url, headers: req.headers, body: Buffer.concat(body) }); res.writeHead(201); return res.end(); }
+    if (req.url === "/push/down") { res.writeHead(503); return res.end(); }
     res.writeHead(410); res.end();
   });
 }).listen(PUSH);
@@ -51,7 +55,7 @@ const server = http.createServer((req, res) => {
       const patch = JSON.parse(body.toString()), id = eqOf(u.searchParams, "id");
       const rows = id ? outbox.filter((r) => r.id === +id) : outbox.filter((r) => r.sent_at === null);
       rows.forEach((r) => Object.assign(r, patch));
-      return json(rows.map(({ id, user_id, title, body, url }) => ({ id, user_id, title, body, url })));
+      return json(rows.map(({ id, user_id, title, body, url, tries }) => ({ id, user_id, title, body, url, tries })));
     }
     if (u.pathname === "/rest/v1/push_subs" && req.method === "GET") {
       const ids = (u.searchParams.get("user_id") || "").replace(/^in\.\(|\)$/g, "").split(",").map((s) => s.replace(/"/g, ""));
@@ -76,17 +80,24 @@ ok(r0.status === 401, "mauvais secret refusé");
 const r1 = await fetch("http://localhost:8000/", { method: "POST", headers: { "x-cron-secret": "secret-de-test" } });
 const out = await r1.json();
 console.log("     réponse :", JSON.stringify(out));
-ok(out.rows === 2 && out.sent === 1, "deux messages pris, un envoyé");
-ok(outbox.every((r) => r.sent_at), "messages marqués envoyés");
+ok(out.rows === 3 && out.sent === 1, "trois messages pris, un envoyé");
+ok(outbox[0].sent_at && outbox[1].sent_at, "messages traités marqués envoyés");
 console.log("     erreurs :", JSON.stringify(outbox.map((r) => r.error)));
 ok(outbox[1].error === "aucun appareil abonné", "sans appareil : noté");
-ok(outbox[0].error === "abonnement expiré" && !subs.some((s) => s.id === 11), "abonnement expiré supprimé");
+ok(outbox[0].error === null && !subs.some((s) => s.id === 11), "reçu sur un appareil : pas d'erreur ; abonnement expiré supprimé");
+ok(outbox[2].sent_at === null && outbox[2].tries === 1 && /503/.test(outbox[2].error), "service push en panne (503) : le message attend le prochain passage");
 ok(received.length === 1 && /^vapid t=/.test(received[0].headers.authorization || ""), "envoi signé VAPID");
 const clear = ece.decrypt(received[0].body, { version: "aes128gcm", privateKey: phone, authSecret: auth });
 const msg = JSON.parse(clear.toString());
 ok(msg.title === "J-15 : CP de rentrée" && msg.url === "#afaire", "le téléphone déchiffre : " + clear.toString());
+down = false;
 const r2 = await fetch("http://localhost:8000/", { method: "POST", headers: { "x-cron-secret": "secret-de-test" } });
-ok((await r2.json()).rows === 0, "deuxième appel : rien en attente");
+ok((await r2.json()).sent === 1 && outbox[2].sent_at && outbox[2].error === null, "panne finie : le message part au passage suivant");
+const late = received.find((x) => x.url === "/push/down");
+const big = JSON.parse(ece.decrypt(late.body, { version: "aes128gcm", privateKey: phone, authSecret: auth }).toString());
+ok(big.body.length <= 400 && late.body.length < 4096, "texte trop long raccourci : la notification tient dans 4 Ko");
+const r3 = await fetch("http://localhost:8000/", { method: "POST", headers: { "x-cron-secret": "secret-de-test" } });
+ok((await r3.json()).rows === 0, "troisième appel : rien en attente");
 deno.kill(); server.close(); pushServer.close();
 console.log(fails ? `${fails} échec(s)` : "tout est bon");
 process.exit(fails ? 1 : 0);

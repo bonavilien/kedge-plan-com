@@ -74,7 +74,8 @@ window.KStore = (() => {
     m: it.m.map(String), st: it.st, tf: it.tf || null, partner: it.partner || null, lieu: it.lieu, note: it.note,
   });
   const addItem = (it) => run(sb.from("items").insert({ id: it.id, kind: it.kind, ...itemRow(it) }));
-  const updateItem = (id, it) => run(sb.from("items").update(itemRow(it)).eq("id", id));
+  // keys : seuls ces champs partent (une modification faite entre-temps par quelqu'un d'autre n'est pas écrasée)
+  const updateItem = (id, it, keys) => { const row = itemRow(it); return run(sb.from("items").update(keys ? Object.fromEntries(keys.map((k) => [k, row[k]])) : row).eq("id", id)); };
   const setStatus = (id, st) => run(sb.from("items").update({ st }).eq("id", id));
   async function addLink(item, nom, url) {
     const l = await run(sb.from("links").insert({ item, nom, url }).select().single());
@@ -82,6 +83,8 @@ window.KStore = (() => {
   }
   const addReq = (r) => run(sb.from("reqs").insert({ id: r.id, item: r.item, dest: r.to, type: r.type, quoi: r.quoi, pour: r.pour }));
   const setReq = (id, st) => run(sb.from("reqs").update({ st }).eq("id", id));
+  const setReqPour = (id, pour) => run(sb.from("reqs").update({ pour }).eq("id", id));
+  const removeLink = (id) => run(sb.from("links").delete().eq("id", id));
   const addBlock = (b) => run(sb.from("blocks").insert({ id: b.id, item: b.item, why: b.why }));
   const liftBlock = (id) => run(sb.from("blocks").update({ leve: true }).eq("id", id));
   const answer = (key, val) => run(sb.from("answers").upsert({ key, val }, { onConflict: "user_id,key" }));
@@ -93,7 +96,8 @@ window.KStore = (() => {
   const addPartner = (nom) => run(sb.from("partners").insert({ nom }).select().single()).then((x) => ({ k: x.k, nom: x.nom }));
 
   // ---------- notifications : l'abonnement push de ce téléphone ----------
-  const savePush = (sub) => run(sb.from("push_subs").upsert({ endpoint: sub.endpoint, p256dh: sub.keys.p256dh, auth: sub.keys.auth }, { onConflict: "endpoint" }));
+  // par la base : un téléphone déjà abonné pour quelqu'un d'autre passe à la personne connectée
+  const savePush = (sub) => run(sb.rpc("save_push", { p_endpoint: sub.endpoint, p_p256dh: sub.keys.p256dh, p_auth: sub.keys.auth }));
   const removePush = (endpoint) => run(sb.from("push_subs").delete().eq("endpoint", endpoint));
 
   // ---------- temps réel : un changement fait par quelqu'un d'autre recharge les données ----------
@@ -105,5 +109,5 @@ window.KStore = (() => {
     document.addEventListener("visibilitychange", () => { if (!document.hidden) kick(); });
   }
 
-  return { ready, session, signIn, signOut, setPassword, load, addItem, updateItem, setStatus, addLink, addReq, setReq, addBlock, liftBlock, answer, markSeen, setMeta, setProfile, addPartner, renotify, savePush, removePush, watch };
+  return { ready, session, signIn, signOut, setPassword, load, addItem, updateItem, setStatus, addLink, removeLink, addReq, setReq, setReqPour, addBlock, liftBlock, answer, markSeen, setMeta, setProfile, addPartner, renotify, savePush, removePush, watch };
 })();
