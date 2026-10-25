@@ -92,11 +92,11 @@ ok(card.includes("Reportage JPO") && card.includes("Pour le temps fort « Journ�
 await openJPO();
 r = await reqs();
 ok(r.length === 2, "le temps fort regroupe les deux demandes de ses relais");
-const send = topv().locator('.rq [data-act="recu"]');
+const send = topv().locator('.rq [data-act="repondre"]');
 ok((await send.count()) === 1, "Louise peut répondre à la demande qui la concerne, pas aux autres");
 await p.screenshot({ path: `${OUT}/d3-reponse.png` });
-await send.click(); await p.waitForTimeout(500);
-ok((await fake()).reqs.find((q) => q.type === "Visuels").st === "recue", "« C'est envoyé » depuis le temps fort");
+await send.click(); await p.waitForTimeout(300); await p.click('.sheet [data-kui="ok"]'); await p.waitForTimeout(500);
+ok((await fake()).reqs.find((q) => q.type === "Visuels").st === "recue", "« Répondre » depuis le temps fort");
 ok((await reqs()).some((t) => t.includes("Visuels") && t.includes("Reçu")), "la demande passe en « Reçu » pour tout le monde");
 
 ok(!errs.length, "aucune erreur dans la page" + (errs.length ? " : " + errs.join(" | ") : ""));

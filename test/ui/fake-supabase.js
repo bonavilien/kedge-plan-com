@@ -97,7 +97,12 @@
     if (q.op === "update") {
       // comme la vraie base : une ligne qu'on n'a pas le droit de modifier est ignorée, sans erreur
       const rows = tab.filter(match).filter((r) => allowed(q.t, "update", { ...r, ...q.row }));
-      rows.forEach((r) => { if (q.t === "items") journalUpdate(r, q.row); Object.assign(r, q.row);
+      // migration 0006 : retirer revient à la personne qui a demandé (ou à un chef) ; la réponse est signée et notée dans l'historique
+      if (q.t === "reqs" && q.row.st === "annulee" && rows.some((r) => r.st === "ouverte" && !me().chef && r.asker !== me().id)) return { data: null, error: denied };
+      rows.forEach((r) => { if (q.t === "items") journalUpdate(r, q.row);
+        if (q.t === "reqs" && r.st === "ouverte" && q.row.st === "recue") { Object.assign(r, { repondu_par: me().id, repondu_at: new Date().toISOString() }); jot(r.item, "reponse", { type: r.type, dest: r.dest, reponse: q.row.reponse || "" }); }
+        if (q.t === "reqs" && r.st === "ouverte" && q.row.st === "annulee") jot(r.item, "retrait", { type: r.type, dest: r.dest });
+        Object.assign(r, q.row);
         // migration 0005 : un visiteur perd service et droits
         if (q.t === "profiles" && r.visiteur) Object.assign(r, { svc: null, chef: false, media: false, notif_all: false }); }); save();
       return { data: rows.map((r) => ({ ...r })), error: null };

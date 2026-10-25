@@ -42,7 +42,7 @@ window.KStore = (() => {
     const SERVICES = svc.map((s) => ({ k: s.k, nom: s.nom, court: s.court, qui: names((p) => !p.chef && p.svc === s.k) || s.nom }));
     const CHEF = { k: "chef", nom: "Chef de projet", court: "Chef de projet", qui: names((p) => p.chef) || "les chefs de projet" };
     const byItem = new Map();
-    links.forEach((l) => byItem.set(l.item, [...(byItem.get(l.item) || []), { id: l.id, nom: l.nom, url: l.url, by: l.author || "" }]));
+    links.forEach((l) => byItem.set(l.item, [...(byItem.get(l.item) || []), { id: l.id, nom: l.nom, url: l.url, by: l.author || "", req: l.req || "" }]));
     const perIndex = (n) => PERIODS.findIndex((p) => p.n === n);
     const m = Object.fromEntries(meta.map((x) => [x.k, x.v]));
     const lastTs = m.last_meeting || new Date().toISOString();
@@ -57,7 +57,7 @@ window.KStore = (() => {
           svc: r.svc, cc: r.cc, m: r.m.map((x) => (x === "INC" ? "INC" : +x)), st: r.st, tf: r.tf || "", partner: r.partner || "",
           lieu: r.lieu, note: r.note, by: r.author || "", at: day(r.at), ts: r.at, links: byItem.get(r.id) || [],
         })),
-        reqs: reqs.map((r) => ({ id: r.id, item: r.item, from: r.asker || "", to: r.dest, type: r.type, quoi: r.quoi, pour: r.pour, st: r.st, at: day(r.at), ts: r.at })),
+        reqs: reqs.map((r) => ({ id: r.id, item: r.item, from: r.asker || "", to: r.dest, type: r.type, quoi: r.quoi, pour: r.pour, st: r.st, at: day(r.at), ts: r.at, reponse: r.reponse || "", by: r.repondu_par || "", rts: r.repondu_at || "" })),
         blocks: blocks.map((b) => ({ id: b.id, item: b.item, by: b.author || "", why: b.why, leve: b.leve, at: day(b.at), ts: b.at })),
         answers: Object.fromEntries(answers.map((a) => [a.key, a.val])),
         vu: { [user.id]: seen.map((s) => s.item) },
@@ -79,12 +79,14 @@ window.KStore = (() => {
   const changed = async (q) => { const rows = await run(q.select("id")); if (!rows?.length) throw Object.assign(new Error("la fiche a changé entre-temps, tu ne peux plus la modifier"), { code: "0ROWS" }); };
   const updateItem = (id, it, keys) => { const row = itemRow(it); return changed(sb.from("items").update(keys ? Object.fromEntries(keys.map((k) => [k, row[k]])) : row).eq("id", id)); };
   const setStatus = (id, st) => changed(sb.from("items").update({ st }).eq("id", id));
-  async function addLink(item, nom, url) {
-    const l = await run(sb.from("links").insert({ item, nom, url }).select().single());
-    return { id: l.id, nom: l.nom, url: l.url, by: l.author || "" };
+  // req : la demande d'éléments à laquelle ce document répond
+  async function addLink(item, nom, url, req) {
+    const l = await run(sb.from("links").insert({ item, nom, url, ...(req ? { req } : {}) }).select().single());
+    return { id: l.id, nom: l.nom, url: l.url, by: l.author || "", req: l.req || "" };
   }
   const addReq = (r) => run(sb.from("reqs").insert({ id: r.id, item: r.item, dest: r.to, type: r.type, quoi: r.quoi, pour: r.pour }));
   const setReq = (id, st) => run(sb.from("reqs").update({ st }).eq("id", id));
+  const answerReq = (id, reponse) => run(sb.from("reqs").update({ st: "recue", reponse }).eq("id", id));
   const setReqPour = (id, pour) => run(sb.from("reqs").update({ pour }).eq("id", id));
   const removeLink = (id) => run(sb.from("links").delete().eq("id", id));
   const addBlock = (b) => run(sb.from("blocks").insert({ id: b.id, item: b.item, why: b.why }));
@@ -111,5 +113,5 @@ window.KStore = (() => {
     document.addEventListener("visibilitychange", () => { if (!document.hidden) kick(); });
   }
 
-  return { ready, session, signIn, signOut, setPassword, load, addItem, updateItem, setStatus, addLink, removeLink, addReq, setReq, setReqPour, addBlock, liftBlock, answer, markSeen, setMeta, setProfile, addPartner, renotify, savePush, removePush, watch };
+  return { ready, session, signIn, signOut, setPassword, load, addItem, updateItem, setStatus, addLink, removeLink, addReq, setReq, answerReq, setReqPour, addBlock, liftBlock, answer, markSeen, setMeta, setProfile, addPartner, renotify, savePush, removePush, watch };
 })();

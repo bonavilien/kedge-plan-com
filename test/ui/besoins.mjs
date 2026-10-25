@@ -151,7 +151,7 @@ bug(!/le programme/.test(demE), "chef avec service RP : la demande de Julien (ch
 const sentE = await p.locator('.todo-sec:has(h2:has-text("Tes demandes"))').innerText().catch(() => "");
 bug(/Programme/.test(sentE), "Estelle voit la demande de Julien dans « Tes demandes en attente » (demandes de tous les chefs mélangées)");
 await open(jpo.id);
-ok(await topv().locator('.rq:has-text("Contact") [data-act="recu"]').count() === 1, "« C'est envoyé » sur la demande RP depuis le temps fort (ancien défaut corrigé)");
+ok(await topv().locator('.rq:has-text("Contact") [data-act="repondre"]').count() === 1, "« Répondre » sur la demande RP depuis le temps fort (ancien défaut corrigé)");
 ok(await topv().locator(".rq button.dl").count() >= 3, "un chef peut changer toutes les deadlines ouvertes du temps fort");
 await logout();
 

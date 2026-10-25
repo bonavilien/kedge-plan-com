@@ -19,6 +19,7 @@ Les données sont dans Supabase (hébergé en Europe). Le dépôt ne contient au
 ## Qui peut faire quoi
 
 - Tout le monde voit tout, demande des éléments, signale un blocage, ajoute des liens SharePoint.
+- Une demande d'éléments se retire (par la personne qui l'a faite ou un chef) et reçoit une réponse : un message, et au besoin un lien rangé sur le temps fort de l'action (sinon sur la fiche).
 - Une personne d'un service publie et modifie les actions de son service.
 - Un **chef de projet** modifie tout, anime la réunion et règle l'équipe (Profil, puis Équipe).
 - Un compte **Partenariats média** saisit les partenariats payants.
@@ -52,5 +53,5 @@ Rappels J-30, J-15 et J-7 avant chaque action datée au jour près (chaque matin
 ## Tests
 
 - Base : `PSQL="psql -h localhost -U postgres" sh test/db/run.sh` (une base Postgres locale suffit). Puis, sur la base `kplan_test` qu'il laisse : `droits.sql` et `contenu.sql` (`$PSQL -d kplan_test -f test/db/droits.sql`) ; `sh test/db/besoins.sh` crée sa propre base (rappels, demandes, deadlines).
-- Interface : `node test/ui/serve.mjs` puis `node test/ui/flows.mjs <dossier des captures>` (et `historique.mjs`, `copil.mjs`, `demandes.mjs`, `corrections.mjs`, `contenu.mjs`, `droits.mjs`, `sansprofil.mjs`, `besoins.mjs`, `periodes.mjs`, `notifs.mjs`, `visiteur.mjs`, `profil.mjs`).
+- Interface : `node test/ui/serve.mjs` puis `node test/ui/flows.mjs <dossier des captures>` (et `historique.mjs`, `copil.mjs`, `demandes.mjs`, `corrections.mjs`, `contenu.mjs`, `droits.mjs`, `sansprofil.mjs`, `besoins.mjs`, `periodes.mjs`, `notifs.mjs`, `visiteur.mjs`, `profil.mjs`, `reponses.mjs`).
 - Notifications : `node test/push/run.mjs <dossier avec deno, web-push et http_ece installés>`.

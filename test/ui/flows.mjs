@@ -157,7 +157,7 @@ await p.setViewportSize({ width: 1440, height: 900 });
 await login(p, "julien");
 await tab(p, "afaire");
 ok(await p.isVisible("text=Demandes reçues"), "Julien : demande d'Aurélie reçue");
-await p.click('[data-act="recu"]'); await p.waitForTimeout(400);
+await p.click('[data-act="repondre"]'); await p.waitForTimeout(300); await p.click('.sheet [data-kui="ok"]'); await p.waitForTimeout(400);
 db = await fake(p);
 ok(db.reqs[0].st === "recue", "« C'est envoyé » enregistré");
 await tab(p, "tf"); await p.screenshot({ path: `${OUT}/f5-desk-tf.png` });

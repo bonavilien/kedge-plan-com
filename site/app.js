@@ -79,7 +79,7 @@ window.KPlan = (DATA, { greet = false } = {}) => {
   // (un relais retiré compris : une demande encore ouverte sur lui reste visible sur le temps fort)
   const famille = (it) => { const r = root(it); return isTF(r) ? [r, ...DB.items.filter((a) => a.tf === r.id)] : [it]; };
   const reqsOf = (it) => { const ids = new Set(famille(it).map((x) => x.id));
-    return DB.reqs.filter((q) => ids.has(q.item)).sort((a, b) => (a.st === "recue") - (b.st === "recue") || a.pour.localeCompare(b.pour)); };
+    return DB.reqs.filter((q) => ids.has(q.item) && q.st !== "annulee").sort((a, b) => (a.st === "recue") - (b.st === "recue") || a.pour.localeCompare(b.pour)); };
   const canEdit = (it) => (isPay(it) ? isMedia() : me().chef || (!!me().svc && it.svc === me().svc));
   // lever un blocage : les chefs, l'auteur du blocage, ceux qui modifient la fiche (mêmes règles que la base)
   const canLift = (b, it) => me().chef || b.by === ME || canEdit(it);
@@ -239,7 +239,7 @@ window.KPlan = (DATA, { greet = false } = {}) => {
     };
     const demande = (r) => { const it = byId(r.item), tf = root(it);
       return card(it, { body: `<b>${esc(person(r.from).nom)}</b> demande ${esc(ASK[r.type] || "des éléments")}${r.quoi && r.quoi !== r.type ? ` : « ${esc(r.quoi)} »` : ""}.${tf !== it ? `<span class="todo-tf">Pour le ${isSujet(tf) ? "sujet" : "temps fort"} « ${esc(tf.t)} »</span>` : ""}`,
-        left: dlTag(r), acts: `<button type="button" class="btn small" data-act="recu" data-r="${r.id}">C'est envoyé</button>` }); };
+        left: dlTag(r), acts: `<button type="button" class="btn small" data-act="repondre" data-r="${r.id}">Répondre</button>` }); };
     const rappel = ({ it, n, key }) => card(it, { left: `<span class="jal">J-${n}</span>`,
       acts: `<button type="button" class="btn small" data-act="ask" data-id="${it.id}" data-key="${key}">Oui, je demande</button><button type="button" class="btn small outline" data-act="nope" data-key="${key}">Pas besoin</button>` });
     const cite = (it) => card(it, { left: `Ajouté par ${esc(person(it.by).nom)}, ${ago(it.at)}`, acts: `<button type="button" class="btn small tonal" data-act="vu" data-id="${it.id}">Vu</button>` });
@@ -247,7 +247,7 @@ window.KPlan = (DATA, { greet = false } = {}) => {
       return card(it, { body: `<span class="blk-l">Bloqué</span>${esc(b.why)}`, left: `${esc(person(b.by).nom)}, ${ago(b.at)}`,
         acts: canLift(b, it) ? `<button type="button" class="btn small tonal" data-act="unblock" data-b="${b.id}">Lever</button>` : "" }); };
     const sent = T.envoyees.length ? `<section class="todo-sec"><h2 class="sec-h">Tes demandes en attente · ${T.envoyees.length}</h2><div class="group">${T.envoyees.map((r) => { const it = byId(r.item);
-      return `<div class="row wrap rq"><span class="row-main"><button type="button" class="rq-open" data-open="${it.id}"><b>${esc(it.t)}</b><span>${esc(r.type)} · demandé à ${esc(svcOf(r.to).qui)}</span></button>${dlTag(r)}</span></div>`; }).join("")}</div></section>` : "";
+      return `<div class="row wrap rq"><span class="row-main"><button type="button" class="rq-open" data-open="${it.id}"><b>${esc(it.t)}</b><span>${esc(r.type)} · demandé à ${esc(svcOf(r.to).qui)}</span></button>${dlTag(r)}${canPour(r) ? `<button type="button" class="txt-btn rq-x" data-act="unreq" data-r="${r.id}">Retirer la demande</button>` : ""}</span></div>`; }).join("")}</div></section>` : "";
 
     el.innerHTML = K.navbar({ title: "À faire", actions: profileBtn() }) + `<div class="scroll page-wide">
       <h1 class="large-title">À faire</h1>
@@ -667,6 +667,8 @@ window.KPlan = (DATA, { greet = false } = {}) => {
       if (j.kind === "document") return { j, main: d.retire ? "Document retiré" : "Document ajouté", det: d.nom ? det("", quote(d.nom)) : "" };
       // le détail est sur la modification juste en dessous
       if (j.kind === "deadline") return { j, main: `Deadline changée : ${d.type || "demande"} à ${svcOf(d.dest).court}`, det: d.pour ? det("", `${fmtDay(d.pour[0])} → ${fmtDay(d.pour[1])}`) : "" };
+      if (j.kind === "reponse") return { j, main: `Éléments envoyés : ${d.type || "demande"}`, det: d.reponse ? det("", quote(d.reponse)) : "" };
+      if (j.kind === "retrait") return { j, main: `Demande retirée : ${d.type || "demande"} à ${svcOf(d.dest).court}` };
       if (j.kind === "prevenu") return { j, main: d.n ? `Changement signalé à ${d.n} ${d.n > 1 ? "personnes" : "personne"}` : "Changement signalé" };
       // la date et sa précision (« Nov. », « Date à confirmer ») forment une seule ligne
       const dt = (i) => { const f = d.flou ? d.flou[i] : it.flou, x = d.date ? d.date[i] : it.date; return f || (x ? fmtShort(x) : "—"); };
@@ -685,8 +687,10 @@ window.KPlan = (DATA, { greet = false } = {}) => {
   }
 
   // une demande : pour quel relais (s'il ne s'agit pas de cette fiche), quoi, de qui à qui et pour quand ; le service sollicité peut répondre d'ici
-  const reqRow = (q, id) => { const o = q.item !== id && byId(q.item);
-    return `<div class="row wrap rq"><span class="row-main">${o ? `<button type="button" class="rq-for" data-open="${o.id}">${esc(o.t)}${o.st === "retire" ? " (retirée)" : ""}</button>` : ""}<b>${esc(reqTxt(q))}</b><span>De ${esc(person(q.from).nom)} à ${esc(svcOf(q.to).qui)}</span>${dlTag(q)}</span>${q.st === "recue" ? `<span class="tag">Reçu</span>` : forMe(q) ? `<button type="button" class="btn small" data-act="recu" data-r="${q.id}">C'est envoyé</button>` : ""}</div>`; };
+  const reqDocs = (q) => { const it = byId(q.item); return it ? famille(it).flatMap((x) => x.links || []).filter((l) => l.req === q.id) : []; };
+  const reqRow = (q, id) => { const o = q.item !== id && byId(q.item), docs = q.st === "recue" ? reqDocs(q) : [];
+    const rep = q.st === "recue" && (q.reponse || docs.length) ? `<span class="rq-rep">${q.reponse ? `<span class="rq-msg">${esc(q.reponse)}</span>` : ""}${docs.map((l) => `<button type="button" class="rq-doc" data-link="${esc(l.url)}">${I.external}${esc(l.nom)}</button>`).join("")}${q.by ? `<small>${esc(person(q.by).nom)}${q.rts ? `, ${ago(iso(new Date(q.rts)))}` : ""}</small>` : ""}</span>` : "";
+    return `<div class="row wrap rq"><span class="row-main">${o ? `<button type="button" class="rq-for" data-open="${o.id}">${esc(o.t)}${o.st === "retire" ? " (retirée)" : ""}</button>` : ""}<b>${esc(reqTxt(q))}</b><span>De ${esc(person(q.from).nom)} à ${esc(svcOf(q.to).qui)}</span>${dlTag(q)}${rep}${canPour(q) ? `<button type="button" class="txt-btn rq-x" data-act="unreq" data-r="${q.id}">Retirer la demande</button>` : ""}</span>${q.st === "recue" ? `<span class="tag">Reçu</span>` : forMe(q) ? `<button type="button" class="btn small" data-act="repondre" data-r="${q.id}">Répondre</button>` : ""}</div>`; };
   function openItem(id) { const it = byId(id); if (!it) return; K.push((el, o) => renderItem(el, o, id), { title: kindName(it) }); }
   function renderItem(el, { back }, id) {
     const it = byId(id);
@@ -819,6 +823,33 @@ window.KPlan = (DATA, { greet = false } = {}) => {
       onOk: async (s) => { const u = s.querySelector("#ln-url"); if (!/^https:\/\/\S+$/.test(u.value.trim())) { u.setAttribute("aria-invalid", "true"); s.querySelector("#ln-err").hidden = false; u.focus(); return false; }
         try { r.links.push(await Store.addLink(r.id, s.querySelector("#ln-nom").value.trim() || "Document SharePoint", u.value.trim())); } catch (e) { fail(e); return false; }
         K.refresh(); K.snack("Lien ajouté."); } });
+  }
+  // répondre à une demande : un message et, au besoin, un lien SharePoint. Le document va sur le temps fort (ou le sujet)
+  // quand l'action y est liée, sinon sur la fiche : il se voit partout où la demande se voit
+  function answerSheet(rid) {
+    const q = DB.reqs.find((x) => x.id === rid), it = q && byId(q.item); if (!it) return;
+    const r = root(it);
+    K.sheet.open({ title: "Répondre", ok: "Envoyer", full: true, body: `${sheetFor(it)}<p class="sec-f">${esc(person(q.from).nom)} demande : ${esc(reqTxt(q))}.</p>
+      <label class="lbl" for="rp-msg">Message <span class="opt">facultatif</span></label><textarea class="in" id="rp-msg" rows="3" maxlength="1000" placeholder="Ex. les visuels validés sont dans le dossier"></textarea>
+      <label class="lbl" for="rp-url">Lien SharePoint <span class="opt">facultatif</span></label><input class="in" id="rp-url" type="url" inputmode="url" placeholder="https://kedgebs.sharepoint.com/…" aria-describedby="rp-err"><p class="err" id="rp-err" hidden>Colle un lien qui commence par https://</p>
+      <label class="lbl" for="rp-nom">Nom du document <span class="opt">facultatif</span></label><input class="in" id="rp-nom" placeholder="${esc(q.type)}">
+      <p class="sec-f">${r !== it ? `Le document va sur le ${isSujet(r) ? "sujet" : "temps fort"} « ${esc(r.t)} » et se voit sur tous ses relais.` : isTF(it) ? "Le document se voit aussi sur ses relais." : "Le document va sur la fiche."}</p>`,
+      onOk: async (s) => {
+        const u = s.querySelector("#rp-url"), url = u.value.trim(), msg = s.querySelector("#rp-msg").value.trim();
+        if (url && !/^https:\/\/\S+$/.test(url)) { u.setAttribute("aria-invalid", "true"); s.querySelector("#rp-err").hidden = false; u.focus(); return false; }
+        try {
+          if (url) r.links.push(await Store.addLink(r.id, s.querySelector("#rp-nom").value.trim() || q.type, url, q.id));
+          await Store.answerReq(q.id, msg);
+        } catch (e) { fail(e); return false; }
+        Object.assign(q, { st: "recue", reponse: msg, by: ME, rts: new Date().toISOString() });
+        K.refresh(); K.snack(q.from === ME ? "Noté comme reçu." : `Envoyé. Notification envoyée à ${esc(person(q.from).nom)}.`); sync();
+      } });
+  }
+  async function withdrawReq(rid) {
+    const q = DB.reqs.find((x) => x.id === rid); if (!q) return;
+    if (!(await K.alert({ title: "Retirer la demande ?", text: `${esc(reqTxt(q))}, demandé à ${esc(svcOf(q.to).qui)}. Une notification lui sera envoyée.`, ok: "Retirer", danger: true }))) return;
+    try { await Store.setReq(q.id, "annulee"); } catch (e) { return fail(e); }
+    q.st = "annulee"; K.refresh(); K.snack("Demande retirée."); sync();
   }
   // changer la deadline d'une demande : la personne qui demande, ou un chef ; le service sollicité est prévenu
   function pourSheet(rid) {
@@ -996,7 +1027,7 @@ window.KPlan = (DATA, { greet = false } = {}) => {
     const since = (x) => Date.parse(x.ts) > Date.parse(DB.lastMeetingTs);
     const contrib = [
       ...DB.items.filter((it) => isTF(it) && since(it)).map((it) => ({ at: it.at, ts: it.ts, it, sub: `${person(it.by).nom} · nouveau ${isSujet(it) ? "sujet" : "temps fort"}` })),
-      ...DB.reqs.filter((r) => since(r) && byId(r.item)).map((r) => ({ at: r.at, ts: r.ts, it: byId(r.item), k: dlCls(r).trim(),
+      ...DB.reqs.filter((r) => since(r) && r.st !== "annulee" && byId(r.item)).map((r) => ({ at: r.at, ts: r.ts, it: byId(r.item), k: dlCls(r).trim(),
         sub: `${person(r.from).nom} demande ${ASK[r.type] || "des éléments"} à ${svcOf(r.to).qui}${r.st === "recue" ? " (reçu)" : `, deadline ${fmtDay(r.pour)}`}` })),
     ].sort((a, b) => Date.parse(b.ts) - Date.parse(a.ts));
     const shownC = MT.contrib ? contrib : contrib.slice(0, 3);
@@ -1170,7 +1201,6 @@ window.KPlan = (DATA, { greet = false } = {}) => {
     if (a === "ask") askSheet(id, t.dataset.key);
     if (a === "nope") { DB.answers[t.dataset.key] = "non"; quick(Store.answer(t.dataset.key, "non"), "Noté, pas besoin d'éléments."); }
     if (a === "vu") { DB.vu[ME] = [...(DB.vu[ME] || []), id]; quick(Store.markSeen(id)); }
-    if (a === "recu") { const r = DB.reqs.find((x) => x.id === t.dataset.r); if (r) { r.st = "recue"; quick(Store.setReq(r.id, "recue"), r.from === ME ? "Noté comme reçu." : `Noté. Notification envoyée à ${esc(person(r.from).nom)}.`); } }
     if (a === "block") blockSheet(id);
     if (a === "unblock") { const b = DB.blocks.find((x) => x.id === t.dataset.b); if (b) { b.leve = true; quick(Store.liftBlock(b.id), "Blocage levé."); } }
     if (a === "addlink") linkSheet(id);
@@ -1181,6 +1211,8 @@ window.KPlan = (DATA, { greet = false } = {}) => {
         quick(Store.removeLink(l.id), "Document retiré.");
       } }
     if (a === "pour") pourSheet(t.dataset.r);
+    if (a === "repondre") answerSheet(t.dataset.r);
+    if (a === "unreq") withdrawReq(t.dataset.r);
     if (a === "retire") {
       const it = byId(id), tf = isTF(it), n = tf ? DB.items.filter((x) => x.tf === id && x.st !== "retire").length : 0;
       const what = isSujet(it) ? "Le sujet" : tf ? "Le temps fort" : "L'action";

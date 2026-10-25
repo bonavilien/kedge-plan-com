@@ -182,6 +182,13 @@
 .rq .row-main b { white-space: normal; line-height: 1.3; }
 .rq-for { display: block; max-width: 100%; margin: 0 0 3px; padding: 0; border: 0; background: none; font: inherit; font-size: 13px; font-weight: 600; color: var(--accent); text-align: left; overflow-wrap: anywhere; cursor: pointer; }
 .rq .btn { flex: none; }
+/* la réponse sous la demande : le message en texte courant, les documents soulignés de jaune, qui et quand en gris */
+.rq-rep { display: grid; justify-items: start; gap: 6px; width: 100%; box-sizing: border-box; margin-top: 8px; padding: 10px 12px; border-radius: var(--r-m); background: var(--fill); }
+.rq-msg { font-size: 15px; line-height: 1.4; color: var(--text); white-space: pre-line; overflow-wrap: anywhere; }
+.rq-doc { display: inline-flex; align-items: center; gap: 6px; padding: 2px 0; border: 0; background: none; font: inherit; font-size: 15px; font-weight: 600; color: var(--text); text-align: left; text-decoration: underline; text-decoration-color: var(--yellow); text-decoration-thickness: 2px; text-underline-offset: 3px; cursor: pointer; }
+.rq-doc svg { flex: none; width: 15px; height: 15px; }
+.rq-rep small { font-size: 13px; color: var(--text2); }
+.rq-x { min-height: 32px; margin-top: 2px; padding: 4px 0; font-size: 14px; color: var(--text2); }
 .todo-tf { display: block; margin-top: 4px; font-size: 13.5px; color: var(--text2); }
 .deja { margin: 4px 0 6px; }
 .deja ul { display: grid; gap: 8px; margin: 6px 0 0; padding: 12px 14px; list-style: none; border-radius: var(--r-m); background: var(--fill); }
