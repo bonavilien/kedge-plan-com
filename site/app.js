@@ -40,6 +40,7 @@ window.KPlan = (DATA, { greet = false } = {}) => {
   const me = () => person(ME);
   const isMedia = () => !!me().media; // saisit les partenariats média
   const canAdd = () => me().chef || !!me().svc; // un compte sans service lit tout et demande des éléments
+  const isVisit = () => !!me().visiteur; // visiteur : voit tout, ne change rien (ni demande, ni blocage)
   // qui est qui : les noms viennent des profils
   const names = (f) => K.fr.list(PEOPLE.filter(f).map((p) => p.nom));
   const mediaNames = () => names((p) => p.media) || "le chef de projet";
@@ -551,6 +552,7 @@ window.KPlan = (DATA, { greet = false } = {}) => {
     // un compte média sans service ne saisit que des partenariats
     if (!S.draft || (!canAdd() && S.draft.kind !== "partner")) S.draft = newDraft(canAdd() ? "action" : "partner");
     el.innerHTML = K.navbar({ title: "Ajouter", actions: profileBtn() }) + `<div class="scroll"><h1 class="large-title">Ajouter</h1>${canAdd() || isMedia() ? formHTML(S.draft, "f", false)
+      : isVisit() ? `<div class="group"><div class="empty"><span>Mode visiteur : tu peux tout consulter, sans rien ajouter ni modifier.</span></div></div>`
       : `<div class="group"><div class="empty"><span>Ton compte n'est rattaché à aucun service : tu peux tout consulter et demander des éléments. Pour publier, demande à ${esc(CHEF.qui)} de t'ajouter à ton service.</span></div></div>`}</div>`;
     syncBadge();
   }
@@ -712,7 +714,7 @@ window.KPlan = (DATA, { greet = false } = {}) => {
         <p class="hero-meta">${isTF(it) || isPay(it) ? metaHTML(it) : `${esc(svcOf(it.svc).nom)} · ${esc(cap(when(it)))}`}${isSujet(it) ? " · toute la période" : precise(it) || /confirmer|définir|préciser/i.test(it.flou) ? "" : ` · date à préciser`}</p>
         ${tags}
       </div>
-      ${it.st === "retire" ? "" : `<div class="cta fiche-cta"><button type="button" class="btn block" data-act="ask" data-id="${id}">${I.chat}Demander des éléments</button></div>`}
+      ${it.st === "retire" || isVisit() ? "" : `<div class="cta fiche-cta"><button type="button" class="btn block" data-act="ask" data-id="${id}">${I.chat}Demander des éléments</button></div>`}
       ${blocks.length ? `<div class="group blk-group">${blocks.map((b) => `<div class="row"><span class="row-main"><b><span class="blk-l">Bloqué</span>${esc(b.why)}</b><span>${esc(person(b.by).nom)}, ${ago(b.at)}</span></span>${canLift(b, it) ? `<button type="button" class="btn small tonal" data-act="unblock" data-b="${b.id}">Lever</button>` : ""}</div>`).join("")}</div>` : ""}
       <div class="group facts">
         ${status}
@@ -731,6 +733,7 @@ window.KPlan = (DATA, { greet = false } = {}) => {
       ${hist}
       ${hist && edit ? "" : `<p class="foot-note">${hist ? "" : `Ajouté par ${esc(person(it.by).nom)} le ${fmtDay(it.at)}. `}${edit ? "" : `Modifiable par ${esc(editors(it))}.`}</p>`}
       ${it.st === "retire" ? (edit ? `<p class="retire-p"><button type="button" class="txt-btn strong" data-act="unretire" data-id="${id}">Remettre ${isSujet(it) ? "ce sujet" : isTF(it) ? "ce temps fort" : "cette action"}</button></p>` : "")
+        : isVisit() ? ""
         : `<p class="retire-p"><button type="button" class="txt-btn" data-act="block" data-id="${id}">Signaler un blocage</button>${edit ? `<button type="button" class="txt-btn danger" data-act="retire" data-id="${id}">Retirer ${isSujet(it) ? "ce sujet" : isTF(it) ? "ce temps fort" : "cette action"}</button>` : ""}</p>`}
     </div>`;
   }
@@ -875,7 +878,7 @@ window.KPlan = (DATA, { greet = false } = {}) => {
 
   // ---------- équipe (chefs de projet) : service et droits de chaque compte ----------
   // les comptes se créent dans Supabase ; on règle ici qui fait quoi
-  const rights = (p) => [...new Set([p.fonction, p.chef ? "Chef de projet" : p.ownSvc ? svcOf(p.ownSvc).nom : "Sans service", p.media ? "Partenariats" : "", p.notifAll ? "Prévenu de tout" : ""].filter(Boolean))].join(" · ");
+  const rights = (p) => p.visiteur ? "Visiteur · lecture seule" : [...new Set([p.fonction, p.chef ? "Chef de projet" : p.ownSvc ? svcOf(p.ownSvc).nom : "Sans service", p.media ? "Partenariats" : "", p.notifAll ? "Prévenu de tout" : ""].filter(Boolean))].join(" · ");
   function renderTeam(el, { back }) {
     const list = [...PEOPLE].sort((a, b) => a.nom.localeCompare(b.nom, "fr"));
     el.innerHTML = K.navbar({ title: "Équipe", back }) + `<div class="scroll"><h1 class="large-title">Équipe</h1>
@@ -888,11 +891,13 @@ window.KPlan = (DATA, { greet = false } = {}) => {
     K.sheet.open({ title: p.nom, ok: "Enregistrer", full: true, body: `<label class="lbl" for="pp-nom">Prénom</label><input class="in" id="pp-nom" value="${esc(p.nom)}">
       <label class="lbl" for="pp-fn">Fonction <span class="opt">facultatif</span></label><input class="in" id="pp-fn" value="${esc(p.fonction)}" placeholder="Ex. Responsable de l'offre">
       <span class="lbl" id="pp-svc-l">Service</span><div class="chips" data-chips id="pp-svc" role="group" aria-labelledby="pp-svc-l">${[{ k: "", court: "Aucun" }, ...SERVICES].map((s) => chip(s.court, p.ownSvc === s.k, s.k)).join("")}</div>
-      <div class="group" style="margin-top:16px">${sw("chef", "Chef de projet", "Modifie tout, anime la réunion", p.chef, self)}${sw("media", "Partenariats média", isMedia() ? "Saisit les partenariats payants" : `Saisit les partenariats payants. Seul ${mediaNames()} peut changer ce droit.`, p.media, !isMedia())}${sw("all", "Prévenu de chaque ajout", "Une notification à chaque nouveauté", p.notifAll)}</div>
+      <div class="group" style="margin-top:16px">${sw("chef", "Chef de projet", "Modifie tout, anime la réunion", p.chef, self)}${sw("media", "Partenariats média", isMedia() ? "Saisit les partenariats payants" : `Saisit les partenariats payants. Seul ${mediaNames()} peut changer ce droit.`, p.media, !isMedia())}${sw("all", "Prévenu de chaque ajout", "Une notification à chaque nouveauté", p.notifAll)}${self ? "" : sw("visit", "Visiteur", "Voit tout, ne modifie rien : ni ajout, ni demande, ni blocage. Remplace les autres droits.", p.visiteur)}</div>
       ${self ? `<p class="sec-f">Un autre chef de projet peut changer tes droits de chef.</p>` : ""}`,
       onOk: async (s) => {
         const v = { nom: s.querySelector("#pp-nom").value.trim() || p.nom, fonction: s.querySelector("#pp-fn").value.trim(), ownSvc: pressed("#pp-svc", s)[0] || "",
-          chef: s.querySelector("#pp-chef").checked, media: s.querySelector("#pp-media").checked, notifAll: s.querySelector("#pp-all").checked };
+          chef: s.querySelector("#pp-chef").checked, media: s.querySelector("#pp-media").checked, notifAll: s.querySelector("#pp-all").checked, visiteur: !!s.querySelector("#pp-visit")?.checked };
+        // la base retire au visiteur tout service et tout droit : on fait pareil ici
+        if (v.visiteur) Object.assign(v, { ownSvc: "", chef: false, media: false, notifAll: false });
         try { await Store.setProfile(id, v); } catch (e) { fail(e); return false; }
         Object.assign(p, v, { svc: v.chef ? "chef" : v.ownSvc });
         K.refresh(); K.snack(`${esc(v.nom)} : c'est enregistré.`); sync();
