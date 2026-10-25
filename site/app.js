@@ -752,7 +752,8 @@ window.KPlan = (DATA, { greet = false } = {}) => {
       <h2 class="sec-h">Apparence</h2>
       <div class="seg" data-seg id="pf-theme" role="group" aria-label="Apparence">${[["system", "Système"], ["light", "Clair"], ["dark", "Sombre"]].map(([k, l]) => `<button type="button" value="${k}" aria-pressed="${K.theme === k}">${I.check}${l}</button>`).join("")}</div>
       <h2 class="sec-h">Compte</h2>
-      <div class="group">${p.chef ? `<button type="button" class="row" data-act="team"><span class="row-main"><b>Équipe</b><span>Services et droits de chacun</span></span>${I.chevR}</button>` : ""}
+      <div class="group">${p.chef ? `<button type="button" class="row" data-act="team"><span class="row-main"><b>Équipe</b><span>Services et droits de chacun</span></span>${I.chevR}</button>
+        <button type="button" class="row" data-act="copil"><span class="row-main"><b>Écran copil PGE</b><span>L'année en cinq périodes : diffusé, pas encore, à venir</span></span>${I.chevR}</button>` : ""}
         <button type="button" class="row" data-act="password"><span class="row-main"><b>Changer de mot de passe</b></span>${I.chevR}</button>
         <button type="button" class="row" data-act="logout"><span class="row-main"><b class="danger" style="font-weight:400">Se déconnecter</b></span></button></div>
       <p class="sec-f">Connecté avec ${esc(DATA.email)}.</p>
@@ -918,10 +919,81 @@ window.KPlan = (DATA, { greet = false } = {}) => {
   });
   document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !meeting.hidden) { e.stopImmediatePropagation(); closeMeeting(); } }, true);
 
+  // =====================================================================
+  // Écran copil PGE : l'année en cinq cartes, ce qui est diffusé, ce qui ne l'est pas encore, ce qui arrive
+  // =====================================================================
+  const copil = (() => { app.insertAdjacentHTML("beforeend", `<div class="copil" id="copil" hidden role="dialog" aria-modal="true" aria-label="Copil PGE"></div>`); return document.getElementById("copil"); })();
+  const CP = { sel: CUR };
+  // la diffusion d'une période : actions et partenariats ; temps forts et sujets sont des moments, montrés à part
+  function bilan(i) {
+    const alive = (it) => it.st !== "retire";
+    const l = DB.items.filter((it) => !isTF(it) && alive(it) && periodOf(it.date) === i).sort(sortDate);
+    return {
+      l, done: l.filter((it) => it.st === "diffuse"), late: l.filter((it) => it.st !== "diffuse" && isPast(it)), next: l.filter((it) => it.st !== "diffuse" && !isPast(it)),
+      tfs: [...DB.items.filter((it) => isSujet(it) && alive(it) && it.per.includes(i)), ...DB.items.filter((it) => isTF(it) && !isSujet(it) && alive(it) && periodOf(it.date) === i).sort(sortDate)],
+    };
+  }
+  const plur = (n, one, many) => `${n} ${n > 1 ? many : one}`;
+  function renderCopil() {
+    const stateOf = (P) => (P.au < TODAY ? "done" : P.du > TODAY ? "next" : "now");
+    const card = (P, i) => {
+      const b = bilan(i), st = stateOf(P), n = b.l.length, w = (x) => ((x.length / n) * 100).toFixed(2);
+      const tag = st === "done" ? "Terminée" : st === "now" ? `En cours, encore ${plur(days(P.au), "jour", "jours")}` : `Dès le ${fmtDay(P.du)}`;
+      const big = !n ? `<span class="cp-big none">Rien de prévu</span>`
+        : st === "next" && !b.done.length ? `<span class="cp-big"><b>${n}</b> ${n > 1 ? "prévues" : "prévue"}</span>`
+        : `<span class="cp-big"><b>${b.done.length}</b><small>/${n}</small> ${b.done.length > 1 ? "diffusées" : "diffusée"}</span>`;
+      const leg = [["d", b.done, "diffusée", "diffusées"], ["l", b.late, "pas encore diffusée", "pas encore diffusées"], ["n", b.next, "à venir", "à venir"]].filter(([, x]) => x.length);
+      const nTF = b.tfs.filter((x) => !isSujet(x)).length, nS = b.tfs.length - nTF;
+      return `<button type="button" class="cp-card ${st}${CP.sel === i ? " sel" : ""}" data-cp="per" data-i="${i}" aria-pressed="${CP.sel === i}">
+        <span class="cp-tag">${esc(tag)}</span><h2>${esc(P.nom)}</h2><span class="cp-dates">${esc(P.lib)}</span>${big}
+        ${n ? `<span class="cp-bar" aria-hidden="true"><i class="d" style="width:${w(b.done)}%"></i><i class="l" style="width:${w(b.late)}%"></i><i class="n" style="width:${w(b.next)}%"></i></span>` : ""}
+        ${leg.length ? `<span class="cp-leg">${leg.map(([k, x, one, many]) => `<span class="${k}">${plur(x.length, one, many)}</span>`).join("")}</span>` : ""}
+        ${nTF + nS ? `<span class="cp-tfn">${esc([nTF ? plur(nTF, "temps fort", "temps forts") : "", nS ? plur(nS, "sujet", "sujets") : ""].filter(Boolean).join(" · "))}</span>` : ""}</button>`;
+    };
+    const P = PERIODS[CP.sel], b = bilan(CP.sel);
+    const dcol = (it) => (precise(it) ? `<b>${D(it.date).getDate()}</b><span>${esc(monShort(it.date))}</span>` : `<b class="m">${esc(monShort(it.date))}</b>`);
+    const row = (it, k) => `<button type="button" class="cp-row" data-cp-open="${it.id}"><span class="cp-d">${dcol(it)}</span>
+      <span class="cp-t"><b>${esc(it.t)}</b><span>${isPay(it) ? payBadge : ""}${esc([svcLabel(it), k === "d" ? "" : stWord(it)].filter(Boolean).join(" · "))}</span></span></button>`;
+    const col = (k, title, list, empty) => `<section class="cp-col ${k}" aria-label="${esc(title)}"><h3>${esc(title)} <b>${list.length}</b></h3>
+      ${list.map((it) => row(it, k)).join("") || `<p class="cp-empty">${esc(empty)}</p>`}</section>`;
+    const chip = (it) => `<button type="button" class="cp-tf${isSujet(it) ? " suj" : ""}${isPast(it) ? " past" : ""}" data-cp-open="${it.id}">${isSujet(it) ? I.bookmark : `<span>${esc(precise(it) ? fmtShort(it.date) : it.flou)}</span>`}${esc(it.t)}</button>`;
+    // couverture des 5 messages sur la période, comme à l'écran réunion
+    const acts = b.l.filter((it) => !isPay(it)), cov = MESSAGES.map((m) => ({ m, n: acts.filter((it) => it.m.includes(m.n)).length }));
+    const all = PERIODS.map((x, i) => bilan(i)), nAll = all.reduce((s, x) => s + x.l.length, 0), nDone = all.reduce((s, x) => s + x.done.length, 0);
+    copil.innerHTML = `<header class="mt-head"><img class="logo-l" src="assets/kedge-logo-anthracite.png" alt="KEDGE Business School" height="30"><img class="logo-d" src="assets/kedge-logo-blanc.png" alt="" height="30">
+        <div class="mt-title"><h1>Copil PGE</h1><p>${esc(cap(K.fr.day(T0)))}${nAll ? ` · <em>${nDone}</em> ${nDone > 1 ? "diffusées" : "diffusée"} sur ${plur(nAll, "action prévue", "actions prévues")} cette année` : ""}</p></div>
+        <button type="button" class="btn small" data-cp="close">Quitter</button></header>
+      <div class="cp-body">
+        <div class="cp-cards" style="--np:${PERIODS.length}">${PERIODS.map(card).join("")}</div>
+        <section class="cp-detail" aria-label="${esc(P.nom)}">
+          <header class="cp-dh"><h2>${esc(P.nom)}</h2><span>${esc(P.lib)}</span></header>
+          ${b.tfs.length ? `<div class="cp-tfs" aria-label="Temps forts et sujets">${b.tfs.map(chip).join("")}</div>` : ""}
+          <div class="cp-cols">${col("d", "Diffusé", b.done, "Rien de diffusé pour l'instant.")}${col("l", "Pas encore diffusé", b.late, "Rien en attente.")}${col("n", "À venir", b.next, "Plus rien à venir.")}</div>
+          ${acts.length ? `<div class="mp-cov" aria-label="Actions par message sur la période">${cov.map((c) => `<span class="${c.n ? "" : "zero"}">${esc(c.m.nom)} <b>${c.n}</b></span>`).join("")}</div>` : ""}
+        </section>
+      </div>`;
+  }
+  const openCopil = () => { CP.sel = CUR; renderCopil(); copil.hidden = false; copil.querySelector("[data-cp='close']")?.focus(); };
+  const closeCopil = () => { copil.hidden = true; };
+  const pickPer = (i) => { if (i < 0 || i >= PERIODS.length) return; CP.sel = i; renderCopil(); copil.querySelector(`.cp-card[data-i="${i}"]`)?.focus(); };
+  copil.addEventListener("click", (e) => {
+    const b = e.target.closest("[data-cp],[data-cp-open]"); if (!b) return;
+    if (b.dataset.cp === "close") closeCopil();
+    if (b.dataset.cp === "per") pickPer(+b.dataset.i);
+    if (b.dataset.cpOpen) { closeCopil(); openItem(b.dataset.cpOpen); }
+  });
+  // une télécommande de présentation envoie les flèches ou page suivante : on passe d'une période à l'autre
+  document.addEventListener("keydown", (e) => {
+    if (copil.hidden) return;
+    if (e.key === "Escape") { e.stopImmediatePropagation(); closeCopil(); }
+    else if (["ArrowRight", "PageDown"].includes(e.key)) { e.preventDefault(); pickPer(CP.sel + 1); }
+    else if (["ArrowLeft", "PageUp"].includes(e.key)) { e.preventDefault(); pickPer(CP.sel - 1); }
+  }, true);
+
   function syncSide() {
     const f = document.getElementById("side-foot"); if (!f) return;
     const p = me();
-    f.innerHTML = `${p.chef ? `<button type="button" class="side-btn" data-act="meeting">${I.people}<span>Mode réunion</span></button>` : ""}
+    f.innerHTML = `${p.chef ? `<button type="button" class="side-btn" data-act="meeting">${I.people}<span>Mode réunion</span></button><button type="button" class="side-btn" data-act="copil">${I.board}<span>Copil PGE</span></button>` : ""}
       <button type="button" class="side-me" data-act="profil" aria-label="Profil de ${esc(p.nom)}"><span class="av sm" aria-hidden="true">${K.initials(p.nom)}</span><span><b>${esc(p.nom)}</b><small>${esc(fonctionOf(p))}</small></span></button>`;
   }
   const markSel = (id) => { app.querySelectorAll(".sel[data-open]").forEach((x) => x.classList.remove("sel")); app.querySelectorAll(`#v-${app.dataset.tab} [data-open="${id}"]`).forEach((x) => x.classList.add("sel")); };
@@ -972,6 +1044,7 @@ window.KPlan = (DATA, { greet = false } = {}) => {
     if (a === "goper") document.getElementById(`per-${t.dataset.k}-${t.dataset.i}`)?.scrollIntoView({ behavior: K.reduceMotion() ? "auto" : "smooth", block: "start" });
     if (a === "allnew") K.push(renderAllNew, { title: "Nouveautés" });
     if (a === "meeting") openMeeting();
+    if (a === "copil") openCopil();
     if (a === "today") { const gw = document.getElementById("gwrap"), x = ((D(TODAY) - D(G0)) / 864e5 / 7 - (S.zoom === "annee" ? 4 : 0.5)) * colW(); gw?.scrollTo({ left: Math.max(0, x), behavior: K.reduceMotion() ? "auto" : "smooth" }); }
     if (a === "goadd") { S.draft = newDraft(); K.showTab("ajouter"); }
     if (a === "addtf") { S.draft = newDraft("tf"); K.showTab("ajouter"); }
@@ -1035,6 +1108,7 @@ window.KPlan = (DATA, { greet = false } = {}) => {
     [[PEOPLE, fresh.PEOPLE], [PARTNERS, fresh.PARTNERS], [SERVICES, fresh.SERVICES]].forEach(([a, b]) => a.splice(0, a.length, ...b));
     CHEF.qui = fresh.CHEF.qui;
     if (!meeting.hidden) { const sc = meeting.querySelector(".mt-main")?.scrollTop || 0; renderMeeting(); meeting.querySelector(".mt-main").scrollTop = sc; }
+    if (!copil.hidden) { const sc = copil.querySelector(".cp-body")?.scrollTop || 0; renderCopil(); copil.querySelector(".cp-body").scrollTop = sc; }
     if (busy()) syncBadge(); else K.refresh();
   }
   Store.watch(sync);
@@ -1042,8 +1116,9 @@ window.KPlan = (DATA, { greet = false } = {}) => {
   // un lien de notification : #item=… ouvre la fiche, #afaire l'onglet À faire
   function route(hash) {
     const m = /^#item=([\w-]+)/.exec(hash || "");
-    if (m && byId(m[1])) { if (!meeting.hidden) closeMeeting(); openItem(m[1]); }
-    else if (hash === "#afaire") { closeMeeting(); K.showTab("afaire"); }
+    if (m && byId(m[1])) { if (!meeting.hidden) closeMeeting(); closeCopil(); openItem(m[1]); }
+    else if (hash === "#afaire") { closeMeeting(); closeCopil(); K.showTab("afaire"); }
+    else if (hash === "#copil" && me().chef) { closeMeeting(); openCopil(); }
   }
   const routeHash = () => { if (!location.hash) return; route(location.hash); history.replaceState(null, "", location.pathname + location.search); };
   routeHash();

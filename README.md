@@ -1,6 +1,6 @@
 # Plan de com KEDGE
 
-Appli web (installable sur téléphone) pour planifier la production et la diffusion autour des 5 messages clés et des temps forts de l'année 2026-2027 : Ma période, Temps forts, Partenariats média, Ajouter, Grille de diffusion, À faire, et l'écran réunion sur ordinateur.
+Appli web (installable sur téléphone) pour planifier la production et la diffusion autour des 5 messages clés et des temps forts de l'année 2026-2027 : Ma période, Temps forts, Partenariats média, Ajouter, Grille de diffusion, À faire, l'écran réunion sur ordinateur et l'écran copil PGE (une carte par période : diffusé, pas encore diffusé, à venir).
 
 La base démarre **vierge** : seules les 5 périodes, les 5 messages et les 3 services (RP, RS, Vidéo) sont pré-remplis, et restent modifiables.
 
@@ -51,5 +51,5 @@ Rappels J-30, J-15 et J-7 avant chaque action datée au jour près (chaque matin
 ## Tests
 
 - Base : `PSQL="psql -h localhost -U postgres" sh test/db/run.sh` (une base Postgres locale suffit).
-- Interface : `node test/ui/serve.mjs` puis `node test/ui/flows.mjs <dossier des captures>`.
+- Interface : `node test/ui/serve.mjs` puis `node test/ui/flows.mjs <dossier des captures>` (et `historique.mjs`, `copil.mjs`).
 - Notifications : `node test/push/run.mjs <dossier avec deno, web-push et http_ece installés>`.

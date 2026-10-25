@@ -4,6 +4,7 @@
   const app = document.getElementById("app"), brand = document.getElementById("brand"), form = document.getElementById("bs-form");
   I.bookmark = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 4h10v16l-5-3.6L7 20z"/></svg>';
   I.megaphone = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 10v4h3.5L15 18.5v-13L7.5 10z"/><path d="M18.5 9.2a4 4 0 0 1 0 5.6"/><path d="M7.5 14l1.3 5h2.4l-1-4.4"/></svg>';
+  I.board = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="4" width="17" height="11.5" rx="1.5"/><path d="M12 15.5V20M8.5 20h7"/><path d="M7.5 12l3-3 2 2 4-4"/></svg>';
   K.init(app, { storageKey: "kplan-theme" });
   // notifications et appli installable
   if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
