@@ -1,0 +1,30 @@
+// Ordinateur : le bouton Profil ouvre le profil, un second clic le referme, des clics répétés n'empilent rien.
+import { chromium } from "/opt/node22/lib/node_modules/playwright/index.mjs";
+const OUT = process.argv[2] || "/tmp", URL0 = "http://localhost:8790/test.html";
+const b = await chromium.launch();
+let fails = 0;
+const ok = (c, msg) => { console.log(`${c ? "OK  " : "FAIL"} ${msg}`); if (!c) fails++; };
+const p = await (await b.newContext({ viewport: { width: 1440, height: 900 } })).newPage();
+const errs = [];
+p.on("pageerror", (e) => errs.push(e.message));
+await p.goto(URL0); await p.evaluate(() => localStorage.clear()); await p.reload(); await p.waitForSelector("#login");
+await p.fill("#lg-mail", "julien@kedgebs.com"); await p.fill("#lg-pw", "motdepasse"); await p.click("#login button");
+await p.waitForFunction(() => document.getElementById("brand").hidden); await p.waitForTimeout(400);
+const profils = () => p.locator(".view.pushed:not(.leave)").filter({ hasText: "Apparence" }).count();
+const me = p.locator(".side-me");
+await me.click(); await p.waitForTimeout(450);
+ok((await profils()) === 1, "un clic : le profil s'ouvre");
+await me.click(); await p.waitForTimeout(450);
+ok((await profils()) === 0, "un second clic : il se referme");
+for (let i = 0; i < 5; i++) await me.click({ delay: 10 });
+await p.waitForTimeout(600);
+ok((await profils()) <= 1, "des clics rapides n'empilent jamais plus d'un profil");
+if (!(await profils())) { await me.click(); await p.waitForTimeout(450); }
+await p.click('[data-act="team"]'); await p.waitForTimeout(450);
+await me.click(); await p.waitForTimeout(600);
+ok((await p.locator(".view.pushed:not(.leave)").count()) === 0, "Équipe ouverte par-dessus : un clic referme tout");
+await p.screenshot({ path: `${OUT}/p1-ferme.png` });
+ok(!errs.length, "aucune erreur dans la page" + (errs.length ? " : " + errs.join(" | ") : ""));
+await b.close();
+console.log(fails ? `${fails} échec(s)` : "Profil : tout est bon");
+process.exit(fails ? 1 : 0);

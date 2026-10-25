@@ -853,16 +853,16 @@ window.KPlan = (DATA, { greet = false } = {}) => {
     const p = me(), ps = Push.state();
     el.innerHTML = K.navbar({ title: "Profil", back }) + `<div class="scroll">
       <div class="profile-head"><span class="av big hl" aria-hidden="true">${K.initials(p.nom)}</span><h2>${esc(p.nom)}</h2><p>${esc(fonctionOf(p))}</p></div>
-      <div class="group"><label class="row" for="pf-push"><span class="row-main"><b>Notifications sur cet appareil</b></span><input type="checkbox" class="switch" id="pf-push"${ps.on ? " checked" : ""}${ps.can ? "" : " disabled"}></label></div>
-      <p class="sec-f">${esc(ps.hint)}</p>
+      ${isVisit() ? "" : `<div class="group"><label class="row" for="pf-push"><span class="row-main"><b>Notifications sur cet appareil</b></span><input type="checkbox" class="switch" id="pf-push"${ps.on ? " checked" : ""}${ps.can ? "" : " disabled"}></label></div>
+      <p class="sec-f">${esc(ps.hint)}</p>`}
       <h2 class="sec-h">Apparence</h2>
       <div class="seg" data-seg id="pf-theme" role="group" aria-label="Apparence">${[["system", "Système"], ["light", "Clair"], ["dark", "Sombre"]].map(([k, l]) => `<button type="button" value="${k}" aria-pressed="${K.theme === k}">${I.check}${l}</button>`).join("")}</div>
       <h2 class="sec-h">Compte</h2>
       <div class="group">${p.chef ? `<button type="button" class="row" data-act="team"><span class="row-main"><b>Équipe</b><span>Services et droits de chacun</span></span>${I.chevR}</button>
         <button type="button" class="row" data-act="copil"><span class="row-main"><b>Écran copil PGE</b><span>L'année en cinq périodes : diffusé, pas encore, à venir</span></span>${I.chevR}</button>` : ""}
-        <button type="button" class="row" data-act="password"><span class="row-main"><b>Changer de mot de passe</b></span>${I.chevR}</button>
+        ${isVisit() ? "" : `<button type="button" class="row" data-act="password"><span class="row-main"><b>Changer de mot de passe</b></span>${I.chevR}</button>`}
         <button type="button" class="row" data-act="logout"><span class="row-main"><b class="danger" style="font-weight:400">Se déconnecter</b></span></button></div>
-      <p class="sec-f">Connecté avec ${esc(DATA.email)}.</p>
+      <p class="sec-f">${isVisit() ? "Mode visiteur : consultation seule." : `Connecté avec ${esc(DATA.email)}.`}</p>
     </div>`;
   }
   function passwordSheet() {
@@ -891,7 +891,7 @@ window.KPlan = (DATA, { greet = false } = {}) => {
     K.sheet.open({ title: p.nom, ok: "Enregistrer", full: true, body: `<label class="lbl" for="pp-nom">Prénom</label><input class="in" id="pp-nom" value="${esc(p.nom)}">
       <label class="lbl" for="pp-fn">Fonction <span class="opt">facultatif</span></label><input class="in" id="pp-fn" value="${esc(p.fonction)}" placeholder="Ex. Responsable de l'offre">
       <span class="lbl" id="pp-svc-l">Service</span><div class="chips" data-chips id="pp-svc" role="group" aria-labelledby="pp-svc-l">${[{ k: "", court: "Aucun" }, ...SERVICES].map((s) => chip(s.court, p.ownSvc === s.k, s.k)).join("")}</div>
-      <div class="group" style="margin-top:16px">${sw("chef", "Chef de projet", "Modifie tout, anime la réunion", p.chef, self)}${sw("media", "Partenariats média", isMedia() ? "Saisit les partenariats payants" : `Saisit les partenariats payants. Seul ${mediaNames()} peut changer ce droit.`, p.media, !isMedia())}${sw("all", "Prévenu de chaque ajout", "Une notification à chaque nouveauté", p.notifAll)}${self ? "" : sw("visit", "Visiteur", "Voit tout, ne modifie rien : ni ajout, ni demande, ni blocage. Remplace les autres droits.", p.visiteur)}</div>
+      <div class="group" style="margin-top:16px">${sw("chef", "Chef de projet", "Modifie tout, anime la réunion", p.chef, self)}${sw("media", "Partenariats média", isMedia() ? "Saisit les partenariats payants" : `Saisit les partenariats payants. Seul ${mediaNames()} peut changer ce droit.`, p.media, !isMedia())}${sw("all", "Prévenu de chaque ajout", "Une notification à chaque nouveauté", p.notifAll)}${self ? "" : sw("visit", "Visiteur", "Voit tout, ne modifie rien", p.visiteur)}</div>
       ${self ? `<p class="sec-f">Un autre chef de projet peut changer tes droits de chef.</p>` : ""}`,
       onOk: async (s) => {
         const v = { nom: s.querySelector("#pp-nom").value.trim() || p.nom, fonction: s.querySelector("#pp-fn").value.trim(), ownSvc: pressed("#pp-svc", s)[0] || "",

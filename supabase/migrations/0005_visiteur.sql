@@ -26,3 +26,14 @@ begin
   return new;
 end $$;
 create trigger profiles_visiteur before insert or update on public.profiles for each row execute function public.keep_visiteur();
+
+-- le compte visiteur@example.com (l'adresse de site/config.js) est visiteur dès sa création dans Supabase
+create or replace function public.on_new_user() returns trigger
+language plpgsql security definer set search_path = public as $$
+begin
+  insert into public.profiles (id, nom, visiteur)
+  values (new.id, initcap(split_part(split_part(coalesce(new.email, ''), '@', 1), '.', 1)), lower(coalesce(new.email, '')) = 'visiteur@example.com')
+  on conflict (id) do nothing;
+  return new;
+end $$;
+update public.profiles p set visiteur = true from auth.users u where u.id = p.id and lower(u.email) = 'visiteur@example.com';

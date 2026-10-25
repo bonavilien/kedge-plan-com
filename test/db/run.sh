@@ -17,4 +17,6 @@ $D -f supabase/migrations/0003_historique.sql
 $D -f test/db/historique.sql
 $D -f supabase/migrations/0004_corrections.sql
 $D -f test/db/corrections.sql
+$D -f supabase/migrations/0005_visiteur.sql
+$D -f test/db/visiteur.sql
 echo "Base : tout est bon"

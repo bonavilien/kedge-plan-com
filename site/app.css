@@ -268,6 +268,7 @@ button.glab b { text-decoration: underline; text-decoration-color: var(--yellow)
 .bs-body .display { margin-bottom: 20px; }
 .login { display: grid; }
 .login .field { margin-bottom: 14px; }
+.login .field[hidden] { display: none; }
 .login .err { margin: -2px 2px 4px; font-size: 14.5px; font-weight: 600; }
 .login .btn { margin-top: 6px; font-size: 17px; font-weight: 700; }
 .login .btn:disabled { opacity: .7; }

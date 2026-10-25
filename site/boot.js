@@ -119,11 +119,13 @@
     </form>`;
   // visiteur : l'e-mail du compte visiteur est connu, on ne demande que le mot de passe
   const visitMode = (f) => {
-    f.querySelector("#lg-mail").value = CFG.visiteur;
-    f.querySelector("#lg-mail-f").hidden = true;
-    f.querySelector(".login-help").textContent = "Mode visiteur : consultation seule. Le mot de passe t'a été donné par l'équipe com.";
-    f.querySelector("#lg-visit").hidden = true;
-    f.querySelector("#lg-pw").focus();
+    const on = f.classList.toggle("visit"), mail = f.querySelector("#lg-mail");
+    mail.value = on ? CFG.visiteur : "";
+    f.querySelector("#lg-mail-f").hidden = on;
+    f.querySelector("#lg-err").hidden = true;
+    f.querySelector(".login-help").textContent = on ? "Consultation seule. Le mot de passe t'a été donné par l'équipe com." : "Pas encore de compte, ou mot de passe oublié ? Demande-le à ton chef de projet com.";
+    f.querySelector("#lg-visit").textContent = on ? "J'ai un compte" : "Entrer en visiteur";
+    (on ? f.querySelector("#lg-pw") : mail).focus();
   };
   const errText = (x) => {
     const m = x?.message || "";
@@ -148,7 +150,7 @@
     if (!pw.value) return say("Écris ton mot de passe.", pw);
     btn.disabled = true; btn.textContent = "Connexion…"; err.hidden = true;
     try { await Store.signIn(mail.value.trim(), pw.value); await start(true); }
-    catch (x) { say(errText(x)); btn.disabled = false; btn.textContent = "Se connecter"; }
+    catch (x) { say(f.classList.contains("visit") && x?.code === "invalid_credentials" ? "Mot de passe incorrect." : errText(x)); btn.disabled = false; btn.textContent = "Se connecter"; }
   }
   // données chargées : l'appli se dessine sous l'écran d'accueil, qui glisse vers le bas
   async function start(greet) {

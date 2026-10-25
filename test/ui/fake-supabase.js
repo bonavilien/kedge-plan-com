@@ -44,6 +44,8 @@
   // les règles de la base, en raccourci
   function allowed(t, op, row) {
     const p = me();
+    // migration 0005 : le visiteur ne demande rien, ne signale rien, n'ajoute aucun document
+    if (p.visiteur && ["reqs", "blocks", "links"].includes(t) && op === "insert") return false;
     if (t === "items") {
       if (row.partner) return p.media;
       return p.chef || (!!p.svc && row.svc === p.svc);
@@ -95,7 +97,9 @@
     if (q.op === "update") {
       // comme la vraie base : une ligne qu'on n'a pas le droit de modifier est ignorée, sans erreur
       const rows = tab.filter(match).filter((r) => allowed(q.t, "update", { ...r, ...q.row }));
-      rows.forEach((r) => { if (q.t === "items") journalUpdate(r, q.row); Object.assign(r, q.row); }); save();
+      rows.forEach((r) => { if (q.t === "items") journalUpdate(r, q.row); Object.assign(r, q.row);
+        // migration 0005 : un visiteur perd service et droits
+        if (q.t === "profiles" && r.visiteur) Object.assign(r, { svc: null, chef: false, media: false, notif_all: false }); }); save();
       return { data: rows.map((r) => ({ ...r })), error: null };
     }
     if (q.op === "upsert") {

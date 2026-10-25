@@ -24,6 +24,7 @@ Les données sont dans Supabase (hébergé en Europe). Le dépôt ne contient au
 - Un compte **Partenariats média** saisit les partenariats payants.
 - Un compte **Prévenu de chaque ajout** reçoit une notification à chaque nouveauté.
 - Un compte sans service lit tout mais ne publie rien.
+- Un **visiteur** lit tout et ne change rien (ni ajout, ni demande, ni blocage, ni document). Le compte `visiteur@example.com`, créé dans Supabase avec le mot de passe à donner aux visiteurs, l'est d'office ; un chef peut aussi passer un compte en visiteur dans Équipe. Sur l'écran de connexion, « Entrer en visiteur » ne demande que le mot de passe.
 
 ## Mise en route
 
@@ -51,5 +52,5 @@ Rappels J-30, J-15 et J-7 avant chaque action datée au jour près (chaque matin
 ## Tests
 
 - Base : `PSQL="psql -h localhost -U postgres" sh test/db/run.sh` (une base Postgres locale suffit). Puis, sur la base `kplan_test` qu'il laisse : `droits.sql` et `contenu.sql` (`$PSQL -d kplan_test -f test/db/droits.sql`) ; `sh test/db/besoins.sh` crée sa propre base (rappels, demandes, deadlines).
-- Interface : `node test/ui/serve.mjs` puis `node test/ui/flows.mjs <dossier des captures>` (et `historique.mjs`, `copil.mjs`, `demandes.mjs`, `corrections.mjs`, `contenu.mjs`, `droits.mjs`, `sansprofil.mjs`, `besoins.mjs`, `periodes.mjs`, `notifs.mjs`).
+- Interface : `node test/ui/serve.mjs` puis `node test/ui/flows.mjs <dossier des captures>` (et `historique.mjs`, `copil.mjs`, `demandes.mjs`, `corrections.mjs`, `contenu.mjs`, `droits.mjs`, `sansprofil.mjs`, `besoins.mjs`, `periodes.mjs`, `notifs.mjs`, `visiteur.mjs`, `profil.mjs`).
 - Notifications : `node test/push/run.mjs <dossier avec deno, web-push et http_ece installés>`.
