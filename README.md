@@ -25,7 +25,7 @@ Les données sont dans Supabase (hébergé en Europe). Le dépôt ne contient au
 - Un compte **Partenariats média** saisit les partenariats payants.
 - Un compte **Prévenu de chaque ajout** reçoit une notification à chaque nouveauté.
 - Un compte sans service lit tout mais ne publie rien.
-- Un **visiteur** lit tout et ne change rien (ni ajout, ni demande, ni blocage, ni document). Le compte `visiteur@example.com`, créé dans Supabase avec le mot de passe à donner aux visiteurs, l'est d'office ; un chef peut aussi passer un compte en visiteur dans Équipe. Sur l'écran de connexion, « Entrer en visiteur » ne demande que le mot de passe.
+- Un **visiteur** lit tout et ne change rien (ni ajout, ni demande, ni blocage, ni document). Le compte partagé est `visiteur@kedgebs.com` (l'adresse de `site/config.js`), créé dans Supabase avec le mot de passe à donner aux visiteurs ; un chef passe un compte en visiteur dans Équipe. Sur l'écran de connexion, « Entrer en visiteur » ne demande que le mot de passe.
 
 ## Mise en route
 

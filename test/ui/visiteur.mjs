@@ -23,9 +23,9 @@ async function profil() { await tab("periode"); await p.click('[data-act="profil
 async function logout() { await profil(); await p.click('[data-act="logout"]'); await p.waitForTimeout(200); await p.click(".alert .acts button:last-child"); await p.waitForSelector("#login"); }
 
 await p.goto(URL0); await p.evaluate(() => localStorage.clear()); await p.reload(); await p.waitForSelector("#login");
-// le compte créé dans Supabase (visiteur@example.com), encore rattaché à un service par erreur
+// le compte créé dans Supabase (l'adresse de site/config.js), encore rattaché à un service par erreur
 await p.evaluate((id) => { const d = window.__fake.db;
-  d.users.push({ id, email: "visiteur@example.com", password: "ancre2026" });
+  d.users.push({ id, email: "visiteur@kedgebs.com", password: "ancre2026" });
   d.profiles.push({ id, nom: "Visiteur", fonction: "", svc: "rp", chef: false, media: false, notif_all: false, visiteur: false }); window.__fake.save(); }, V);
 
 // Julien publie un temps fort puis passe le compte en visiteur dans Équipe
