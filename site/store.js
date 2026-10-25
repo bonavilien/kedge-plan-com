@@ -36,7 +36,7 @@ window.KStore = (() => {
     ]);
     PERIODS = per.map((p) => ({ n: p.n, nom: p.nom, du: p.du, au: p.au, lib: p.lib }));
     // svc vaut « chef » pour les chefs de projet ; ownSvc garde le service réglé dans le profil
-    const PEOPLE = prof.map((p) => ({ k: p.id, nom: p.nom || "Sans nom", fonction: p.fonction, svc: p.chef ? "chef" : p.svc || "", ownSvc: p.svc || "", chef: p.chef, media: p.media, notifAll: p.notif_all }));
+    const PEOPLE = prof.map((p) => ({ k: p.id, nom: p.nom || "Sans nom", fonction: p.fonction, svc: p.chef ? "chef" : p.svc || "", ownSvc: p.svc || "", chef: p.chef, media: p.media, notifAll: p.notif_all, visiteur: !!p.visiteur }));
     const names = (f) => list(PEOPLE.filter(f).map((p) => p.nom));
     // « qui » : les personnes derrière un service, pour écrire « Demande envoyée à Aurélie et Hugo »
     const SERVICES = svc.map((s) => ({ k: s.k, nom: s.nom, court: s.court, qui: names((p) => !p.chef && p.svc === s.k) || s.nom }));
@@ -92,7 +92,7 @@ window.KStore = (() => {
   const answer = (key, val) => run(sb.from("answers").upsert({ key, val }, { onConflict: "user_id,key" }));
   const markSeen = (item) => run(sb.from("seen").upsert({ item }, { onConflict: "user_id,item" }));
   const setMeta = (k, v) => run(sb.from("meta").upsert({ k, v }));
-  const setProfile = (id, p) => run(sb.from("profiles").update({ nom: p.nom, fonction: p.fonction, svc: p.ownSvc || null, chef: p.chef, media: p.media, notif_all: p.notifAll }).eq("id", id));
+  const setProfile = (id, p) => run(sb.from("profiles").update({ nom: p.nom, fonction: p.fonction, svc: p.ownSvc || null, chef: p.chef, media: p.media, notif_all: p.notifAll, visiteur: !!p.visiteur }).eq("id", id));
   // prévenir à nouveau après un changement : la base choisit les destinataires, renvoie leur nombre
   const renotify = (item, quoi) => run(sb.rpc("renotify", { p_item: item, p_quoi: quoi }));
   const addPartner = (nom) => run(sb.from("partners").insert({ nom }).select().single()).then((x) => ({ k: x.k, nom: x.nom }));

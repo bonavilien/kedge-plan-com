@@ -110,12 +110,21 @@
 
   // ---------- connexion : un compte par personne, créé par le chef de projet ----------
   const loginHTML = (msg = "") => `<form class="login" id="login" novalidate>
-      <label class="field"><span>E-mail</span><input class="in" id="lg-mail" type="email" autocomplete="username" inputmode="email" autocapitalize="off" spellcheck="false" placeholder="prenom.nom@kedgebs.com"></label>
+      <label class="field" id="lg-mail-f"><span>E-mail</span><input class="in" id="lg-mail" type="email" autocomplete="username" inputmode="email" autocapitalize="off" spellcheck="false" placeholder="prenom.nom@kedgebs.com"></label>
       <label class="field"><span>Mot de passe</span><input class="in" id="lg-pw" type="password" autocomplete="current-password"></label>
       <p class="err" id="lg-err" role="alert"${msg ? "" : " hidden"}>${esc(msg)}</p>
       <button type="submit" class="btn">Se connecter</button>
       <p class="login-help">Pas encore de compte, ou mot de passe oublié ? Demande-le à ton chef de projet com.</p>
+      ${CFG.visiteur ? `<button type="button" class="link login-visit" id="lg-visit">Entrer en visiteur</button>` : ""}
     </form>`;
+  // visiteur : l'e-mail du compte visiteur est connu, on ne demande que le mot de passe
+  const visitMode = (f) => {
+    f.querySelector("#lg-mail").value = CFG.visiteur;
+    f.querySelector("#lg-mail-f").hidden = true;
+    f.querySelector(".login-help").textContent = "Mode visiteur : consultation seule. Le mot de passe t'a été donné par l'équipe com.";
+    f.querySelector("#lg-visit").hidden = true;
+    f.querySelector("#lg-pw").focus();
+  };
   const errText = (x) => {
     const m = x?.message || "";
     if (x?.code === "invalid_credentials" || /invalid login/i.test(m)) return "E-mail ou mot de passe incorrect.";
@@ -128,6 +137,7 @@
     form.innerHTML = loginHTML(msg);
     brand.hidden = false;
     form.querySelector("#login").addEventListener("submit", onSubmit);
+    form.querySelector("#lg-visit")?.addEventListener("click", () => visitMode(form.querySelector("#login")));
   };
   async function onSubmit(e) {
     e.preventDefault();
