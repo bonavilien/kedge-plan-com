@@ -273,9 +273,9 @@ window.KPlan = (DATA, { greet = false } = {}) => {
   const filterLabel = (f) => ({ mine: "Mon service", all: "Tous les services" }[f] || svcOf(f).nom);
   // temps forts et partenariats ont leur onglet : ici, seulement les actions de diffusion
   const isAct = (it) => !isTF(it) && !isPay(it);
-  function scoped() {
+  function scoped(k = S.period) {
     const p = me(), f = curFilter();
-    let list = DB.items.filter((it) => isAct(it) && periodOf(it.date) === S.period);
+    let list = DB.items.filter((it) => isAct(it) && periodOf(it.date) === k);
     if (f === "mine") list = list.filter((it) => it.svc === p.svc);
     else if (f !== "all") list = list.filter((it) => it.svc === f);
     return list;
@@ -292,6 +292,12 @@ window.KPlan = (DATA, { greet = false } = {}) => {
     const past = cur ? list.filter(isPast) : [];
     const shown = cur && !S.pastP ? list.filter((it) => !isPast(it)) : list;
     const rest = restTxt(P);
+    // les 7 derniers jours d'une période : ce qui ouvre la suivante (ses deux premières semaines) se voit déjà
+    const nx = PERIODS[S.period + 1], left = days(P.au);
+    const soon = cur && nx && left >= 0 && left <= 7
+      ? (wide ? DB.items.filter((it) => isAct(it) && periodOf(it.date) === S.period + 1) : scoped(S.period + 1))
+        .filter((it) => it.st !== "retire" && (!S.msgF || it.m.includes(+S.msgF)) && sortKey(it) <= addDays(nx.du, 13)).sort(sortDate)
+      : [];
 
     // actions par message (chefs de projet) : les messages à zéro ressortent
     const live = base.filter((it) => it.st !== "retire");
@@ -332,6 +338,7 @@ window.KPlan = (DATA, { greet = false } = {}) => {
       ${news}
       ${bar}
       ${!shown.length ? empty : wide ? colsH() : agenda(shown, { who: f === "all" ? "all" : "tf" })}
+      ${soon.length ? `<section class="soon" aria-label="Période suivante"><h2 class="sec-h">À suivre · ${esc(perName(nx))}, dès le ${esc(fmtDay(nx.du))}</h2>${agenda(soon, { who: wide || f === "all" ? "all" : "tf" })}</section>` : ""}
     </div></div>`;
     wireSwipe(el.querySelector("#swipe"));
     syncBadge();
@@ -738,7 +745,7 @@ window.KPlan = (DATA, { greet = false } = {}) => {
       ${relay}
       ${hist}
       ${hist && edit ? "" : `<p class="foot-note">${hist ? "" : `Ajouté par ${esc(person(it.by).nom)} le ${fmtDay(it.at)}. `}${edit ? "" : `Modifiable par ${esc(editors(it))}.`}</p>`}
-      ${it.st === "retire" ? (edit ? `<p class="retire-p"><button type="button" class="txt-btn strong" data-act="unretire" data-id="${id}">Remettre ${isSujet(it) ? "ce sujet" : isTF(it) ? "ce temps fort" : "cette action"}</button></p>` : "")
+      ${it.st === "retire" ? (edit ? `<p class="retire-p"><button type="button" class="txt-btn strong" data-act="unretire" data-id="${id}">Remettre ${isSujet(it) ? "ce sujet" : isTF(it) ? "ce temps fort" : "cette action"}</button><button type="button" class="txt-btn danger" data-act="delete" data-id="${id}">Supprimer définitivement</button></p>` : "")
         : isVisit() ? ""
         : `<p class="retire-p"><button type="button" class="txt-btn" data-act="block" data-id="${id}">Signaler un blocage</button>${edit ? `<button type="button" class="txt-btn danger" data-act="retire" data-id="${id}">Retirer ${isSujet(it) ? "ce sujet" : isTF(it) ? "ce temps fort" : "cette action"}</button>` : ""}</p>`}
     </div>`;
@@ -1161,10 +1168,10 @@ window.KPlan = (DATA, { greet = false } = {}) => {
   side.insertAdjacentHTML("afterbegin", `<div class="side-head"><img class="logo-l" src="assets/kedge-logo-anthracite.png" alt="KEDGE Business School" height="28"><img class="logo-d" src="assets/kedge-logo-blanc.png" alt="" height="28"><span>Plan de com 2026-2027</span></div>`);
   side.insertAdjacentHTML("beforeend", `<div class="side-foot" id="side-foot"></div>`);
   syncSide();
-  // la liste reste cliquable pendant qu'une fiche est ouverte dans le panneau ; la ligne ouverte reste marquée
+  // la liste (ou le formulaire Ajouter) reste utilisable pendant qu'une fiche est ouverte dans le panneau,
+  // même quand l'écran se redessine (temps réel) ; la ligne ouverte reste marquée
+  K.setKeepBase(panel);
   new MutationObserver(() => {
-    const base = document.getElementById("v-" + app.dataset.tab);
-    if (panel() && base) base.inert = false;
     if (app.dataset.pushed !== "1") app.querySelectorAll(".sel[data-open]").forEach((x) => x.classList.remove("sel"));
   }).observe(app, { attributes: true, attributeFilter: ["data-pushed"] });
   [MQ_COLS, MQ_PANEL].forEach((m) => m.addEventListener("change", () => K.refresh()));
@@ -1225,6 +1232,18 @@ window.KPlan = (DATA, { greet = false } = {}) => {
         // noté tout de suite dans l'historique local : « Remettre » retrouve le statut d'avant sans attendre la base
         (DB.journal ||= []).push({ id: 0, item: id, by: ME, kind: "modif", diff: { st: [it.st, "retire"] }, at: TODAY, ts: new Date().toISOString() });
         it.st = "retire"; open.forEach((q) => { q.st = "annulee"; }); quick(Store.setStatus(id, "retire"), tf ? "Retiré." : "Retirée.");
+      }
+    }
+    if (a === "delete") {
+      // pour de bon : la fiche, ses documents, ses demandes et son historique ; les relais d'un temps fort restent, sans temps fort
+      const it = byId(id), rel = isTF(it) ? DB.items.filter((x) => x.tf === id) : [];
+      const text = `${isSujet(it) ? "Le sujet" : isTF(it) ? "Le temps fort" : "L'action"} disparaît de l'appli avec ses documents, ses demandes et son historique. ${rel.length ? `${rel.length > 1 ? `Ses ${rel.length} relais restent` : "Son relais reste"}, sans temps fort. ` : ""}Impossible de revenir en arrière.`;
+      if (await K.alert({ title: `Supprimer « ${it.t} » ?`, text, ok: "Supprimer", danger: true })) {
+        try { await Store.deleteItem(id); } catch (e) { return fail(e); }
+        DB.items = DB.items.filter((x) => x.id !== id); rel.forEach((x) => { x.tf = ""; });
+        ["reqs", "blocks", "journal"].forEach((k) => { DB[k] = (DB[k] || []).filter((x) => x.item !== id); });
+        if (K.topView()?.classList.contains("pushed")) K.pop();
+        K.refresh(); K.snack("Supprimé."); sync();
       }
     }
     if (a === "unretire") {

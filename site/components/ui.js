@@ -131,7 +131,11 @@ window.KUI = (() => {
     syncInert();
   }
   const topView = () => (state.stack.length ? state.stack[state.stack.length - 1].el : $(`#v-${state.tab}`, app));
-  function syncInert() { const top = topView(); $$(".views > .view", app).forEach((v) => { v.inert = v !== top; }); }
+  // keepBase() vrai : l'onglet reste utilisable sous l'écran ouvert par-dessus (fiche en panneau sur grand écran)
+  let keepBase = () => false;
+  const setKeepBase = (f) => { keepBase = f; syncInert(); };
+  function syncInert() { const top = topView(), base = $(`#v-${state.tab}`, app), keep = state.stack.length && keepBase();
+    $$(".views > .view", app).forEach((v) => { v.inert = v !== top && !(keep && v === base); }); }
 
   // ---------- feuille ----------
   // sheet.open({ title, cancel, ok, body, full, onOk }) : onOk peut renvoyer false (ou une promesse de false) pour garder la feuille ouverte
@@ -286,6 +290,6 @@ window.KUI = (() => {
     el.innerHTML = `<svg viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" aria-hidden="true">${s}</svg>`;
   }
 
-  const api = { init, setOS, setTheme, get theme() { return state.theme; }, isAndroid, navbar, iconBtn, wireScroll, keepScroll, tabs, showTab, push, pop, refresh, topView, sheet, alert, snack, stagger, bump, tick, avatars, arcs, bend, esc, initials, plural, fr, pace, icons: I, reduceMotion };
+  const api = { init, setOS, setTheme, get theme() { return state.theme; }, isAndroid, navbar, iconBtn, wireScroll, keepScroll, tabs, showTab, push, pop, refresh, topView, setKeepBase, sheet, alert, snack, stagger, bump, tick, avatars, arcs, bend, esc, initials, plural, fr, pace, icons: I, reduceMotion };
   return api;
 })();

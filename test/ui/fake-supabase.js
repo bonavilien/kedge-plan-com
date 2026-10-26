@@ -123,7 +123,11 @@
     }
     if (q.op === "delete") {
       if (q.t === "links") tab.filter(match).forEach((r) => jot(r.item, "document", { nom: r.nom, retire: true }));
-      db[q.t] = tab.filter((r) => !match(r)); save(); return { data: null, error: null };
+      // migration 0008 : seule une fiche retirée se supprime, par ceux qui la modifient ; ce qui en dépend part avec elle
+      const gone = tab.filter(match).filter((r) => q.t !== "items" || (r.st === "retire" && allowed("items", "update", r)));
+      if (q.t === "items") gone.forEach((r) => { ["links", "reqs", "blocks", "journal"].forEach((k) => { db[k] = db[k].filter((x) => x.item !== r.id); });
+        db.items.forEach((x) => { if (x.tf === r.id) x.tf = null; }); });
+      db[q.t] = db[q.t].filter((r) => !gone.includes(r)); save(); return { data: gone.map((r) => ({ id: r.id })), error: null };
     }
   }
   function from(t) {

@@ -23,4 +23,6 @@ $D -f supabase/migrations/0006_reponses.sql
 $D -f test/db/reponses.sql
 $D -f supabase/migrations/0007_services.sql
 $D -f test/db/services.sql
+$D -f supabase/migrations/0008_suppression.sql
+$D -f test/db/suppression.sql
 echo "Base : tout est bon"

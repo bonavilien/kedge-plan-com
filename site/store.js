@@ -79,6 +79,8 @@ window.KStore = (() => {
   const changed = async (q) => { const rows = await run(q.select("id")); if (!rows?.length) throw Object.assign(new Error("la fiche a changé entre-temps, tu ne peux plus la modifier"), { code: "0ROWS" }); };
   const updateItem = (id, it, keys) => { const row = itemRow(it); return changed(sb.from("items").update(keys ? Object.fromEntries(keys.map((k) => [k, row[k]])) : row).eq("id", id)); };
   const setStatus = (id, st) => changed(sb.from("items").update({ st }).eq("id", id));
+  // une fiche retirée supprimée pour de bon (la base refuse si elle n'est pas retirée)
+  const deleteItem = (id) => changed(sb.from("items").delete().eq("id", id));
   // req : la demande d'éléments à laquelle ce document répond
   async function addLink(item, nom, url, req) {
     const l = await run(sb.from("links").insert({ item, nom, url, ...(req ? { req } : {}) }).select().single());
@@ -113,5 +115,5 @@ window.KStore = (() => {
     document.addEventListener("visibilitychange", () => { if (!document.hidden) kick(); });
   }
 
-  return { ready, session, signIn, signOut, setPassword, load, addItem, updateItem, setStatus, addLink, removeLink, addReq, setReq, answerReq, setReqPour, addBlock, liftBlock, answer, markSeen, setMeta, setProfile, addPartner, renotify, savePush, removePush, watch };
+  return { ready, session, signIn, signOut, setPassword, load, addItem, updateItem, setStatus, deleteItem, addLink, removeLink, addReq, setReq, answerReq, setReqPour, addBlock, liftBlock, answer, markSeen, setMeta, setProfile, addPartner, renotify, savePush, removePush, watch };
 })();
