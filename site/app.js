@@ -486,7 +486,7 @@ window.KPlan = (DATA, { greet = false } = {}) => {
     const item = (it) => { const t = typeOf(it), st = stWord(it), cls = t === "cls" ? rankTxt(it) : "";
       const sub = [multi(it) ? `jusqu'au ${fmtShort(it.fin)}` : "", cls, t === "pay" ? partnerName(it) : "", it.st === "retire" ? "" : st].filter(Boolean).join(" · ");
       return `<button type="button" class="gi is-${t}${it.st === "retire" ? " retire" : ""}" data-open="${it.id}" aria-label="${esc([kindName(it), cap(when(it)), it.t, sub, it.st === "retire" ? "retiré" : ""].filter(Boolean).join(". "))}">
-        <span class="gi-t">${day(it)}${t === "pay" ? payBadge : ""}${t === "cls" ? I.podium : ""}<b>${esc(it.t)}</b>${sub ? `<small>${esc(sub)}</small>` : ""}</span></button>`; };
+        <span class="gi-t">${day(it)} ${t === "pay" ? payBadge : ""}${t === "cls" ? I.podium : ""}<b>${esc(it.t)}</b>${sub ? `<small>${esc(sub)}</small>` : ""}</span></button>`; };
     const contL = (it) => `<button type="button" class="gi gi-cont" data-open="${it.id}" aria-label="${esc(`${it.t}, en cours jusqu'au ${fmtShort(it.fin)}`)}"><span class="gi-t">${I.flag}<b>${esc(it.t)}</b><small>suite, jusqu'au ${esc(fmtShort(it.fin))}</small></span></button>`;
     const rowsH = ws.map((x) => `<div class="gt-r${x.here ? " now" : ""}" role="row"${x.here ? ' id="pw-now"' : ""}>
         <div class="gt-w" role="rowheader"><b>${esc(range(x.d0, addDays(x.d0, 6)))}</b>${x.here ? `<em class="pw-now">Cette semaine</em>` : ""}</div>
