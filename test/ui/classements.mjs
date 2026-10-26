@@ -65,8 +65,7 @@ for (const [w, h] of [[390, 844], [1440, 900]]) {
   ok(await p.$(`[data-open="${it.id}"] >> visible=true`) && /Classements/i.test(await p.textContent(".scroll >> visible=true")), `${w}px : l'onglet Temps forts a une rubrique Classements`);
   // la grille : sa ligne, sa pastille, son trait
   await tab("grille");
-  if (w < 768) ok(await findWk(p, `#v-grille .ag-row.is-cls[data-open="${it.id}"]`), `${w}px : le calendrier semaine par semaine montre le classement`);
-  else ok(await p.$(`.lane-cls .blk.b-cls[data-open="${it.id}"]`) && await p.$(".cls-line"), `${w}px : la grille a une ligne Classements et un trait sur la semaine`);
+  ok(await findWk(p, `#v-grille .is-cls[data-open="${it.id}"]`), `${w}px : le calendrier montre le classement dans sa semaine`);
   await p.screenshot({ path: `${OUT}/cls-grille-${w}.png` });
   if (w > 1000) {
     await p.evaluate(() => document.querySelector('[data-act="meeting"]')?.click()); await p.waitForTimeout(400);

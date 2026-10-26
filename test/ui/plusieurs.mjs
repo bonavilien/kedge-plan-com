@@ -5,14 +5,14 @@ const b = await chromium.launch();
 let fails = 0;
 const ok = (c, msg) => { console.log(`${c ? "OK  " : "FAIL"} ${msg}`); if (!c) fails++; };
 const errs = [];
-const findWk = async (p, sel) => { let t = 0; // grille téléphone : compte dans toutes les périodes, semaines passées dépliées
+const findWk = async (p, sel) => { // grille téléphone : cherche dans chaque période, semaines passées dépliées
   while (await p.$('#v-grille [data-act="prev"]:not([disabled])')) { await p.click('#v-grille [data-act="prev"]'); await p.waitForTimeout(400); }
   for (let k = 0; k < 20; k++) {
     if (k) { if (!(await p.$('#v-grille [data-act="next"]:not([disabled])'))) break; await p.click('#v-grille [data-act="next"]'); await p.waitForTimeout(400); }
     if (await p.$('[data-act="gpast"]') && /Voir/.test(await p.textContent('[data-act="gpast"]'))) { await p.click('[data-act="gpast"]'); await p.waitForTimeout(200); }
-    t += (await p.$$(sel)).length;
+    const n = (await p.$$(sel)).length; if (n) return n;
   }
-  return t;
+  return 0;
 };
 for (const [w, h] of [[390, 844], [1440, 900]]) {
   const p = await (await b.newContext({ viewport: { width: w, height: h } })).newPage();
@@ -48,10 +48,8 @@ for (const [w, h] of [[390, 844], [1440, 900]]) {
   ok(/jusqu'au/.test(row), `${w}px : la liste des temps forts montre le dernier jour`);
   await p.screenshot({ path: `${OUT}/plusieurs-liste-${w}.png` });
   await tab("grille");
-  if (w < 768) { const n = await findWk(p, `#v-grille [data-open="${it.id}"]`);
-    ok(n >= 1, `${w}px : dans la grille semaine par semaine, le temps fort apparaît (${n} semaine)`); }
-  else { const span = await p.$eval(`.blk[data-open="${it.id}"]`, (x) => x.style.gridColumn);
-    ok(/\//.test(span), `${w}px : dans la grille, le bloc couvre ses semaines (${span})`); }
+  const n = await findWk(p, `#v-grille [data-open="${it.id}"]`);
+  ok(n >= 1 && /jusqu'au/.test(await p.textContent(`#v-grille [data-open="${it.id}"]`)), `${w}px : le calendrier montre le temps fort et son dernier jour (${n} semaine)`);
   // l'agenda : chaque jour est marqué temps fort
   await tab("ajouter"); await p.click('#f-kind button[value="action"]'); await p.waitForTimeout(200);
   await p.click("#f-date"); await p.waitForTimeout(150);

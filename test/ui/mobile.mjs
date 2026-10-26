@@ -75,7 +75,25 @@ for (const [w, h] of [[360, 740], [390, 844]]) {
   ok(await p.isVisible('.tab[data-kui-tab="ajouter"]'), "1440px : Ajouter reste dans le menu");
   ok(!(await p.isVisible('#v-periode [data-act="goadd"]')), "1440px : pas de + en haut");
   await tab(p, "grille");
-  ok(await p.$("#gwrap") && !(await p.$(".pw-h")) && /Calendrier/.test(await p.textContent('.tab[data-kui-tab="grille"]')), "1440px : le calendrier reste un tableau, sous le nom Calendrier");
+  ok(await p.$("#v-grille .gt") && !(await p.$(".pw-h")) && /Calendrier/.test(await p.textContent('.tab[data-kui-tab="grille"]')), "1440px : le calendrier est un tableau, sous le nom Calendrier");
+  const heads = await p.$$eval("#v-grille .gt-head [role=columnheader]", (h) => h.map((x) => x.textContent.trim()));
+  ok(heads[0] === "Semaine" && heads[1] === "Temps forts" && heads.includes("Partenariats"), `1440px : une colonne par service (${heads.join(", ")})`);
+  const sw = await p.evaluate(() => [document.documentElement.scrollWidth, document.querySelector("#v-grille .scroll").scrollWidth, document.querySelector("#v-grille .scroll").clientWidth]);
+  ok(sw[0] <= 1440 && sw[1] <= sw[2], `1440px : on ne défile pas en largeur (${sw.join("/")})`);
+  ok(await p.$("#v-grille #pw-now") && /Cette semaine/.test(await p.textContent("#v-grille #pw-now")), "1440px : la semaine en cours est marquée");
+  await p.click(`#v-grille [data-open="${ID(2)}"]`); await p.waitForTimeout(500);
+  const r = await p.evaluate(() => getComputedStyle(document.getElementById("v-grille")).right);
+  ok(r === "0px", `1440px : la fiche s'ouvre par-dessus le calendrier sans le resserrer (right ${r})`);
+  await p.keyboard.press("Escape"); await p.waitForTimeout(300);
+  await p.click('#v-grille [data-act="next"]'); await p.waitForTimeout(500);
+  await tab(p, "periode");
+  ok(await p.textContent("#v-periode .ph-title") === await p.textContent("#v-grille .ph-title"), "1440px : le calendrier et Ma période regardent la même période");
+  await p.context().close();
+}
+for (const w of [1024, 1180]) {
+  const p = await open(w, 800, "julien");
+  await tab(p, "grille");
+  ok(await p.$("#v-grille .pw-h") && !(await p.$("#v-grille .gt")), `${w}px : trop étroit pour le tableau, le calendrier passe en agenda`);
   await p.context().close();
 }
 ok(!errs.length, `pas d'erreur JS ${errs.join(" | ")}`);

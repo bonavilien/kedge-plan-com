@@ -134,9 +134,9 @@ window.KPlan = (DATA, { greet = false } = {}) => {
   const inPlan = (s) => (s < FIRST.du ? FIRST.du : s > LAST.au ? LAST.au : s);
   const newDraft = (kind = "action") => ({ kind, per: [S.period], t: "", prec: "jour", date: inPlan(addDays(TODAY, 14)), mois: inPlan(TODAY).slice(0, 7), m: [], cc: [], svc: me().chef ? SERVICES[0]?.k || "" : me().svc, partner: PARTNERS[0]?.k || "", newPartner: "", tf: "", link: "", note: "", more: false, plus: false, fin: "", rang: "", cible: "" });
   // ordinateur et tablette : trois colonnes de services dès 768 px, fiche en panneau à droite dès 1100 px
-  const MQ_COLS = matchMedia("(min-width: 768px)"), MQ_PANEL = matchMedia("(min-width: 1100px)");
+  const MQ_COLS = matchMedia("(min-width: 768px)"), MQ_PANEL = matchMedia("(min-width: 1100px)"), MQ_DESK = matchMedia("(min-width: 1280px)");
   const cols = () => MQ_COLS.matches, panel = () => MQ_PANEL.matches;
-  const S = { period: CUR, filter: null, msgF: null, pastP: false, zoom: "periode", gx: null, gxZoom: null, past: { tf: false, media: false }, open: {}, draft: null, edit: null };
+  const S = { period: CUR, filter: null, msgF: null, pastP: false, past: { tf: false, media: false }, open: {}, draft: null, edit: null };
 
   // ---------- petits gabarits ----------
   const chip = (label, on, value) => `<button type="button" class="chip" value="${esc(value ?? label)}" aria-pressed="${!!on}">${I.check}${esc(label)}</button>`;
@@ -429,29 +429,32 @@ window.KPlan = (DATA, { greet = false } = {}) => {
   const wkM = (s) => Math.min(GN - 1, wk(s) + ((D(s).getDay() + 6) % 7 >= 4 ? 1 : 0));
   // une fiche connue au mois seulement se place sur la première semaine de son mois
   const wkOf = (it) => (precise(it) ? wk(it.date) : wkM(it.date.slice(0, 7) + "-01"));
-  const colW = () => (S.zoom === "annee" ? 26 : 140);
 
   // téléphone : le tableau à deux dimensions ne tient pas dans 390 px ; le calendrier se lit comme un agenda,
   // une période à la fois, semaine par semaine, avec les mêmes lignes que Ma période (date, titre, service, message, état)
-  function renderGrillePhone(el) {
-    const i = S.period;
-    const w0 = wkStart(i), w1 = i < PERIODS.length - 1 ? Math.max(w0 + 1, wkStart(i + 1)) : GN;
+  const dm = (d) => premier(D(d).toLocaleDateString("fr-FR", { day: "numeric", month: "short" }));
+  const range = (a, b) => `${a.slice(0, 7) === b.slice(0, 7) ? premier(`${D(a).getDate()} `).trim() : dm(a)} – ${dm(b)}`; // « 2 – 8 nov. », « 26 oct. – 1er nov. »
+  // les semaines de la période regardée ; période en cours : les semaines passées restent repliées, on commence à cette semaine
+  function calWeeks() {
+    const i = S.period, w0 = wkStart(i), w1 = i < PERIODS.length - 1 ? Math.max(w0 + 1, wkStart(i + 1)) : GN;
     const live = DB.items.filter((it) => !isSujet(it));
-    const dm = (d) => premier(D(d).toLocaleDateString("fr-FR", { day: "numeric", month: "short" }));
-    const range = (a, b) => `${a.slice(0, 7) === b.slice(0, 7) ? premier(`${D(a).getDate()} `).trim() : dm(a)} – ${dm(b)}`; // « 2 – 8 nov. », « 26 oct. – 1er nov. »
-    const now = wk(TODAY), isCur = i === CUR && now >= w0 && now < w1;
-    // période en cours : les semaines passées restent repliées, on commence à cette semaine
-    const past = isCur ? now - w0 : 0;
-    const ws = Array.from({ length: w1 - w0 }, (_, n) => w0 + n).slice(S.gpast ? 0 : past).map((w) => ({ w,
+    const now = wk(TODAY), isCur = i === CUR && now >= w0 && now < w1, past = isCur ? now - w0 : 0;
+    const ws = Array.from({ length: w1 - w0 }, (_, n) => w0 + n).slice(S.gpast ? 0 : past).map((w) => ({ w, d0: addDays(G0, w * 7), here: isCur && w === now,
       // un temps fort sur plusieurs jours : sa ligne dans la semaine où il commence, un rappel dans les suivantes
-      its: live.filter((it) => wkOf(it) === w),
+      its: live.filter((it) => wkOf(it) === w).sort(sortDate),
       cont: live.filter((it) => multi(it) && wk(it.date) < w && w <= wk(it.fin)) }));
+    const suj = DB.items.filter((it) => isSujet(it) && it.per.includes(i));
+    const pastL = past ? `<p class="past-p"><button type="button" class="link" data-act="gpast">${S.gpast ? "Masquer les semaines passées" : seeMore(past, past > 1 ? "semaines passées" : "semaine passée")}</button></p>` : "";
+    return { ws, now, isCur, suj, pastL };
+  }
+  function renderGrillePhone(el) {
+    const { ws, now, isCur, suj, pastL } = calWeeks();
     // des semaines vides qui se suivent : une seule ligne discrète
     const out = [];
     ws.forEach((x) => { const empty = !x.its.length && !x.cont.length, prev = out[out.length - 1];
       if (empty && prev?.empty && x.w !== now) prev.to = x.w; else out.push({ ...x, empty, to: x.w }); });
     const weeks = out.map((x) => {
-      const d0 = addDays(G0, x.w * 7), d1 = addDays(G0, x.to * 7 + 6), here = isCur && x.w === now;
+      const d0 = x.d0, d1 = addDays(G0, x.to * 7 + 6), here = x.here;
       const tag = here ? `<em class="pw-now">Cette semaine</em>` : "";
       if (x.empty) return `<p class="pw-empty"${here ? ' id="pw-now"' : ""}><span>${esc(range(d0, d1))}</span>${tag}<span class="pw-none">Rien de prévu</span></p>`;
       const cont = x.cont.map((it) => `<button type="button" class="pw-cont" data-open="${it.id}" aria-label="${esc(`${it.t}, en cours jusqu'au ${fmtShort(it.fin)}`)}">${I.flag}<span><b>${esc(it.t)}</b> continue jusqu'au ${esc(fmtShort(it.fin))}</span></button>`).join("");
@@ -459,14 +462,44 @@ window.KPlan = (DATA, { greet = false } = {}) => {
         <h2 class="pw-h">${esc(range(d0, d1))}${tag}</h2>${cont}
         ${x.its.length ? `<div class="group">${rows(x.its, { mode: "week" })}</div>` : ""}</section>`;
     }).join("");
-    const suj = DB.items.filter((it) => isSujet(it) && it.per.includes(i));
     // la même période que Ma période : changer ici change là-bas, et inversement
     el.innerHTML = K.navbar({ title: "Calendrier", actions: addBtn() + profileBtn() }) + `<div class="scroll">
       <h1 class="large-title">Calendrier</h1>
       <div class="swipe">${periodHead("", "h2")}
       ${suj.length ? `<h2 class="pw-h">Toute la période</h2><div class="group">${rows(suj, { mode: "week" })}</div>` : ""}
-      ${past ? `<p class="past-p"><button type="button" class="link" data-act="gpast">${S.gpast ? "Masquer les semaines passées" : seeMore(past, past > 1 ? "semaines passées" : "semaine passée")}</button></p>` : ""}
+      ${pastL}
       ${weeks}
+    </div></div>`;
+    wireSwipe(el.querySelector(".swipe"));
+    syncBadge();
+  }
+  // ordinateur (≥ 1280 px, en dessous l'agenda du téléphone) : la grille de diffusion d'une télé. Une ligne par semaine,
+  // une colonne par service, la période regardée en entier sur la largeur de l'écran : on ne défile que de haut en bas
+  function renderGrilleDesk(el) {
+    const { ws, suj, pastL } = calWeeks();
+    const C = [{ nom: "Temps forts", f: (it) => isTfDay(it) || isCls(it) },
+      ...SERVICES.map((s) => ({ nom: s.nom, f: (it) => !isTF(it) && !isPay(it) && it.svc === s.k })),
+      ...(DB.items.some(isChefAct) ? [{ nom: CHEF.nom, f: (it) => !isTF(it) && isChefAct(it) }] : []),
+      { nom: "Partenariats", f: isPay }];
+    // une ligne de cellule : le jour, le titre, puis ce qui distingue (rang, payant, à confirmer, retiré)
+    const day = (it) => `<span class="gi-d">${precise(it) ? `${D(it.date).getDate()} <i>${esc(D(it.date).toLocaleDateString("fr-FR", { weekday: "short" }))}</i>` : esc(monShort(it.date))}</span>`;
+    const item = (it) => { const t = typeOf(it), st = stWord(it), cls = t === "cls" ? rankTxt(it) : "";
+      const sub = [multi(it) ? `jusqu'au ${fmtShort(it.fin)}` : "", cls, t === "pay" ? partnerName(it) : "", it.st === "retire" ? "" : st].filter(Boolean).join(" · ");
+      return `<button type="button" class="gi is-${t}${it.st === "retire" ? " retire" : ""}" data-open="${it.id}" aria-label="${esc([kindName(it), cap(when(it)), it.t, sub, it.st === "retire" ? "retiré" : ""].filter(Boolean).join(". "))}">
+        <span class="gi-t">${day(it)}${t === "pay" ? payBadge : ""}${t === "cls" ? I.podium : ""}<b>${esc(it.t)}</b>${sub ? `<small>${esc(sub)}</small>` : ""}</span></button>`; };
+    const contL = (it) => `<button type="button" class="gi gi-cont" data-open="${it.id}" aria-label="${esc(`${it.t}, en cours jusqu'au ${fmtShort(it.fin)}`)}"><span class="gi-t">${I.flag}<b>${esc(it.t)}</b><small>suite, jusqu'au ${esc(fmtShort(it.fin))}</small></span></button>`;
+    const rowsH = ws.map((x) => `<div class="gt-r${x.here ? " now" : ""}" role="row"${x.here ? ' id="pw-now"' : ""}>
+        <div class="gt-w" role="rowheader"><b>${esc(range(x.d0, addDays(x.d0, 6)))}</b>${x.here ? `<em class="pw-now">Cette semaine</em>` : ""}</div>
+        ${C.map((c, k) => `<div class="gt-c" role="cell">${k === 0 ? x.cont.map(contL).join("") : ""}${x.its.filter(c.f).map(item).join("")}</div>`).join("")}</div>`).join("");
+    el.innerHTML = K.navbar({ title: "Calendrier", actions: profileBtn() }) + `<div class="scroll page-wide">
+      <h1 class="large-title">Calendrier</h1>
+      <div class="swipe">${periodHead("", "h2")}
+      ${suj.length ? `<h2 class="sec-h suj-h">Toute la période · ${suj.length}</h2><div class="suj-grid">${suj.map(sujCard).join("")}</div>` : ""}
+      ${pastL}
+      <div class="gt" role="table" aria-label="Calendrier de la période, une ligne par semaine" style="--nc:${C.length}">
+        <div class="gt-r gt-head" role="row"><div class="gt-w" role="columnheader">Semaine</div>${C.map((c) => `<div class="gt-c" role="columnheader">${esc(c.nom)}</div>`).join("")}</div>
+        ${rowsH}
+      </div>
     </div></div>`;
     wireSwipe(el.querySelector(".swipe"));
     syncBadge();
@@ -475,50 +508,8 @@ window.KPlan = (DATA, { greet = false } = {}) => {
   const addBtn = () => (canAdd() || isMedia() ? `<button type="button" class="icon-btn phone-only add-btn" aria-label="Ajouter" data-act="goadd">${I.plus}</button>` : "");
 
   function renderGrille(el) {
-    if (!cols()) return renderGrillePhone(el);
-    const year = S.zoom === "annee", col = colW(), lab = year ? 104 : 112;
-    const lanes = [
-      { k: "suj", nom: "Sujets", items: DB.items.filter(isSujet) },
-      { k: "tf", nom: "Temps forts", items: DB.items.filter(isTfDay) },
-      { k: "cls", nom: "Classements", items: DB.items.filter(isCls) },
-      ...SERVICES.map((s) => ({ k: s.k, nom: s.court, items: DB.items.filter((it) => !isTF(it) && !isPay(it) && it.svc === s.k) })),
-      { k: "partners", nom: "Partenariats", items: DB.items.filter(isPay) },
-    ];
-    // un sujet s'étale sur toute sa période
-    const sujBlk = (it) => it.per.map((i) => `<button type="button" class="blk b-suj${it.st === "retire" ? " retire" : ""}" style="grid-column:${wk(PERIODS[i].du) + 1}/${wk(PERIODS[i].au) + 2}" data-open="${it.id}" aria-label="${esc(`${it.t}, ${perName(PERIODS[i])}`)}"><span class="t">${esc(it.t)}</span></button>`).join("");
-    const blk = (it) => {
-      if (isSujet(it)) return sujBlk(it);
-      const soft = it.st === "confirmer" || it.st === "idee";
-      return `<button type="button" class="blk b-${typeOf(it)}${it.st === "retire" ? " retire" : ""}${soft ? " soft" : ""}${multi(it) ? " multi" : ""}" style="grid-column:${wkOf(it) + 1}${multi(it) ? `/${wk(it.fin) + 2}` : ""}" data-open="${it.id}" aria-label="${esc(`${it.t}, ${when(it)}`)}">${year ? `<i class="sq"></i>` : `${isCls(it) ? I.podium : ""}<span class="t">${esc(it.t)}</span>`}</button>`;
-    };
-    const months = MONTHS.map((m) => m + "-01");
-    const perEnd = (i) => (i < PERIODS.length - 1 ? Math.max(wkStart(i) + 1, wkStart(i + 1)) : GN);
-    const head = `<div class="grow ghead"><div class="glab"></div><div class="gcells gper">${PERIODS.map((P, i) => `<div class="gp" style="grid-row:1;grid-column:${wkStart(i) + 1}/${perEnd(i) + 1}">${esc(perName(P))}</div>`).join("")}</div></div>
-      <div class="grow ghead"><div class="glab"></div><div class="gcells gmon">${months.map((m, i) => `<div style="grid-column:${(i ? wkM(m) : 0) + 1}/${i < months.length - 1 ? wkM(months[i + 1]) + 1 : GN + 1}">${D(m).toLocaleDateString("fr-FR", { month: year ? "narrow" : "long" })}</div>`).join("")}</div></div>
-      ${year ? "" : `<div class="grow ghead"><div class="glab"></div><div class="gcells gwk">${Array.from({ length: GN }, (_, i) => `<div>${D(addDays(G0, i * 7)).getDate()}</div>`).join("")}</div></div>`}`;
-    const bands = [...new Set(DB.items.filter((it) => isTfDay(it) && it.st !== "retire").flatMap((it) => (precise(it) ? daysOf(it).map(wk) : [wkOf(it)])))].map((w) => `<div class="band" style="left:calc(var(--lab) + ${w} * var(--col))"></div>`).join("");
-    // la semaine d'un classement daté au jour près : un trait fin du haut en bas de la grille (connu au mois : pas de trait)
-    const clsLines = [...new Set(DB.items.filter((it) => isCls(it) && it.st !== "retire" && precise(it)).map((it) => wk(it.date)))].map((w) => `<div class="cls-line" style="left:calc(var(--lab) + ${w + 0.5} * var(--col))"></div>`).join("");
-    const todayX = (D(TODAY) - D(G0)) / 864e5 / 7;
-    const body = lanes.map((l) => `<div class="grow lane-${l.k}">${l.k === "partners" ? `<button type="button" class="glab" data-act="partners"><b>${l.nom}</b></button>` : `<div class="glab"><b>${esc(l.nom)}</b></div>`}<div class="gcells">${l.items.sort(sortDate).map(blk).join("")}</div></div>`).join("");
-
-    el.innerHTML = K.navbar({ title: "Calendrier", actions: profileBtn() }) + `<div class="scroll page-full">
-      <h1 class="large-title">Calendrier</h1>
-      <div class="g-ctrl"><div class="seg" data-seg id="g-zoom" role="group" aria-label="Zoom"><button type="button" value="periode" aria-pressed="${!year}">${I.check}Période</button><button type="button" value="annee" aria-pressed="${year}">${I.check}Année</button></div>
-        <button type="button" class="txt-btn strong" data-act="today">Aujourd'hui</button></div>
-      <div class="gwrap" id="gwrap" aria-hidden="true"><div class="ginner${year ? " z-year" : ""}" style="--n:${GN};--col:${col}px;--lab:${lab}px">
-        ${bands}${clsLines}<div class="today" style="left:calc(var(--lab) + ${todayX.toFixed(2)} * var(--col))"><span>Aujourd'hui</span></div>
-        ${head}${body}
-      </div></div>
-      <div class="legend"><span><i class="lgd b-tf"></i>Temps fort</span><span><i class="lgd b-suj"></i>Sujet</span><span><i class="lgd b-cls"></i>Classement</span><span><i class="lgd b-act"></i>Action de diffusion</span><span><i class="lgd b-pay"></i>Partenariat payant</span><span><i class="lgd soft"></i>À confirmer</span></div>
-      <div class="sr"><h2>Version texte du calendrier</h2>${lanes.map((l) => `<h3>${esc(l.nom)}</h3><ul>${l.items.map((it) => `<li><button type="button" data-open="${it.id}">${esc(`${when(it)} : ${it.t}`)}</button></li>`).join("")}</ul>`).join("")}</div>
-    </div>`;
-    const gw = el.querySelector("#gwrap");
-    requestAnimationFrame(() => {
-      gw.scrollLeft = S.gx != null && S.gxZoom === S.zoom ? S.gx : Math.max(0, (todayX - (year ? 4 : 0.5)) * col);
-      gw.addEventListener("scroll", () => { S.gx = gw.scrollLeft; S.gxZoom = S.zoom; }, { passive: true });
-    });
-    syncBadge();
+    if (!MQ_DESK.matches) return renderGrillePhone(el);
+    renderGrilleDesk(el);
   }
 
   // =====================================================================
@@ -1321,7 +1312,7 @@ window.KPlan = (DATA, { greet = false } = {}) => {
   new MutationObserver(() => {
     if (app.dataset.pushed !== "1") app.querySelectorAll(".sel[data-open]").forEach((x) => x.classList.remove("sel"));
   }).observe(app, { attributes: true, attributeFilter: ["data-pushed"] });
-  [MQ_COLS, MQ_PANEL].forEach((m) => m.addEventListener("change", () => K.refresh()));
+  [MQ_COLS, MQ_PANEL, MQ_DESK].forEach((m) => m.addEventListener("change", () => K.refresh()));
 
   app.addEventListener("click", async (e) => {
     const t = e.target.closest("[data-open],[data-act],[data-msgf],[data-link],[data-setf]"); if (!t || !app.contains(t) || meeting.contains(t)) return;
@@ -1339,14 +1330,11 @@ window.KPlan = (DATA, { greet = false } = {}) => {
     if (a === "pastp") { S.pastP = !S.pastP; K.refresh(); }
     if (a === "filter") filterSheet();
     if (a === "profil") toggleProfil();
-    if (a === "partners") K.showTab("media");
     if (a === "goper") document.getElementById(`per-${t.dataset.k}-${t.dataset.i}`)?.scrollIntoView({ behavior: K.reduceMotion() ? "auto" : "smooth", block: "start" });
     if (a === "allnew") K.push(renderAllNew, { title: "Nouveautés" });
     if (a === "meeting") openMeeting();
     if (a === "copil") openCopil();
     if (a === "gpast") { S.gpast = !S.gpast; K.refresh(); }
-    if (a === "today" && !document.getElementById("gwrap")) document.getElementById("pw-now")?.scrollIntoView({ behavior: K.reduceMotion() ? "auto" : "smooth", block: "start" });
-    if (a === "today") { const gw = document.getElementById("gwrap"), x = ((D(TODAY) - D(G0)) / 864e5 / 7 - (S.zoom === "annee" ? 4 : 0.5)) * colW(); gw?.scrollTo({ left: Math.max(0, x), behavior: K.reduceMotion() ? "auto" : "smooth" }); }
     // un brouillon déjà commencé n'est pas effacé : on change seulement de type (et de fiche liée)
     if (a === "goadd") { S.draft = keptDraft() || newDraft(); K.showTab("ajouter"); }
     if (a === "addtf") { const k = keptDraft(); S.draft = k ? { ...k, kind: "tf" } : newDraft("tf"); K.showTab("ajouter"); }
@@ -1433,7 +1421,6 @@ window.KPlan = (DATA, { greet = false } = {}) => {
   app.addEventListener("kui:change", (e) => {
     const t = e.target;
     if (t.id === "f-kind") { const d = readForm(document.getElementById("v-ajouter"), "f", S.draft); S.draft = { ...d, kind: e.detail }; K.refresh(); }
-    if (t.id === "g-zoom") { S.zoom = e.detail; S.gx = null; K.refresh(); }
     if (t.id === "pf-theme") K.setTheme(e.detail);
     // partenaire : choisir une pastille efface le nom tapé, et inversement
     if (t.id === "f-pt" || t.id === "e-pt") { const np = document.getElementById(t.id.replace("pt", "np")); if (np) np.value = ""; }
@@ -1463,7 +1450,6 @@ window.KPlan = (DATA, { greet = false } = {}) => {
     const at = (n) => PERIODS.findIndex((P) => P.n === n);
     S.period = k.p === k.cur || at(k.p) < 0 ? CUR : at(k.p);
     CP.sel = at(k.c) < 0 ? CUR : at(k.c);
-    if (k.g0 !== G0) S.gx = null; // la grille ne commence plus la même semaine
   }
   // réunion et copil ouverts : redessinés en gardant le défilement
   function redrawOverlays() {

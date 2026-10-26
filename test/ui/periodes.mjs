@@ -156,16 +156,11 @@ const sync = async (p) => { await p.evaluate(() => document.dispatchEvent(new Ev
   ok(/2026-2027/.test(await p.textContent("#copil .mt-title h1")), "flèche gauche : retour à 2026-2027");
   await p.screenshot({ path: `${OUT}/r7-copil.png` });
   await p.keyboard.press("Escape"); await p.tick(200);
-  // grille
+  // calendrier : la même période que Ma période, nommée avec son année
   await tab(p, "grille");
-  const gp = await p.locator(".gp").allInnerTexts();
-  console.log("   grille en-têtes :", gp.join(","));
-  ok(new Set(gp).size === gp.length, "grille : les en-têtes de période se distinguent d'une année à l'autre", gp.join(","));
-  const suj = await p.evaluate(() => Object.fromEntries([...document.querySelectorAll(".lane-suj .blk")].map((x) => [x.getAttribute("aria-label"), x.style.gridColumn])));
-  const gpc = await p.evaluate(() => [...document.querySelectorAll(".gp")].map((x) => x.style.gridColumn));
-  console.log("   sujets :", JSON.stringify(suj), "périodes :", gpc.join(" "));
-  ok(suj["Sujet Installer 27, Installer 2027-28"] === gpc[5], "sujet Installer 2027-28 aligné sur son en-tête", `${suj["Sujet Installer 27, Installer 2027-28"]} vs ${gpc[5]}`);
-  ok(/Installer 2027-28|2027-28/.test(await p.textContent("#v-grille .sr") || ""), "version texte : le sujet nomme l'année");
+  const gt = await p.textContent("#v-grille .ph-title");
+  ok(/Installer 2027-28/.test(gt), "calendrier : même période que Ma période, l'année se distingue", gt);
+  ok(/Sujet Installer 27/.test(await p.textContent("#v-grille")), "calendrier : le sujet de 2027-28 est dans « Toute la période »");
   await p.screenshot({ path: `${OUT}/r7-grille.png`, fullPage: false });
   ok(!p.errs.length, "pas d'erreur", p.errs.join("|"));
   await close(p);
@@ -214,20 +209,21 @@ const sync = async (p) => { await p.evaluate(() => document.dispatchEvent(new Ev
   await close(p);
 }
 {
-  console.log("\n# 11. Grille défilée, puis 2027-28 ajoutée en temps réel");
+  console.log("\n# 11. Calendrier sur une autre période, puis 2027-28 ajoutée en temps réel");
   const p = await open("2027-03-10T10:00:00+01:00");
   await tab(p, "grille");
-  await p.evaluate(() => { document.getElementById("gwrap").scrollLeft = 1400; }); await p.tick(200);
-  const lbl0 = await p.evaluate(() => { const g = document.getElementById("gwrap"); return g.scrollLeft; });
+  await p.click('#v-grille [data-act="next"]'); await p.tick(400);
+  const t0 = await p.textContent("#v-grille .ph-title");
   await p.evaluate((nx) => { const f = window.__fake; f.db.periods.push(...nx); f.save(); }, NEXT);
   await sync(p); await tab(p, "periode"); await tab(p, "grille");
-  const lbl1 = await p.evaluate(() => document.getElementById("gwrap").scrollLeft);
-  ok(Math.abs(lbl0 - lbl1) < 2, "position de défilement gardée", `${lbl0} -> ${lbl1}`);
-  // la première période déplacée d'un mois plus tôt : G0 change
+  const t1 = await p.textContent("#v-grille .ph-title");
+  ok(t1.trim().startsWith(t0.trim()), "la période regardée reste la même (son nom prend l'année quand 2027-28 arrive)", `${t0} -> ${t1}`);
+  // la première période déplacée d'un mois plus tôt : G0 change, les semaines suivent
   await p.evaluate(() => { const f = window.__fake; f.db.periods[0].du = "2026-08-03"; f.save(); });
   await sync(p); await tab(p, "periode"); await tab(p, "grille");
-  const vis = await p.evaluate(() => { const g = document.getElementById("gwrap"), r = g.getBoundingClientRect(); const cells = [...document.querySelectorAll(".gwk > div")]; const c = cells.find((x) => x.getBoundingClientRect().left >= r.left + 112); return c ? c.textContent + " " + cells.indexOf(c) : ""; });
-  console.log("   première semaine visible après décalage de G0 :", vis);
+  const w0 = await p.textContent("#v-grille .gt-r:not(.gt-head) .gt-w b, #v-grille .pw-h");
+  console.log("   première semaine affichée après décalage de G0 :", w0);
+  ok(await p.textContent("#v-grille .ph-title") === t1 && /\d/.test(w0 || ""), "après décalage de G0 : même période, semaines datées", w0);
   ok(!p.errs.length, "pas d'erreur", p.errs.join("|"));
   await close(p);
 }
