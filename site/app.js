@@ -34,7 +34,9 @@ window.KPlan = (DATA, { greet = false } = {}) => {
   const ST = { idee: "Idée", confirmer: "À confirmer", planifie: "Planifié", production: "En production", diffuse: "Diffusé", retire: "Retiré" };
   const TYPES = ["Programme", "Contexte", "Éléments de langage", "Visuels", "Contact", "Rushs", "Autre"];
   const ASK = { "Programme": "le programme", "Contexte": "du contexte", "Éléments de langage": "des éléments de langage", "Visuels": "des visuels", "Contact": "un contact", "Rushs": "des rushs", "Autre": "des éléments" };
-  const svcOf = (k) => SERVICES.find((s) => s.k === k) || CHEF;
+  // la Direction du Programme : un chef de projet y note pour lui-même une info qu'il ira chercher (personne n'est notifié)
+  const PROG = { k: "programme", nom: "Direction du Programme", court: "Dir. Programme", qui: "la Direction du Programme" };
+  const svcOf = (k) => SERVICES.find((s) => s.k === k) || (k === PROG.k ? PROG : CHEF);
   const fonctionOf = (p) => p.fonction || (p.svc ? svcOf(p.svc).nom : "");
   const person = (k) => PEOPLE.find((p) => p.k === k) || { k, nom: "Ancien compte", svc: "", fonction: "" };
   const me = () => person(ME);
@@ -198,7 +200,8 @@ window.KPlan = (DATA, { greet = false } = {}) => {
       .sort((a, b) => a.n - b.n);
   }
   // une demande reçue par mon service (ou par les chefs si j'en suis un)
-  const forMe = (q, p = me()) => q.to === p.svc || (!!p.ownSvc && q.to === p.ownSvc);
+  // (une demande à la Direction du Programme : pour le chef qui l'a notée, c'est lui qui la marque reçue)
+  const forMe = (q, p = me()) => q.to === p.svc || (!!p.ownSvc && q.to === p.ownSvc) || (q.to === PROG.k && q.from === p.k);
   // la deadline d'une demande se voit partout : en rouge une fois passée, en jaune à trois jours
   const dlTxt = (pour) => { const n = days(pour); return n < 0 ? `En retard · deadline ${fmtDay(pour)}` : n === 0 ? "Deadline aujourd'hui" : n === 1 ? "Deadline demain" : `Deadline ${fmtDay(pour)} · dans ${nJours(n)}`; };
   const dlCls = (q) => (q.st === "recue" ? "" : days(q.pour) < 0 ? " late" : days(q.pour) <= 3 ? " soon" : "");
@@ -249,7 +252,7 @@ window.KPlan = (DATA, { greet = false } = {}) => {
     // les demandes d'un ou d'une collègue du service s'y voient aussi, avec son prénom
     const sentH = T.envoyees.some((r) => r.from !== ME) ? "Demandes de ton service en attente" : "Tes demandes en attente";
     const sent = T.envoyees.length ? `<section class="todo-sec"><h2 class="sec-h">${sentH} · ${T.envoyees.length}</h2><div class="group">${T.envoyees.map((r) => { const it = byId(r.item);
-      return `<div class="row wrap rq"><span class="row-main"><button type="button" class="rq-open" data-open="${it.id}"><b>${esc(it.t)}</b><span>${esc(r.type)}${r.from !== ME ? ` · par ${esc(person(r.from).nom)}` : ""} · demandé à ${esc(svcOf(r.to).qui)}</span></button>${dlTag(r)}${canPour(r) ? `<button type="button" class="txt-btn rq-x" data-act="unreq" data-r="${r.id}">Retirer la demande</button>` : ""}</span></div>`; }).join("")}</div></section>` : "";
+      return `<div class="row wrap rq"><span class="row-main"><button type="button" class="rq-open" data-open="${it.id}"><b>${esc(it.t)}</b><span>${esc(r.type)}${r.from !== ME ? ` · par ${esc(person(r.from).nom)}` : ""} · demandé à ${esc(svcOf(r.to).qui)}</span></button>${dlTag(r)}${canPour(r) ? `<button type="button" class="txt-btn rq-x" data-act="unreq" data-r="${r.id}">Retirer la demande</button>` : ""}</span>${forMe(r) ? `<button type="button" class="btn small" data-act="repondre" data-r="${r.id}">C'est reçu</button>` : ""}</div>`; }).join("")}</div></section>` : "";
 
     el.innerHTML = K.navbar({ title: "À faire", actions: profileBtn() }) + `<div class="scroll page-wide">
       <h1 class="large-title">À faire</h1>
@@ -699,7 +702,7 @@ window.KPlan = (DATA, { greet = false } = {}) => {
   const reqDocs = (q) => { const it = byId(q.item); return it ? famille(it).flatMap((x) => x.links || []).filter((l) => l.req === q.id) : []; };
   const reqRow = (q, id) => { const o = q.item !== id && byId(q.item), docs = q.st === "recue" ? reqDocs(q) : [];
     const rep = q.st === "recue" && (q.reponse || docs.length) ? `<span class="rq-rep">${q.reponse ? `<span class="rq-msg">${esc(q.reponse)}</span>` : ""}${docs.map((l) => `<button type="button" class="rq-doc" data-link="${esc(l.url)}">${I.external}${esc(l.nom)}</button>`).join("")}${q.by ? `<small>${esc(person(q.by).nom)}${q.rts ? `, ${ago(iso(new Date(q.rts)))}` : ""}</small>` : ""}</span>` : "";
-    return `<div class="row wrap rq"><span class="row-main">${o ? `<button type="button" class="rq-for" data-open="${o.id}">${esc(o.t)}${o.st === "retire" ? " (retirée)" : ""}</button>` : ""}<b>${esc(reqTxt(q))}</b><span>De ${esc(person(q.from).nom)} à ${esc(svcOf(q.to).qui)}</span>${dlTag(q)}${rep}${canPour(q) ? `<button type="button" class="txt-btn rq-x" data-act="unreq" data-r="${q.id}">Retirer la demande</button>` : ""}</span>${q.st === "recue" ? `<span class="tag">Reçu</span>` : forMe(q) ? `<button type="button" class="btn small" data-act="repondre" data-r="${q.id}">Répondre</button>` : ""}</div>`; };
+    return `<div class="row wrap rq"><span class="row-main">${o ? `<button type="button" class="rq-for" data-open="${o.id}">${esc(o.t)}${o.st === "retire" ? " (retirée)" : ""}</button>` : ""}<b>${esc(reqTxt(q))}</b><span>De ${esc(person(q.from).nom)} à ${esc(svcOf(q.to).qui)}</span>${dlTag(q)}${rep}${canPour(q) ? `<button type="button" class="txt-btn rq-x" data-act="unreq" data-r="${q.id}">Retirer la demande</button>` : ""}</span>${q.st === "recue" ? `<span class="tag">Reçu</span>` : forMe(q) ? `<button type="button" class="btn small" data-act="repondre" data-r="${q.id}">${q.to === PROG.k ? "C'est reçu" : "Répondre"}</button>` : ""}</div>`; };
   function openItem(id) { const it = byId(id); if (!it) return; K.push((el, o) => renderItem(el, o, id), { title: kindName(it) }); }
   function renderItem(el, { back }, id) {
     const it = byId(id);
@@ -794,13 +797,13 @@ window.KPlan = (DATA, { greet = false } = {}) => {
     // deadline proposée : une semaine avant, au plus tôt dans trois jours, et jamais après l'action elle-même
     let pour = [addDays(it.date, -7), addDays(TODAY, 3)].sort().pop();
     if (precise(it) && it.date > TODAY && pour >= it.date) pour = [TODAY, addDays(it.date, -1)].sort().pop();
-    const to = [...(p.chef ? [] : [CHEF]), ...SERVICES.filter((s) => s.k !== p.svc)];
+    const to = [...(p.chef ? [] : [CHEF]), ...SERVICES.filter((s) => s.k !== p.svc), ...(p.chef ? [PROG] : [])];
     // déjà demandé : seulement à ceux qu'on peut solliciter (pas à son propre service)
     const r = root(it), deja = reqsOf(it).filter((q) => q.st === "ouverte" && to.some((s) => s.k === q.to));
     K.sheet.open({ title: "Demander des éléments", ok: "Envoyer", full: true, body: `${sheetFor(it)}
       ${deja.length ? `<div class="deja"><span class="lbl">Déjà demandé</span><ul>${deja.map((q) => `<li><b>${esc(reqTxt(q))}</b><span>${esc(svcOf(q.to).court)} · deadline ${fmtDay(q.pour)}${q.item !== id ? ` · ${esc(byId(q.item)?.t || "")}` : ""}</span></li>`).join("")}</ul></div>` : ""}
       <span class="lbl" id="ask-type-l">Quoi ?</span><div class="chips" data-chips id="ask-type" role="group" aria-labelledby="ask-type-l">${TYPES.map((t, i) => chip(t, i === 0)).join("")}</div>
-      <span class="lbl" id="ask-to-l">À qui ?</span><div class="chips" data-chips id="ask-to" role="group" aria-labelledby="ask-to-l">${to.map((s, i) => chip(s === CHEF ? CHEF.qui : s.court, i === 0, s.k)).join("")}</div>
+      <span class="lbl" id="ask-to-l">À qui ?</span><div class="chips" data-chips id="ask-to" role="group" aria-labelledby="ask-to-l">${to.map((s, i) => chip(s === CHEF ? CHEF.qui : s === PROG ? PROG.nom : s.court, i === 0, s.k)).join("")}</div>
       <label class="lbl" for="ask-pour">Deadline</label>${dateField("ask-pour", pour)}<p class="err" id="ask-err" hidden></p>
       <label class="lbl" for="ask-quoi">Précision <span class="opt">facultatif</span></label><textarea class="in" id="ask-quoi" rows="2" placeholder="Ex. les éléments de langage validés"></textarea>
       ${r !== it ? `<p class="sec-f">Visible aussi sur le ${isSujet(r) ? "sujet" : "temps fort"} « ${esc(r.t)} » et ses relais.</p>` : isTF(it) ? `<p class="sec-f">Visible aussi sur ses relais.</p>` : ""}`,
@@ -813,7 +816,7 @@ window.KPlan = (DATA, { greet = false } = {}) => {
         const q = { id: uid(), item: id, from: p.k, to: dest, type, quoi: s.querySelector("#ask-quoi").value.trim(), pour: v, st: "ouverte", at: TODAY, ts: new Date().toISOString() };
         try { await Store.addReq(q); if (key) await Store.answer(key, "oui"); } catch (e) { fail(e); return false; }
         DB.reqs.push(q); if (key) DB.answers[key] = "oui";
-        K.refresh(); K.snack(`Demande envoyée à ${esc(svcOf(dest).qui)}.`);
+        K.refresh(); K.snack(dest === PROG.k ? "Noté : à demander à la Direction du Programme." : `Demande envoyée à ${esc(svcOf(dest).qui)}.`);
       } });
   }
   function blockSheet(id) {
@@ -838,8 +841,10 @@ window.KPlan = (DATA, { greet = false } = {}) => {
   function answerSheet(rid) {
     const q = DB.reqs.find((x) => x.id === rid), it = q && byId(q.item); if (!it) return;
     const r = root(it);
-    K.sheet.open({ title: "Répondre", ok: "Envoyer", full: true, body: `${sheetFor(it)}<p class="sec-f">${esc(person(q.from).nom)} demande : ${esc(reqTxt(q))}.</p>
-      <label class="lbl" for="rp-msg">Message <span class="opt">facultatif</span></label><textarea class="in" id="rp-msg" rows="3" maxlength="1000" placeholder="Ex. les visuels validés sont dans le dossier"></textarea>
+    // une info notée pour soi (Direction du Programme) : on note ce qu'on a reçu, sans « répondre » à quelqu'un
+    const self = q.from === ME;
+    K.sheet.open({ title: self ? "C'est reçu" : "Répondre", ok: self ? "Enregistrer" : "Envoyer", full: true, body: `${sheetFor(it)}<p class="sec-f">${self ? `À demander à ${esc(svcOf(q.to).qui)}` : `${esc(person(q.from).nom)} demande`} : ${esc(reqTxt(q))}.</p>
+      <label class="lbl" for="rp-msg">${self ? "Ce que tu as reçu" : "Message"} <span class="opt">facultatif</span></label><textarea class="in" id="rp-msg" rows="3" maxlength="1000" placeholder="${self ? "Ex. programme validé par la direction" : "Ex. les visuels validés sont dans le dossier"}"></textarea>
       <label class="lbl" for="rp-url">Lien SharePoint <span class="opt">facultatif</span></label><input class="in" id="rp-url" type="url" inputmode="url" placeholder="https://kedgebs.sharepoint.com/…" aria-describedby="rp-err"><p class="err" id="rp-err" hidden>Colle un lien qui commence par https://</p>
       <label class="lbl" for="rp-nom">Nom du document <span class="opt">facultatif</span></label><input class="in" id="rp-nom" placeholder="${esc(q.type)}">
       <p class="sec-f">${r !== it ? `Le document va sur le ${isSujet(r) ? "sujet" : "temps fort"} « ${esc(r.t)} » et se voit sur tous ses relais.` : isTF(it) ? "Le document se voit aussi sur ses relais." : "Le document va sur la fiche."}</p>`,
@@ -856,7 +861,7 @@ window.KPlan = (DATA, { greet = false } = {}) => {
   }
   async function withdrawReq(rid) {
     const q = DB.reqs.find((x) => x.id === rid); if (!q) return;
-    if (!(await K.alert({ title: "Retirer la demande ?", text: `${esc(reqTxt(q))}, demandé à ${esc(svcOf(q.to).qui)}. Une notification lui sera envoyée.`, ok: "Retirer", danger: true }))) return;
+    if (!(await K.alert({ title: "Retirer la demande ?", text: `${esc(reqTxt(q))}, demandé à ${esc(svcOf(q.to).qui)}.${q.to === PROG.k ? "" : " Une notification lui sera envoyée."}`, ok: "Retirer", danger: true }))) return;
     try { await Store.setReq(q.id, "annulee"); } catch (e) { return fail(e); }
     q.st = "annulee"; K.refresh(); K.snack("Demande retirée."); sync();
   }

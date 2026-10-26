@@ -53,6 +53,8 @@
     if (["periods", "messages", "services", "meta"].includes(t)) return p.chef;
     if (t === "partners") return p.media;
     if (t === "links" && op === "insert") return p.chef || p.media || !!p.svc;
+    // migration 0009 : seul un chef note une demande à la Direction du Programme
+    if (t === "reqs" && op === "insert" && row.dest === "programme" && !p.chef) return false;
     if (t === "reqs" && op === "insert" && db.reqs.some((q) => q.item === row.item && q.dest === row.dest && q.type === row.type && q.st === "ouverte")) return false;
     return true;
   }
