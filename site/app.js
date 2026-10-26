@@ -2,6 +2,7 @@
 // Trois objets qui ne se ressemblent pas : le temps fort (un moment de l'année, en jaune), l'action de diffusion (neutre, rangée par message)
 // et le partenariat payant (anthracite, marqué « Payant »). Les messages sont écrits en toutes lettres, sans code à apprendre.
 // Un sujet (Salle Bloomberg, Top UP…) est un temps fort sans date : on le valorise sur une ou plusieurs périodes entières.
+// Un classement (SIGEM, Financial Times…) n'est ni l'un ni l'autre : une publication datée, avec le rang de KEDGE et l'objectif, marquée d'un podium.
 // Les données viennent de la base (store.js) ; chaque écriture part tout de suite, et les changements des autres arrivent en temps réel.
 window.KPlan = (DATA, { greet = false } = {}) => {
   const K = window.KUI, I = K.icons, esc = K.esc, Store = window.KStore, CFG = window.KPLAN_CONFIG;
@@ -78,11 +79,18 @@ window.KPlan = (DATA, { greet = false } = {}) => {
   }
   recalc();
   const byId = (id) => DB.items.find((i) => i.id === id);
-  const isTF = (it) => it.kind === "tf";
+  // un moment de l'année qui a des relais : temps fort, sujet ou classement
+  const isTF = (it) => it.kind === "tf" || it.kind === "classement";
+  const isCls = (it) => it.kind === "classement";
+  const isTfDay = (it) => it.kind === "tf" && !isSujet(it); // un temps fort daté, ni sujet ni classement
+  const momWord = (it) => (isSujet(it) ? "sujet" : isCls(it) ? "classement" : "temps fort");
+  // le rang de KEDGE et l'objectif d'un classement : « 10e · objectif top 7 »
+  const rgTxt = (n) => (n === 1 ? "1er" : `${n}e`);
+  const rankTxt = (it) => [it.rang ? rgTxt(it.rang) : "", it.cible ? `objectif top ${it.cible}` : ""].filter(Boolean).join(" · ");
   const isPay = (it) => !!it.partner;
   const isInc = (it) => it.m.includes("INC");
-  const typeOf = (it) => (isSujet(it) ? "suj" : isTF(it) ? "tf" : isPay(it) ? "pay" : "act");
-  const kindName = (it) => (isSujet(it) ? "Sujet" : isTF(it) ? "Temps fort" : isPay(it) ? "Partenariat" : "Action");
+  const typeOf = (it) => (isSujet(it) ? "suj" : isCls(it) ? "cls" : isTF(it) ? "tf" : isPay(it) ? "pay" : "act");
+  const kindName = (it) => (isSujet(it) ? "Sujet" : isCls(it) ? "Classement" : isTF(it) ? "Temps fort" : isPay(it) ? "Partenariat" : "Action");
   const root = (it) => (!isTF(it) && it.tf && byId(it.tf)) || it;
   // une demande d'éléments faite pour un relais profite à tout le temps fort : on la retrouve sur lui et sur chacun de ses relais
   // (un relais retiré compris : une demande encore ouverte sur lui reste visible sur le temps fort)
@@ -120,7 +128,7 @@ window.KPlan = (DATA, { greet = false } = {}) => {
 
   // une date proposée dans l'année du plan
   const inPlan = (s) => (s < FIRST.du ? FIRST.du : s > LAST.au ? LAST.au : s);
-  const newDraft = (kind = "action") => ({ kind, per: [S.period], t: "", prec: "jour", date: inPlan(addDays(TODAY, 14)), mois: inPlan(TODAY).slice(0, 7), m: [], cc: [], svc: me().chef ? SERVICES[0]?.k || "" : me().svc, partner: PARTNERS[0]?.k || "", newPartner: "", tf: "", link: "", note: "", more: false, plus: false, fin: "" });
+  const newDraft = (kind = "action") => ({ kind, per: [S.period], t: "", prec: "jour", date: inPlan(addDays(TODAY, 14)), mois: inPlan(TODAY).slice(0, 7), m: [], cc: [], svc: me().chef ? SERVICES[0]?.k || "" : me().svc, partner: PARTNERS[0]?.k || "", newPartner: "", tf: "", link: "", note: "", more: false, plus: false, fin: "", rang: "", cible: "" });
   // ordinateur et tablette : trois colonnes de services dès 768 px, fiche en panneau à droite dès 1100 px
   const MQ_COLS = matchMedia("(min-width: 768px)"), MQ_PANEL = matchMedia("(min-width: 1100px)");
   const cols = () => MQ_COLS.matches, panel = () => MQ_PANEL.matches;
@@ -132,9 +140,9 @@ window.KPlan = (DATA, { greet = false } = {}) => {
   const down = `<span class="down" aria-hidden="true">${I.chevL}</span>`;
   const profileBtn = () => K.iconBtn("user", "Profil", 'data-act="profil"');
   const payBadge = `<span class="pay">Payant</span>`;
-  const tfBadge = `<span class="tf-b">Temps fort</span>`, sujBadge = `<span class="tf-b suj">Sujet</span>`;
+  const tfBadge = `<span class="tf-b">Temps fort</span>`, sujBadge = `<span class="tf-b suj">Sujet</span>`, clsBadge = `<span class="tf-b cls">${I.podium}Classement</span>`;
   // ligne d'identité d'un objet : le type se voit avant de se lire
-  const metaHTML = (it) => isTF(it) ? `${isSujet(it) ? sujBadge : tfBadge}${esc(cap(when(it)))}`
+  const metaHTML = (it) => isTF(it) ? `${isSujet(it) ? sujBadge : isCls(it) ? clsBadge : tfBadge}${esc(cap(when(it)))}`
     : isPay(it) ? `${payBadge}${esc(partnerName(it))} · ${esc(cap(when(it)))}` : `${esc(cap(when(it)))} · ${esc(svcLabel(it))}`;
   // une action portée par le chef de projet (svc « chef ») n'a pas de service : elle compte à part
   const isChefAct = (a) => !isPay(a) && !SERVICES.some((s) => s.k === a.svc);
@@ -163,20 +171,21 @@ window.KPlan = (DATA, { greet = false } = {}) => {
     const t = typeOf(it), dt = D(it.date), p = precise(it), mon = monShort(it.date);
     const dcol = !date ? "" : t === "suj" ? `<b class="ic">${I.bookmark}</b>` : p ? `<b>${dt.getDate()}</b><span>${esc(mode === "week" ? dt.toLocaleDateString("fr-FR", { weekday: "short" }) : mon)}</span>` : `<b class="m">${esc(mon)}</b>`;
     const flouTxt = multi(it) ? `jusqu'au ${fmtShort(it.fin)}` : it.flou && (p || norm(it.flou) !== norm(mon)) ? it.flou : "";
-    const ev = t === "tf" || t === "suj";
-    const parts = ev ? [relaisTxt(it), flouTxt, stAfter(it, flouTxt)]
+    const ev = t === "tf" || t === "suj" || t === "cls";
+    const parts = ev ? [t === "cls" ? rankTxt(it) : "", relaisTxt(it), flouTxt, stAfter(it, flouTxt)]
       : [t === "pay" ? partnerName(it) : who === "all" ? svcLabel(it) : "", msgText(it), flouTxt, stAfter(it, flouTxt)];
     // hiérarchie de la 2e ligne : qui (service, partenaire ou relais) en noir, messages en pastilles, état en gris
-    const lead = ev ? relaisTxt(it) : t === "pay" ? partnerName(it) : who === "all" ? svcLabel(it) : "";
+    // un classement : le rang et l'objectif d'abord, ses relais ensuite
+    const lead = t === "cls" ? rankTxt(it) : ev ? relaisTxt(it) : t === "pay" ? partnerName(it) : who === "all" ? svcLabel(it) : "";
     const tags = ev ? "" : [...msgNames(it), ...(isInc(it) ? ["Incontournable"] : [])].map((n) => `<span class="ag-msg${n === "Incontournable" ? " inc" : ""}">${esc(n)}</span>`).join("");
-    const st = [flouTxt, stAfter(it, flouTxt)].filter(Boolean).join(" · ");
+    const st = [t === "cls" ? relaisTxt(it) : "", flouTxt, stAfter(it, flouTxt)].filter(Boolean).join(" · ");
     const line = `${lead ? `<span class="ag-who">${esc(lead)}</span>` : ""}${tags}${st ? `<span class="ag-st">${esc(st)}</span>` : ""}`;
     const badge = t === "pay" && mark ? payBadge : "";
     const isNew = me().chef && it.by !== me().k && it.at >= addDays(TODAY, -7);
     const done = it.st === "diffuse" || (ev && isPast(it));
     const kind = t === "pay" ? "Partenariat payant" : kindName(it);
     const label = [kind, cap(when(it)), it.t, parts.filter(Boolean).join(", "), done ? "fait" : "", isNew ? "nouveau" : ""].filter(Boolean).join(". ");
-    const side = done ? `<span class="done">${I.check}</span>` : t === "tf" ? `<span class="ag-flag">${I.flag}</span>` : "";
+    const side = done ? `<span class="done">${I.check}</span>` : t === "tf" ? `<span class="ag-flag">${I.flag}</span>` : t === "cls" ? `<span class="ag-flag">${I.podium}</span>` : "";
     return `<button type="button" class="row ag-row is-${t}${it.st === "retire" ? " retire" : ""}" data-open="${it.id}" aria-label="${esc(label)}">
       <span class="ag-date">${dcol}</span>
       <span class="row-main"><b>${isNew ? `<i class="new-dot"></i>` : ""}${esc(it.t)}</b>${line || badge ? `<span class="ag-sub">${badge}${line}</span>` : ""}</span>
@@ -248,7 +257,7 @@ window.KPlan = (DATA, { greet = false } = {}) => {
         ${list.length > 3 ? `<p class="more-p"><button type="button" class="link" data-act="more" data-k="${k}">${all ? "Voir moins" : seeMore(list.length - 3, "autres")}</button></p>` : ""}</section>`;
     };
     const demande = (r) => { const it = byId(r.item), tf = root(it);
-      return card(it, { body: `<b>${esc(person(r.from).nom)}</b> demande ${esc(ASK[r.type] || "des éléments")}${r.quoi && r.quoi !== r.type ? ` : « ${esc(r.quoi)} »` : ""}.${tf !== it ? `<span class="todo-tf">Pour le ${isSujet(tf) ? "sujet" : "temps fort"} « ${esc(tf.t)} »</span>` : ""}`,
+      return card(it, { body: `<b>${esc(person(r.from).nom)}</b> demande ${esc(ASK[r.type] || "des éléments")}${r.quoi && r.quoi !== r.type ? ` : « ${esc(r.quoi)} »` : ""}.${tf !== it ? `<span class="todo-tf">Pour le ${momWord(tf)} « ${esc(tf.t)} »</span>` : ""}`,
         left: dlTag(r), acts: `<button type="button" class="btn small" data-act="repondre" data-r="${r.id}">Répondre</button>` }); };
     const rappel = ({ it, n, key }) => card(it, { left: `<span class="jal">J-${n}</span>`,
       acts: `<button type="button" class="btn small" data-act="ask" data-id="${it.id}" data-key="${key}">Oui, je demande</button><button type="button" class="btn small outline" data-act="nope" data-key="${key}">Pas besoin</button>` });
@@ -306,7 +315,8 @@ window.KPlan = (DATA, { greet = false } = {}) => {
     const nx = PERIODS[S.period + 1], left = days(P.au);
     const soon = cur && nx && left >= 0 && left <= 7
       ? (wide ? DB.items.filter((it) => isAct(it) && periodOf(it.date) === S.period + 1) : scoped(S.period + 1))
-        .filter((it) => it.st !== "retire" && (!S.msgF || it.m.includes(+S.msgF)) && sortKey(it) <= addDays(nx.du, 13)).sort(sortDate)
+        .filter((it) => it.st !== "retire" && (!S.msgF || it.m.includes(+S.msgF)) && sortKey(it) <= addDays(nx.du, 13))
+        .concat(DB.items.filter((it) => isCls(it) && it.st !== "retire" && periodOf(it.date) === S.period + 1 && sortKey(it) <= addDays(nx.du, 13))).sort(sortDate)
       : [];
 
     // actions par message (chefs de projet) : les messages à zéro ressortent
@@ -321,6 +331,10 @@ window.KPlan = (DATA, { greet = false } = {}) => {
     const news = nv.length ? `<div class="group news"><button type="button" class="row nv-sum" data-act="allnew">
         <span class="avs" aria-hidden="true">${authors.slice(0, 3).map((k) => `<i>${K.initials(person(k).nom)}</i>`).join("")}</span>
         <span class="row-main"><b>${nv.length} ${nv.length > 1 ? "nouveautés" : "nouveauté"} cette semaine</b><span>${esc(K.fr.list(authors.map((k) => person(k).nom)))}</span></span>${I.chevR}</button></div>` : "";
+
+    // les classements de la période, en tête : la date, le rang et l'objectif
+    const clsP = DB.items.filter((it) => isCls(it) && it.st !== "retire" && periodOf(it.date) === S.period).sort(sortDate);
+    const clsH = clsP.length ? `<div class="group cls-strip" aria-label="Classements de la période">${rows(clsP, { mode: "month" })}</div>` : "";
 
     const f = curFilter();
     const bar = `<div class="ag-bar">
@@ -345,6 +359,7 @@ window.KPlan = (DATA, { greet = false } = {}) => {
         ${cover}
       </section>
       ${cur ? "" : `<p class="back-now"><button type="button" class="link" data-act="now">Revenir à ${esc(perName(PERIODS[CUR]))}</button></p>`}
+      ${clsH}
       ${news}
       ${bar}
       ${!shown.length ? empty : wide ? colsH() : agenda(shown, { who: f === "all" ? "all" : "tf" })}
@@ -406,7 +421,8 @@ window.KPlan = (DATA, { greet = false } = {}) => {
     const year = S.zoom === "annee", col = colW(), lab = year ? 104 : 112;
     const lanes = [
       { k: "suj", nom: "Sujets", items: DB.items.filter(isSujet) },
-      { k: "tf", nom: "Temps forts", items: DB.items.filter((it) => isTF(it) && !isSujet(it)) },
+      { k: "tf", nom: "Temps forts", items: DB.items.filter(isTfDay) },
+      { k: "cls", nom: "Classements", items: DB.items.filter(isCls) },
       ...SERVICES.map((s) => ({ k: s.k, nom: s.court, items: DB.items.filter((it) => !isTF(it) && !isPay(it) && it.svc === s.k) })),
       { k: "partners", nom: "Partenariats", items: DB.items.filter(isPay) },
     ];
@@ -415,14 +431,16 @@ window.KPlan = (DATA, { greet = false } = {}) => {
     const blk = (it) => {
       if (isSujet(it)) return sujBlk(it);
       const soft = it.st === "confirmer" || it.st === "idee";
-      return `<button type="button" class="blk b-${typeOf(it)}${it.st === "retire" ? " retire" : ""}${soft ? " soft" : ""}" style="grid-column:${wk(it.date) + 1}${multi(it) ? `/${wk(it.fin) + 2}` : ""}" data-open="${it.id}" aria-label="${esc(`${it.t}, ${when(it)}`)}">${year ? `<i class="sq"></i>` : `<span class="t">${esc(it.t)}</span>`}</button>`;
+      return `<button type="button" class="blk b-${typeOf(it)}${it.st === "retire" ? " retire" : ""}${soft ? " soft" : ""}" style="grid-column:${wk(it.date) + 1}${multi(it) ? `/${wk(it.fin) + 2}` : ""}" data-open="${it.id}" aria-label="${esc(`${it.t}, ${when(it)}`)}">${year ? `<i class="sq"></i>` : `${isCls(it) ? I.podium : ""}<span class="t">${esc(it.t)}</span>`}</button>`;
     };
     const months = MONTHS.map((m) => m + "-01");
     const perEnd = (i) => (i < PERIODS.length - 1 ? Math.max(wkStart(i) + 1, wkStart(i + 1)) : GN);
     const head = `<div class="grow ghead"><div class="glab"></div><div class="gcells gper">${PERIODS.map((P, i) => `<div class="gp" style="grid-row:1;grid-column:${wkStart(i) + 1}/${perEnd(i) + 1}">${esc(perName(P))}</div>`).join("")}</div></div>
       <div class="grow ghead"><div class="glab"></div><div class="gcells gmon">${months.map((m, i) => `<div style="grid-column:${wk(m) + 1}/${i < months.length - 1 ? wk(months[i + 1]) + 1 : GN + 1}">${D(m).toLocaleDateString("fr-FR", { month: year ? "narrow" : "long" })}</div>`).join("")}</div></div>
       ${year ? "" : `<div class="grow ghead"><div class="glab"></div><div class="gcells gwk">${Array.from({ length: GN }, (_, i) => `<div>${D(addDays(G0, i * 7)).getDate()}</div>`).join("")}</div></div>`}`;
-    const bands = [...new Set(DB.items.filter((it) => isTF(it) && !isSujet(it)).flatMap((it) => daysOf(it).map(wk)))].map((w) => `<div class="band" style="left:calc(var(--lab) + ${w} * var(--col))"></div>`).join("");
+    const bands = [...new Set(DB.items.filter(isTfDay).flatMap((it) => daysOf(it).map(wk)))].map((w) => `<div class="band" style="left:calc(var(--lab) + ${w} * var(--col))"></div>`).join("");
+    // la semaine d'un classement : un trait fin du haut en bas de la grille
+    const clsLines = [...new Set(DB.items.filter((it) => isCls(it) && it.st !== "retire").map((it) => wk(it.date)))].map((w) => `<div class="cls-line" style="left:calc(var(--lab) + ${w + 0.5} * var(--col))"></div>`).join("");
     const todayX = (D(TODAY) - D(G0)) / 864e5 / 7;
     const body = lanes.map((l) => `<div class="grow lane-${l.k}">${l.k === "partners" ? `<button type="button" class="glab" data-act="partners"><b>${l.nom}</b></button>` : `<div class="glab"><b>${esc(l.nom)}</b></div>`}<div class="gcells">${l.items.sort(sortDate).map(blk).join("")}</div></div>`).join("");
 
@@ -431,10 +449,10 @@ window.KPlan = (DATA, { greet = false } = {}) => {
       <div class="g-ctrl"><div class="seg" data-seg id="g-zoom" role="group" aria-label="Zoom"><button type="button" value="periode" aria-pressed="${!year}">${I.check}Période</button><button type="button" value="annee" aria-pressed="${year}">${I.check}Année</button></div>
         <button type="button" class="txt-btn strong" data-act="today">Aujourd'hui</button></div>
       <div class="gwrap" id="gwrap" aria-hidden="true"><div class="ginner${year ? " z-year" : ""}" style="--n:${GN};--col:${col}px;--lab:${lab}px">
-        ${bands}<div class="today" style="left:calc(var(--lab) + ${todayX.toFixed(2)} * var(--col))"><span>Aujourd'hui</span></div>
+        ${bands}${clsLines}<div class="today" style="left:calc(var(--lab) + ${todayX.toFixed(2)} * var(--col))"><span>Aujourd'hui</span></div>
         ${head}${body}
       </div></div>
-      <div class="legend"><span><i class="lgd b-tf"></i>Temps fort</span><span><i class="lgd b-suj"></i>Sujet</span><span><i class="lgd b-act"></i>Action de diffusion</span><span><i class="lgd b-pay"></i>Partenariat payant</span><span><i class="lgd soft"></i>À confirmer</span></div>
+      <div class="legend"><span><i class="lgd b-tf"></i>Temps fort</span><span><i class="lgd b-suj"></i>Sujet</span><span><i class="lgd b-cls"></i>Classement</span><span><i class="lgd b-act"></i>Action de diffusion</span><span><i class="lgd b-pay"></i>Partenariat payant</span><span><i class="lgd soft"></i>À confirmer</span></div>
       <div class="sr"><h2>Version texte de la grille</h2>${lanes.map((l) => `<h3>${esc(l.nom)}</h3><ul>${l.items.map((it) => `<li><button type="button" data-open="${it.id}">${esc(`${when(it)} : ${it.t}`)}</button></li>`).join("")}</ul>`).join("")}</div>
     </div>`;
     const gw = el.querySelector("#gwrap");
@@ -497,7 +515,7 @@ window.KPlan = (DATA, { greet = false } = {}) => {
     </div>`;
     syncBadge();
   }
-  const renderTF = (el) => byPeriod(el, { k: "tf", title: "Temps forts", all: DB.items.filter(isTF),
+  const renderTF = (el) => byPeriod(el, { k: "tf", title: "Temps forts", all: DB.items.filter((it) => isTF(it) && !isCls(it)),
     action: canAdd() ? `<button type="button" class="txt-btn strong" data-act="addtf">${me().chef ? "Ajouter" : "Proposer"}</button>` : "",
     empty: "Aucun temps fort pour l'instant.", add: canAdd() ? `<button type="button" class="btn small" data-act="addtf">${me().chef ? "Ajouter un temps fort" : "Proposer un temps fort"}</button>` : "" });
   const renderMedia = (el) => byPeriod(el, { k: "media", title: "Partenariats média", all: DB.items.filter(isPay), mark: false,
@@ -509,33 +527,36 @@ window.KPlan = (DATA, { greet = false } = {}) => {
   // Formulaire commun : ajouter (préfixe f) et modifier (préfixe e)
   // =====================================================================
   function formHTML(d, px, edit) {
-    const p = me(), suj = d.kind === "sujet", tf = d.kind === "tf" || suj, pay = d.kind === "partner", mois = d.prec === "mois";
+    const p = me(), suj = d.kind === "sujet", cls = d.kind === "classement", tf = d.kind === "tf" || suj || cls, pay = d.kind === "partner", mois = d.prec === "mois";
     const tfk = d.kind === "tf", plus = tfk && d.plus; // un temps fort peut durer plusieurs jours (semaine séminaire…)
-    const kinds = [...(canAdd() ? [["action", "Action"], ["tf", "Temps fort"], ["sujet", "Sujet"]] : []), ...(isMedia() ? [["partner", "Partenariat"]] : [])];
+    const kinds = [...(canAdd() ? [["action", "Action"], ["tf", "Temps fort"], ["sujet", "Sujet"], ...(p.chef ? [["classement", "Classement"]] : [])] : []), ...(isMedia() ? [["partner", "Partenariat"]] : [])];
     const told = K.fr.list(toldAll());
     // le temps fort déjà lié reste dans la liste, même retiré ou passé : enregistrer ne doit pas le détacher
     const tfs = DB.items.filter((it) => isTF(it) && (it.id === d.tf || (it.st !== "retire" && (precise(it) ? days(endOf(it)) >= -7 : !isPast(it))))).sort(sortDate);
     const opt = (it) => `<option value="${it.id}"${d.tf === it.id ? " selected" : ""}>${esc(`${when(it)} · ${it.t}`)}</option>`;
     const open = d.more || !!d.tf || !!d.link || !!d.note;
-    const ph = suj ? "Ex. Salle Bloomberg" : tf ? "Ex. Venue de Columbia à Bordeaux" : pay ? "Ex. Article sur le consortium" : "Ex. Reel alumni chez EY";
+    const ph = suj ? "Ex. Salle Bloomberg" : cls ? "Ex. SIGEM 2027" : tf ? "Ex. Venue de Columbia à Bordeaux" : pay ? "Ex. Article sur le consortium" : "Ex. Reel alumni chez EY";
     return `${edit ? "" : `<div class="seg" data-seg id="${px}-kind" role="group" aria-label="Type d'ajout">${kinds.map(([k, l]) => `<button type="button" value="${k}" aria-pressed="${d.kind === k}">${I.check}${l}</button>`).join("")}</div>`}
       <label class="lbl" for="${px}-t">${pay ? "Dispositif" : "Titre"}</label><input class="in" id="${px}-t" value="${esc(d.t)}" placeholder="${ph}" aria-describedby="${px}-t-err"><p class="err" id="${px}-t-err" hidden>Donne un titre.</p>
       ${pay ? `<span class="lbl" id="${px}-pt-l">Partenaire</span>${PARTNERS.length ? `<div class="chips" data-chips id="${px}-pt" role="group" aria-labelledby="${px}-pt-l">${PARTNERS.map((x) => chip(x.nom, d.partner === x.k && !d.newPartner, x.k)).join("")}</div>` : ""}
         <input class="in np-in" id="${px}-np" value="${esc(d.newPartner)}" placeholder="${PARTNERS.length ? "Ou un nouveau partenaire" : "Ex. Major Prépa"}" aria-labelledby="${px}-pt-l" aria-describedby="${px}-pt-err"><p class="err" id="${px}-pt-err" hidden>Choisis ou écris un partenaire.</p>` : ""}
       ${!tf && !pay && p.chef ? `<span class="lbl" id="${px}-svc-l">Porté par</span><div class="chips" data-chips id="${px}-svc" role="group" aria-labelledby="${px}-svc-l">${[...SERVICES, CHEF].map((s) => chip(s.court, d.svc === s.k, s.k)).join("")}</div>` : ""}
       ${suj ? `<span class="lbl" id="${px}-per-l">Période</span><div class="chips" data-chips="multi" id="${px}-per" role="group" aria-labelledby="${px}-per-l" aria-describedby="${px}-per-err">${PERIODS.map((P, i) => chip(perName(P), d.per.includes(i), i)).join("")}</div>
-        <p class="err" id="${px}-per-err" hidden>Choisis au moins une période.</p>` : `<div id="${px}-jour"${mois ? " hidden" : ""}><label class="lbl" for="${px}-date" id="${px}-date-l">${plus ? "Du" : "Date"}</label>${dateField(`${px}-date`, d.date)}
+        <p class="err" id="${px}-per-err" hidden>Choisis au moins une période.</p>` : `<div id="${px}-jour"${mois ? " hidden" : ""}><label class="lbl" for="${px}-date" id="${px}-date-l">${plus ? "Du" : cls ? "Publication" : "Date"}</label>${dateField(`${px}-date`, d.date)}
         ${tfk ? `<div id="${px}-finw"${plus ? "" : " hidden"}><label class="lbl" for="${px}-fin">Au</label>${dateField(`${px}-fin`, finOf(d))}<p class="err" id="${px}-fin-err" hidden>Choisis un dernier jour après le premier.</p></div>` : ""}</div>
       <div id="${px}-moisw"${mois ? "" : " hidden"}><label class="lbl" for="${px}-mois">Mois</label><select class="in" id="${px}-mois">${MONTHS.map((m) => `<option value="${m}"${d.mois === m ? " selected" : ""}>${monLong(m)}</option>`).join("")}</select></div>
       <div class="group conf-row">${tfk ? `<label class="row" for="${px}-plus" id="${px}-plusr"${mois ? " hidden" : ""}><span class="row-main"><b>Sur plusieurs jours</b></span><input type="checkbox" class="switch" id="${px}-plus" data-plus="${px}"${plus ? " checked" : ""}></label>` : ""}
         <label class="row" for="${px}-prec"><span class="row-main"><b>Date à préciser</b></span><input type="checkbox" class="switch" id="${px}-prec" data-prec="${px}"${mois ? " checked" : ""}></label></div>`}
+      ${cls ? `<div class="rk-in"><div><label class="lbl" for="${px}-rang">Rang de KEDGE</label><input class="in" id="${px}-rang" type="number" inputmode="numeric" min="1" max="999" value="${esc(d.rang)}" placeholder="10" aria-describedby="${px}-rk-err"></div>
+        <div><label class="lbl" for="${px}-cible">Objectif : top</label><input class="in" id="${px}-cible" type="number" inputmode="numeric" min="1" max="999" value="${esc(d.cible)}" placeholder="7" aria-describedby="${px}-rk-err"></div></div>
+        <p class="err" id="${px}-rk-err" hidden>Un rang va de 1 à 999.</p>` : ""}
       ${tf ? "" : `<span class="lbl" id="${px}-m-l">Message</span><div class="chips" data-chips="multi" id="${px}-m" role="group" aria-labelledby="${px}-m-l" aria-describedby="${px}-m-err ${px}-m-f">${MESSAGES.map((m) => chip(m.nom, d.m.includes(String(m.n)), m.n)).join("")}${chip("Incontournable", d.m.includes("INC"), "INC")}</div>
         <p class="err" id="${px}-m-err" hidden>Choisis un message, ou « Incontournable ».</p><p class="sec-f" id="${px}-m-f">Incontournable : à couvrir même sans message (admissibles, JPO…).</p>`}
       ${pay ? "" : `<span class="lbl" id="${px}-cc-l">Qui prévenir ?</span><div class="chips" data-chips="multi" id="${px}-cc" role="group" aria-labelledby="${px}-cc-l">${SERVICES.filter((s) => s.k !== p.svc).map((s) => chip(s.court, d.cc.includes(s.k), s.k)).join("")}</div>
         <p class="sec-f">${told ? `Ils reçoivent une notification, ${esc(told)} aussi.` : "Ils reçoivent une notification."}</p>`}
       <details class="more" id="${px}-more"${open ? " open" : ""}><summary>Plus d'options${down}</summary>
-        ${tf ? "" : `<label class="lbl" for="${px}-tf">Temps fort ou sujet lié</label><select class="in" id="${px}-tf"><option value="">Aucun</option>
-          <optgroup label="Temps forts">${tfs.filter((it) => !isSujet(it)).map(opt).join("")}</optgroup><optgroup label="Sujets">${tfs.filter(isSujet).map(opt).join("")}</optgroup></select>`}
+        ${tf ? "" : `<label class="lbl" for="${px}-tf">Temps fort, sujet ou classement lié</label><select class="in" id="${px}-tf"><option value="">Aucun</option>
+          <optgroup label="Temps forts">${tfs.filter(isTfDay).map(opt).join("")}</optgroup><optgroup label="Sujets">${tfs.filter(isSujet).map(opt).join("")}</optgroup>${tfs.some(isCls) ? `<optgroup label="Classements">${tfs.filter(isCls).map(opt).join("")}</optgroup>` : ""}</select>`}
         ${edit ? "" : `<label class="lbl" for="${px}-link">Lien SharePoint</label><input class="in" id="${px}-link" type="url" inputmode="url" value="${esc(d.link)}" placeholder="https://kedgebs.sharepoint.com/…" aria-describedby="${px}-link-err"><p class="err" id="${px}-link-err" hidden>Colle un lien qui commence par https://</p>`}
         <label class="lbl" for="${px}-note">Note</label><textarea class="in" id="${px}-note" rows="3" placeholder="Contexte, contact…">${esc(d.note)}</textarea>
       </details>
@@ -547,21 +568,24 @@ window.KPlan = (DATA, { greet = false } = {}) => {
       m: q("m") ? pressed(`#${px}-m`, el) : base.m, per: q("per") ? pressed(`#${px}-per`, el).map(Number) : base.per, cc: q("cc") ? pressed(`#${px}-cc`, el) : base.cc,
       svc: q("svc") ? pressed(`#${px}-svc`, el)[0] || base.svc : base.svc, partner: q("pt") ? pressed(`#${px}-pt`, el)[0] || base.partner : base.partner, newPartner: q("np")?.value ?? base.newPartner,
       tf: q("tf") ? q("tf").value : base.tf, link: q("link")?.value ?? base.link, note: q("note")?.value ?? base.note, more: !!q("more")?.open,
-      plus: q("plus") ? q("plus").checked : base.plus, fin: q("fin")?.value || base.fin };
+      plus: q("plus") ? q("plus").checked : base.plus, fin: q("fin")?.value || base.fin, rang: q("rang")?.value ?? base.rang, cible: q("cible")?.value ?? base.cible };
   }
   function validate(el, px, d) {
-    const t = el.querySelector(`#${px}-t`), okT = !!d.t.trim(), okM = d.kind === "tf" || d.kind === "sujet" || d.m.length > 0, mErr = el.querySelector(`#${px}-m-err`);
+    const t = el.querySelector(`#${px}-t`), okT = !!d.t.trim(), okM = d.kind === "tf" || d.kind === "sujet" || d.kind === "classement" || d.m.length > 0, mErr = el.querySelector(`#${px}-m-err`);
     const okP = d.kind !== "sujet" || d.per.length > 0, pErr = el.querySelector(`#${px}-per-err`);
     const okPt = d.kind !== "partner" || !!(d.newPartner.trim() || PARTNERS.some((x) => x.k === d.partner)), ptErr = el.querySelector(`#${px}-pt-err`);
     const fErr = el.querySelector(`#${px}-fin-err`), okF = !(d.kind === "tf" && d.plus && d.prec !== "mois") || finOf(d) > d.date;
+    const rkOk = (v) => !String(v ?? "").trim() || (/^\d{1,3}$/.test(String(v).trim()) && +v >= 1);
+    const okR = d.kind !== "classement" || (rkOk(d.rang) && rkOk(d.cible)), rErr = el.querySelector(`#${px}-rk-err`);
     const link = el.querySelector(`#${px}-link`), okL = !d.link.trim() || /^https:\/\/\S+$/.test(d.link.trim()), lErr = el.querySelector(`#${px}-link-err`);
-    el.querySelector(`#${px}-t-err`).hidden = okT; t.setAttribute("aria-invalid", String(!okT)); if (mErr) mErr.hidden = okM; if (pErr) pErr.hidden = okP; if (ptErr) ptErr.hidden = okPt; if (fErr) fErr.hidden = okF;
+    el.querySelector(`#${px}-t-err`).hidden = okT; t.setAttribute("aria-invalid", String(!okT)); if (mErr) mErr.hidden = okM; if (pErr) pErr.hidden = okP; if (ptErr) ptErr.hidden = okPt; if (fErr) fErr.hidden = okF; if (rErr) rErr.hidden = okR;
     if (lErr) { lErr.hidden = okL; link.setAttribute("aria-invalid", String(!okL)); }
     if (!okT) { t.focus(); return false; }
     if (!okPt) { el.querySelector(`#${px}-np`).focus(); return false; }
     if (!okP) { el.querySelector(`#${px}-per .chip`).focus(); return false; }
     if (!okM) { el.querySelector(`#${px}-m .chip`).focus(); return false; }
     if (!okF) { el.querySelector(`#${px}-fin`).focus(); return false; }
+    if (!okR) { el.querySelector(`#${px}-${rkOk(d.rang) ? "cible" : "rang"}`).focus(); return false; }
     if (!okL) { el.querySelector(`#${px}-more`).open = true; link.focus(); return false; }
     return true;
   }
@@ -573,7 +597,8 @@ window.KPlan = (DATA, { greet = false } = {}) => {
     if (d.prec === "mois") return prev && !precise(prev) && prev.date.slice(0, 7) === d.mois ? { date: prev.date, flou: prev.flou, fin: "" } : { date: `${d.mois}-01`, flou: cap(monShort(`${d.mois}-01`)), fin: "" };
     return { date: d.date, flou: prev && precise(prev) && prev.date === d.date ? prev.flou : "", fin: d.kind === "tf" && d.plus ? finOf(d) : "" };
   };
-  const msgsOf = (d) => (d.kind === "tf" || d.kind === "sujet" ? [] : d.m.map((x) => (x === "INC" ? "INC" : +x)));
+  const rankOf = (d) => (d.kind === "classement" ? { rang: String(d.rang ?? "").trim() ? +d.rang : null, cible: String(d.cible ?? "").trim() ? +d.cible : null } : {});
+  const msgsOf = (d) => (d.kind === "tf" || d.kind === "sujet" || d.kind === "classement" ? [] : d.m.map((x) => (x === "INC" ? "INC" : +x)));
 
   function renderAjouter(el) {
     // un compte média sans service ne saisit que des partenariats
@@ -595,9 +620,10 @@ window.KPlan = (DATA, { greet = false } = {}) => {
   async function publish(btn) {
     const el = document.getElementById("v-ajouter"), d = (S.draft = readForm(el, "f", S.draft));
     if (!validate(el, "f", d)) return;
-    const p = me(), tf = d.kind === "tf" || d.kind === "sujet", pay = d.kind === "partner";
-    const it = { id: uid(), kind: tf ? "tf" : "action", per: [], svc: tf ? p.svc : pay ? "chef" : p.chef ? d.svc : p.svc, ...dateFields(d), t: d.t.trim(), m: msgsOf(d),
-      st: "planifie", cc: pay ? [] : d.cc, tf: tf ? "" : d.tf, partner: "", by: p.k, at: TODAY, ts: new Date().toISOString(), lieu: "", note: d.note.trim(), links: [] };
+    const p = me(), cls = d.kind === "classement", tf = d.kind === "tf" || d.kind === "sujet" || cls, pay = d.kind === "partner";
+    // un classement est porté par les chefs de projet
+    const it = { id: uid(), kind: cls ? "classement" : tf ? "tf" : "action", per: [], svc: cls ? "chef" : tf ? p.svc : pay ? "chef" : p.chef ? d.svc : p.svc, ...dateFields(d), t: d.t.trim(), m: msgsOf(d),
+      st: "planifie", cc: pay ? [] : d.cc, tf: tf ? "" : d.tf, partner: "", by: p.k, at: TODAY, ts: new Date().toISOString(), lieu: "", note: d.note.trim(), links: [], ...rankOf(d) };
     btn.disabled = true;
     try {
       if (pay) it.partner = await partnerOf(d);
@@ -619,8 +645,8 @@ window.KPlan = (DATA, { greet = false } = {}) => {
       : told.length ? `C'est publié. Notification envoyée à ${esc(K.fr.list(told))}.` : "C'est publié.", linkErr ? 6000 : undefined);
     openItem(it.id);
   }
-  const draftOf = (it) => ({ id: it.id, kind: isSujet(it) ? "sujet" : isTF(it) ? "tf" : isPay(it) ? "partner" : "action", t: it.t, prec: precise(it) ? "jour" : "mois", date: it.date, mois: it.date.slice(0, 7),
-    m: it.m.map(String), per: isSujet(it) ? [...it.per] : [S.period], cc: [...it.cc], svc: it.svc, partner: it.partner || PARTNERS[0]?.k || "", newPartner: "", tf: it.tf, link: "", note: it.note, more: !!(it.tf || it.note), plus: multi(it), fin: it.fin || "",
+  const draftOf = (it) => ({ id: it.id, kind: isSujet(it) ? "sujet" : isCls(it) ? "classement" : isTF(it) ? "tf" : isPay(it) ? "partner" : "action", t: it.t, prec: precise(it) ? "jour" : "mois", date: it.date, mois: it.date.slice(0, 7),
+    m: it.m.map(String), per: isSujet(it) ? [...it.per] : [S.period], cc: [...it.cc], svc: it.svc, partner: it.partner || PARTNERS[0]?.k || "", newPartner: "", tf: it.tf, link: "", note: it.note, more: !!(it.tf || it.note), plus: multi(it), fin: it.fin || "", rang: it.rang ?? "", cible: it.cible ?? "",
     orig: JSON.parse(JSON.stringify(it)) });
   function openEdit(id) { const it = byId(id); if (!it) return; S.edit = draftOf(it); K.push((el, o) => renderEdit(el, o, id), { title: "Modifier" }); }
   function renderEdit(el, { back }) {
@@ -629,14 +655,14 @@ window.KPlan = (DATA, { greet = false } = {}) => {
   async function saveEdit(id, btn) {
     const it = byId(id), el = K.topView(), d = readForm(el, "e", S.edit);
     if (!it || !validate(el, "e", d)) return;
-    const next = { ...it, ...dateFields(d, it), t: d.t.trim(), m: msgsOf(d), cc: d.kind === "partner" ? [] : d.cc, tf: d.kind === "tf" || d.kind === "sujet" ? "" : d.tf, note: d.note.trim() };
+    const next = { ...it, ...dateFields(d, it), t: d.t.trim(), m: msgsOf(d), cc: d.kind === "partner" ? [] : d.cc, tf: d.kind === "tf" || d.kind === "sujet" || d.kind === "classement" ? "" : d.tf, note: d.note.trim(), ...rankOf(d) };
     if (d.kind === "action" && me().chef) next.svc = d.svc;
     btn.disabled = true;
     try {
       if (d.kind === "partner") next.partner = await partnerOf(d);
     } catch (e) { btn.disabled = false; return fail(e); }
     // seuls les champs changés dans le formulaire partent : une modification faite entre-temps par quelqu'un d'autre est gardée
-    const orig = S.edit.orig, keys = ["t", "date", "fin", "flou", "per", "svc", "cc", "m", "tf", "partner", "note"].filter((k) => JSON.stringify(orig[k]) !== JSON.stringify(next[k]));
+    const orig = S.edit.orig, keys = ["t", "date", "fin", "flou", "per", "svc", "cc", "m", "tf", "partner", "note", "rang", "cible"].filter((k) => JSON.stringify(orig[k]) !== JSON.stringify(next[k]));
     if (!keys.length) { btn.disabled = false; S.edit = null; K.pop(); return K.snack("Rien n'a changé."); }
     try { await Store.updateItem(id, next, keys); } catch (e) { return fail(e); } finally { btn.disabled = false; }
     const before = { ...it };
@@ -654,6 +680,7 @@ window.KPlan = (DATA, { greet = false } = {}) => {
     const ch = [];
     if (when(a) !== when(b)) ch.push(["date", `${when(a)} → ${when(b)}`]);
     if (a.t !== b.t) ch.push(["titre", `« ${a.t} » → « ${b.t} »`]);
+    if (isCls(b) && rankTxt(a) !== rankTxt(b)) ch.push(["rang", `${rankTxt(a) || "—"} → ${rankTxt(b) || "—"}`]);
     if (a.note !== b.note) ch.push(["précisions", b.note ? `« ${clip(b.note, 120)} »` : "retirées"]);
     if (!ch.length) return;
     // les mêmes personnes que la base : prévenus de tout, services cités, service porteur, services des relais
@@ -673,7 +700,7 @@ window.KPlan = (DATA, { greet = false } = {}) => {
   // =====================================================================
   // ---------- historique d'une fiche ----------
   // la base garde les valeurs brutes (numéros de période et de message, codes) : on les écrit en toutes lettres
-  const FIELDS = { t: "titre", date: "date", per: "périodes", svc: "porté par", cc: "prévenus", m: "messages", st: "statut", tf: "lié à", partner: "partenaire", lieu: "lieu", note: "précisions" };
+  const FIELDS = { t: "titre", date: "date", per: "périodes", svc: "porté par", cc: "prévenus", m: "messages", st: "statut", tf: "lié à", partner: "partenaire", lieu: "lieu", note: "précisions", rang: "rang", cible: "objectif" };
   const clip = (s, n = 90) => (s.length > n ? s.slice(0, n - 1).trimEnd() + "…" : s);
   const quote = (s) => `« ${clip(s)} »`;
   function valTxt(k, v) {
@@ -684,6 +711,8 @@ window.KPlan = (DATA, { greet = false } = {}) => {
     if (k === "m") return K.fr.list(v.map((x) => (x === "INC" ? "Incontournable" : MESSAGES[+x - 1]?.nom || x)));
     if (k === "st") return ST[v] || v;
     if (k === "tf") return byId(v) ? quote(byId(v).t) : "une fiche effacée";
+    if (k === "rang") return rgTxt(v);
+    if (k === "cible") return `top ${v}`;
     if (k === "partner") return (PARTNERS.find((x) => x.k === v) || { nom: "—" }).nom;
     return quote(String(v));
   }
@@ -733,7 +762,7 @@ window.KPlan = (DATA, { greet = false } = {}) => {
     const choices = isTF(it) ? ["confirmer", "planifie"] : isPay(it) ? ["confirmer", "planifie", "diffuse"] : ["idee", "confirmer", "planifie", "production", "diffuse"];
     const status = edit && !past && it.st !== "retire"
       ? `<div class="row field-row"><label for="st-${id}">Statut</label><select id="st-${id}" data-st="${id}">${choices.map((k) => `<option value="${k}"${it.st === k ? " selected" : ""}>${ST[k]}</option>`).join("")}</select></div>`
-      : kv("Statut", past ? "Passé" : ST[it.st]);
+      : kv("Statut", past ? (isCls(it) ? "Publié" : "Passé") : ST[it.st]);
     const tags = !isTF(it) && it.m.length ? `<div class="mtags">${msgNames(it).map((n) => `<span class="mtag">${esc(n)}</span>`).join("")}${isInc(it) ? `<span class="mtag inc">Incontournable</span>` : ""}</div>` : "";
     let relay = "";
     if (isTF(it)) {
@@ -747,28 +776,29 @@ window.KPlan = (DATA, { greet = false } = {}) => {
         <h1 class="hero-title${it.st === "retire" ? " struck" : ""}">${esc(it.t)}</h1>
         <p class="hero-meta">${isTF(it) || isPay(it) ? metaHTML(it) : `${esc(svcOf(it.svc).nom)} · ${esc(cap(when(it)))}`}${isSujet(it) ? " · toute la période" : precise(it) || /confirmer|définir|préciser/i.test(it.flou) ? "" : ` · date à préciser`}</p>
         ${tags}
+        ${isCls(it) && (it.rang || it.cible) ? `<div class="rk">${it.rang ? `<span class="rk-n" aria-label="Rang de KEDGE : ${rgTxt(it.rang)}"><b>${it.rang}</b>${it.rang === 1 ? "er" : "e"}</span>` : ""}${it.cible ? `<span class="rk-g">Objectif<b>Top ${it.cible}</b></span>` : ""}</div>` : ""}
       </div>
       ${it.st === "retire" || isVisit() ? "" : `<div class="cta fiche-cta"><button type="button" class="btn block" data-act="ask" data-id="${id}">${I.chat}Demander des éléments</button></div>`}
       ${blocks.length ? `<div class="group blk-group">${blocks.map((b) => `<div class="row"><span class="row-main"><b><span class="blk-l">Bloqué</span>${esc(b.why)}</b><span>${esc(person(b.by).nom)}, ${ago(b.at)}</span></span>${canLift(b, it) ? `<button type="button" class="btn small tonal" data-act="unblock" data-b="${b.id}">Lever</button>` : ""}</div>`).join("")}</div>` : ""}
       <div class="group facts">
         ${status}
         ${it.cc.length ? kv("Concernés", esc(K.fr.list(it.cc.map((k) => svcOf(k).court)))) : ""}
-        ${linkedTF ? `<button type="button" class="row" data-open="${linkedTF.id}"><span class="row-main"><b>${isSujet(linkedTF) ? "Sujet lié" : "Temps fort lié"}</b><span>${esc(linkedTF.t)}</span></span>${I.chevR}</button>` : ""}
+        ${linkedTF ? `<button type="button" class="row" data-open="${linkedTF.id}"><span class="row-main"><b>${cap(momWord(linkedTF))} lié</b><span>${esc(linkedTF.t)}</span></span>${I.chevR}</button>` : ""}
         ${it.lieu ? kv("Lieu", esc(it.lieu)) : ""}
       </div>
       ${it.note ? `<p class="sec-f">${esc(it.note)}</p>` : ""}
       ${reqs.length ? `<h2 class="sec-h">Demandes d'éléments · ${reqs.length}</h2><div class="group">${reqs.map((q) => reqRow(q, id)).join("")}</div>
-        ${r !== it ? `<p class="sec-f">Partagées avec le ${isSujet(r) ? "sujet" : "temps fort"} « ${esc(r.t)} » et ses relais.</p>` : reqs.some((q) => q.item !== id) ? `<p class="sec-f">Avec celles de ses relais.</p>` : ""}` : ""}
-      ${links.length || canLink() ? `<h2 class="sec-h">Documents${links.length ? ` · ${links.length}` : ""}</h2><div class="group">${links.map((l) => `<div class="row lk"><button type="button" class="row-main lk-open" data-link="${esc(l.url)}"><b>${esc(l.nom)}</b><span>${esc(hostOf(l.url))}${l.on !== it ? ` · ${esc(isTF(l.on) ? (isSujet(l.on) ? "sujet" : "temps fort") : l.on.t)}` : ""}</span></button>
+        ${r !== it ? `<p class="sec-f">Partagées avec le ${momWord(r)} « ${esc(r.t)} » et ses relais.</p>` : reqs.some((q) => q.item !== id) ? `<p class="sec-f">Avec celles de ses relais.</p>` : ""}` : ""}
+      ${links.length || canLink() ? `<h2 class="sec-h">Documents${links.length ? ` · ${links.length}` : ""}</h2><div class="group">${links.map((l) => `<div class="row lk"><button type="button" class="row-main lk-open" data-link="${esc(l.url)}"><b>${esc(l.nom)}</b><span>${esc(hostOf(l.url))}${l.on !== it ? ` · ${esc(isTF(l.on) ? momWord(l.on) : l.on.t)}` : ""}</span></button>
           ${l.by === ME || me().chef ? `<button type="button" class="txt-btn lk-x" data-act="unlink" data-l="${l.id}" data-id="${l.on.id}" aria-label="Retirer le document ${esc(l.nom)}">Retirer</button>` : `<span class="ext" aria-hidden="true">${I.external}</span>`}</div>`).join("")}
         ${canLink() ? `<button type="button" class="row add-row" data-act="addlink" data-id="${id}"><span class="add-ic">${I.plus}</span><span class="row-main"><b>Ajouter un lien SharePoint</b></span></button>` : ""}</div>
-        ${links.length && r !== it ? `<p class="sec-f">Ceux du ${isSujet(r) ? "sujet" : "temps fort"} « ${esc(r.t)} » sont partagés avec tous ses relais.</p>` : links.length && isTF(it) ? `<p class="sec-f">Visibles aussi sur ses relais.</p>` : ""}` : ""}
+        ${links.length && r !== it ? `<p class="sec-f">Ceux du ${momWord(r)} « ${esc(r.t)} » sont partagés avec tous ses relais.</p>` : links.length && isTF(it) ? `<p class="sec-f">Visibles aussi sur ses relais.</p>` : ""}` : ""}
       ${relay}
       ${hist}
       ${hist && edit ? "" : `<p class="foot-note">${hist ? "" : `Ajouté par ${esc(person(it.by).nom)} le ${fmtDay(it.at)}. `}${edit ? "" : `Modifiable par ${esc(editors(it))}.`}</p>`}
-      ${it.st === "retire" ? (edit ? `<p class="retire-p"><button type="button" class="txt-btn strong" data-act="unretire" data-id="${id}">Remettre ${isSujet(it) ? "ce sujet" : isTF(it) ? "ce temps fort" : "cette action"}</button><button type="button" class="txt-btn danger" data-act="delete" data-id="${id}">Supprimer définitivement</button></p>` : "")
+      ${it.st === "retire" ? (edit ? `<p class="retire-p"><button type="button" class="txt-btn strong" data-act="unretire" data-id="${id}">Remettre ${isTF(it) ? `ce ${momWord(it)}` : "cette action"}</button><button type="button" class="txt-btn danger" data-act="delete" data-id="${id}">Supprimer définitivement</button></p>` : "")
         : isVisit() ? ""
-        : `<p class="retire-p"><button type="button" class="txt-btn" data-act="block" data-id="${id}">Signaler un blocage</button>${edit ? `<button type="button" class="txt-btn danger" data-act="retire" data-id="${id}">Retirer ${isSujet(it) ? "ce sujet" : isTF(it) ? "ce temps fort" : "cette action"}</button>` : ""}</p>`}
+        : `<p class="retire-p"><button type="button" class="txt-btn" data-act="block" data-id="${id}">Signaler un blocage</button>${edit ? `<button type="button" class="txt-btn danger" data-act="retire" data-id="${id}">Retirer ${isTF(it) ? `ce ${momWord(it)}` : "cette action"}</button>` : ""}</p>`}
     </div>`;
   }
 
@@ -780,7 +810,7 @@ window.KPlan = (DATA, { greet = false } = {}) => {
   function calHTML(id, sel, month) {
     const first = D(month + "-01"), y = first.getFullYear(), mo = first.getMonth(), n = new Date(y, mo + 1, 0).getDate(), lead = (first.getDay() + 6) % 7;
     const prev = iso(new Date(y, mo - 1, 1)).slice(0, 7), next = iso(new Date(y, mo + 1, 1)).slice(0, 7);
-    const tf = new Set(DB.items.filter((it) => isTF(it) && precise(it) && it.st !== "retire").flatMap(daysOf));
+    const tf = new Set(DB.items.filter((it) => isTfDay(it) && precise(it) && it.st !== "retire").flatMap(daysOf));
     const nav = (m, dir, off) => `<button type="button" class="cal-nav" data-cal-nav="${m}" data-for="${id}" aria-label="${dir}"${off ? " disabled" : ""}>${dir === "Mois suivant" ? `<span class="flip">${I.chevL}</span>` : I.chevL}</button>`;
     const cells = Array.from({ length: n }, (_, i) => {
       const d = `${month}-${String(i + 1).padStart(2, "0")}`;
@@ -827,7 +857,7 @@ window.KPlan = (DATA, { greet = false } = {}) => {
       <span class="lbl" id="ask-to-l">À qui ?</span><div class="chips" data-chips id="ask-to" role="group" aria-labelledby="ask-to-l">${to.map((s, i) => chip(s === CHEF ? CHEF.qui : s === PROG ? PROG.nom : s.court, i === 0, s.k)).join("")}</div>
       <label class="lbl" for="ask-pour">Deadline</label>${dateField("ask-pour", pour)}<p class="err" id="ask-err" hidden></p>
       <label class="lbl" for="ask-quoi">Précision <span class="opt">facultatif</span></label><textarea class="in" id="ask-quoi" rows="2" placeholder="Ex. les éléments de langage validés"></textarea>
-      ${r !== it ? `<p class="sec-f">Visible aussi sur le ${isSujet(r) ? "sujet" : "temps fort"} « ${esc(r.t)} » et ses relais.</p>` : isTF(it) ? `<p class="sec-f">Visible aussi sur ses relais.</p>` : ""}`,
+      ${r !== it ? `<p class="sec-f">Visible aussi sur le ${momWord(r)} « ${esc(r.t)} » et ses relais.</p>` : isTF(it) ? `<p class="sec-f">Visible aussi sur ses relais.</p>` : ""}`,
       onOk: async (s) => {
         const type = pressed("#ask-type", s)[0] || "Autre", dest = pressed("#ask-to", s)[0] || to[0].k;
         // la même demande, au même service, déjà ouverte pour ce temps fort ou ses relais : on ne la renvoie pas
@@ -852,7 +882,7 @@ window.KPlan = (DATA, { greet = false } = {}) => {
     const it = byId(id), r = root(it);
     K.sheet.open({ title: "Ajouter un lien", ok: "Ajouter", body: `<label class="lbl" for="ln-nom">Nom du document</label><input class="in" id="ln-nom" placeholder="Ex. Dossier de presse">
       <label class="lbl" for="ln-url">Lien SharePoint</label><input class="in" id="ln-url" type="url" inputmode="url" placeholder="https://kedgebs.sharepoint.com/…" aria-describedby="ln-err"><p class="err" id="ln-err" hidden>Colle un lien qui commence par https://</p>
-      ${r !== it ? `<p class="sec-f">Visible aussi sur le ${isSujet(r) ? "sujet" : "temps fort"} « ${esc(r.t)} » et ses relais.</p>` : isTF(it) ? `<p class="sec-f">Visible aussi sur ses relais.</p>` : ""}`,
+      ${r !== it ? `<p class="sec-f">Visible aussi sur le ${momWord(r)} « ${esc(r.t)} » et ses relais.</p>` : isTF(it) ? `<p class="sec-f">Visible aussi sur ses relais.</p>` : ""}`,
       onOk: async (s) => { const u = s.querySelector("#ln-url"); if (!/^https:\/\/\S+$/.test(u.value.trim())) { u.setAttribute("aria-invalid", "true"); s.querySelector("#ln-err").hidden = false; u.focus(); return false; }
         try { r.links.push(await Store.addLink(r.id, s.querySelector("#ln-nom").value.trim() || "Document SharePoint", u.value.trim())); } catch (e) { fail(e); return false; }
         K.refresh(); K.snack("Lien ajouté."); } });
@@ -868,7 +898,7 @@ window.KPlan = (DATA, { greet = false } = {}) => {
       <label class="lbl" for="rp-msg">${self ? "Ce que tu as reçu" : "Message"} <span class="opt">facultatif</span></label><textarea class="in" id="rp-msg" rows="3" maxlength="1000" placeholder="${self ? "Ex. programme validé par la direction" : "Ex. les visuels validés sont dans le dossier"}"></textarea>
       <label class="lbl" for="rp-url">Lien SharePoint <span class="opt">facultatif</span></label><input class="in" id="rp-url" type="url" inputmode="url" placeholder="https://kedgebs.sharepoint.com/…" aria-describedby="rp-err"><p class="err" id="rp-err" hidden>Colle un lien qui commence par https://</p>
       <label class="lbl" for="rp-nom">Nom du document <span class="opt">facultatif</span></label><input class="in" id="rp-nom" placeholder="${esc(q.type)}">
-      <p class="sec-f">${r !== it ? `Le document va sur le ${isSujet(r) ? "sujet" : "temps fort"} « ${esc(r.t)} » et se voit sur tous ses relais.` : isTF(it) ? "Le document se voit aussi sur ses relais." : "Le document va sur la fiche."}</p>`,
+      <p class="sec-f">${r !== it ? `Le document va sur le ${momWord(r)} « ${esc(r.t)} » et se voit sur tous ses relais.` : isTF(it) ? "Le document se voit aussi sur ses relais." : "Le document va sur la fiche."}</p>`,
       onOk: async (s) => {
         const u = s.querySelector("#rp-url"), url = u.value.trim(), msg = s.querySelector("#rp-msg").value.trim();
         if (url && !/^https:\/\/\S+$/.test(url)) { u.setAttribute("aria-invalid", "true"); s.querySelector("#rp-err").hidden = false; u.focus(); return false; }
@@ -1006,7 +1036,7 @@ window.KPlan = (DATA, { greet = false } = {}) => {
   const meeting = (() => { app.insertAdjacentHTML("beforeend", `<div class="meeting" id="meeting" hidden role="dialog" aria-modal="true" aria-label="Écran réunion"></div>`); return document.getElementById("meeting"); })();
   // La réunion répond à une question : chaque temps fort a-t-il ses relais ? Un temps fort par ligne, un service par colonne,
   // les trous (service prévenu, rien de prévu) ressortent. Le reste de la production vient ensuite, replié.
-  const laneOf = (it) => (isSujet(it) ? "Sujets" : isTF(it) ? "Temps forts" : isPay(it) ? "Partenariats" : svcOf(it.svc).court);
+  const laneOf = (it) => (isSujet(it) ? "Sujets" : isCls(it) ? "Classements" : isTF(it) ? "Temps forts" : isPay(it) ? "Partenariats" : svcOf(it.svc).court);
   const MT = { contrib: false, free: {} };
   function renderMeeting() {
     const P = PERIODS[CUR], N = PERIODS[CUR + 1], cm = TODAY.slice(0, 7);
@@ -1038,7 +1068,7 @@ window.KPlan = (DATA, { greet = false } = {}) => {
           if (l.length) return `<div class="mx-c">${l.map((a) => relay(a, tf)).join("")}</div>`;
           return `<div class="mx-c"></div>`;
         }).join("");
-        return `<div class="mx-row${past ? " past" : ""}"><button type="button" class="mx-tf${tf.st === "confirmer" ? " soft" : ""}${isSujet(tf) ? " suj" : ""}" data-mt-open="${tf.id}">
+        return `<div class="mx-row${past ? " past" : ""}"><button type="button" class="mx-tf${tf.st === "confirmer" ? " soft" : ""}${isSujet(tf) ? " suj" : isCls(tf) ? " cls" : ""}" data-mt-open="${tf.id}">
             <span class="mx-d">${dayOf(tf)}</span><span><b>${esc(tf.t)}</b><span>${esc([precise(tf) || isSujet(tf) ? when : norm(tf.flou) !== norm(monShort(tf.date)) ? tf.flou : "", stAfter(tf, tf.flou), past ? "passé" : ""].filter(Boolean).join(" · "))}</span></span>${past ? `<span class="ml-ok">${I.check}</span>` : ""}</button>${cells}</div>`;
       }).join("");
       // production hors temps fort : le nombre d'abord, le détail à la demande
@@ -1061,7 +1091,7 @@ window.KPlan = (DATA, { greet = false } = {}) => {
     const row = (it, sub, k) => `<button type="button" class="ma-item ${k}" data-mt-open="${it.id}"><b>${esc(it.t)}</b><span>${esc(sub)}</span></button>`;
     const since = (x) => Date.parse(x.ts) > Date.parse(DB.lastMeetingTs);
     const contrib = [
-      ...DB.items.filter((it) => isTF(it) && since(it)).map((it) => ({ at: it.at, ts: it.ts, it, sub: `${person(it.by).nom} · nouveau ${isSujet(it) ? "sujet" : "temps fort"}` })),
+      ...DB.items.filter((it) => isTF(it) && since(it)).map((it) => ({ at: it.at, ts: it.ts, it, sub: `${person(it.by).nom} · nouveau ${momWord(it)}` })),
       ...DB.reqs.filter((r) => since(r) && r.st !== "annulee" && byId(r.item)).map((r) => ({ at: r.at, ts: r.ts, it: byId(r.item), k: dlCls(r).trim(),
         sub: `${person(r.from).nom} demande ${ASK[r.type] || "des éléments"} à ${svcOf(r.to).qui}${r.st === "recue" ? " (reçu)" : `, deadline ${fmtDay(r.pour)}`}` })),
     ].sort((a, b) => Date.parse(b.ts) - Date.parse(a.ts));
@@ -1121,12 +1151,12 @@ window.KPlan = (DATA, { greet = false } = {}) => {
         : st === "next" && !b.done.length ? `<span class="cp-big"><b>${n}</b> ${n > 1 ? "prévues" : "prévue"}</span>`
         : `<span class="cp-big"><b>${b.done.length}</b><small>/${n}</small> ${b.done.length > 1 ? "diffusées" : "diffusée"}</span>`;
       const leg = [["d", b.done, "diffusée", "diffusées"], ["l", b.late, "pas encore diffusée", "pas encore diffusées"], ["n", b.next, "à venir", "à venir"]].filter(([, x]) => x.length);
-      const nTF = b.tfs.filter((x) => !isSujet(x)).length, nS = b.tfs.length - nTF;
+      const nTF = b.tfs.filter(isTfDay).length, nS = b.tfs.filter(isSujet).length, nC = b.tfs.filter(isCls).length;
       return `<button type="button" class="cp-card ${st}${CP.sel === i ? " sel" : ""}" data-cp="per" data-i="${i}" aria-pressed="${CP.sel === i}">
         <span class="cp-tag">${esc(tag)}</span><h2>${esc(perName(P))}</h2><span class="cp-dates">${esc(P.lib)}</span>${big}
         ${n ? `<span class="cp-bar" aria-hidden="true"><i class="d" style="width:${w(b.done)}%"></i><i class="l" style="width:${w(b.late)}%"></i><i class="n" style="width:${w(b.next)}%"></i></span>` : ""}
         ${leg.length ? `<span class="cp-leg">${leg.map(([k, x, one, many]) => `<span class="${k}">${plur(x.length, one, many)}</span>`).join("")}</span>` : ""}
-        ${nTF + nS ? `<span class="cp-tfn">${esc([nTF ? plur(nTF, "temps fort", "temps forts") : "", nS ? plur(nS, "sujet", "sujets") : ""].filter(Boolean).join(" · "))}</span>` : ""}</button>`;
+        ${nTF + nS + nC ? `<span class="cp-tfn">${esc([nTF ? plur(nTF, "temps fort", "temps forts") : "", nS ? plur(nS, "sujet", "sujets") : "", nC ? plur(nC, "classement", "classements") : ""].filter(Boolean).join(" · "))}</span>` : ""}</button>`;
     };
     const P = PERIODS[CP.sel], b = bilan(CP.sel);
     const dcol = (it) => (precise(it) ? `<b>${D(it.date).getDate()}</b><span>${esc(monShort(it.date))}</span>` : `<b class="m">${esc(monShort(it.date))}</b>`);
@@ -1134,7 +1164,7 @@ window.KPlan = (DATA, { greet = false } = {}) => {
       <span class="cp-t"><b>${esc(it.t)}</b><span>${isPay(it) ? payBadge : ""}${esc([svcLabel(it), k === "d" ? "" : stWord(it)].filter(Boolean).join(" · "))}</span></span></button>`;
     const col = (k, title, list, empty) => `<section class="cp-col ${k}" aria-label="${esc(title)}"><h3>${esc(title)} <b>${list.length}</b></h3>
       ${list.map((it) => row(it, k)).join("") || `<p class="cp-empty">${esc(empty)}</p>`}</section>`;
-    const chip = (it) => `<button type="button" class="cp-tf${isSujet(it) ? " suj" : ""}${isPast(it) ? " past" : ""}" data-cp-open="${it.id}">${isSujet(it) ? I.bookmark : `<span>${esc(precise(it) ? (multi(it) ? when(it) : fmtShort(it.date)) : it.flou)}</span>`}${esc(it.t)}</button>`;
+    const chip = (it) => `<button type="button" class="cp-tf${isSujet(it) ? " suj" : isCls(it) ? " cls" : ""}${isPast(it) ? " past" : ""}" data-cp-open="${it.id}">${isSujet(it) ? I.bookmark : `<span>${esc(precise(it) ? (multi(it) ? when(it) : fmtShort(it.date)) : it.flou)}</span>`}${isCls(it) ? I.podium : ""}${esc(it.t)}</button>`;
     // couverture des 5 messages sur la période, comme à l'écran réunion
     const acts = b.l.filter((it) => !isPay(it)), cov = MESSAGES.map((m) => ({ m, n: acts.filter((it) => it.m.includes(m.n)).length }));
     const all = shownP.map((x) => bilan(x.i)), nAll = all.reduce((s, x) => s + x.l.length, 0), nDone = all.reduce((s, x) => s + x.done.length, 0);
@@ -1250,7 +1280,7 @@ window.KPlan = (DATA, { greet = false } = {}) => {
     if (a === "unreq") withdrawReq(t.dataset.r);
     if (a === "retire") {
       const it = byId(id), tf = isTF(it), n = tf ? DB.items.filter((x) => x.tf === id && x.st !== "retire").length : 0;
-      const what = isSujet(it) ? "Le sujet" : tf ? "Le temps fort" : "L'action";
+      const what = tf ? `Le ${momWord(it)}` : "L'action";
       // ses demandes encore ouvertes partent avec elle (la base fait pareil), sauf un relais d'un temps fort actif : elles servent au temps fort
       const live = !tf && it.tf && byId(it.tf) && byId(it.tf).st !== "retire", open = live ? [] : DB.reqs.filter((q) => q.item === id && q.st === "ouverte");
       const text = `${what} reste ${tf ? "barré" : "barrée"} dans l'historique${tf ? "" : " et ne sera pas diffusée"}. ${n ? `${n > 1 ? `Ses ${n} relais restent` : "Son relais reste"} en place. ` : ""}${open.length ? `${open.length > 1 ? `Ses ${open.length} demandes d'éléments en cours sont retirées` : "Sa demande d'éléments en cours est retirée"}. ` : ""}Les services concernés sont prévenus.`;
@@ -1263,7 +1293,7 @@ window.KPlan = (DATA, { greet = false } = {}) => {
     if (a === "delete") {
       // pour de bon : la fiche, ses documents, ses demandes et son historique ; les relais d'un temps fort restent, sans temps fort
       const it = byId(id), rel = isTF(it) ? DB.items.filter((x) => x.tf === id) : [];
-      const text = `${isSujet(it) ? "Le sujet" : isTF(it) ? "Le temps fort" : "L'action"} disparaît de l'appli avec ses documents, ses demandes et son historique. ${rel.length ? `${rel.length > 1 ? `Ses ${rel.length} relais restent` : "Son relais reste"}, sans temps fort. ` : ""}Impossible de revenir en arrière.`;
+      const text = `${isTF(it) ? `Le ${momWord(it)}` : "L'action"} disparaît de l'appli avec ses documents, ses demandes et son historique. ${rel.length ? `${rel.length > 1 ? `Ses ${rel.length} relais restent` : "Son relais reste"}, sans ${momWord(it)}. ` : ""}Impossible de revenir en arrière.`;
       if (await K.alert({ title: `Supprimer « ${it.t} » ?`, text, ok: "Supprimer", danger: true })) {
         try { await Store.deleteItem(id); } catch (e) { return fail(e); }
         DB.items = DB.items.filter((x) => x.id !== id); rel.forEach((x) => { x.tf = ""; });

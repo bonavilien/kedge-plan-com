@@ -1,5 +1,5 @@
 // Service worker : l'appli s'ouvre même sans réseau (dernière version vue) et reçoit les notifications.
-const CACHE = "kplan-v3"; // à changer à chaque mise en ligne qui touche plusieurs fichiers : hors ligne, deux versions ne se mélangent pas
+const CACHE = "kplan-v4"; // à changer à chaque mise en ligne qui touche plusieurs fichiers : hors ligne, deux versions ne se mélangent pas
 self.addEventListener("install", () => self.skipWaiting());
 self.addEventListener("activate", (e) => e.waitUntil((async () => {
   for (const k of await caches.keys()) if (k !== CACHE) await caches.delete(k);

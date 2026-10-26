@@ -622,3 +622,32 @@ button.dl:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px;
 .row.lk { gap: 10px; }
 .lk-open { flex: 1; min-width: 0; display: flex; flex-direction: column; border: 0; background: none; padding: 0; color: inherit; font: inherit; text-align: left; cursor: pointer; }
 .lk-x { flex: none; color: var(--text2); }
+
+/* ---------- classement : ni temps fort ni sujet. Une médaille (rond jaune cerclé) et un podium ---------- */
+.app { --cls-ring: var(--text); }
+.tf-b.cls { display: inline-flex; align-items: center; gap: 4px; padding: 1px 8px 1px 6px; border-radius: 999px; background: var(--yellow); color: var(--anth); box-shadow: 0 0 0 1.5px var(--cls-ring); }
+.tf-b.cls svg { width: 13px; height: 13px; stroke-width: 2; }
+.ag-row.is-cls .ag-date b { display: grid; place-items: center; width: 34px; height: 34px; padding: 0; border-radius: 50%; background: var(--yellow); color: var(--anth); box-shadow: 0 0 0 2px var(--surface), 0 0 0 3.5px var(--cls-ring); }
+.ag-row.is-cls .ag-date b.m { font-size: 12px; }
+.ag-row.is-cls .ag-date span { margin-top: 6px; }
+.ag-row.is-cls .ag-who { font-family: var(--serif); font-weight: 700; font-size: 15px; }
+.cls-strip { margin-bottom: 14px; }
+/* fiche : le rang en grand dans sa médaille, l'objectif à côté */
+.hero-cls { margin: 4px 0 14px; padding: 18px 18px 20px; border-radius: var(--r-card); background: var(--surface); box-shadow: inset 0 0 0 1.5px var(--cls-ring); }
+.rk { display: flex; align-items: center; gap: 20px; margin-top: 16px; }
+.rk-n { display: grid; grid-auto-flow: column; place-content: center; align-items: start; width: 76px; height: 76px; flex: none; border-radius: 50%; background: var(--yellow); color: var(--anth); box-shadow: 0 0 0 3px var(--surface), 0 0 0 5px var(--cls-ring); font-family: var(--serif); font-weight: 700; font-size: 15px; line-height: 1; }
+.rk-n b { font-size: 34px; line-height: .95; font-variant-numeric: lining-nums; }
+.rk-g { display: grid; gap: 2px; font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text2); }
+.rk-g b { font-family: var(--serif); font-size: 28px; letter-spacing: 0; text-transform: none; color: var(--text); }
+.rk-in { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+/* grille : une pastille arrondie, un trait fin sur la semaine de publication */
+.blk.b-cls { border-radius: 999px; background: var(--surface); color: var(--text); font-weight: 600; box-shadow: inset 0 0 0 1.5px var(--cls-ring); padding-inline: 10px; }
+.ginner:not(.z-year) .blk.b-cls { display: flex; align-items: center; gap: 5px; }
+.blk.b-cls > svg { flex: none; width: 14px; height: 14px; }
+.blk.b-cls.soft { border: 1.5px dashed var(--cls-ring); box-shadow: none; }
+.b-cls .sq, .lgd.b-cls { border-radius: 50%; background: var(--yellow); box-shadow: 0 0 0 1.5px var(--cls-ring); }
+.cls-line { position: absolute; top: 0; bottom: 0; z-index: 0; width: 0; border-left: 2px dotted color-mix(in srgb, var(--text) 45%, transparent); pointer-events: none; }
+/* réunion et copil */
+.mx-tf.cls { background: transparent; }
+.mx-tf.cls .mx-d { width: 28px; border-radius: 50%; justify-self: center; box-shadow: 0 0 0 1.5px var(--surface), 0 0 0 3px var(--cls-ring); }
+.cp-tf.cls { border-radius: 999px; background: var(--surface); color: var(--text); box-shadow: inset 0 0 0 1.5px var(--cls-ring); }

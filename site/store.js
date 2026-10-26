@@ -55,7 +55,7 @@ window.KStore = (() => {
         items: items.map((r) => ({
           id: r.id, kind: r.kind, t: r.t, date: r.date, fin: r.fin || "", flou: r.flou, per: r.per.map(perIndex).filter((i) => i >= 0),
           svc: r.svc, cc: r.cc, m: r.m.map((x) => (x === "INC" ? "INC" : +x)), st: r.st, tf: r.tf || "", partner: r.partner || "",
-          lieu: r.lieu, note: r.note, by: r.author || "", at: day(r.at), ts: r.at, links: byItem.get(r.id) || [],
+          lieu: r.lieu, note: r.note, rang: r.rang ?? null, cible: r.cible ?? null, by: r.author || "", at: day(r.at), ts: r.at, links: byItem.get(r.id) || [],
         })),
         reqs: reqs.map((r) => ({ id: r.id, item: r.item, from: r.asker || "", to: r.dest, type: r.type, quoi: r.quoi, pour: r.pour, st: r.st, at: day(r.at), ts: r.at, reponse: r.reponse || "", by: r.repondu_par || "", rts: r.repondu_at || "" })),
         blocks: blocks.map((b) => ({ id: b.id, item: b.item, by: b.author || "", why: b.why, leve: b.leve, at: day(b.at), ts: b.at })),
@@ -72,6 +72,8 @@ window.KStore = (() => {
   const itemRow = (it) => ({
     t: it.t, date: it.date, fin: it.fin || null, flou: it.flou, per: it.per.map((i) => PERIODS[i].n), svc: it.svc, cc: it.cc,
     m: it.m.map(String), st: it.st, tf: it.tf || null, partner: it.partner || null, lieu: it.lieu, note: it.note,
+    // rang et objectif : seulement pour un classement
+    ...(it.kind === "classement" ? { rang: it.rang ?? null, cible: it.cible ?? null } : {}),
   });
   const addItem = (it) => run(sb.from("items").insert({ id: it.id, kind: it.kind, ...itemRow(it) }));
   // keys : seuls ces champs partent (une modification faite entre-temps par quelqu'un d'autre n'est pas écrasée)

@@ -48,6 +48,8 @@
     if (p.visiteur && ["reqs", "blocks", "links"].includes(t) && op === "insert") return false;
     if (t === "items") {
       if (row.partner) return p.media;
+      // migration 0011 : un classement est saisi par les chefs
+      if (row.kind === "classement" && op === "insert") return p.chef && row.svc === "chef";
       return p.chef || (!!p.svc && row.svc === p.svc);
     }
     if (["periods", "messages", "services", "meta"].includes(t)) return p.chef;
@@ -59,7 +61,7 @@
     return true;
   }
   // les déclencheurs de la migration 0003 : l'historique se remplit tout seul
-  const FIELDS = ["t", "date", "fin", "flou", "per", "svc", "cc", "m", "st", "tf", "partner", "lieu", "note"];
+  const FIELDS = ["t", "date", "fin", "flou", "per", "svc", "cc", "m", "st", "tf", "partner", "lieu", "note", "rang", "cible"];
   const jot = (item, kind, diff = {}, author = db.session.user.id, at = new Date().toISOString()) =>
     db.journal.push({ id: (db.journal.at(-1)?.id || 0) + 1, item, author, at, kind, diff });
   const norm = (v) => (v === undefined || v === "" ? null : v);

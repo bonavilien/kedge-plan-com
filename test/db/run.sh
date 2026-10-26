@@ -29,4 +29,6 @@ $D -f supabase/migrations/0009_direction_programme.sql
 $D -f test/db/programme.sql
 $D -f supabase/migrations/0010_plusieurs_jours.sql
 $D -f test/db/plusieurs.sql
+$D -f supabase/migrations/0011_classements.sql
+$D -f test/db/classements.sql
 echo "Base : tout est bon"
