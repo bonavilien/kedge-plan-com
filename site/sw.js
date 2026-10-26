@@ -1,6 +1,15 @@
 // Service worker : l'appli s'ouvre même sans réseau (dernière version vue) et reçoit les notifications.
-const CACHE = "kplan-v5"; // à changer à chaque mise en ligne qui touche plusieurs fichiers : hors ligne, deux versions ne se mélangent pas
-self.addEventListener("install", () => self.skipWaiting());
+const CACHE = "kplan-v6"; // à changer à chaque mise en ligne qui touche plusieurs fichiers : hors ligne, deux versions ne se mélangent pas
+// tout ce que la page charge, mis de côté dès l'installation : l'appli s'ouvre hors ligne dès la première visite
+const CORE = ["./", "index.html", "manifest.webmanifest", "theme/tokens.css", "theme/base.css", "components/components.css", "components/brand.css", "app.css",
+  "components/icons.js", "components/ui.js", "vendor/supabase-2.117.3.js", "config.js", "store.js", "app.js", "boot.js",
+  "fonts/krc-serif.woff", "assets/kedge-logo-anthracite.png", "assets/kedge-logo-blanc.png", "icons/icon-192.png", "icons/apple-touch-icon.png"];
+self.addEventListener("install", (e) => e.waitUntil((async () => {
+  // un fichier qui manque ne bloque pas l'installation : il sera mis en cache à sa première lecture
+  const c = await caches.open(CACHE);
+  await Promise.all(CORE.map((u) => fetch(u, { cache: "no-cache" }).then((r) => (r.ok ? c.put(u, r) : null)).catch(() => null)));
+  await self.skipWaiting();
+})()));
 self.addEventListener("activate", (e) => e.waitUntil((async () => {
   for (const k of await caches.keys()) if (k !== CACHE) await caches.delete(k);
   await self.clients.claim();
@@ -10,10 +19,11 @@ self.addEventListener("fetch", (e) => {
   const r = e.request;
   if (r.method !== "GET" || new URL(r.url).origin !== location.origin) return;
   // no-cache : revalide auprès de GitHub Pages au lieu de reprendre une copie du navigateur vieille de 10 minutes
+  // une page ouverte avec un paramètre (?…) ou un #… retrouve la même copie hors ligne
   e.respondWith(fetch(r, { cache: "no-cache" }).then((res) => {
     if (res.ok) { const copy = res.clone(); caches.open(CACHE).then((c) => c.put(r, copy)); }
     return res;
-  }).catch(async () => (await caches.match(r)) || (r.mode === "navigate" ? caches.match("./") : Response.error())));
+  }).catch(async () => (await caches.match(r, { ignoreSearch: r.mode === "navigate" })) || (r.mode === "navigate" ? (await caches.match("./")) || caches.match("index.html") : Response.error())));
 });
 
 // une notification envoyée par la base (fonction push)

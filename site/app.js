@@ -44,7 +44,9 @@ window.KPlan = (DATA, { greet = false } = {}) => {
   const ASK = { "Programme": "le programme", "Contexte": "du contexte", "Éléments de langage": "des éléments de langage", "Visuels": "des visuels", "Contact": "un contact", "Rushs": "des rushs", "Autre": "des éléments" };
   // la Direction du Programme : un chef de projet y note pour lui-même une info qu'il ira chercher (personne n'est notifié)
   const PROG = { k: "programme", nom: "Direction du Programme", court: "Dir. Programme", qui: "la Direction du Programme" };
-  const svcOf = (k) => SERVICES.find((s) => s.k === k) || (k === PROG.k ? PROG : CHEF);
+  // la responsable de l'offre reçoit des demandes comme un service (les profils cochés « Resp. offre » dans Équipe)
+  const offre = () => ({ k: "offre", nom: "Responsable de l'offre", court: "Resp. offre", qui: K.fr.list(PEOPLE.filter((p) => p.offre).map((p) => p.nom)) || "la Resp. offre" });
+  const svcOf = (k) => SERVICES.find((s) => s.k === k) || (k === PROG.k ? PROG : k === "offre" ? offre() : CHEF);
   const fonctionOf = (p) => p.fonction || (p.svc ? svcOf(p.svc).nom : "");
   const person = (k) => PEOPLE.find((p) => p.k === k) || { k, nom: "Ancien compte", svc: "", fonction: "" };
   const me = () => person(ME);
@@ -86,8 +88,8 @@ window.KPlan = (DATA, { greet = false } = {}) => {
   const momWord = (it) => (isSujet(it) ? "sujet" : isCls(it) ? "classement" : "temps fort");
   // le rang de KEDGE et l'objectif d'un classement : « 10e · objectif top 7 »
   const rgTxt = (n) => (n === 1 ? "1er" : `${n}e`);
-  // un classement s'appelle toujours « Classement … » (comme store.js)
-  const clsT = (t) => (/^classement\b/i.test(t.trim()) ? t.trim() : `Classement ${t.trim()}`);
+  // un classement s'appelle toujours « Classement … », avec une majuscule et un seul espace (comme store.js)
+  const clsT = (t) => `Classement ${t.replace(/\s+/g, " ").trim().replace(/^classements?\b\s*/i, "")}`.trim();
   const rankTxt = (it) => [it.rang ? rgTxt(it.rang) : "", it.cible ? `objectif top ${it.cible}` : ""].filter(Boolean).join(" · ");
   const isPay = (it) => !!it.partner;
   const isInc = (it) => it.m.includes("INC");
@@ -122,7 +124,7 @@ window.KPlan = (DATA, { greet = false } = {}) => {
   // ---------- écritures ----------
   // identifiant fait ici : la fiche s'ouvre tout de suite, la base garde le même
   const uid = () => crypto.randomUUID?.() || "10000000-1000-4000-8000-100000000000".replace(/[018]/g, (c) => (c ^ (crypto.getRandomValues(new Uint8Array(1))[0] & (15 >> (c / 4)))).toString(16));
-  const errText = (e) => (e?.code === "42501" ? "tu n'as pas les droits pour ça" : /fetch|network|load failed/i.test(e?.message || "") ? "pas de connexion" : /jwt|token/i.test(e?.message || "") ? "reconnecte-toi" : e?.message || "erreur inconnue");
+  const errText = (e) => (e?.code === "42501" ? "tu n'as pas les droits pour ça" : e?.code === "23503" && /_item_fkey|_req_fkey/.test(e?.message || "") ? "cette fiche vient d'être supprimée" : /fetch|network|load failed/i.test(e?.message || "") ? "pas de connexion" : /jwt|token/i.test(e?.message || "") ? "reconnecte-toi" : e?.message || "erreur inconnue");
   // une écriture refusée : on le dit, et on remet l'écran d'accord avec la base
   const fail = (e) => { console.error(e); K.snack(`Pas enregistré : ${esc(errText(e))}. Réessaie.`, 5000); sync(); };
   // petites écritures : l'écran change tout de suite, la base suit
@@ -218,8 +220,9 @@ window.KPlan = (DATA, { greet = false } = {}) => {
       .sort((a, b) => a.n - b.n);
   }
   // une demande reçue par mon service (ou par les chefs si j'en suis un)
-  // (une demande à la Direction du Programme : pour le chef qui l'a notée, c'est lui qui la marque reçue)
-  const forMe = (q, p = me()) => q.to === p.svc || (!!p.ownSvc && q.to === p.ownSvc) || (q.to === PROG.k && q.from === p.k);
+  // (une demande à la Direction du Programme : les chefs de projet la marquent reçue, celui qui l'a notée ou un autre ;
+  // une demande à la Resp. offre : pour la responsable de l'offre)
+  const forMe = (q, p = me()) => q.to === p.svc || (!!p.ownSvc && q.to === p.ownSvc) || (q.to === PROG.k && !!p.chef) || (q.to === "offre" && !!p.offre);
   // la deadline d'une demande se voit partout : en rouge une fois passée, en jaune à trois jours
   const dlTxt = (pour) => { const n = days(pour); return n < 0 ? `En retard · deadline ${fmtDay(pour)}` : n === 0 ? "Deadline aujourd'hui" : n === 1 ? "Deadline demain" : `Deadline ${fmtDay(pour)} · dans ${nJours(n)}`; };
   const dlCls = (q) => (q.st === "recue" ? "" : days(q.pour) < 0 ? " late" : days(q.pour) <= 3 ? " soon" : "");
@@ -260,7 +263,7 @@ window.KPlan = (DATA, { greet = false } = {}) => {
     };
     const demande = (r) => { const it = byId(r.item), tf = root(it);
       return card(it, { body: `<b>${esc(person(r.from).nom)}</b> demande ${esc(ASK[r.type] || "des éléments")}${r.quoi && r.quoi !== r.type ? ` : « ${esc(r.quoi)} »` : ""}.${tf !== it ? `<span class="todo-tf">Pour le ${momWord(tf)} « ${esc(tf.t)} »</span>` : ""}`,
-        left: dlTag(r), acts: `<button type="button" class="btn small" data-act="repondre" data-r="${r.id}">Répondre</button>` }); };
+        left: dlTag(r), acts: `<button type="button" class="btn small" data-act="repondre" data-r="${r.id}">${r.to === PROG.k ? "C'est reçu" : "Répondre"}</button>` }); };
     const rappel = ({ it, n, key }) => card(it, { left: `<span class="jal">J-${n}</span>`,
       acts: `<button type="button" class="btn small" data-act="ask" data-id="${it.id}" data-key="${key}">Oui, je demande</button><button type="button" class="btn small outline" data-act="nope" data-key="${key}">Pas besoin</button>` });
     const cite = (it) => card(it, { left: `Ajouté par ${esc(person(it.by).nom)}, ${ago(it.at)}`, acts: `<button type="button" class="btn small tonal" data-act="vu" data-id="${it.id}">Vu</button>` });
@@ -315,7 +318,7 @@ window.KPlan = (DATA, { greet = false } = {}) => {
     const rest = restTxt(P);
     // les 7 derniers jours d'une période : ce qui ouvre la suivante (ses deux premières semaines) se voit déjà
     const nx = PERIODS[S.period + 1], left = days(P.au);
-    const soon = cur && nx && left >= 0 && left <= 7
+    const soon = cur && nx && left >= 0 && left <= 6
       ? (wide ? DB.items.filter((it) => isAct(it) && periodOf(it.date) === S.period + 1) : scoped(S.period + 1))
         .filter((it) => it.st !== "retire" && (!S.msgF || it.m.includes(+S.msgF)) && sortKey(it) <= addDays(nx.du, 13))
         .concat(DB.items.filter((it) => isCls(it) && it.st !== "retire" && periodOf(it.date) === S.period + 1 && sortKey(it) <= addDays(nx.du, 13))).sort(sortDate)
@@ -349,7 +352,7 @@ window.KPlan = (DATA, { greet = false } = {}) => {
     // grand écran : une colonne par service, plus le chef de projet quand il porte des actions
     const chefL = shown.filter(isChefAct);
     const colsH = () => `<div class="svc-cols">${[...SERVICES.map((s) => ({ nom: s.nom, l: shown.filter((it) => it.svc === s.k) })), ...(chefL.length ? [{ nom: CHEF.nom, l: chefL }] : [])].map(({ nom, l }) =>
-      `<section class="svc-col" aria-label="${esc(nom)}"><h2 class="col-h">${esc(nom)}<span>${l.length}</span></h2>${l.length ? agenda(l, { who: "tf" }) : `<p class="col-empty">Rien sur cette période.</p>`}</section>`).join("")}</div>`;
+      `<section class="svc-col" aria-label="${esc(nom)}"><h2 class="col-h">${esc(nom)}<span>${l.filter((it) => it.st !== "retire").length}</span></h2>${l.length ? agenda(l, { who: "tf" }) : `<p class="col-empty">Rien sur cette période.</p>`}</section>`).join("")}</div>`;
     el.innerHTML = K.navbar({ title: "Ma période", actions: (chef ? `<button type="button" class="txt-btn strong wide-only" data-act="meeting">Mode réunion</button>` : "") + profileBtn() }) + `<div class="scroll${wide ? " page-wide" : ""}"><div class="swipe" id="swipe">
       <section class="panel lg phead" aria-label="${esc(`Période ${S.period + 1} sur ${PERIODS.length}`)}">
         <div class="ph-nav">
@@ -365,7 +368,7 @@ window.KPlan = (DATA, { greet = false } = {}) => {
       ${news}
       ${bar}
       ${!shown.length ? empty : wide ? colsH() : agenda(shown, { who: f === "all" ? "all" : "tf" })}
-      ${soon.length ? `<section class="soon" aria-label="Période suivante"><h2 class="sec-h">À suivre · ${esc(perName(nx))}, dès le ${esc(fmtDay(nx.du))}</h2>${agenda(soon, { who: wide || f === "all" ? "all" : "tf" })}</section>` : ""}
+      ${soon.length ? `<section class="soon" aria-label="Période suivante"><h2 class="soon-h">À suivre<span>${esc(perName(nx))}, dès le ${esc(fmtDay(nx.du))}</span></h2>${agenda(soon, { who: wide || f === "all" ? "all" : "tf" })}</section>` : ""}
     </div></div>`;
     wireSwipe(el.querySelector("#swipe"));
     syncBadge();
@@ -417,6 +420,10 @@ window.KPlan = (DATA, { greet = false } = {}) => {
   const wk = (s) => Math.max(0, Math.min(GN - 1, Math.floor(Math.round((D(s) - D(G0)) / 864e5) / 7)));
   // une semaine à cheval sur deux périodes va à celle qui en a le plus de jours (une période qui commence du vendredi au dimanche démarre la semaine suivante)
   const wkStart = (i) => (i === 0 ? 0 : Math.min(GN - 1, wk(PERIODS[i].du) + ((D(PERIODS[i].du).getDay() + 6) % 7 >= 4 ? 1 : 0)));
+  // un mois : sa première semaine qui lui appartient vraiment (le 1er novembre, un dimanche, ouvre la semaine du 2)
+  const wkM = (s) => Math.min(GN - 1, wk(s) + ((D(s).getDay() + 6) % 7 >= 4 ? 1 : 0));
+  // une fiche connue au mois seulement se place sur la première semaine de son mois
+  const wkOf = (it) => (precise(it) ? wk(it.date) : wkM(it.date.slice(0, 7) + "-01"));
   const colW = () => (S.zoom === "annee" ? 26 : 140);
 
   function renderGrille(el) {
@@ -433,16 +440,16 @@ window.KPlan = (DATA, { greet = false } = {}) => {
     const blk = (it) => {
       if (isSujet(it)) return sujBlk(it);
       const soft = it.st === "confirmer" || it.st === "idee";
-      return `<button type="button" class="blk b-${typeOf(it)}${it.st === "retire" ? " retire" : ""}${soft ? " soft" : ""}" style="grid-column:${wk(it.date) + 1}${multi(it) ? `/${wk(it.fin) + 2}` : ""}" data-open="${it.id}" aria-label="${esc(`${it.t}, ${when(it)}`)}">${year ? `<i class="sq"></i>` : `${isCls(it) ? I.podium : ""}<span class="t">${esc(it.t)}</span>`}</button>`;
+      return `<button type="button" class="blk b-${typeOf(it)}${it.st === "retire" ? " retire" : ""}${soft ? " soft" : ""}${multi(it) ? " multi" : ""}" style="grid-column:${wkOf(it) + 1}${multi(it) ? `/${wk(it.fin) + 2}` : ""}" data-open="${it.id}" aria-label="${esc(`${it.t}, ${when(it)}`)}">${year ? `<i class="sq"></i>` : `${isCls(it) ? I.podium : ""}<span class="t">${esc(it.t)}</span>`}</button>`;
     };
     const months = MONTHS.map((m) => m + "-01");
     const perEnd = (i) => (i < PERIODS.length - 1 ? Math.max(wkStart(i) + 1, wkStart(i + 1)) : GN);
     const head = `<div class="grow ghead"><div class="glab"></div><div class="gcells gper">${PERIODS.map((P, i) => `<div class="gp" style="grid-row:1;grid-column:${wkStart(i) + 1}/${perEnd(i) + 1}">${esc(perName(P))}</div>`).join("")}</div></div>
-      <div class="grow ghead"><div class="glab"></div><div class="gcells gmon">${months.map((m, i) => `<div style="grid-column:${wk(m) + 1}/${i < months.length - 1 ? wk(months[i + 1]) + 1 : GN + 1}">${D(m).toLocaleDateString("fr-FR", { month: year ? "narrow" : "long" })}</div>`).join("")}</div></div>
+      <div class="grow ghead"><div class="glab"></div><div class="gcells gmon">${months.map((m, i) => `<div style="grid-column:${(i ? wkM(m) : 0) + 1}/${i < months.length - 1 ? wkM(months[i + 1]) + 1 : GN + 1}">${D(m).toLocaleDateString("fr-FR", { month: year ? "narrow" : "long" })}</div>`).join("")}</div></div>
       ${year ? "" : `<div class="grow ghead"><div class="glab"></div><div class="gcells gwk">${Array.from({ length: GN }, (_, i) => `<div>${D(addDays(G0, i * 7)).getDate()}</div>`).join("")}</div></div>`}`;
-    const bands = [...new Set(DB.items.filter(isTfDay).flatMap((it) => daysOf(it).map(wk)))].map((w) => `<div class="band" style="left:calc(var(--lab) + ${w} * var(--col))"></div>`).join("");
-    // la semaine d'un classement : un trait fin du haut en bas de la grille
-    const clsLines = [...new Set(DB.items.filter((it) => isCls(it) && it.st !== "retire").map((it) => wk(it.date)))].map((w) => `<div class="cls-line" style="left:calc(var(--lab) + ${w + 0.5} * var(--col))"></div>`).join("");
+    const bands = [...new Set(DB.items.filter((it) => isTfDay(it) && it.st !== "retire").flatMap((it) => (precise(it) ? daysOf(it).map(wk) : [wkOf(it)])))].map((w) => `<div class="band" style="left:calc(var(--lab) + ${w} * var(--col))"></div>`).join("");
+    // la semaine d'un classement daté au jour près : un trait fin du haut en bas de la grille (connu au mois : pas de trait)
+    const clsLines = [...new Set(DB.items.filter((it) => isCls(it) && it.st !== "retire" && precise(it)).map((it) => wk(it.date)))].map((w) => `<div class="cls-line" style="left:calc(var(--lab) + ${w + 0.5} * var(--col))"></div>`).join("");
     const todayX = (D(TODAY) - D(G0)) / 864e5 / 7;
     const body = lanes.map((l) => `<div class="grow lane-${l.k}">${l.k === "partners" ? `<button type="button" class="glab" data-act="partners"><b>${l.nom}</b></button>` : `<div class="glab"><b>${esc(l.nom)}</b></div>`}<div class="gcells">${l.items.sort(sortDate).map(blk).join("")}</div></div>`).join("");
 
@@ -553,8 +560,8 @@ window.KPlan = (DATA, { greet = false } = {}) => {
       <div id="${px}-moisw"${mois ? "" : " hidden"}><label class="lbl" for="${px}-mois">Mois</label><select class="in" id="${px}-mois">${MONTHS.map((m) => `<option value="${m}"${d.mois === m ? " selected" : ""}>${monLong(m)}</option>`).join("")}</select></div>
       <div class="group conf-row">${tfk ? `<label class="row" for="${px}-plus" id="${px}-plusr"${mois ? " hidden" : ""}><span class="row-main"><b>Sur plusieurs jours</b></span><input type="checkbox" class="switch" id="${px}-plus" data-plus="${px}"${plus ? " checked" : ""}></label>` : ""}
         <label class="row" for="${px}-prec"><span class="row-main"><b>Date à préciser</b></span><input type="checkbox" class="switch" id="${px}-prec" data-prec="${px}"${mois ? " checked" : ""}></label></div>`}
-      ${cls ? `<div class="rk-in"><div><label class="lbl" for="${px}-rang">Rang de KEDGE</label><input class="in" id="${px}-rang" type="number" inputmode="numeric" min="1" max="999" value="${esc(d.rang)}" placeholder="10" aria-describedby="${px}-rk-err"></div>
-        <div><label class="lbl" for="${px}-cible">Objectif : top</label><input class="in" id="${px}-cible" type="number" inputmode="numeric" min="1" max="999" value="${esc(d.cible)}" placeholder="7" aria-describedby="${px}-rk-err"></div></div>
+      ${cls ? `<div class="rk-in"><div><label class="lbl" for="${px}-rang">Rang de KEDGE</label><input class="in" id="${px}-rang" inputmode="numeric" autocomplete="off" value="${esc(d.rang)}" placeholder="10" aria-describedby="${px}-rk-err"></div>
+        <div><label class="lbl" for="${px}-cible">Objectif : top</label><input class="in" id="${px}-cible" inputmode="numeric" autocomplete="off" value="${esc(d.cible)}" placeholder="7" aria-describedby="${px}-rk-err"></div></div>
         <p class="err" id="${px}-rk-err" hidden>Un rang va de 1 à 999.</p>` : ""}
       ${tf ? "" : `<span class="lbl" id="${px}-m-l">Message</span><div class="chips" data-chips="multi" id="${px}-m" role="group" aria-labelledby="${px}-m-l" aria-describedby="${px}-m-err ${px}-m-f">${MESSAGES.map((m) => chip(m.nom, d.m.includes(String(m.n)), m.n)).join("")}${chip("Incontournable", d.m.includes("INC"), "INC")}</div>
         <p class="err" id="${px}-m-err" hidden>Choisis un message, ou « Incontournable ».</p><p class="sec-f" id="${px}-m-f">Incontournable : à couvrir même sans message (admissibles, JPO…).</p>`}
@@ -570,7 +577,8 @@ window.KPlan = (DATA, { greet = false } = {}) => {
   }
   function readForm(el, px, base) {
     const q = (id) => el.querySelector(`#${px}-${id}`);
-    return { ...base, t: q("t")?.value ?? base.t, prec: q("prec")?.checked ? "mois" : "jour", date: q("date")?.value || base.date, mois: q("mois")?.value || base.mois,
+    // un champ absent (« Date à préciser » n'existe pas pour un sujet) garde la valeur du brouillon
+    return { ...base, t: q("t")?.value ?? base.t, prec: q("prec") ? (q("prec").checked ? "mois" : "jour") : base.prec, date: q("date")?.value || base.date, mois: q("mois")?.value || base.mois,
       m: q("m") ? pressed(`#${px}-m`, el) : base.m, per: q("per") ? pressed(`#${px}-per`, el).map(Number) : base.per, cc: q("cc") ? pressed(`#${px}-cc`, el) : base.cc,
       svc: q("svc") ? pressed(`#${px}-svc`, el)[0] || base.svc : base.svc, partner: q("pt") ? pressed(`#${px}-pt`, el)[0] || base.partner : base.partner, newPartner: q("np")?.value ?? base.newPartner,
       tf: q("tf") ? q("tf").value : base.tf, link: q("link")?.value ?? base.link, note: q("note")?.value ?? base.note, more: !!q("more")?.open,
@@ -581,7 +589,7 @@ window.KPlan = (DATA, { greet = false } = {}) => {
     const okP = d.kind !== "sujet" || d.per.length > 0, pErr = el.querySelector(`#${px}-per-err`);
     const okPt = d.kind !== "partner" || !!(d.newPartner.trim() || PARTNERS.some((x) => x.k === d.partner)), ptErr = el.querySelector(`#${px}-pt-err`);
     const fErr = el.querySelector(`#${px}-fin-err`), okF = !(d.kind === "tf" && d.plus && d.prec !== "mois") || finOf(d) > d.date;
-    const rkOk = (v) => !String(v ?? "").trim() || (/^\d{1,3}$/.test(String(v).trim()) && +v >= 1);
+    const rkOk = (v) => !rkNum(v) || (/^\d{1,3}$/.test(rkNum(v)) && +rkNum(v) >= 1);
     const okR = d.kind !== "classement" || (rkOk(d.rang) && rkOk(d.cible)), rErr = el.querySelector(`#${px}-rk-err`);
     const link = el.querySelector(`#${px}-link`), okL = !d.link.trim() || /^https:\/\/\S+$/.test(d.link.trim()), lErr = el.querySelector(`#${px}-link-err`);
     el.querySelector(`#${px}-t-err`).hidden = okT; t.setAttribute("aria-invalid", String(!okT)); if (mErr) mErr.hidden = okM; if (pErr) pErr.hidden = okP; if (ptErr) ptErr.hidden = okPt; if (fErr) fErr.hidden = okF; if (rErr) rErr.hidden = okR;
@@ -595,15 +603,19 @@ window.KPlan = (DATA, { greet = false } = {}) => {
     if (!okL) { el.querySelector(`#${px}-more`).open = true; link.focus(); return false; }
     return true;
   }
-  // le dernier jour proposé : celui choisi, sinon une semaine du lundi au vendredi
-  const finOf = (d) => d.fin || [addDays(d.date, 4), DMAX].sort()[0];
+  // le dernier jour proposé : celui choisi, sinon une semaine du lundi au vendredi (sans dépasser la fin du plan,
+  // sauf pour un premier jour qui est le dernier du plan : le dernier jour peut alors déborder un peu)
+  const finFrom = (date) => [addDays(date, 4), [DMAX, addDays(date, 1)].sort().pop()].sort()[0];
+  const finOf = (d) => d.fin || finFrom(d.date);
   // date précise, ou seulement le mois (« Date à préciser »)
   const dateFields = (d, prev) => {
     if (d.kind === "sujet") { const per = [...d.per].sort((a, b) => a - b); return { date: PERIODS[per[0]].du, flou: "", fin: "", per }; }
     if (d.prec === "mois") return prev && !precise(prev) && prev.date.slice(0, 7) === d.mois ? { date: prev.date, flou: prev.flou, fin: "" } : { date: `${d.mois}-01`, flou: cap(monShort(`${d.mois}-01`)), fin: "" };
     return { date: d.date, flou: prev && precise(prev) && prev.date === d.date ? prev.flou : "", fin: d.kind === "tf" && d.plus ? finOf(d) : "" };
   };
-  const rankOf = (d) => (d.kind === "classement" ? { rang: String(d.rang ?? "").trim() ? +d.rang : null, cible: String(d.cible ?? "").trim() ? +d.cible : null } : {});
+  // « 10e », « 1er », « top 7 » : on garde le nombre (un champ texte : un champ nombre rendait « 10e » vide sans rien dire)
+  const rkNum = (v) => String(v ?? "").trim().replace(/^top\s*/i, "").replace(/\s*(er|ère|re|e|ème|eme)$/i, "");
+  const rankOf = (d) => (d.kind === "classement" ? { rang: rkNum(d.rang) ? +rkNum(d.rang) : null, cible: rkNum(d.cible) ? +rkNum(d.cible) : null } : {});
   const msgsOf = (d) => (d.kind === "tf" || d.kind === "sujet" || d.kind === "classement" ? [] : d.m.map((x) => (x === "INC" ? "INC" : +x)));
 
   function renderAjouter(el) {
@@ -617,6 +629,13 @@ window.KPlan = (DATA, { greet = false } = {}) => {
       : `<div class="group"><div class="empty"><span>Ton compte n'est rattaché à aucun service : tu peux tout consulter et demander des éléments. Pour publier, demande à ${esc(CHEF.qui)} de t'ajouter à ton service.</span></div></div>`}</div>`;
     syncBadge();
   }
+  // le brouillon en cours, s'il contient déjà quelque chose (titre, note ou lien)
+  function keptDraft() {
+    const el = document.getElementById("v-ajouter");
+    if (S.draft && el?._draft === S.draft && el.querySelector("#f-t")) S.draft = readForm(el, "f", S.draft);
+    const d = S.draft;
+    return d && (d.t.trim() || d.note.trim() || d.link.trim() || d.newPartner.trim()) ? d : null;
+  }
   // partenaire choisi, ou nouveau partenaire créé au passage
   async function partnerOf(d) {
     const nom = d.newPartner.trim(); if (!nom) return d.partner;
@@ -625,6 +644,8 @@ window.KPlan = (DATA, { greet = false } = {}) => {
   }
   async function publish(btn) {
     const el = document.getElementById("v-ajouter"), d = (S.draft = readForm(el, "f", S.draft));
+    // un Publier refusé : le formulaire reste le brouillon, ce qu'on corrige ensuite est gardé
+    el._draft = S.draft;
     if (!validate(el, "f", d)) return;
     const p = me(), cls = d.kind === "classement", tf = d.kind === "tf" || d.kind === "sujet" || cls, pay = d.kind === "partner";
     // un classement est porté par les chefs de projet
@@ -643,8 +664,11 @@ window.KPlan = (DATA, { greet = false } = {}) => {
     // le lien reste sur la fiche créée : la fiche du temps fort et celles des relais le montrent aussi
     if (d.link.trim()) { try { it.links.push(await Store.addLink(it.id, "Document SharePoint", d.link.trim())); } catch (e) { console.error(e); linkErr = e; } }
     btn.disabled = false;
-    // prévenus par la base : services cités, service porteur (s'il n'est pas le mien), prévenus de tout
-    const told = pay ? [] : [...new Set([...d.cc, ...(it.svc !== p.svc && it.svc !== "chef" && !tf ? [it.svc] : [])])].map((k) => svcOf(k).court).concat(toldAll());
+    // prévenus par la base : services cités, service porteur (s'il n'est pas le mien), les autres chefs pour une fiche du chef de projet
+    // (un classement, un temps fort d'un chef…), les comptes média pour un partenariat, prévenus de tout
+    const others = (f) => PEOPLE.filter((x) => x.k !== ME && f(x)).map((x) => x.nom);
+    const told = [...new Set([...(pay ? [] : [...new Set([...d.cc, ...(it.svc !== p.svc && it.svc !== "chef" && !tf ? [it.svc] : [])])].map((k) => svcOf(k).court)),
+      ...(pay ? others((x) => x.media) : it.svc === "chef" ? others((x) => x.chef) : []), ...toldAll()])];
     S.draft = newDraft();
     K.refresh();
     K.snack(linkErr ? `C'est publié, mais le lien n'a pas été ajouté (${esc(errText(linkErr))}). Ajoute-le depuis la fiche.`
@@ -690,8 +714,9 @@ window.KPlan = (DATA, { greet = false } = {}) => {
     if (a.note !== b.note) ch.push(["précisions", b.note ? `« ${clip(b.note, 120)} »` : "retirées"]);
     if (!ch.length) return;
     // les mêmes personnes que la base : prévenus de tout, services cités, service porteur, services des relais
+    // (une fiche du chef de projet, dont chaque classement : les autres chefs ; un partenariat : les comptes média)
     const svcs = new Set([...b.cc, b.svc, ...DB.items.filter((x) => x.tf === b.id && x.st !== "retire").map((x) => x.svc)]);
-    const who = PEOPLE.filter((p) => p.k !== ME && (p.notifAll || (p.ownSvc && svcs.has(p.ownSvc)))).map((p) => p.nom);
+    const who = PEOPLE.filter((p) => p.k !== ME && (p.notifAll || (p.ownSvc && svcs.has(p.ownSvc)) || (p.chef && b.svc === "chef" && !isPay(b)) || (p.media && isPay(b)))).map((p) => p.nom);
     if (!who.length) return;
     const ok = await K.alert({ title: "Prévenir du changement ?", cancel: "Pas besoin", ok: "Prévenir",
       text: `${ch.map(([k, v]) => `<b>${cap(k)}</b> : ${esc(v)}`).join("<br>")}<br><br>${esc(K.fr.list(who))} ${who.length > 1 ? "recevront" : "recevra"} une notification.` });
@@ -726,8 +751,11 @@ window.KPlan = (DATA, { greet = false } = {}) => {
   // une ligne par événement : quoi (gras), qui et quand (gris), puis le détail avant → après
   function histOf(it) {
     const det = (k, v) => `<span class="h-d"><i>${esc(k)}</i>${esc(v)}</span>`;
+    // le dernier jour tel qu'il était juste après chaque événement : on remonte le temps depuis la fiche actuelle
+    let finApres = it.fin || null;
     return (DB.journal || []).filter((j) => j.item === it.id).sort((a, b) => b.ts.localeCompare(a.ts) || b.id - a.id).map((j) => {
-      const d = j.diff || {};
+      const d = j.diff || {}, fin1 = finApres;
+      if (d.fin) finApres = d.fin[0] || null;
       if (j.kind === "creation") return { j, main: "Création" };
       if (j.kind === "document") return { j, main: d.retire ? "Document retiré" : "Document ajouté", det: d.nom ? det("", quote(d.nom)) : "" };
       // le détail est sur la modification juste en dessous
@@ -736,7 +764,8 @@ window.KPlan = (DATA, { greet = false } = {}) => {
       if (j.kind === "retrait") return { j, main: `Demande retirée : ${d.type || "demande"} à ${svcOf(d.dest).court}` };
       if (j.kind === "prevenu") return { j, main: d.n ? `Changement signalé à ${d.n} ${d.n > 1 ? "personnes" : "personne"}` : "Changement signalé" };
       // la date et sa précision (« Nov. », « Date à confirmer ») forment une seule ligne
-      const dt = (i) => { const f = d.flou ? d.flou[i] : it.flou, x = d.date ? d.date[i] : it.date, y = d.fin ? d.fin[i] : it.fin; return f || (x ? (y ? fmtRange(x, y) : fmtShort(x)) : "—"); };
+      const dt = (i) => { const f = d.flou ? d.flou[i] : it.flou, x = d.date ? d.date[i] : it.date, y = d.fin ? d.fin[i] : i ? fin1 : finApres;
+        return f || (x ? (y && y > x ? fmtRange(x, y) : fmtShort(x)) : "—"); };
       // un sujet n'a pas de date à montrer : ses périodes suffisent
       const ks = Object.keys(FIELDS).filter((k) => (d[k] || (k === "date" && (d.flou || d.fin))) && !(k === "date" && isSujet(it)));
       if (!ks.length) return null;
@@ -773,7 +802,7 @@ window.KPlan = (DATA, { greet = false } = {}) => {
     let relay = "";
     if (isTF(it)) {
       const gs = relaisGroups(it), n = gs.reduce((s, g) => s + g.l.length, 0);
-      relay = `<h2 class="sec-h">Relais · ${n}</h2>${gs.map((g) => `<h3 class="sec-h rl-h">${esc(g.nom)} · ${g.l.length}</h3><div class="group">${rows(g.l, { mode: "month", who: "tf" })}</div>`).join("")}
+      relay = `${n ? `<h2 class="sec-h">Relais · ${n}</h2>` : ""}${gs.map((g) => `<h3 class="sec-h rl-h">${esc(g.nom)} · ${g.l.length}</h3><div class="group">${rows(g.l, { mode: "month", who: "tf" })}</div>`).join("")}
         ${canAdd() && it.st !== "retire" ? `<div class="group"><button type="button" class="row add-row" data-act="addlinked" data-id="${id}"><span class="add-ic">${I.plus}</span><span class="row-main"><b>Ajouter une action liée</b></span></button></div>` : ""}`;
     }
     const kindTitle = kindName(it), hist = histHTML(it);
@@ -814,15 +843,17 @@ window.KPlan = (DATA, { greet = false } = {}) => {
   const fmtLong = (s) => premier(cap(D(s).toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", year: "numeric" })));
   const dateField = (id, value) => `<button type="button" class="in date-in" id="${id}" value="${value}" data-date-pick aria-expanded="false" aria-controls="${id}-cal">${I.calendar}<span>${esc(fmtLong(value))}</span></button><div class="cal" id="${id}-cal" hidden></div>`;
   function calHTML(id, sel, month) {
+    // le dernier jour d'un temps fort peut déborder d'un mois après la fin du plan
+    const max = /-fin$/.test(id) ? addDays(DMAX, 31) : DMAX;
     const first = D(month + "-01"), y = first.getFullYear(), mo = first.getMonth(), n = new Date(y, mo + 1, 0).getDate(), lead = (first.getDay() + 6) % 7;
     const prev = iso(new Date(y, mo - 1, 1)).slice(0, 7), next = iso(new Date(y, mo + 1, 1)).slice(0, 7);
     const tf = new Set(DB.items.filter((it) => isTfDay(it) && precise(it) && it.st !== "retire").flatMap(daysOf));
     const nav = (m, dir, off) => `<button type="button" class="cal-nav" data-cal-nav="${m}" data-for="${id}" aria-label="${dir}"${off ? " disabled" : ""}>${dir === "Mois suivant" ? `<span class="flip">${I.chevL}</span>` : I.chevL}</button>`;
     const cells = Array.from({ length: n }, (_, i) => {
       const d = `${month}-${String(i + 1).padStart(2, "0")}`;
-      return `<button type="button" class="cal-d${d === sel ? " on" : ""}${d === TODAY ? " now" : ""}${tf.has(d) ? " tf" : ""}" data-cal-day="${d}" data-for="${id}"${d < DMIN || d > DMAX ? " disabled" : ""} aria-label="${esc(fmtLong(d) + (tf.has(d) ? ", temps fort" : ""))}"${d === sel ? ' aria-current="date"' : ""}>${i + 1}</button>`;
+      return `<button type="button" class="cal-d${d === sel ? " on" : ""}${d === TODAY ? " now" : ""}${tf.has(d) ? " tf" : ""}" data-cal-day="${d}" data-for="${id}"${d < DMIN || d > max ? " disabled" : ""} aria-label="${esc(fmtLong(d) + (tf.has(d) ? ", temps fort" : ""))}"${d === sel ? ' aria-current="date"' : ""}>${i + 1}</button>`;
     }).join("");
-    return `<div class="cal-h">${nav(prev, "Mois précédent", prev < DMIN.slice(0, 7))}<b>${esc(monLong(month))}</b>${nav(next, "Mois suivant", next > DMAX.slice(0, 7))}</div>
+    return `<div class="cal-h">${nav(prev, "Mois précédent", prev < DMIN.slice(0, 7))}<b>${esc(monLong(month))}</b>${nav(next, "Mois suivant", next > max.slice(0, 7))}</div>
       <div class="cal-w" aria-hidden="true">${["L", "M", "M", "J", "V", "S", "D"].map((x) => `<span>${x}</span>`).join("")}</div><div class="cal-g">${"<span></span>".repeat(lead)}${cells}</div>`;
   }
   document.addEventListener("click", (e) => {
@@ -838,9 +869,10 @@ window.KPlan = (DATA, { greet = false } = {}) => {
     } else if (day) {
       const f = document.getElementById(day.dataset.for);
       f.value = day.dataset.calDay; f.querySelector("span").textContent = fmtLong(f.value);
+      if (/-fin$/.test(f.id)) f.dataset.set = "1";
       // un premier jour qui passe après le dernier : le dernier suit (une semaine du lundi au vendredi)
       const fin = /-date$/.test(f.id) && document.getElementById(f.id.replace(/date$/, "fin"));
-      if (fin && fin.value <= f.value) { fin.value = [addDays(f.value, 4), DMAX].sort()[0]; fin.querySelector("span").textContent = fmtLong(fin.value); }
+      if (fin && fin.value <= f.value) { fin.value = finFrom(f.value); fin.querySelector("span").textContent = fmtLong(fin.value); }
       document.getElementById(f.id + "-cal").hidden = true; f.setAttribute("aria-expanded", "false"); f.focus();
     }
   });
@@ -854,7 +886,9 @@ window.KPlan = (DATA, { greet = false } = {}) => {
     // deadline proposée : une semaine avant, au plus tôt dans trois jours, et jamais après l'action elle-même
     let pour = [addDays(it.date, -7), addDays(TODAY, 3)].sort().pop();
     if (precise(it) && it.date > TODAY && pour >= it.date) pour = [TODAY, addDays(it.date, -1)].sort().pop();
-    const to = [...(p.chef ? [] : [CHEF]), ...SERVICES.filter((s) => s.k !== p.svc), ...(p.chef ? [PROG] : [])];
+    // la Resp. offre, quand quelqu'un l'est (et pas soi-même) ; la Direction du Programme, pour les chefs
+    const of = PEOPLE.some((x) => x.offre && x.k !== ME) && !p.offre ? [offre()] : [];
+    const to = [...(p.chef ? [] : [CHEF]), ...SERVICES.filter((s) => s.k !== p.svc), ...of, ...(p.chef ? [PROG] : [])];
     // déjà demandé : seulement à ceux qu'on peut solliciter (pas à son propre service)
     const r = root(it), deja = reqsOf(it).filter((q) => q.st === "ouverte" && to.some((s) => s.k === q.to));
     K.sheet.open({ title: "Demander des éléments", ok: "Envoyer", full: true, body: `${sheetFor(it)}
@@ -898,8 +932,8 @@ window.KPlan = (DATA, { greet = false } = {}) => {
   function answerSheet(rid) {
     const q = DB.reqs.find((x) => x.id === rid), it = q && byId(q.item); if (!it) return;
     const r = root(it);
-    // une info notée pour soi (Direction du Programme) : on note ce qu'on a reçu, sans « répondre » à quelqu'un
-    const self = q.from === ME;
+    // une info notée par un chef (Direction du Programme) : on note ce qu'on a reçu, sans « répondre » à quelqu'un
+    const self = q.from === ME || q.to === PROG.k;
     K.sheet.open({ title: self ? "C'est reçu" : "Répondre", ok: self ? "Enregistrer" : "Envoyer", full: true, body: `${sheetFor(it)}<p class="sec-f">${self ? `À demander à ${esc(svcOf(q.to).qui)}` : `${esc(person(q.from).nom)} demande`} : ${esc(reqTxt(q))}.</p>
       <label class="lbl" for="rp-msg">${self ? "Ce que tu as reçu" : "Message"} <span class="opt">facultatif</span></label><textarea class="in" id="rp-msg" rows="3" maxlength="1000" placeholder="${self ? "Ex. programme validé par la direction" : "Ex. les visuels validés sont dans le dossier"}"></textarea>
       <label class="lbl" for="rp-url">Lien SharePoint <span class="opt">facultatif</span></label><input class="in" id="rp-url" type="url" inputmode="url" placeholder="https://kedgebs.sharepoint.com/…" aria-describedby="rp-err"><p class="err" id="rp-err" hidden>Colle un lien qui commence par https://</p>
@@ -913,7 +947,7 @@ window.KPlan = (DATA, { greet = false } = {}) => {
           await Store.answerReq(q.id, msg);
         } catch (e) { fail(e); return false; }
         Object.assign(q, { st: "recue", reponse: msg, by: ME, rts: new Date().toISOString() });
-        K.refresh(); K.snack(q.from === ME ? "Noté comme reçu." : `Envoyé. Notification envoyée à ${esc(person(q.from).nom)}.`); sync();
+        K.refresh(); K.snack(q.from === ME ? "Noté comme reçu." : `${self ? "Noté comme reçu" : "Envoyé"}. Notification envoyée à ${esc(person(q.from).nom)}.`); sync();
       } });
   }
   async function withdrawReq(rid) {
@@ -930,9 +964,9 @@ window.KPlan = (DATA, { greet = false } = {}) => {
       onOk: async (s) => { const v = s.querySelector("#pour-d").value; if (!v || v === q.pour) return;
         const bad = pourErr(it, v); if (bad) { const e = s.querySelector("#pour-err"); e.textContent = bad; e.hidden = false; return false; }
         try { await Store.setReqPour(q.id, v); } catch (e) { fail(e); return false; }
-        // la base prévient le service sollicité, et la personne qui a demandé quand c'est un chef qui change la date
-        const who = [svcOf(q.to).qui, ...(q.from !== ME ? [person(q.from).nom] : [])];
-        q.pour = v; K.refresh(); K.snack(`Deadline : ${fmtDay(v)}. Notification envoyée à ${esc(K.fr.list(who))}.`); } });
+        // la base prévient le service sollicité (personne pour la Direction du Programme), et la personne qui a demandé quand c'est un chef qui change la date
+        const who = [...(q.to === PROG.k ? [] : [svcOf(q.to).qui]), ...(q.from !== ME ? [person(q.from).nom] : [])];
+        q.pour = v; K.refresh(); K.snack(`Deadline : ${fmtDay(v)}.${who.length ? ` Notification envoyée à ${esc(K.fr.list(who))}.` : ""}`); } });
   }
 
   // =====================================================================
@@ -980,7 +1014,7 @@ window.KPlan = (DATA, { greet = false } = {}) => {
 
   // ---------- équipe (chefs de projet) : service et droits de chaque compte ----------
   // les comptes se créent dans Supabase ; on règle ici qui fait quoi
-  const rights = (p) => p.visiteur ? "Visiteur · lecture seule" : [...new Set([p.fonction, p.chef ? "Chef de projet" : p.ownSvc ? svcOf(p.ownSvc).nom : "Sans service", p.media ? "Partenariats" : "", p.notifAll ? "Prévenu de tout" : ""].filter(Boolean))].join(" · ");
+  const rights = (p) => p.visiteur ? "Visiteur · lecture seule" : [...new Set([p.fonction, p.chef ? "Chef de projet" : p.ownSvc ? svcOf(p.ownSvc).nom : "Sans service", p.media ? "Partenariats" : "", p.offre ? "Resp. offre" : "", p.notifAll ? "Prévenu de tout" : ""].filter(Boolean))].join(" · ");
   function renderTeam(el, { back }) {
     const list = [...PEOPLE].sort((a, b) => a.nom.localeCompare(b.nom, "fr"));
     el.innerHTML = K.navbar({ title: "Équipe", back }) + `<div class="scroll"><h1 class="large-title">Équipe</h1>
@@ -993,13 +1027,13 @@ window.KPlan = (DATA, { greet = false } = {}) => {
     K.sheet.open({ title: p.nom, ok: "Enregistrer", full: true, body: `<label class="lbl" for="pp-nom">Prénom</label><input class="in" id="pp-nom" value="${esc(p.nom)}">
       <label class="lbl" for="pp-fn">Fonction <span class="opt">facultatif</span></label><input class="in" id="pp-fn" value="${esc(p.fonction)}" placeholder="Ex. Responsable de l'offre">
       <span class="lbl" id="pp-svc-l">Service</span><div class="chips" data-chips id="pp-svc" role="group" aria-labelledby="pp-svc-l">${[{ k: "", court: "Aucun" }, ...SERVICES].map((s) => chip(s.court, p.ownSvc === s.k, s.k)).join("")}</div>
-      <div class="group" style="margin-top:16px">${sw("chef", "Chef de projet", "Modifie tout, anime la réunion", p.chef, self)}${sw("media", "Partenariats média", isMedia() ? "Saisit les partenariats payants" : `Saisit les partenariats payants. Seul ${mediaNames()} peut changer ce droit.`, p.media, !isMedia())}${sw("all", "Prévenu de chaque ajout", "Une notification à chaque nouveauté", p.notifAll)}${self ? "" : sw("visit", "Visiteur", p.media && !isMedia() ? `Voit tout, ne modifie rien. Seul ${mediaNames()} peut retirer ses droits de partenariats.` : "Voit tout, ne modifie rien", p.visiteur, p.media && !isMedia())}</div>
+      <div class="group" style="margin-top:16px">${sw("chef", "Chef de projet", "Modifie tout, anime la réunion", p.chef, self)}${sw("media", "Partenariats média", isMedia() ? "Saisit les partenariats payants" : `Saisit les partenariats payants. Seul ${mediaNames()} peut changer ce droit.`, p.media, !isMedia())}${sw("offre", "Resp. offre", "Reçoit les demandes d'éléments faites à la responsable de l'offre", p.offre)}${sw("all", "Prévenu de chaque ajout", "Une notification à chaque nouveauté", p.notifAll)}${self ? "" : sw("visit", "Visiteur", p.media && !isMedia() ? `Voit tout, ne modifie rien. Seul ${mediaNames()} peut retirer ses droits de partenariats.` : "Voit tout, ne modifie rien", p.visiteur, p.media && !isMedia())}</div>
       ${self ? `<p class="sec-f">Un autre chef de projet peut changer tes droits de chef.</p>` : ""}`,
       onOk: async (s) => {
         const v = { nom: s.querySelector("#pp-nom").value.trim() || p.nom, fonction: s.querySelector("#pp-fn").value.trim(), ownSvc: pressed("#pp-svc", s)[0] || "",
-          chef: s.querySelector("#pp-chef").checked, media: s.querySelector("#pp-media").checked, notifAll: s.querySelector("#pp-all").checked, visiteur: !!s.querySelector("#pp-visit")?.checked };
+          chef: s.querySelector("#pp-chef").checked, media: s.querySelector("#pp-media").checked, notifAll: s.querySelector("#pp-all").checked, offre: s.querySelector("#pp-offre").checked, visiteur: !!s.querySelector("#pp-visit")?.checked };
         // la base retire au visiteur tout service et tout droit : on fait pareil ici
-        if (v.visiteur) Object.assign(v, { ownSvc: "", chef: false, media: false, notifAll: false });
+        if (v.visiteur) Object.assign(v, { ownSvc: "", chef: false, media: false, notifAll: false, offre: false });
         try { await Store.setProfile(id, v); } catch (e) { fail(e); return false; }
         Object.assign(p, v, { svc: v.chef ? "chef" : v.ownSvc });
         K.refresh(); K.snack(`${esc(v.nom)} : c'est enregistré.`); sync();
@@ -1060,8 +1094,10 @@ window.KPlan = (DATA, { greet = false } = {}) => {
     };
     const section = (g) => {
       const inMonths = (it) => periodOf(it.date) === g.i && (!g.now || it.date.slice(0, 7) >= cm);
+      // un temps fort sur plusieurs jours encore en cours compte dans la période en cours, même commencé avant
+      const running = (it) => g.now && multi(it) && it.fin >= TODAY && it.date < TODAY && periodOf(it.date) <= g.i;
       // les sujets de la période d'abord, puis les temps forts datés
-      const tfs = [...DB.items.filter((it) => isSujet(it) && alive(it) && it.per.includes(g.i)), ...DB.items.filter((it) => isTF(it) && !isSujet(it) && alive(it) && inMonths(it)).sort(sortDate)];
+      const tfs = [...DB.items.filter((it) => isSujet(it) && alive(it) && it.per.includes(g.i)), ...DB.items.filter((it) => isTF(it) && !isSujet(it) && alive(it) && (inMonths(it) || running(it))).sort(sortDate)];
       const ids = new Set(tfs.map((t) => t.id));
       // couverture des messages sur toute la période, comme dans Ma période
       const acts = DB.items.filter((it) => !isTF(it) && !isPay(it) && alive(it) && periodOf(it.date) === g.i);
@@ -1087,7 +1123,7 @@ window.KPlan = (DATA, { greet = false } = {}) => {
         <header class="mp-h"><h2>${esc(perName(g.P))}</h2><span class="mp-tag${perState(g.P) === "encours" ? " on" : ""}">${perState(g.P) === "encours" ? `En cours, ${restTxt(g.P)}` : perState(g.P) === "avenir" ? `Dès le ${fmtDay(g.P.du)}` : "Terminée"}</span></header>
         <div class="mp-cov" aria-label="Actions par message sur la période">${cov.map((c) => `<span class="${c.n ? "" : "zero"}">${esc(c.m.nom)} <b>${c.n}</b></span>`).join("")}</div>
         <div class="mx" role="table" style="--nc:${COLS.length}">
-          <div class="mx-row mx-head"><span>Temps forts et sujets</span>${COLS.map((c) => `<span>${esc(c.nom)}</span>`).join("")}</div>
+          <div class="mx-row mx-head"><span>Temps forts, sujets, classements</span>${COLS.map((c) => `<span>${esc(c.nom)}</span>`).join("")}</div>
           ${rowsH}${freeRow}
         </div>${rowsH || freeRow ? "" : `<p class="ma-empty">${perState(g.P) === "fini" ? "La dernière période de l'année est terminée : les périodes de l'année suivante s'ajoutent dans la base." : "Rien de prévu pour l'instant."}</p>`}</section>`;
     };
@@ -1260,10 +1296,11 @@ window.KPlan = (DATA, { greet = false } = {}) => {
     if (a === "meeting") openMeeting();
     if (a === "copil") openCopil();
     if (a === "today") { const gw = document.getElementById("gwrap"), x = ((D(TODAY) - D(G0)) / 864e5 / 7 - (S.zoom === "annee" ? 4 : 0.5)) * colW(); gw?.scrollTo({ left: Math.max(0, x), behavior: K.reduceMotion() ? "auto" : "smooth" }); }
-    if (a === "goadd") { S.draft = newDraft(); K.showTab("ajouter"); }
-    if (a === "addtf") { S.draft = newDraft("tf"); K.showTab("ajouter"); }
-    if (a === "addpartner") { S.draft = newDraft("partner"); K.showTab("ajouter"); }
-    if (a === "addlinked") { const tf = byId(id); S.draft = { ...newDraft(), tf: id, more: true }; K.showTab("ajouter"); K.snack(`Rattachée à « ${esc(tf.t)} ».`); }
+    // un brouillon déjà commencé n'est pas effacé : on change seulement de type (et de fiche liée)
+    if (a === "goadd") { S.draft = keptDraft() || newDraft(); K.showTab("ajouter"); }
+    if (a === "addtf") { const k = keptDraft(); S.draft = k ? { ...k, kind: "tf" } : newDraft("tf"); K.showTab("ajouter"); }
+    if (a === "addpartner") { const k = keptDraft(); S.draft = k ? { ...k, kind: "partner" } : newDraft("partner"); K.showTab("ajouter"); }
+    if (a === "addlinked") { const tf = byId(id); S.draft = { ...(keptDraft() || newDraft()), kind: "action", tf: id, more: true }; K.showTab("ajouter"); K.snack(`Rattachée à « ${esc(tf.t)} ».`); }
     if (a === "edit") openEdit(id);
     if (a === "save") saveEdit(id, t);
     if (a === "past") { S.past[t.dataset.k] = !S.past[t.dataset.k]; K.refresh(); }
@@ -1298,11 +1335,13 @@ window.KPlan = (DATA, { greet = false } = {}) => {
     }
     if (a === "delete") {
       // pour de bon : la fiche, ses documents, ses demandes et son historique ; les relais d'un temps fort restent, sans temps fort
-      const it = byId(id), rel = isTF(it) ? DB.items.filter((x) => x.tf === id) : [];
-      const text = `${isTF(it) ? `Le ${momWord(it)}` : "L'action"} disparaît de l'appli avec ses documents, ses demandes et son historique. ${rel.length ? `${rel.length > 1 ? `Ses ${rel.length} relais restent` : "Son relais reste"}, sans ${momWord(it)}. ` : ""}Impossible de revenir en arrière.`;
+      // un relais d'un temps fort actif : ses demandes servent encore au temps fort, elles y passent (la base fait pareil)
+      const it = byId(id), rel = isTF(it) ? DB.items.filter((x) => x.tf === id) : [], tfl = !isTF(it) && it.tf && byId(it.tf)?.st !== "retire" ? byId(it.tf) : null;
+      const kept = tfl ? DB.reqs.filter((q) => q.item === id && q.st !== "annulee") : [];
+      const text = `${isTF(it) ? `Le ${momWord(it)}` : "L'action"} disparaît de l'appli avec ${K.fr.list(["ses documents", ...(kept.length ? [] : ["ses demandes"]), "son historique"])}. ${rel.length ? `${rel.length > 1 ? `Ses ${rel.length} relais restent` : "Son relais reste"}, sans ${momWord(it)}, avec les documents reçus pour leurs demandes. ` : ""}${kept.length ? `${kept.length > 1 ? `Ses ${kept.length} demandes d'éléments restent` : "Sa demande d'éléments reste"} sur le ${momWord(tfl)} « ${esc(tfl.t)} ». ` : ""}Impossible de revenir en arrière.`;
       if (await K.alert({ title: `Supprimer « ${it.t} » ?`, text, ok: "Supprimer", danger: true })) {
         try { await Store.deleteItem(id); } catch (e) { return fail(e); }
-        DB.items = DB.items.filter((x) => x.id !== id); rel.forEach((x) => { x.tf = ""; });
+        DB.items = DB.items.filter((x) => x.id !== id); rel.forEach((x) => { x.tf = ""; }); kept.forEach((q) => { q.item = tfl.id; });
         ["reqs", "blocks", "journal"].forEach((k) => { DB[k] = (DB[k] || []).filter((x) => x.item !== id); });
         if (K.topView()?.classList.contains("pushed")) K.pop();
         K.refresh(); K.snack("Supprimé."); sync();
@@ -1335,7 +1374,10 @@ window.KPlan = (DATA, { greet = false } = {}) => {
     // « Date à préciser » : le choix du jour laisse la place au choix du mois
     if (t.dataset.prec) { const px = t.dataset.prec, pr = document.getElementById(`${px}-plusr`); document.getElementById(`${px}-jour`).hidden = t.checked; document.getElementById(`${px}-moisw`).hidden = !t.checked; if (pr) pr.hidden = t.checked; }
     // « Sur plusieurs jours » : un premier et un dernier jour
-    if (t.dataset.plus) { const px = t.dataset.plus; document.getElementById(`${px}-finw`).hidden = !t.checked; document.getElementById(`${px}-date-l`).textContent = t.checked ? "Du" : "Date"; }
+    // en l'activant, le dernier jour part du premier jour choisi (Du + 4), sauf un dernier jour déjà réglé après lui
+    if (t.dataset.plus) { const px = t.dataset.plus, du = document.getElementById(`${px}-date`), fin = document.getElementById(`${px}-fin`);
+      document.getElementById(`${px}-finw`).hidden = !t.checked; document.getElementById(`${px}-date-l`).textContent = t.checked ? "Du" : "Date";
+      if (t.checked && fin && !fin.dataset.set) { fin.value = finFrom(du.value); fin.querySelector("span").textContent = fmtLong(fin.value); } }
   });
   app.addEventListener("kui:change", (e) => {
     const t = e.target;
@@ -1397,6 +1439,7 @@ window.KPlan = (DATA, { greet = false } = {}) => {
     const m = /^#item=([\w-]+)/.exec(hash || "");
     if (m && !byId(m[1]) && !retried) { pendingHash = hash; sync(); return; }
     if (m && byId(m[1])) { if (!meeting.hidden) closeMeeting(); closeCopil(); openItem(m[1]); }
+    else if (m) K.snack("Cette fiche a été supprimée.");
     else if (hash === "#afaire") { closeMeeting(); closeCopil(); K.showTab("afaire"); }
     else if (hash === "#copil" && me().chef) { closeMeeting(); openCopil(); }
   }

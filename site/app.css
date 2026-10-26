@@ -652,3 +652,36 @@ button.dl:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px;
 .mx-tf.cls { background: transparent; }
 .mx-tf.cls .mx-d { width: 28px; border-radius: 50%; justify-self: center; box-shadow: 0 0 0 1.5px var(--surface), 0 0 0 3px var(--cls-ring); }
 .cp-tf.cls { border-radius: 999px; background: var(--surface); color: var(--text); box-shadow: inset 0 0 0 1.5px var(--cls-ring); }
+
+/* ---------- corrections du 26 octobre ---------- */
+/* « Date à préciser » cache aussi « Sur plusieurs jours » (.row est en flex et passait par-dessus hidden) */
+.conf-row .row[hidden] { display: none; }
+/* un nom de document ou un titre sans espace revient à la ligne au lieu de passer sous le bouton ou d'être coupé net */
+.row-main b, .lk-open b, .sec-f, .hero-title, .todo-act b { overflow-wrap: anywhere; }
+.lk-open > span { overflow-wrap: anywhere; }
+/* « encore 5 jours » ne laisse pas un mot seul à la ligne */
+.ph-t p { text-wrap: balance; }
+/* « À suivre » : la période suivante annoncée, séparée de la période en cours par un filet */
+.soon { margin-top: 30px; padding-top: 6px; border-top: 2px dashed var(--sep); }
+.soon-h { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; margin: 16px 4px 0; font-family: var(--serif); font-weight: 700; font-size: 21px; line-height: 1.15; color: var(--text2); }
+.soon-h span { font-family: var(--font); font-weight: 500; font-size: 14px; }
+/* À faire, téléphone : la deadline et le bouton passent sous la demande plutôt que de la serrer */
+@media (max-width: 480px) {
+  .rq { flex-wrap: wrap; }
+  .rq > .btn { margin-left: auto; }
+}
+/* grille en zoom Année : la pastille d'un classement reste centrée dans sa case, comme les autres */
+.z-year .blk.b-cls { padding: 0; border-radius: 6px; background: transparent; box-shadow: none; }
+.z-year .blk.b-cls.soft { border: 0; }
+/* zoom Année : un temps fort sur plusieurs semaines s'étire sur toute sa durée */
+.z-year .blk.b-tf.multi { place-items: center stretch; }
+.z-year .blk.b-tf.multi .sq { width: auto; }
+/* zoom Année : l'étiquette « Aujourd'hui » descend sous les noms de période et de mois */
+.z-year .today span { top: 56px; }
+/* écran réunion entre 1024 et 1180 px : le panneau « À débloquer » passe sous le tableau, les colonnes gardent de la place */
+@media (max-width: 1179px) {
+  .mt-body { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto; padding: 0 24px 20px; }
+  .mt-aside { max-height: 32vh; }
+  .mx { grid-template-columns: minmax(170px, 1.1fr) repeat(var(--nc, 4), minmax(0, 1fr)); }
+  .mt-head { padding: 18px 24px 16px; }
+}

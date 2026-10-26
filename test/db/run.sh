@@ -31,4 +31,6 @@ $D -f supabase/migrations/0010_plusieurs_jours.sql
 $D -f test/db/plusieurs.sql
 $D -f supabase/migrations/0011_classements.sql
 $D -f test/db/classements.sql
+$D -f supabase/migrations/0012_corrections_26_oct.sql
+$D -f test/db/corrections26.sql
 echo "Base : tout est bon"

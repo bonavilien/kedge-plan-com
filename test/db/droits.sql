@@ -144,7 +144,7 @@ select pg_temp.x($$update public.reqs set pour = current_date + 5, item = 'd0000
 select pg_temp.ck(pg_temp.v($$select concat_ws('/', pour - current_date, item, asker) from public.reqs where id = 'c0000000-0000-0000-0000-000000000002'$$)
   = '5/d0000000-0000-0000-0000-000000000002/00000000-0000-0000-0000-000000000004', 'demandeur : deadline changée, item/asker figés');
 -- doublon par un autre chemin : changer le type d'une demande ouverte pour en recopier une autre
-reset role; update public.reqs set st = 'ouverte' where id = 'c0000000-0000-0000-0000-000000000001'; select pg_temp.as_user(:'S');
+select pg_temp.admin(); update public.reqs set st = 'ouverte' where id = 'c0000000-0000-0000-0000-000000000001'; select pg_temp.as_user(:'S');
 select pg_temp.no($$update public.reqs set type = 'Visuels' where id = 'c0000000-0000-0000-0000-000000000002'$$, 'demandeur crée un doublon ouvert en changeant le type');
 -- push : téléphone partagé
 select pg_temp.yes($$select public.save_push('https://push.example/partage', 'k2', 'a2')$$, 'RS active les notifications sur un téléphone abonné pour RP');
@@ -180,8 +180,9 @@ do $$ declare i int; ok int := 0; begin
 end $$;
 select pg_temp.yes($$insert into public.blocks (item, why) values ('d0000000-0000-0000-0000-000000000002', 'je signale')$$, 'sans service signale un blocage');
 select pg_temp.admin();
-select pg_temp.ck((select count(*) from public.outbox where title = 'Demande d''éléments' and body like '%Spam%') <= 10, 'pas plus de 10 notifications de demande en rafale',
-  (select count(*) from public.outbox where title = 'Demande d''éléments' and body like '%Spam%')::text || ' notifications « Spam »');
+-- une demande prévient chaque personne du service : on compte les demandes notifiées, pas les lignes
+select pg_temp.ck((select count(distinct split_part(dedupe, ':', 2)) from public.outbox where title = 'Demande d''éléments' and body like '%Spam%') <= 10, 'pas plus de 10 notifications de demande en rafale',
+  (select count(distinct split_part(dedupe, ':', 2)) from public.outbox where title = 'Demande d''éléments' and body like '%Spam%')::text || ' demandes « Spam » notifiées');
 
 -- ===================== compte sans profil =====================
 select pg_temp.as_user('00000000-0000-0000-0000-0000000000d3');
@@ -233,7 +234,10 @@ select pg_temp.no($$update public.profiles set chef = false where id = auth.uid(
 select pg_temp.yes($$update public.profiles set nom = 'Estelle', fonction = 'Offre', svc = 'rs', notif_all = true, chef = true, media = false where id = auth.uid()$$, 'Estelle enregistre son profil (mêmes chef/média, comme l''appli)');
 select pg_temp.yes($$update public.profiles set svc = 'rs' where id = '00000000-0000-0000-0000-000000000005'$$, 'Estelle range Nouveau dans RS');
 select pg_temp.yes($$update public.meta set v = '2026-10-20' where k = 'last_meeting'$$, 'Estelle note la réunion');
-select pg_temp.yes($$update public.reqs set dest = 'video' where id = 'c0000000-0000-0000-0000-000000000002'$$, 'Estelle (chef) réoriente une demande');
+-- une demande garde son destinataire (0012) : pour demander à un autre service, on retire et on redemande
+select pg_temp.x($$update public.reqs set dest = 'video' where id = 'c0000000-0000-0000-0000-000000000002'$$);
+select pg_temp.ck((select dest from public.reqs where id = 'c0000000-0000-0000-0000-000000000002') = 'rp', 'Estelle (chef) ne réoriente pas une demande');
+select pg_temp.admin(); update public.reqs set dest = 'video' where id = 'c0000000-0000-0000-0000-000000000002'; select pg_temp.as_user(:'E');
 select pg_temp.no($$update public.periods set au = '2026-11-15' where n = 1$$, 'période qui chevauche refusée');
 select pg_temp.no($$insert into public.periods (n, nom, du, au) values (9, 'x', '2027-07-01', '2027-08-31')$$, 'nouvelle période qui chevauche refusée');
 select pg_temp.yes($$update public.periods set au = '2026-10-30' where n = 1$$, 'période raccourcie');

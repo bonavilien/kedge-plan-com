@@ -19,7 +19,7 @@
     partners: [],
     profiles: [
       { id: U(1), nom: "Julien", fonction: "Chef de projet", svc: null, chef: true, media: true, notif_all: true },
-      { id: U(2), nom: "Estelle", fonction: "Responsable de l'offre", svc: null, chef: true, media: false, notif_all: false },
+      { id: U(2), nom: "Estelle", fonction: "Responsable de l'offre", svc: null, chef: true, media: false, notif_all: false, offre: true },
       { id: U(3), nom: "Aurélie", fonction: "", svc: "rp", chef: false, media: false, notif_all: false },
       { id: U(4), nom: "Stéphane", fonction: "", svc: "rs", chef: false, media: false, notif_all: false },
       { id: U(5), nom: "Louise", fonction: "", svc: "video", chef: false, media: false, notif_all: false },
@@ -47,6 +47,9 @@
     // migration 0005 : le visiteur ne demande rien, ne signale rien, n'ajoute aucun document
     if (p.visiteur && ["reqs", "blocks", "links"].includes(t) && op === "insert") return false;
     if (t === "items") {
+      // migration 0012 : un dernier jour seulement pour un temps fort daté au jour près ; migration 0011 : rang et objectif de 1 à 999
+      if (row.fin && !(row.kind === "tf" && row.fin > row.date && !(row.per || []).length && (!row.flou || /^\d/.test(row.flou)))) return false;
+      if ([row.rang, row.cible].some((v) => v != null && !(v >= 1 && v <= 999))) return false;
       if (row.partner) return p.media;
       // migration 0011 : un classement est saisi par les chefs
       if (row.kind === "classement" && op === "insert") return p.chef && row.svc === "chef";
@@ -95,6 +98,9 @@
       tab.push(r);
       if (q.t === "items") jot(r.id, "creation", {}, r.author, r.at);
       if (q.t === "links") jot(r.item, "document", { nom: r.nom }, r.author);
+      // les destinataires d'une demande, comme la base (0012) : un service, les chefs, la Resp. offre ; personne pour la Direction du Programme
+      if (q.t === "reqs") db.profiles.filter((x) => x.id !== r.asker && ((r.dest === "chef" && x.chef) || x.svc === r.dest || (r.dest === "offre" && x.offre)))
+        .forEach((x) => db.outbox.push({ user_id: x.id, title: "Demande d'éléments", body: r.type, url: `#item=${r.item}`, dedupe: `req:${r.id}:${x.id}` }));
       save();
       return { data: q.single ? r : [r], error: null };
     }
@@ -103,6 +109,8 @@
       const rows = tab.filter(match).filter((r) => allowed(q.t, "update", { ...r, ...q.row }));
       // migration 0006 : retirer revient à la personne qui a demandé (ou à un chef) ; la réponse est signée et notée dans l'historique
       if (q.t === "reqs" && q.row.st === "annulee" && rows.some((r) => r.st === "ouverte" && !me().chef && r.asker !== me().id)) return { data: null, error: denied };
+      // migration 0012 : une demande garde son destinataire
+      if (q.t === "reqs" && "dest" in q.row) { const { dest, ...rest } = q.row; q.row = rest; }
       // migration 0007 : une demande reçue reste reçue, une demande retirée reste retirée
       if (q.t === "reqs") rows.forEach((r) => { if (["recue", "annulee"].includes(r.st) && q.row.st && q.row.st !== r.st) q.row = { ...q.row, st: r.st }; });
       // migration 0007 : le droit média ne se retire, même par un passage en visiteur, que par un compte média
@@ -115,7 +123,7 @@
         if (q.t === "reqs" && r.st === "ouverte" && q.row.st === "annulee") jot(r.item, "retrait", { type: r.type, dest: r.dest });
         Object.assign(r, q.row);
         // migration 0005 : un visiteur perd service et droits
-        if (q.t === "profiles" && r.visiteur) Object.assign(r, { svc: null, chef: false, media: false, notif_all: false }); }); save();
+        if (q.t === "profiles" && r.visiteur) Object.assign(r, { svc: null, chef: false, media: false, notif_all: false, offre: false }); }); save();
       return { data: rows.map((r) => ({ ...r })), error: null };
     }
     if (q.op === "upsert") {
@@ -129,7 +137,11 @@
       if (q.t === "links") tab.filter(match).forEach((r) => jot(r.item, "document", { nom: r.nom, retire: true }));
       // migration 0008 : seule une fiche retirée se supprime, par ceux qui la modifient ; ce qui en dépend part avec elle
       const gone = tab.filter(match).filter((r) => q.t !== "items" || (r.st === "retire" && allowed("items", "update", r)));
-      if (q.t === "items") gone.forEach((r) => { ["links", "reqs", "blocks", "journal"].forEach((k) => { db[k] = db[k].filter((x) => x.item !== r.id); });
+      if (q.t === "items") gone.forEach((r) => {
+        // migration 0012 : un relais d'un temps fort actif confie ses demandes au temps fort ; un temps fort garde aux relais les documents de leurs demandes
+        if (r.tf && db.items.some((t) => t.id === r.tf && t.st !== "retire")) db.reqs.forEach((x) => { if (x.item === r.id && x.st !== "annulee") x.item = r.tf; });
+        db.links.forEach((l) => { const q2 = l.item === r.id && l.req && db.reqs.find((x) => x.id === l.req && x.item !== r.id); if (q2) l.item = q2.item; });
+        ["links", "reqs", "blocks", "journal"].forEach((k) => { db[k] = db[k].filter((x) => x.item !== r.id); });
         db.items.forEach((x) => { if (x.tf === r.id) x.tf = null; }); });
       db[q.t] = db[q.t].filter((r) => !gone.includes(r)); save(); return { data: gone.map((r) => ({ id: r.id })), error: null };
     }
@@ -174,7 +186,8 @@
     const it = db.items.find((x) => x.id === p_item);
     if (!it || !allowed("items", "update", it)) return { data: null, error: denied };
     const svcs = new Set([...it.cc, it.svc, ...db.items.filter((a) => a.tf === it.id && a.st !== "retire").map((a) => a.svc)]);
-    const dests = db.profiles.filter((p) => p.id !== db.session.user.id && (p.notif_all || (p.svc && svcs.has(p.svc))));
+    // comme la base : les chefs pour une fiche du chef de projet, les comptes média pour un partenariat
+    const dests = db.profiles.filter((p) => p.id !== db.session.user.id && (p.notif_all || (p.svc && svcs.has(p.svc)) || (p.chef && it.svc === "chef" && !it.partner) || (p.media && !!it.partner)));
     const who = me().nom;
     dests.forEach((p) => db.outbox.push({ user_id: p.id, title: `Modifié : ${it.t}`, body: `${who} : ${p_quoi}`, url: `#item=${it.id}` }));
     jot(it.id, "prevenu", { quoi: p_quoi, n: dests.length }); save();

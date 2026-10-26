@@ -44,7 +44,8 @@ await p.evaluate((items) => { const d = window.__fake.db; d.items.push(...items)
 // ---------- À suivre ----------
 await login("aurelie");
 let per = await p.textContent("#v-periode");
-ok(per.includes("À suivre · Considérer, dès le 1er novembre"), "Ma période, 5 jours avant la fin : « À suivre · Considérer, dès le 1er novembre »");
+const soonH = await p.textContent("#v-periode .soon-h").catch(() => "");
+ok(/^À suivre/.test(soonH) && soonH.includes("Considérer, dès le 1er novembre"), "Ma période, 5 jours avant la fin : « À suivre · Considérer, dès le 1er novembre »");
 ok(per.includes("Interview du 3 novembre") && !per.includes("Post RS du 4 novembre"), "À suivre suit le filtre « Mon service »");
 ok(!per.includes("Podcast fin novembre"), "À suivre : seulement les deux premières semaines");
 await p.screenshot({ path: `${OUT}/s1-a-suivre.png`, fullPage: true });
@@ -71,7 +72,7 @@ await login("julien");
 await open(I(1));
 await topv().locator('[data-act="retire"]').click(); await p.waitForTimeout(300); await p.click(".alert .acts button:last-child"); await p.waitForTimeout(600);
 await topv().locator('[data-act="delete"]').click(); await p.waitForTimeout(300);
-ok((await p.textContent(".alert-wrap.show .alert")).includes("Son relais reste, sans temps fort."), "temps fort : la confirmation dit que le relais reste");
+ok((await p.textContent(".alert-wrap.show .alert")).includes("Son relais reste, sans temps fort,"), "temps fort : la confirmation dit que le relais reste");
 await p.click(".alert .acts button:last-child"); await p.waitForTimeout(700);
 db = await fake();
 ok(!db.items.some((x) => x.id === I(1)) && db.items.find((x) => x.id === I(3)).tf === null, "temps fort supprimé, relais gardé sans temps fort");
