@@ -86,6 +86,8 @@ window.KPlan = (DATA, { greet = false } = {}) => {
   const momWord = (it) => (isSujet(it) ? "sujet" : isCls(it) ? "classement" : "temps fort");
   // le rang de KEDGE et l'objectif d'un classement : « 10e · objectif top 7 »
   const rgTxt = (n) => (n === 1 ? "1er" : `${n}e`);
+  // un classement s'appelle toujours « Classement … » (comme store.js)
+  const clsT = (t) => (/^classement\b/i.test(t.trim()) ? t.trim() : `Classement ${t.trim()}`);
   const rankTxt = (it) => [it.rang ? rgTxt(it.rang) : "", it.cible ? `objectif top ${it.cible}` : ""].filter(Boolean).join(" · ");
   const isPay = (it) => !!it.partner;
   const isInc = (it) => it.m.includes("INC");
@@ -194,7 +196,7 @@ window.KPlan = (DATA, { greet = false } = {}) => {
   // la date ne s'affiche qu'une fois par jour
   function rows(list, opts = {}) {
     let last = "", lastT = "";
-    return list.slice().sort(sortDate).map((it) => { const key = sortKey(it), t = typeOf(it); const h = agRow(it, { ...opts, date: key !== last || (t !== "act" && t !== lastT) || t === "suj" }); last = key; lastT = t; return h; }).join("");
+    return list.slice().sort(sortDate).map((it) => { const key = sortKey(it), t = typeOf(it); const h = agRow(it, { ...opts, date: key !== last || (t !== "act" && t !== lastT) || t === "suj" || t === "cls" }); last = key; lastT = t; return h; }).join("");
   }
   function agenda(list, opts = {}) {
     const by = new Map();
@@ -499,13 +501,17 @@ window.KPlan = (DATA, { greet = false } = {}) => {
   function byPeriod(el, { k, title, all, action, lead = "", mark = true, empty = "", add = "" }) {
     const pastN = all.filter(isPast).length, open = S.past[k], wide = cols();
     const list = open ? all : all.filter((it) => !isPast(it));
-    const secs = PERIODS.map((P, i) => ({ P, i, suj: list.filter((it) => isSujet(it) && it.per.includes(i)), l: list.filter((it) => !isSujet(it) && periodOf(it.date) === i).sort(sortDate) })).filter((g) => g.suj.length || g.l.length);
+    // dans une période : ses sujets, ses classements, puis ses temps forts datés
+    const secs = PERIODS.map((P, i) => ({ P, i, suj: list.filter((it) => isSujet(it) && it.per.includes(i)), cls: list.filter((it) => isCls(it) && periodOf(it.date) === i).sort(sortDate),
+      l: list.filter((it) => !isSujet(it) && !isCls(it) && periodOf(it.date) === i).sort(sortDate) })).filter((g) => g.suj.length || g.cls.length || g.l.length);
     const phone = (g) => `<h2 class="ag-month">${esc(g.P.nom)} <span>${esc(g.P.lib)}</span></h2>
       ${g.suj.length ? `<h3 class="sec-h suj-h">Sujets de la période</h3><div class="group">${rows(g.suj, { mode: "month", mark })}</div>` : ""}
-      ${g.l.length ? `${g.suj.length ? `<h3 class="sec-h suj-h">Temps forts</h3>` : ""}<div class="group">${rows(g.l, { mode: "month", mark })}</div>` : ""}`;
+      ${g.cls.length ? `<h3 class="sec-h suj-h">Classements</h3><div class="group">${rows(g.cls, { mode: "month", mark })}</div>` : ""}
+      ${g.l.length ? `${g.suj.length || g.cls.length ? `<h3 class="sec-h suj-h">Temps forts</h3>` : ""}<div class="group">${rows(g.l, { mode: "month", mark })}</div>` : ""}`;
     const desk = (g) => `<section class="tbl-sec" id="per-${k}-${g.i}" aria-label="${esc(g.P.nom)}"><h2 class="ag-month">${esc(g.P.nom)} <span>${esc(g.P.lib)}</span></h2>
       ${g.suj.length ? `<h3 class="sec-h suj-h">Sujets de la période · ${g.suj.length}</h3><div class="suj-grid">${g.suj.map(sujCard).join("")}</div>` : ""}
-      ${g.l.length ? `${g.suj.length ? `<h3 class="sec-h suj-h">Temps forts · ${g.l.length}</h3>` : ""}<div class="tbl tbl-${k}" style="--nr:${RCOLS.length - 1}">${k === "tf" ? tfHead + g.l.map(tfRow).join("") : payHead + g.l.map(payRow).join("")}</div>` : ""}</section>`;
+      ${g.cls.length ? `<h3 class="sec-h suj-h">Classements · ${g.cls.length}</h3><div class="group cls-grp">${rows(g.cls, { mode: "month", mark })}</div>` : ""}
+      ${g.l.length ? `${g.suj.length || g.cls.length ? `<h3 class="sec-h suj-h">Temps forts · ${g.l.length}</h3>` : ""}<div class="tbl tbl-${k}" style="--nr:${RCOLS.length - 1}">${k === "tf" ? tfHead + g.l.map(tfRow).join("") : payHead + g.l.map(payRow).join("")}</div>` : ""}</section>`;
     const nav = wide && secs.length > 1 ? `<nav class="per-nav" aria-label="Aller à une période">${secs.map((g) => `<button type="button" class="per-l${g.i === CUR ? " now" : ""}" data-act="goper" data-k="${k}" data-i="${g.i}">${esc(g.P.nom)}</button>`).join("")}
       ${pastN ? `<button type="button" class="link" data-act="past" data-k="${k}">${open ? "Masquer les passés" : seeMore(pastN, "passés")}</button>` : ""}</nav>` : "";
     el.innerHTML = K.navbar({ title, actions: action + profileBtn() }) + `<div class="scroll${wide ? " page-wide" : ""}">
@@ -515,7 +521,7 @@ window.KPlan = (DATA, { greet = false } = {}) => {
     </div>`;
     syncBadge();
   }
-  const renderTF = (el) => byPeriod(el, { k: "tf", title: "Temps forts", all: DB.items.filter((it) => isTF(it) && !isCls(it)),
+  const renderTF = (el) => byPeriod(el, { k: "tf", title: "Temps forts", all: DB.items.filter(isTF),
     action: canAdd() ? `<button type="button" class="txt-btn strong" data-act="addtf">${me().chef ? "Ajouter" : "Proposer"}</button>` : "",
     empty: "Aucun temps fort pour l'instant.", add: canAdd() ? `<button type="button" class="btn small" data-act="addtf">${me().chef ? "Ajouter un temps fort" : "Proposer un temps fort"}</button>` : "" });
   const renderMedia = (el) => byPeriod(el, { k: "media", title: "Partenariats média", all: DB.items.filter(isPay), mark: false,
@@ -535,7 +541,7 @@ window.KPlan = (DATA, { greet = false } = {}) => {
     const tfs = DB.items.filter((it) => isTF(it) && (it.id === d.tf || (it.st !== "retire" && (precise(it) ? days(endOf(it)) >= -7 : !isPast(it))))).sort(sortDate);
     const opt = (it) => `<option value="${it.id}"${d.tf === it.id ? " selected" : ""}>${esc(`${when(it)} · ${it.t}`)}</option>`;
     const open = d.more || !!d.tf || !!d.link || !!d.note;
-    const ph = suj ? "Ex. Salle Bloomberg" : cls ? "Ex. SIGEM 2027" : tf ? "Ex. Venue de Columbia à Bordeaux" : pay ? "Ex. Article sur le consortium" : "Ex. Reel alumni chez EY";
+    const ph = suj ? "Ex. Salle Bloomberg" : cls ? "Ex. Financial Times" : tf ? "Ex. Venue de Columbia à Bordeaux" : pay ? "Ex. Article sur le consortium" : "Ex. Reel alumni chez EY";
     return `${edit ? "" : `<div class="seg" data-seg id="${px}-kind" role="group" aria-label="Type d'ajout">${kinds.map(([k, l]) => `<button type="button" value="${k}" aria-pressed="${d.kind === k}">${I.check}${l}</button>`).join("")}</div>`}
       <label class="lbl" for="${px}-t">${pay ? "Dispositif" : "Titre"}</label><input class="in" id="${px}-t" value="${esc(d.t)}" placeholder="${ph}" aria-describedby="${px}-t-err"><p class="err" id="${px}-t-err" hidden>Donne un titre.</p>
       ${pay ? `<span class="lbl" id="${px}-pt-l">Partenaire</span>${PARTNERS.length ? `<div class="chips" data-chips id="${px}-pt" role="group" aria-labelledby="${px}-pt-l">${PARTNERS.map((x) => chip(x.nom, d.partner === x.k && !d.newPartner, x.k)).join("")}</div>` : ""}
@@ -622,7 +628,7 @@ window.KPlan = (DATA, { greet = false } = {}) => {
     if (!validate(el, "f", d)) return;
     const p = me(), cls = d.kind === "classement", tf = d.kind === "tf" || d.kind === "sujet" || cls, pay = d.kind === "partner";
     // un classement est porté par les chefs de projet
-    const it = { id: uid(), kind: cls ? "classement" : tf ? "tf" : "action", per: [], svc: cls ? "chef" : tf ? p.svc : pay ? "chef" : p.chef ? d.svc : p.svc, ...dateFields(d), t: d.t.trim(), m: msgsOf(d),
+    const it = { id: uid(), kind: cls ? "classement" : tf ? "tf" : "action", per: [], svc: cls ? "chef" : tf ? p.svc : pay ? "chef" : p.chef ? d.svc : p.svc, ...dateFields(d), t: cls ? clsT(d.t) : d.t.trim(), m: msgsOf(d),
       st: "planifie", cc: pay ? [] : d.cc, tf: tf ? "" : d.tf, partner: "", by: p.k, at: TODAY, ts: new Date().toISOString(), lieu: "", note: d.note.trim(), links: [], ...rankOf(d) };
     btn.disabled = true;
     try {
@@ -655,7 +661,7 @@ window.KPlan = (DATA, { greet = false } = {}) => {
   async function saveEdit(id, btn) {
     const it = byId(id), el = K.topView(), d = readForm(el, "e", S.edit);
     if (!it || !validate(el, "e", d)) return;
-    const next = { ...it, ...dateFields(d, it), t: d.t.trim(), m: msgsOf(d), cc: d.kind === "partner" ? [] : d.cc, tf: d.kind === "tf" || d.kind === "sujet" || d.kind === "classement" ? "" : d.tf, note: d.note.trim(), ...rankOf(d) };
+    const next = { ...it, ...dateFields(d, it), t: d.kind === "classement" ? clsT(d.t) : d.t.trim(), m: msgsOf(d), cc: d.kind === "partner" ? [] : d.cc, tf: d.kind === "tf" || d.kind === "sujet" || d.kind === "classement" ? "" : d.tf, note: d.note.trim(), ...rankOf(d) };
     if (d.kind === "action" && me().chef) next.svc = d.svc;
     btn.disabled = true;
     try {

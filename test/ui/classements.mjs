@@ -28,7 +28,8 @@ for (const [w, h] of [[390, 844], [1440, 900]]) {
   await p.fill("#f-rang", "10");
   await p.screenshot({ path: `${OUT}/cls-form-${w}.png` });
   await p.click('[data-act="publish"]'); await p.waitForTimeout(700);
-  const it = await p.evaluate(() => window.__fake.db.items.find((x) => x.t === "SIGEM 2027"));
+  const it = await p.evaluate(() => window.__fake.db.items.find((x) => x.t === "Classement SIGEM 2027"));
+  ok(it, `${w}px : « Classement » est ajouté devant le nom`);
   ok(it && it.kind === "classement" && it.rang === 10 && it.cible === 7 && it.svc === "chef" && it.date === d0, `${w}px : enregistré comme classement, 10e, objectif top 7`);
   ok(await p.isVisible(".hero-cls .rk-n >> visible=true") && /Classement/.test(await p.textContent(".hero-meta >> visible=true")), `${w}px : la fiche montre la médaille du rang et le badge Classement`);
   ok(/Top 7/.test(await p.textContent(".rk-g >> visible=true")), `${w}px : la fiche montre l'objectif`);
@@ -48,11 +49,11 @@ for (const [w, h] of [[390, 844], [1440, 900]]) {
   ok(!soonTxt || /SIGEM 2027/.test(soonTxt), `${w}px : en fin de période, « À suivre » annonce le classement`);
   for (let i = 0; i < 5 && !(await p.$(".cls-strip >> visible=true")); i++) { await p.click('[data-act="next"] >> visible=true'); await p.waitForTimeout(400); }
   const strip = await p.textContent(".cls-strip >> visible=true").catch(() => "");
-  ok(/SIGEM 2027/.test(strip) && /10e · objectif top 7/.test(strip), `${w}px : Ma période montre le classement avec le rang (« ${strip.replace(/\s+/g, " ").trim()} »)`);
+  ok(/Classement SIGEM 2027/.test(strip) && /10e · objectif top 7/.test(strip), `${w}px : Ma période montre le classement avec le rang (« ${strip.replace(/\s+/g, " ").trim()} »)`);
   await p.screenshot({ path: `${OUT}/cls-periode-${w}.png` });
-  // l'onglet Temps forts ne le compte pas
+  // l'onglet Temps forts le montre, dans sa propre rubrique, avec sa pastille de date
   await tab("tf");
-  ok(!(await p.$(`[data-open="${it.id}"] >> visible=true`)), `${w}px : le classement n'est pas rangé avec les temps forts`);
+  ok(await p.$(`[data-open="${it.id}"] >> visible=true`) && /Classements/i.test(await p.textContent(".scroll >> visible=true")), `${w}px : l'onglet Temps forts a une rubrique Classements`);
   // la grille : sa ligne, sa pastille, son trait
   await tab("grille");
   ok(await p.$(`.lane-cls .blk.b-cls[data-open="${it.id}"]`) && await p.$(".cls-line"), `${w}px : la grille a une ligne Classements et un trait sur la semaine`);
@@ -77,6 +78,20 @@ for (const [w, h] of [[390, 844], [1440, 900]]) {
   await login(p, "aurelie");
   await tab("ajouter");
   ok(!(await p.$('#f-kind button[value="classement"]')), `${w}px : un service n'a pas « Classement » dans Ajouter`);
+  await p.evaluate(() => window.__fake.db.items.splice(0));
+  await login(p, "julien");
+  for (const t of ["Financial Times", "Classement Challenges"]) {
+    await tab("ajouter"); await p.click('#f-kind button[value="classement"]'); await p.waitForTimeout(150); await p.fill("#f-t", t);
+    await p.click('label[for="f-prec"]'); await p.waitForTimeout(100); await p.selectOption("#f-mois", new Date().toISOString().slice(0, 7));
+    await p.click('[data-act="publish"]'); await p.waitForTimeout(500); await p.keyboard.press("Escape"); await p.waitForTimeout(300);
+  }
+  const names = await p.evaluate(() => window.__fake.db.items.map((x) => x.t).sort().join(" | "));
+  ok(names === "Classement Challenges | Classement Financial Times", `${w}px : pas de « Classement » en double (${names})`);
+  await tab("periode");
+  const pills = await p.$$eval(".cls-strip .ag-row", (l) => l.map((r) => r.querySelector(".ag-date b")?.textContent.trim() || ""));
+  ok(pills.length === 2 && pills.every(Boolean), `${w}px : chaque classement du mois a sa pastille (${pills.join(", ")})`);
+  const gap = await p.evaluate(() => { const a = document.querySelector(".phead").getBoundingClientRect(), b = document.querySelector(".cls-strip").getBoundingClientRect(); return b.top - a.bottom; });
+  ok(gap >= 10, `${w}px : les classements ne collent pas au bloc de la période (${Math.round(gap)} px)`);
   await p.evaluate(() => window.__fake.db.items.splice(0));
 }
 ok(!errs.length, `pas d'erreur JS ${errs.join(" | ")}`);
