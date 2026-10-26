@@ -47,7 +47,7 @@ for (const [w, h] of [[390, 844], [1440, 900]]) {
   ok(/jusqu'au/.test(row), `${w}px : la liste des temps forts montre le dernier jour`);
   await p.screenshot({ path: `${OUT}/plusieurs-liste-${w}.png` });
   await tab("grille");
-  if (w < 768) { const n = await findWk(p, `.pw .blk[data-open="${it.id}"]`);
+  if (w < 768) { const n = await findWk(p, `#v-grille [data-open="${it.id}"]`);
     ok(n >= 1, `${w}px : dans la grille semaine par semaine, le temps fort apparaît (${n} semaine)`); }
   else { const span = await p.$eval(`.blk[data-open="${it.id}"]`, (x) => x.style.gridColumn);
     ok(/\//.test(span), `${w}px : dans la grille, le bloc couvre ses semaines (${span})`); }

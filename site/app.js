@@ -426,36 +426,40 @@ window.KPlan = (DATA, { greet = false } = {}) => {
   const wkOf = (it) => (precise(it) ? wk(it.date) : wkM(it.date.slice(0, 7) + "-01"));
   const colW = () => (S.zoom === "annee" ? 26 : 140);
 
-  // téléphone : la grille à deux dimensions ne tient pas dans 390 px ; on la lit semaine par semaine, une période à la fois
+  // téléphone : le tableau à deux dimensions ne tient pas dans 390 px ; le calendrier se lit comme un agenda,
+  // une période à la fois, semaine par semaine, avec les mêmes lignes que Ma période (date, titre, service, message, état)
   function renderGrillePhone(el) {
     const i = S.gp ?? Math.max(0, CUR), P = PERIODS[i];
     const w0 = wkStart(i), w1 = i < PERIODS.length - 1 ? Math.max(w0 + 1, wkStart(i + 1)) : GN;
-    const inWk = (it, w) => (multi(it) ? wk(it.date) <= w && w <= wk(it.fin) : wkOf(it) === w);
-    const live = DB.items.filter((it) => !isSujet(it)).sort(sortDate);
-    const lanes = [...SERVICES.map((s) => ({ nom: s.court, f: (it) => !isTF(it) && !isPay(it) && it.svc === s.k })), { nom: "Partenariats", f: isPay }];
+    const live = DB.items.filter((it) => !isSujet(it));
     const dm = (d) => premier(D(d).toLocaleDateString("fr-FR", { day: "numeric", month: "short" }));
-    const pb = (it) => { const soft = it.st === "confirmer" || it.st === "idee";
-      return `<button type="button" class="blk b-${typeOf(it)}${it.st === "retire" ? " retire" : ""}${soft ? " soft" : ""}" data-open="${it.id}" aria-label="${esc(`${it.t}, ${when(it)}`)}">${isCls(it) ? I.podium : ""}<span class="t">${esc(it.t)}</span></button>`; };
-    const now = wk(TODAY);
+    const range = (a, b) => `${a.slice(0, 7) === b.slice(0, 7) ? premier(`${D(a).getDate()} `).trim() : dm(a)} – ${dm(b)}`; // « 2 – 8 nov. », « 26 oct. – 1er nov. »
+    const now = wk(TODAY), isCur = i === CUR && now >= w0 && now < w1;
     // période en cours : les semaines passées restent repliées, on commence à cette semaine
-    const past = i === CUR && now > w0 && now < w1 ? now - w0 : 0, ws = Array.from({ length: w1 - w0 }, (_, n) => w0 + n).slice(S.gpast ? 0 : past);
-    const weeks = ws.map((w) => {
-      const d0 = addDays(G0, w * 7), its = live.filter((it) => inWk(it, w));
-      const top = its.filter((it) => isTfDay(it) || isCls(it));
-      const ls = lanes.map((l) => ({ ...l, l: its.filter(l.f) })).filter((l) => l.l.length);
-      const isNow = w === now && TODAY >= P.du && TODAY <= P.au;
-      return `<section class="pw${isNow ? " now" : ""}${top.some(isTfDay) ? " has-tf" : ""}"${isNow ? ' id="pw-now"' : ""} aria-label="Semaine du ${esc(dm(d0))}">
-        <h2 class="pw-h"><b>${esc(dm(d0))}</b><span>au ${esc(dm(addDays(d0, 6)))}</span>${isNow ? `<em>Cette semaine</em>` : ""}</h2>
-        ${top.length ? `<div class="pw-top">${top.map(pb).join("")}</div>` : ""}
-        ${ls.map((l) => `<div class="pw-l"><span class="pw-s">${esc(l.nom)}</span><div class="pw-i">${l.l.map(pb).join("")}</div></div>`).join("")}
-        ${top.length || ls.length ? "" : `<p class="pw-empty">Rien de prévu</p>`}</section>`;
+    const past = isCur ? now - w0 : 0;
+    const ws = Array.from({ length: w1 - w0 }, (_, n) => w0 + n).slice(S.gpast ? 0 : past).map((w) => ({ w,
+      // un temps fort sur plusieurs jours : sa ligne dans la semaine où il commence, un rappel dans les suivantes
+      its: live.filter((it) => wkOf(it) === w),
+      cont: live.filter((it) => multi(it) && wk(it.date) < w && w <= wk(it.fin)) }));
+    // des semaines vides qui se suivent : une seule ligne discrète
+    const out = [];
+    ws.forEach((x) => { const empty = !x.its.length && !x.cont.length, prev = out[out.length - 1];
+      if (empty && prev?.empty && x.w !== now) prev.to = x.w; else out.push({ ...x, empty, to: x.w }); });
+    const weeks = out.map((x) => {
+      const d0 = addDays(G0, x.w * 7), d1 = addDays(G0, x.to * 7 + 6), here = isCur && x.w === now;
+      const tag = here ? `<em class="pw-now">Cette semaine</em>` : "";
+      if (x.empty) return `<p class="pw-empty"${here ? ' id="pw-now"' : ""}><span>${esc(range(d0, d1))}</span>${tag}<span class="pw-none">Rien de prévu</span></p>`;
+      const cont = x.cont.map((it) => `<button type="button" class="pw-cont" data-open="${it.id}" aria-label="${esc(`${it.t}, en cours jusqu'au ${fmtShort(it.fin)}`)}">${I.flag}<span><b>${esc(it.t)}</b> continue jusqu'au ${esc(fmtShort(it.fin))}</span></button>`).join("");
+      return `<section class="pw"${here ? ' id="pw-now"' : ""} aria-label="Semaine du ${esc(range(d0, d1))}">
+        <h2 class="pw-h">${esc(range(d0, d1))}${tag}</h2>${cont}
+        ${x.its.length ? `<div class="group">${rows(x.its, { mode: "week" })}</div>` : ""}</section>`;
     }).join("");
-    const suj = DB.items.filter((it) => isSujet(it) && it.per.includes(i)).sort(sortDate);
-    el.innerHTML = K.navbar({ title: "Grille", actions: addBtn() + profileBtn() }) + `<div class="scroll">
-      <h1 class="large-title">Grille</h1>
-      <nav class="pg-nav" aria-label="Période">${PERIODS.map((Q, j) => `<button type="button" class="per-l${j === CUR ? " now" : ""}" data-act="gper" data-i="${j}" aria-pressed="${j === i}">${esc(perName(Q))}</button>`).join("")}</nav>
-      <p class="pg-lib">${esc(P.lib)}</p>
-      ${suj.length ? `<h3 class="sec-h suj-h">Sujets de la période</h3><div class="pw-top pw-suj">${suj.map(pb).join("")}</div>` : ""}
+    const suj = DB.items.filter((it) => isSujet(it) && it.per.includes(i));
+    el.innerHTML = K.navbar({ title: "Calendrier", actions: addBtn() + profileBtn() }) + `<div class="scroll">
+      <h1 class="large-title">Calendrier</h1>
+      <nav class="pg-nav" aria-label="Période">${PERIODS.map((Q, j) => `<button type="button" class="pg-l${j === CUR ? " now" : ""}" data-act="gper" data-i="${j}" aria-pressed="${j === i}">${esc(perName(Q))}</button>`).join("")}</nav>
+      <p class="pg-lib">${esc(P.lib)}${i === CUR ? " · en cours" : ""}</p>
+      ${suj.length ? `<h2 class="pw-h">Toute la période</h2><div class="group">${rows(suj, { mode: "week" })}</div>` : ""}
       ${past ? `<p class="past-p"><button type="button" class="link" data-act="gpast">${S.gpast ? "Masquer les semaines passées" : seeMore(past, past > 1 ? "semaines passées" : "semaine passée")}</button></p>` : ""}
       ${weeks}
     </div>`;
@@ -493,8 +497,8 @@ window.KPlan = (DATA, { greet = false } = {}) => {
     const todayX = (D(TODAY) - D(G0)) / 864e5 / 7;
     const body = lanes.map((l) => `<div class="grow lane-${l.k}">${l.k === "partners" ? `<button type="button" class="glab" data-act="partners"><b>${l.nom}</b></button>` : `<div class="glab"><b>${esc(l.nom)}</b></div>`}<div class="gcells">${l.items.sort(sortDate).map(blk).join("")}</div></div>`).join("");
 
-    el.innerHTML = K.navbar({ title: "Grille", actions: profileBtn() }) + `<div class="scroll page-full">
-      <h1 class="large-title">Grille</h1>
+    el.innerHTML = K.navbar({ title: "Calendrier", actions: profileBtn() }) + `<div class="scroll page-full">
+      <h1 class="large-title">Calendrier</h1>
       <div class="g-ctrl"><div class="seg" data-seg id="g-zoom" role="group" aria-label="Zoom"><button type="button" value="periode" aria-pressed="${!year}">${I.check}Période</button><button type="button" value="annee" aria-pressed="${year}">${I.check}Année</button></div>
         <button type="button" class="txt-btn strong" data-act="today">Aujourd'hui</button></div>
       <div class="gwrap" id="gwrap" aria-hidden="true"><div class="ginner${year ? " z-year" : ""}" style="--n:${GN};--col:${col}px;--lab:${lab}px">
@@ -502,7 +506,7 @@ window.KPlan = (DATA, { greet = false } = {}) => {
         ${head}${body}
       </div></div>
       <div class="legend"><span><i class="lgd b-tf"></i>Temps fort</span><span><i class="lgd b-suj"></i>Sujet</span><span><i class="lgd b-cls"></i>Classement</span><span><i class="lgd b-act"></i>Action de diffusion</span><span><i class="lgd b-pay"></i>Partenariat payant</span><span><i class="lgd soft"></i>À confirmer</span></div>
-      <div class="sr"><h2>Version texte de la grille</h2>${lanes.map((l) => `<h3>${esc(l.nom)}</h3><ul>${l.items.map((it) => `<li><button type="button" data-open="${it.id}">${esc(`${when(it)} : ${it.t}`)}</button></li>`).join("")}</ul>`).join("")}</div>
+      <div class="sr"><h2>Version texte du calendrier</h2>${lanes.map((l) => `<h3>${esc(l.nom)}</h3><ul>${l.items.map((it) => `<li><button type="button" data-open="${it.id}">${esc(`${when(it)} : ${it.t}`)}</button></li>`).join("")}</ul>`).join("")}</div>
     </div>`;
     const gw = el.querySelector("#gwrap");
     requestAnimationFrame(() => {
@@ -1296,7 +1300,7 @@ window.KPlan = (DATA, { greet = false } = {}) => {
     tf: { label: "Temps forts", icon: "flag", render: renderTF },
     media: { label: "Partenariats", icon: "megaphone", render: renderMedia },
     ajouter: { label: "Ajouter", icon: "plus", render: renderAjouter },
-    grille: { label: "Grille", icon: "calendar", render: renderGrille },
+    grille: { label: "Calendrier", icon: "calendar", render: renderGrille },
     afaire: { label: "À faire", icon: "bell", render: renderAfaire },
   });
 
