@@ -107,7 +107,7 @@ window.KUI = (() => {
   // push(render, { title }) : ouvre un écran par-dessus ; render(el, { back }) remplit l'écran
   function push(render, { title = "" } = {}) {
     const el = document.createElement("section");
-    el.className = "view pushed"; el.setAttribute("aria-label", title);
+    el.className = "view pushed"; el.setAttribute("aria-label", title); el.dataset.depth = state.stack.length;
     $(".views", app).append(el);
     const back = state.stack.length ? state.stack[state.stack.length - 1].title : state.tabs[state.tab].label;
     const entry = { el, render, title, back: back.length > 13 ? "Retour" : back };

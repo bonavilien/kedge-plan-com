@@ -1448,5 +1448,5 @@ window.KPlan = (DATA, { greet = false } = {}) => {
   addEventListener("hashchange", routeHash);
   navigator.serviceWorker?.addEventListener("message", (e) => { if (e.data?.type === "open") route(new URL(e.data.url).hash); });
 
-  if (greet) K.snack(`Bonjour ${esc(me().nom)}. ${cols() ? "Les flèches du bandeau changent de période." : "Glisse l'écran pour changer de période."}`, 4200);
+  if (greet) K.snack(`Bonjour ${esc(me().nom)}.${cols() ? "" : " Glisse l'écran pour changer de période."}`, cols() ? 2500 : 4200);
 };
