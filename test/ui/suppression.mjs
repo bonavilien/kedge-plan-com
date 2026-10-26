@@ -13,7 +13,7 @@ const errs = [];
 p.on("pageerror", (e) => errs.push(e.message));
 p.on("console", (m) => { if (m.type() === "error" && !/Failed to load resource|row-level security/.test(m.text())) errs.push(m.text()); });
 const fake = () => p.evaluate(() => JSON.parse(localStorage.getItem("kplan-fake")));
-const tab = async (t) => { await p.click(`.tab[data-kui-tab="${t}"]`); await p.waitForTimeout(250); };
+const tab = async (t) => { await p.$eval(`.tab[data-kui-tab="${t}"]`, (b) => b.click()); await p.waitForTimeout(250); };
 const topv = () => p.locator(".view.pushed").last();
 async function login(who) {
   await p.goto(URL0); await p.waitForSelector("#login");
@@ -83,7 +83,7 @@ ok((await topv().textContent(".hero")).includes("Relais du salon"), "la fiche du
 await logout();
 await p.setViewportSize({ width: 1440, height: 900 });
 await login("aurelie");
-await p.click('[data-kui-tab="ajouter"] >> visible=true'); await p.waitForTimeout(300);
+await p.$eval('.tab[data-kui-tab="ajouter"]', (b) => b.click()); await p.waitForTimeout(300);
 const pub = async (t) => { await p.fill("#f-t", t, { timeout: 3000 }); await p.click('#f-m .chip:has-text("Filières")', { timeout: 3000 }); await p.click('[data-act="publish"]', { timeout: 3000 }); await p.waitForTimeout(700); };
 await pub("Ordi 1");
 // la vraie base renvoie chaque publication par le temps réel : l'écran se redessine

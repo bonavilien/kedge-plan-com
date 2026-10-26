@@ -11,7 +11,7 @@ const errs = [];
 p.on("pageerror", (e) => errs.push(e.message));
 p.on("console", (m) => { if (m.type() === "error" && !/Failed to load resource|row-level security/.test(m.text())) errs.push(m.text()); });
 const fake = () => p.evaluate(() => JSON.parse(localStorage.getItem("kplan-fake")));
-const tab = async (t) => { await p.click(`.tab[data-kui-tab="${t}"]`); await p.waitForTimeout(250); };
+const tab = async (t) => { await p.$eval(`.tab[data-kui-tab="${t}"]`, (b) => b.click()); await p.waitForTimeout(250); };
 const topv = () => p.locator(".view.pushed").last();
 const reqs = () => topv().locator(".rq").allInnerTexts();
 async function login(who) {

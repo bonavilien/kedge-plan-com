@@ -10,10 +10,18 @@ const login = async (p, who) => {
   await p.fill("#lg-mail", `${who}@kedgebs.com`); await p.fill("#lg-pw", "motdepasse"); await p.click("#login button");
   await p.waitForFunction(() => document.getElementById("brand").hidden); await p.waitForTimeout(400);
 };
+const findWk = async (p, sel) => { // grille téléphone : cherche dans chaque période, semaines passées dépliées
+  for (const i of await p.$$eval(".pg-nav button", (bs) => bs.map((x) => x.dataset.i))) {
+    await p.click(`.pg-nav [data-i="${i}"]`); await p.waitForTimeout(200);
+    if (await p.$('[data-act="gpast"]') && /Voir/.test(await p.textContent('[data-act="gpast"]'))) { await p.click('[data-act="gpast"]'); await p.waitForTimeout(200); }
+    const n = (await p.$$(sel)).length; if (n) return n;
+  }
+  return 0;
+};
 for (const [w, h] of [[390, 844], [1440, 900]]) {
   const p = await (await b.newContext({ viewport: { width: w, height: h } })).newPage();
   p.on("pageerror", (e) => errs.push(e.message));
-  const tab = async (t) => { await p.click(`[data-kui-tab="${t}"] >> visible=true`); await p.waitForTimeout(300); };
+  const tab = async (t) => { await p.$eval(`.tab[data-kui-tab="${t}"]`, (b) => b.click()); await p.waitForTimeout(300); };
   await login(p, "julien");
   await tab("ajouter");
   await p.click('#f-kind button[value="classement"]'); await p.waitForTimeout(200);
@@ -56,7 +64,8 @@ for (const [w, h] of [[390, 844], [1440, 900]]) {
   ok(await p.$(`[data-open="${it.id}"] >> visible=true`) && /Classements/i.test(await p.textContent(".scroll >> visible=true")), `${w}px : l'onglet Temps forts a une rubrique Classements`);
   // la grille : sa ligne, sa pastille, son trait
   await tab("grille");
-  ok(await p.$(`.lane-cls .blk.b-cls[data-open="${it.id}"]`) && await p.$(".cls-line"), `${w}px : la grille a une ligne Classements et un trait sur la semaine`);
+  if (w < 768) ok(await findWk(p, `.pw .blk.b-cls[data-open="${it.id}"]`), `${w}px : la grille semaine par semaine montre le classement`);
+  else ok(await p.$(`.lane-cls .blk.b-cls[data-open="${it.id}"]`) && await p.$(".cls-line"), `${w}px : la grille a une ligne Classements et un trait sur la semaine`);
   await p.screenshot({ path: `${OUT}/cls-grille-${w}.png` });
   if (w > 1000) {
     await p.evaluate(() => document.querySelector('[data-act="meeting"]')?.click()); await p.waitForTimeout(400);

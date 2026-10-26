@@ -17,7 +17,7 @@ let k = 0;
 const it = (o) => ({ id: `30000000-0000-4000-8000-${String(++k).padStart(12, "0")}`, kind: "action", flou: "", per: [], svc: "rp", cc: [], m: ["1"], st: "planifie", tf: null, partner: null, lieu: "", note: "", author: U(3), at: "2026-10-20T10:00:00Z", ...o });
 const PAY = it({ t: "Guide Prépa", date: "2026-11-20", svc: "chef", partner: "major", m: ["4"], author: U(1) });
 const ACT = it({ t: "Interview directeur", date: "2026-11-25", svc: "rp", author: U(2) });
-const tab = async (t) => { await p.click(`[data-kui-tab="${t}"] >> visible=true`); await p.waitForTimeout(300); };
+const tab = async (t) => { await p.$eval(`.tab[data-kui-tab="${t}"]`, (b) => b.click()); await p.waitForTimeout(300); };
 const topv = () => p.locator(".view.pushed").last();
 async function login(who) {
   await p.goto(URL0); await p.waitForSelector("#login");

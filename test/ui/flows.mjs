@@ -27,7 +27,7 @@ async function logout(p) {
   await p.click('[data-act="logout"]'); await p.waitForTimeout(200);
   await p.click(".alert .acts button:last-child"); await p.waitForSelector("#login");
 }
-const tab = async (p, t) => { await p.click(`.tab[data-kui-tab="${t}"]`); await p.waitForTimeout(250); };
+const tab = async (p, t) => { await p.$eval(`.tab[data-kui-tab="${t}"]`, (b) => b.click()); await p.waitForTimeout(250); };
 const snack = (p) => p.textContent(".snack");
 const topv = (p) => p.locator(".view.pushed").last();
 async function add(p, { kind = "action", t, svc, m = [], cc = [], per, np, tf, link }) {

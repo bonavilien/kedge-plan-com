@@ -5,10 +5,18 @@ const b = await chromium.launch();
 let fails = 0;
 const ok = (c, msg) => { console.log(`${c ? "OK  " : "FAIL"} ${msg}`); if (!c) fails++; };
 const errs = [];
+const findWk = async (p, sel) => { let t = 0; // grille téléphone : compte dans toutes les périodes, semaines passées dépliées
+  for (const i of await p.$$eval(".pg-nav button", (bs) => bs.map((x) => x.dataset.i))) {
+    await p.click(`.pg-nav [data-i="${i}"]`); await p.waitForTimeout(200);
+    if (await p.$('[data-act="gpast"]') && /Voir/.test(await p.textContent('[data-act="gpast"]'))) { await p.click('[data-act="gpast"]'); await p.waitForTimeout(200); }
+    t += (await p.$$(sel)).length;
+  }
+  return t;
+};
 for (const [w, h] of [[390, 844], [1440, 900]]) {
   const p = await (await b.newContext({ viewport: { width: w, height: h } })).newPage();
   p.on("pageerror", (e) => errs.push(e.message));
-  const tab = async (t) => { await p.click(`[data-kui-tab="${t}"] >> visible=true`); await p.waitForTimeout(300); };
+  const tab = async (t) => { await p.$eval(`.tab[data-kui-tab="${t}"]`, (b) => b.click()); await p.waitForTimeout(300); };
   await p.goto(URL0); await p.evaluate(() => localStorage.clear()); await p.reload(); await p.waitForSelector("#login");
   await p.fill("#lg-mail", "julien@kedgebs.com"); await p.fill("#lg-pw", "motdepasse"); await p.click("#login button");
   await p.waitForFunction(() => document.getElementById("brand").hidden); await p.waitForTimeout(400);
@@ -39,8 +47,10 @@ for (const [w, h] of [[390, 844], [1440, 900]]) {
   ok(/jusqu'au/.test(row), `${w}px : la liste des temps forts montre le dernier jour`);
   await p.screenshot({ path: `${OUT}/plusieurs-liste-${w}.png` });
   await tab("grille");
-  const span = await p.$eval(`.blk[data-open="${it.id}"]`, (x) => x.style.gridColumn);
-  ok(/\//.test(span), `${w}px : dans la grille, le bloc couvre ses semaines (${span})`);
+  if (w < 768) { const n = await findWk(p, `.pw .blk[data-open="${it.id}"]`);
+    ok(n >= 1, `${w}px : dans la grille semaine par semaine, le temps fort apparaît (${n} semaine)`); }
+  else { const span = await p.$eval(`.blk[data-open="${it.id}"]`, (x) => x.style.gridColumn);
+    ok(/\//.test(span), `${w}px : dans la grille, le bloc couvre ses semaines (${span})`); }
   // l'agenda : chaque jour est marqué temps fort
   await tab("ajouter"); await p.click('#f-kind button[value="action"]'); await p.waitForTimeout(200);
   await p.click("#f-date"); await p.waitForTimeout(150);

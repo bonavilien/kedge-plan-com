@@ -275,7 +275,7 @@ window.KPlan = (DATA, { greet = false } = {}) => {
     const sent = T.envoyees.length ? `<section class="todo-sec"><h2 class="sec-h">${sentH} · ${T.envoyees.length}</h2><div class="group">${T.envoyees.map((r) => { const it = byId(r.item);
       return `<div class="row wrap rq"><span class="row-main"><button type="button" class="rq-open" data-open="${it.id}"><b>${esc(it.t)}</b><span>${esc(r.type)}${r.from !== ME ? ` · par ${esc(person(r.from).nom)}` : ""} · demandé à ${esc(svcOf(r.to).qui)}</span></button>${dlTag(r)}${canPour(r) ? `<button type="button" class="txt-btn rq-x" data-act="unreq" data-r="${r.id}">Retirer la demande</button>` : ""}</span>${forMe(r) ? `<button type="button" class="btn small" data-act="repondre" data-r="${r.id}">C'est reçu</button>` : ""}</div>`; }).join("")}</div></section>` : "";
 
-    el.innerHTML = K.navbar({ title: "À faire", actions: profileBtn() }) + `<div class="scroll page-wide">
+    el.innerHTML = K.navbar({ title: "À faire", actions: addBtn() + profileBtn() }) + `<div class="scroll page-wide">
       <h1 class="large-title">À faire</h1>
       ${T.count ? "" : `<div class="all-good"><span class="hl-ic big">${I.check}</span><b>Tout est à jour.</b><span>Rien n'attend ta réponse.</span></div>`}
       <div class="todo-board">
@@ -353,7 +353,7 @@ window.KPlan = (DATA, { greet = false } = {}) => {
     const chefL = shown.filter(isChefAct);
     const colsH = () => `<div class="svc-cols">${[...SERVICES.map((s) => ({ nom: s.nom, l: shown.filter((it) => it.svc === s.k) })), ...(chefL.length ? [{ nom: CHEF.nom, l: chefL }] : [])].map(({ nom, l }) =>
       `<section class="svc-col" aria-label="${esc(nom)}"><h2 class="col-h">${esc(nom)}<span>${l.filter((it) => it.st !== "retire").length}</span></h2>${l.length ? agenda(l, { who: "tf" }) : `<p class="col-empty">Rien sur cette période.</p>`}</section>`).join("")}</div>`;
-    el.innerHTML = K.navbar({ title: "Ma période", actions: (chef ? `<button type="button" class="txt-btn strong wide-only" data-act="meeting">Mode réunion</button>` : "") + profileBtn() }) + `<div class="scroll${wide ? " page-wide" : ""}"><div class="swipe" id="swipe">
+    el.innerHTML = K.navbar({ title: "Ma période", actions: (chef ? `<button type="button" class="txt-btn strong wide-only" data-act="meeting">Mode réunion</button>` : "") + addBtn() + profileBtn() }) + `<div class="scroll${wide ? " page-wide" : ""}"><div class="swipe" id="swipe">
       <section class="panel lg phead" aria-label="${esc(`Période ${S.period + 1} sur ${PERIODS.length}`)}">
         <div class="ph-nav">
           <button type="button" class="ph-arrow" data-act="prev" aria-label="Période précédente"${S.period === 0 ? " disabled" : ""}>${I.chevL}</button>
@@ -426,7 +426,47 @@ window.KPlan = (DATA, { greet = false } = {}) => {
   const wkOf = (it) => (precise(it) ? wk(it.date) : wkM(it.date.slice(0, 7) + "-01"));
   const colW = () => (S.zoom === "annee" ? 26 : 140);
 
+  // téléphone : la grille à deux dimensions ne tient pas dans 390 px ; on la lit semaine par semaine, une période à la fois
+  function renderGrillePhone(el) {
+    const i = S.gp ?? Math.max(0, CUR), P = PERIODS[i];
+    const w0 = wkStart(i), w1 = i < PERIODS.length - 1 ? Math.max(w0 + 1, wkStart(i + 1)) : GN;
+    const inWk = (it, w) => (multi(it) ? wk(it.date) <= w && w <= wk(it.fin) : wkOf(it) === w);
+    const live = DB.items.filter((it) => !isSujet(it)).sort(sortDate);
+    const lanes = [...SERVICES.map((s) => ({ nom: s.court, f: (it) => !isTF(it) && !isPay(it) && it.svc === s.k })), { nom: "Partenariats", f: isPay }];
+    const dm = (d) => premier(D(d).toLocaleDateString("fr-FR", { day: "numeric", month: "short" }));
+    const pb = (it) => { const soft = it.st === "confirmer" || it.st === "idee";
+      return `<button type="button" class="blk b-${typeOf(it)}${it.st === "retire" ? " retire" : ""}${soft ? " soft" : ""}" data-open="${it.id}" aria-label="${esc(`${it.t}, ${when(it)}`)}">${isCls(it) ? I.podium : ""}<span class="t">${esc(it.t)}</span></button>`; };
+    const now = wk(TODAY);
+    // période en cours : les semaines passées restent repliées, on commence à cette semaine
+    const past = i === CUR && now > w0 && now < w1 ? now - w0 : 0, ws = Array.from({ length: w1 - w0 }, (_, n) => w0 + n).slice(S.gpast ? 0 : past);
+    const weeks = ws.map((w) => {
+      const d0 = addDays(G0, w * 7), its = live.filter((it) => inWk(it, w));
+      const top = its.filter((it) => isTfDay(it) || isCls(it));
+      const ls = lanes.map((l) => ({ ...l, l: its.filter(l.f) })).filter((l) => l.l.length);
+      const isNow = w === now && TODAY >= P.du && TODAY <= P.au;
+      return `<section class="pw${isNow ? " now" : ""}${top.some(isTfDay) ? " has-tf" : ""}"${isNow ? ' id="pw-now"' : ""} aria-label="Semaine du ${esc(dm(d0))}">
+        <h2 class="pw-h"><b>${esc(dm(d0))}</b><span>au ${esc(dm(addDays(d0, 6)))}</span>${isNow ? `<em>Cette semaine</em>` : ""}</h2>
+        ${top.length ? `<div class="pw-top">${top.map(pb).join("")}</div>` : ""}
+        ${ls.map((l) => `<div class="pw-l"><span class="pw-s">${esc(l.nom)}</span><div class="pw-i">${l.l.map(pb).join("")}</div></div>`).join("")}
+        ${top.length || ls.length ? "" : `<p class="pw-empty">Rien de prévu</p>`}</section>`;
+    }).join("");
+    const suj = DB.items.filter((it) => isSujet(it) && it.per.includes(i)).sort(sortDate);
+    el.innerHTML = K.navbar({ title: "Grille", actions: addBtn() + profileBtn() }) + `<div class="scroll">
+      <h1 class="large-title">Grille</h1>
+      <nav class="pg-nav" aria-label="Période">${PERIODS.map((Q, j) => `<button type="button" class="per-l${j === CUR ? " now" : ""}" data-act="gper" data-i="${j}" aria-pressed="${j === i}">${esc(perName(Q))}</button>`).join("")}</nav>
+      <p class="pg-lib">${esc(P.lib)}</p>
+      ${suj.length ? `<h3 class="sec-h suj-h">Sujets de la période</h3><div class="pw-top pw-suj">${suj.map(pb).join("")}</div>` : ""}
+      ${past ? `<p class="past-p"><button type="button" class="link" data-act="gpast">${S.gpast ? "Masquer les semaines passées" : seeMore(past, past > 1 ? "semaines passées" : "semaine passée")}</button></p>` : ""}
+      ${weeks}
+    </div>`;
+    requestAnimationFrame(() => el.querySelector(`.pg-nav [aria-pressed="true"]`)?.scrollIntoView({ block: "nearest", inline: "center" }));
+    syncBadge();
+  }
+  // téléphone : « Ajouter » quitte la barre du bas et devient un + en haut des écrans principaux
+  const addBtn = () => (canAdd() || isMedia() ? `<button type="button" class="icon-btn phone-only add-btn" aria-label="Ajouter" data-act="goadd">${I.plus}</button>` : "");
+
   function renderGrille(el) {
+    if (!cols()) return renderGrillePhone(el);
     const year = S.zoom === "annee", col = colW(), lab = year ? 104 : 112;
     const lanes = [
       { k: "suj", nom: "Sujets", items: DB.items.filter(isSujet) },
@@ -1295,6 +1335,9 @@ window.KPlan = (DATA, { greet = false } = {}) => {
     if (a === "allnew") K.push(renderAllNew, { title: "Nouveautés" });
     if (a === "meeting") openMeeting();
     if (a === "copil") openCopil();
+    if (a === "gpast") { S.gpast = !S.gpast; K.refresh(); }
+    if (a === "gper") { S.gp = +t.dataset.i; K.refresh(); document.querySelector("#v-grille .scroll")?.scrollTo({ top: 0 }); }
+    if (a === "today" && !document.getElementById("gwrap")) document.getElementById("pw-now")?.scrollIntoView({ behavior: K.reduceMotion() ? "auto" : "smooth", block: "start" });
     if (a === "today") { const gw = document.getElementById("gwrap"), x = ((D(TODAY) - D(G0)) / 864e5 / 7 - (S.zoom === "annee" ? 4 : 0.5)) * colW(); gw?.scrollTo({ left: Math.max(0, x), behavior: K.reduceMotion() ? "auto" : "smooth" }); }
     // un brouillon déjà commencé n'est pas effacé : on change seulement de type (et de fiche liée)
     if (a === "goadd") { S.draft = keptDraft() || newDraft(); K.showTab("ajouter"); }

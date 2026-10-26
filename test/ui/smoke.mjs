@@ -19,7 +19,7 @@ await p.waitForFunction(() => document.getElementById("brand").hidden, null, { t
 await p.waitForTimeout(500);
 await p.screenshot({ path: `${OUT}/s2-periode.png` });
 for (const t of ["tf", "media", "ajouter", "grille", "afaire"]) {
-  await p.click(`.tab[data-kui-tab="${t}"]`); await p.waitForTimeout(300);
+  await p.$eval(`.tab[data-kui-tab="${t}"]`, (b) => b.click()); await p.waitForTimeout(300);
   await p.screenshot({ path: `${OUT}/s3-${t}.png` });
 }
 console.log("erreurs:", errs.length ? errs.join("\n") : "aucune");

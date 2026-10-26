@@ -40,7 +40,7 @@ async function open(now, { vp = { width: 1440, height: 900 }, items = [], period
 const close = (p) => p.context().close();
 const title = (p) => p.textContent("#v-periode .ph-title");
 const head = (p) => p.textContent("#v-periode .ph-t p");
-const tab = async (p, t) => { await p.click(`.tab[data-kui-tab="${t}"]`); await p.tick(300); };
+const tab = async (p, t) => { await p.$eval(`.tab[data-kui-tab="${t}"]`, (b) => b.click()); await p.tick(300); };
 const sync = async (p) => { await p.evaluate(() => document.dispatchEvent(new Event("visibilitychange"))); await p.tick(1200); };
 
 // 1. minuit sans recharger, horloge qui tourne

@@ -52,7 +52,7 @@ async function as(who, extra) {
 const openItem = async (p, id) => { await p.evaluate((id) => { location.hash = "#item=" + id; }, id); await p.waitForTimeout(450); };
 const top = (p) => p.locator(".view.pushed").last();
 const has = async (p, sel) => (await top(p).locator(sel).count()) > 0;
-const tab = async (p, t) => { await p.click(`.tab[data-kui-tab="${t}"] >> visible=true`).catch(() => {}); await p.waitForTimeout(300); };
+const tab = async (p, t) => { await p.$eval(`.tab[data-kui-tab="${t}"]`, (b) => b.click()).catch(() => {}); await p.waitForTimeout(300); };
 const team = async (p, id) => {
   await p.evaluate(() => document.querySelector('[data-act="profil"]').click()); await p.waitForTimeout(300);
   await p.click('[data-act="team"]'); await p.waitForTimeout(300);

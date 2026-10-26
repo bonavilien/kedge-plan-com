@@ -26,7 +26,7 @@ async function open(now, { vp = { width: 390, height: 844 }, items = [], reqs = 
 }
 const close = (p) => p.context().close();
 const fake = (p) => p.evaluate(() => JSON.parse(localStorage.getItem("kplan-fake")));
-const tab = async (p, t) => { await p.click(`.tab[data-kui-tab="${t}"] >> visible=true`); await p.waitForTimeout(250); };
+const tab = async (p, t) => { await p.$eval(`.tab[data-kui-tab="${t}"]`, (b) => b.click()); await p.waitForTimeout(250); };
 const top = (p) => p.locator(".view.pushed").last();
 const openItem = async (p, id) => { await p.evaluate((id) => { location.hash = "#item=" + id; }, id); await p.waitForTimeout(400); };
 

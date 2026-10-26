@@ -8,7 +8,7 @@ const errs = [];
 for (const [w, h] of [[390, 844], [1440, 900]]) {
   const p = await (await b.newContext({ viewport: { width: w, height: h } })).newPage();
   p.on("pageerror", (e) => errs.push(e.message));
-  const tab = async (t) => { await p.click(`[data-kui-tab="${t}"] >> visible=true`); await p.waitForTimeout(300); };
+  const tab = async (t) => { await p.$eval(`.tab[data-kui-tab="${t}"]`, (b) => b.click()); await p.waitForTimeout(300); };
   await p.goto(URL0); await p.evaluate(() => localStorage.clear()); await p.reload(); await p.waitForSelector("#login");
   await p.fill("#lg-mail", "aurelie@kedgebs.com"); await p.fill("#lg-pw", "motdepasse"); await p.click("#login button");
   await p.waitForFunction(() => document.getElementById("brand").hidden); await p.waitForTimeout(400);

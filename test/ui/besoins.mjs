@@ -35,7 +35,7 @@ const errs = []; p.on("pageerror", (e) => errs.push(e.message));
 const fake = () => p.evaluate(() => JSON.parse(localStorage.getItem("kplan-fake")));
 const mutate = (fn, arg) => p.evaluate(([src, arg]) => { const f = window.__fake; new Function("db", "arg", src)(f.db, arg); f.save(); }, [fn, arg]);
 const tick = (ms = 400) => p.clock.runFor(ms).then(() => p.waitForTimeout(50));
-const tab = async (t) => { await p.click(`.tab[data-kui-tab="${t}"]`); await tick(); };
+const tab = async (t) => { await p.$eval(`.tab[data-kui-tab="${t}"]`, (b) => b.click()); await tick(); };
 const topv = () => p.locator(".view.pushed").last();
 async function login(who) {
   await p.goto(URL0); await p.waitForSelector("#login");
