@@ -24,10 +24,17 @@ window.KPlan = (DATA, { greet = false } = {}) => {
   const monShort = (s) => D(s).toLocaleDateString("fr-FR", { month: "short" });
   const monLong = (m) => cap(D(m + "-01").toLocaleDateString("fr-FR", { month: "long", year: "numeric" }));
   const isSujet = (it) => !!(it.per && it.per.length);
-  const when = (it) => (isSujet(it) ? K.fr.list(it.per.map((i) => perName(PERIODS[i]))) : it.flou || fmtShort(it.date));
+  // un temps fort sur plusieurs jours : « du 9 au 13 nov. », « du 30 nov. au 4 déc. »
+  const fmtRange = (a, b) => { const dm = (s) => premier(D(s).toLocaleDateString("fr-FR", { day: "numeric", month: "short" }));
+    return `du ${a.slice(0, 7) === b.slice(0, 7) ? dm(a).split(" ")[0] : dm(a)} au ${dm(b)}`; };
+  const when = (it) => (isSujet(it) ? K.fr.list(it.per.map((i) => perName(PERIODS[i]))) : it.flou || (multi(it) ? fmtRange(it.date, it.fin) : fmtShort(it.date)));
   const ago = (s) => { const n = -days(s); return n <= 0 ? "aujourd'hui" : n === 1 ? "hier" : `il y a ${n} jours`; };
   const precise = (it) => !isSujet(it) && (!it.flou || /^\d/.test(it.flou)); // « Oct. » ou « Date à confirmer » : on ne connaît que le mois
-  const isPast = (it) => (isSujet(it) ? PERIODS[Math.max(...it.per)].au < TODAY : precise(it) ? it.date < TODAY : it.date.slice(0, 7) < TODAY.slice(0, 7));
+  const multi = (it) => !!it.fin && precise(it); // temps fort sur plusieurs jours : date = premier jour, fin = dernier
+  const endOf = (it) => (multi(it) ? it.fin : it.date);
+  // les jours d'un temps fort sur plusieurs jours, du premier au dernier
+  const daysOf = (it) => { const l = [it.date]; while (multi(it) && l[l.length - 1] < it.fin) l.push(addDays(l[l.length - 1], 1)); return l; };
+  const isPast = (it) => (isSujet(it) ? PERIODS[Math.max(...it.per)].au < TODAY : precise(it) ? endOf(it) < TODAY : it.date.slice(0, 7) < TODAY.slice(0, 7));
   const norm = (s) => s.toLowerCase().replace(/\./g, "");
 
   // ---------- référentiels ----------
@@ -113,7 +120,7 @@ window.KPlan = (DATA, { greet = false } = {}) => {
 
   // une date proposée dans l'année du plan
   const inPlan = (s) => (s < FIRST.du ? FIRST.du : s > LAST.au ? LAST.au : s);
-  const newDraft = (kind = "action") => ({ kind, per: [S.period], t: "", prec: "jour", date: inPlan(addDays(TODAY, 14)), mois: inPlan(TODAY).slice(0, 7), m: [], cc: [], svc: me().chef ? SERVICES[0]?.k || "" : me().svc, partner: PARTNERS[0]?.k || "", newPartner: "", tf: "", link: "", note: "", more: false });
+  const newDraft = (kind = "action") => ({ kind, per: [S.period], t: "", prec: "jour", date: inPlan(addDays(TODAY, 14)), mois: inPlan(TODAY).slice(0, 7), m: [], cc: [], svc: me().chef ? SERVICES[0]?.k || "" : me().svc, partner: PARTNERS[0]?.k || "", newPartner: "", tf: "", link: "", note: "", more: false, plus: false, fin: "" });
   // ordinateur et tablette : trois colonnes de services dès 768 px, fiche en panneau à droite dès 1100 px
   const MQ_COLS = matchMedia("(min-width: 768px)"), MQ_PANEL = matchMedia("(min-width: 1100px)");
   const cols = () => MQ_COLS.matches, panel = () => MQ_PANEL.matches;
@@ -155,7 +162,7 @@ window.KPlan = (DATA, { greet = false } = {}) => {
   function agRow(it, { date = true, mode = "week", who = "all", mark = true } = {}) {
     const t = typeOf(it), dt = D(it.date), p = precise(it), mon = monShort(it.date);
     const dcol = !date ? "" : t === "suj" ? `<b class="ic">${I.bookmark}</b>` : p ? `<b>${dt.getDate()}</b><span>${esc(mode === "week" ? dt.toLocaleDateString("fr-FR", { weekday: "short" }) : mon)}</span>` : `<b class="m">${esc(mon)}</b>`;
-    const flouTxt = it.flou && (p || norm(it.flou) !== norm(mon)) ? it.flou : "";
+    const flouTxt = multi(it) ? `jusqu'au ${fmtShort(it.fin)}` : it.flou && (p || norm(it.flou) !== norm(mon)) ? it.flou : "";
     const ev = t === "tf" || t === "suj";
     const parts = ev ? [relaisTxt(it), flouTxt, stAfter(it, flouTxt)]
       : [t === "pay" ? partnerName(it) : who === "all" ? svcLabel(it) : "", msgText(it), flouTxt, stAfter(it, flouTxt)];
@@ -408,14 +415,14 @@ window.KPlan = (DATA, { greet = false } = {}) => {
     const blk = (it) => {
       if (isSujet(it)) return sujBlk(it);
       const soft = it.st === "confirmer" || it.st === "idee";
-      return `<button type="button" class="blk b-${typeOf(it)}${it.st === "retire" ? " retire" : ""}${soft ? " soft" : ""}" style="grid-column:${wk(it.date) + 1}" data-open="${it.id}" aria-label="${esc(`${it.t}, ${when(it)}`)}">${year ? `<i class="sq"></i>` : `<span class="t">${esc(it.t)}</span>`}</button>`;
+      return `<button type="button" class="blk b-${typeOf(it)}${it.st === "retire" ? " retire" : ""}${soft ? " soft" : ""}" style="grid-column:${wk(it.date) + 1}${multi(it) ? `/${wk(it.fin) + 2}` : ""}" data-open="${it.id}" aria-label="${esc(`${it.t}, ${when(it)}`)}">${year ? `<i class="sq"></i>` : `<span class="t">${esc(it.t)}</span>`}</button>`;
     };
     const months = MONTHS.map((m) => m + "-01");
     const perEnd = (i) => (i < PERIODS.length - 1 ? Math.max(wkStart(i) + 1, wkStart(i + 1)) : GN);
     const head = `<div class="grow ghead"><div class="glab"></div><div class="gcells gper">${PERIODS.map((P, i) => `<div class="gp" style="grid-row:1;grid-column:${wkStart(i) + 1}/${perEnd(i) + 1}">${esc(perName(P))}</div>`).join("")}</div></div>
       <div class="grow ghead"><div class="glab"></div><div class="gcells gmon">${months.map((m, i) => `<div style="grid-column:${wk(m) + 1}/${i < months.length - 1 ? wk(months[i + 1]) + 1 : GN + 1}">${D(m).toLocaleDateString("fr-FR", { month: year ? "narrow" : "long" })}</div>`).join("")}</div></div>
       ${year ? "" : `<div class="grow ghead"><div class="glab"></div><div class="gcells gwk">${Array.from({ length: GN }, (_, i) => `<div>${D(addDays(G0, i * 7)).getDate()}</div>`).join("")}</div></div>`}`;
-    const bands = [...new Set(DB.items.filter((it) => isTF(it) && !isSujet(it)).map((it) => wk(it.date)))].map((w) => `<div class="band" style="left:calc(var(--lab) + ${w} * var(--col))"></div>`).join("");
+    const bands = [...new Set(DB.items.filter((it) => isTF(it) && !isSujet(it)).flatMap((it) => daysOf(it).map(wk)))].map((w) => `<div class="band" style="left:calc(var(--lab) + ${w} * var(--col))"></div>`).join("");
     const todayX = (D(TODAY) - D(G0)) / 864e5 / 7;
     const body = lanes.map((l) => `<div class="grow lane-${l.k}">${l.k === "partners" ? `<button type="button" class="glab" data-act="partners"><b>${l.nom}</b></button>` : `<div class="glab"><b>${esc(l.nom)}</b></div>`}<div class="gcells">${l.items.sort(sortDate).map(blk).join("")}</div></div>`).join("");
 
@@ -445,7 +452,7 @@ window.KPlan = (DATA, { greet = false } = {}) => {
   const tdDate = (it) => {
     const p = precise(it), dt = D(it.date), mon = monShort(it.date);
     const main = p ? `<b class="dp">${dt.getDate()}</b><span>${esc(dt.toLocaleDateString("fr-FR", { weekday: "short" }))} ${esc(mon)}</span>` : `<b class="dp m">${esc(mon)}</b>`;
-    const flou = it.flou && (p || norm(it.flou) !== norm(mon)) ? `<small>${esc(it.flou)}</small>` : "";
+    const flou = multi(it) ? `<small>jusqu'au ${esc(fmtShort(it.fin))}</small>` : it.flou && (p || norm(it.flou) !== norm(mon)) ? `<small>${esc(it.flou)}</small>` : "";
     return `<span class="td td-date">${main}${flou}</span>`;
   };
   const stCell = (it) => { const past = isPast(it) || it.st === "diffuse";
@@ -503,10 +510,11 @@ window.KPlan = (DATA, { greet = false } = {}) => {
   // =====================================================================
   function formHTML(d, px, edit) {
     const p = me(), suj = d.kind === "sujet", tf = d.kind === "tf" || suj, pay = d.kind === "partner", mois = d.prec === "mois";
+    const tfk = d.kind === "tf", plus = tfk && d.plus; // un temps fort peut durer plusieurs jours (semaine séminaire…)
     const kinds = [...(canAdd() ? [["action", "Action"], ["tf", "Temps fort"], ["sujet", "Sujet"]] : []), ...(isMedia() ? [["partner", "Partenariat"]] : [])];
     const told = K.fr.list(toldAll());
     // le temps fort déjà lié reste dans la liste, même retiré ou passé : enregistrer ne doit pas le détacher
-    const tfs = DB.items.filter((it) => isTF(it) && (it.id === d.tf || (it.st !== "retire" && (precise(it) ? days(it.date) >= -7 : !isPast(it))))).sort(sortDate);
+    const tfs = DB.items.filter((it) => isTF(it) && (it.id === d.tf || (it.st !== "retire" && (precise(it) ? days(endOf(it)) >= -7 : !isPast(it))))).sort(sortDate);
     const opt = (it) => `<option value="${it.id}"${d.tf === it.id ? " selected" : ""}>${esc(`${when(it)} · ${it.t}`)}</option>`;
     const open = d.more || !!d.tf || !!d.link || !!d.note;
     const ph = suj ? "Ex. Salle Bloomberg" : tf ? "Ex. Venue de Columbia à Bordeaux" : pay ? "Ex. Article sur le consortium" : "Ex. Reel alumni chez EY";
@@ -516,9 +524,11 @@ window.KPlan = (DATA, { greet = false } = {}) => {
         <input class="in np-in" id="${px}-np" value="${esc(d.newPartner)}" placeholder="${PARTNERS.length ? "Ou un nouveau partenaire" : "Ex. Major Prépa"}" aria-labelledby="${px}-pt-l" aria-describedby="${px}-pt-err"><p class="err" id="${px}-pt-err" hidden>Choisis ou écris un partenaire.</p>` : ""}
       ${!tf && !pay && p.chef ? `<span class="lbl" id="${px}-svc-l">Porté par</span><div class="chips" data-chips id="${px}-svc" role="group" aria-labelledby="${px}-svc-l">${[...SERVICES, CHEF].map((s) => chip(s.court, d.svc === s.k, s.k)).join("")}</div>` : ""}
       ${suj ? `<span class="lbl" id="${px}-per-l">Période</span><div class="chips" data-chips="multi" id="${px}-per" role="group" aria-labelledby="${px}-per-l" aria-describedby="${px}-per-err">${PERIODS.map((P, i) => chip(perName(P), d.per.includes(i), i)).join("")}</div>
-        <p class="err" id="${px}-per-err" hidden>Choisis au moins une période.</p>` : `<div id="${px}-jour"${mois ? " hidden" : ""}><label class="lbl" for="${px}-date">Date</label>${dateField(`${px}-date`, d.date)}</div>
+        <p class="err" id="${px}-per-err" hidden>Choisis au moins une période.</p>` : `<div id="${px}-jour"${mois ? " hidden" : ""}><label class="lbl" for="${px}-date" id="${px}-date-l">${plus ? "Du" : "Date"}</label>${dateField(`${px}-date`, d.date)}
+        ${tfk ? `<div id="${px}-finw"${plus ? "" : " hidden"}><label class="lbl" for="${px}-fin">Au</label>${dateField(`${px}-fin`, finOf(d))}<p class="err" id="${px}-fin-err" hidden>Choisis un dernier jour après le premier.</p></div>` : ""}</div>
       <div id="${px}-moisw"${mois ? "" : " hidden"}><label class="lbl" for="${px}-mois">Mois</label><select class="in" id="${px}-mois">${MONTHS.map((m) => `<option value="${m}"${d.mois === m ? " selected" : ""}>${monLong(m)}</option>`).join("")}</select></div>
-      <div class="group conf-row"><label class="row" for="${px}-prec"><span class="row-main"><b>Date à préciser</b></span><input type="checkbox" class="switch" id="${px}-prec" data-prec="${px}"${mois ? " checked" : ""}></label></div>`}
+      <div class="group conf-row">${tfk ? `<label class="row" for="${px}-plus" id="${px}-plusr"${mois ? " hidden" : ""}><span class="row-main"><b>Sur plusieurs jours</b></span><input type="checkbox" class="switch" id="${px}-plus" data-plus="${px}"${plus ? " checked" : ""}></label>` : ""}
+        <label class="row" for="${px}-prec"><span class="row-main"><b>Date à préciser</b></span><input type="checkbox" class="switch" id="${px}-prec" data-prec="${px}"${mois ? " checked" : ""}></label></div>`}
       ${tf ? "" : `<span class="lbl" id="${px}-m-l">Message</span><div class="chips" data-chips="multi" id="${px}-m" role="group" aria-labelledby="${px}-m-l" aria-describedby="${px}-m-err ${px}-m-f">${MESSAGES.map((m) => chip(m.nom, d.m.includes(String(m.n)), m.n)).join("")}${chip("Incontournable", d.m.includes("INC"), "INC")}</div>
         <p class="err" id="${px}-m-err" hidden>Choisis un message, ou « Incontournable ».</p><p class="sec-f" id="${px}-m-f">Incontournable : à couvrir même sans message (admissibles, JPO…).</p>`}
       ${pay ? "" : `<span class="lbl" id="${px}-cc-l">Qui prévenir ?</span><div class="chips" data-chips="multi" id="${px}-cc" role="group" aria-labelledby="${px}-cc-l">${SERVICES.filter((s) => s.k !== p.svc).map((s) => chip(s.court, d.cc.includes(s.k), s.k)).join("")}</div>
@@ -536,27 +546,32 @@ window.KPlan = (DATA, { greet = false } = {}) => {
     return { ...base, t: q("t")?.value ?? base.t, prec: q("prec")?.checked ? "mois" : "jour", date: q("date")?.value || base.date, mois: q("mois")?.value || base.mois,
       m: q("m") ? pressed(`#${px}-m`, el) : base.m, per: q("per") ? pressed(`#${px}-per`, el).map(Number) : base.per, cc: q("cc") ? pressed(`#${px}-cc`, el) : base.cc,
       svc: q("svc") ? pressed(`#${px}-svc`, el)[0] || base.svc : base.svc, partner: q("pt") ? pressed(`#${px}-pt`, el)[0] || base.partner : base.partner, newPartner: q("np")?.value ?? base.newPartner,
-      tf: q("tf") ? q("tf").value : base.tf, link: q("link")?.value ?? base.link, note: q("note")?.value ?? base.note, more: !!q("more")?.open };
+      tf: q("tf") ? q("tf").value : base.tf, link: q("link")?.value ?? base.link, note: q("note")?.value ?? base.note, more: !!q("more")?.open,
+      plus: q("plus") ? q("plus").checked : base.plus, fin: q("fin")?.value || base.fin };
   }
   function validate(el, px, d) {
     const t = el.querySelector(`#${px}-t`), okT = !!d.t.trim(), okM = d.kind === "tf" || d.kind === "sujet" || d.m.length > 0, mErr = el.querySelector(`#${px}-m-err`);
     const okP = d.kind !== "sujet" || d.per.length > 0, pErr = el.querySelector(`#${px}-per-err`);
     const okPt = d.kind !== "partner" || !!(d.newPartner.trim() || PARTNERS.some((x) => x.k === d.partner)), ptErr = el.querySelector(`#${px}-pt-err`);
+    const fErr = el.querySelector(`#${px}-fin-err`), okF = !(d.kind === "tf" && d.plus && d.prec !== "mois") || finOf(d) > d.date;
     const link = el.querySelector(`#${px}-link`), okL = !d.link.trim() || /^https:\/\/\S+$/.test(d.link.trim()), lErr = el.querySelector(`#${px}-link-err`);
-    el.querySelector(`#${px}-t-err`).hidden = okT; t.setAttribute("aria-invalid", String(!okT)); if (mErr) mErr.hidden = okM; if (pErr) pErr.hidden = okP; if (ptErr) ptErr.hidden = okPt;
+    el.querySelector(`#${px}-t-err`).hidden = okT; t.setAttribute("aria-invalid", String(!okT)); if (mErr) mErr.hidden = okM; if (pErr) pErr.hidden = okP; if (ptErr) ptErr.hidden = okPt; if (fErr) fErr.hidden = okF;
     if (lErr) { lErr.hidden = okL; link.setAttribute("aria-invalid", String(!okL)); }
     if (!okT) { t.focus(); return false; }
     if (!okPt) { el.querySelector(`#${px}-np`).focus(); return false; }
     if (!okP) { el.querySelector(`#${px}-per .chip`).focus(); return false; }
     if (!okM) { el.querySelector(`#${px}-m .chip`).focus(); return false; }
+    if (!okF) { el.querySelector(`#${px}-fin`).focus(); return false; }
     if (!okL) { el.querySelector(`#${px}-more`).open = true; link.focus(); return false; }
     return true;
   }
+  // le dernier jour proposé : celui choisi, sinon une semaine du lundi au vendredi
+  const finOf = (d) => d.fin || [addDays(d.date, 4), DMAX].sort()[0];
   // date précise, ou seulement le mois (« Date à préciser »)
   const dateFields = (d, prev) => {
-    if (d.kind === "sujet") { const per = [...d.per].sort((a, b) => a - b); return { date: PERIODS[per[0]].du, flou: "", per }; }
-    if (d.prec === "mois") return prev && !precise(prev) && prev.date.slice(0, 7) === d.mois ? { date: prev.date, flou: prev.flou } : { date: `${d.mois}-01`, flou: cap(monShort(`${d.mois}-01`)) };
-    return { date: d.date, flou: prev && precise(prev) && prev.date === d.date ? prev.flou : "" };
+    if (d.kind === "sujet") { const per = [...d.per].sort((a, b) => a - b); return { date: PERIODS[per[0]].du, flou: "", fin: "", per }; }
+    if (d.prec === "mois") return prev && !precise(prev) && prev.date.slice(0, 7) === d.mois ? { date: prev.date, flou: prev.flou, fin: "" } : { date: `${d.mois}-01`, flou: cap(monShort(`${d.mois}-01`)), fin: "" };
+    return { date: d.date, flou: prev && precise(prev) && prev.date === d.date ? prev.flou : "", fin: d.kind === "tf" && d.plus ? finOf(d) : "" };
   };
   const msgsOf = (d) => (d.kind === "tf" || d.kind === "sujet" ? [] : d.m.map((x) => (x === "INC" ? "INC" : +x)));
 
@@ -605,7 +620,7 @@ window.KPlan = (DATA, { greet = false } = {}) => {
     openItem(it.id);
   }
   const draftOf = (it) => ({ id: it.id, kind: isSujet(it) ? "sujet" : isTF(it) ? "tf" : isPay(it) ? "partner" : "action", t: it.t, prec: precise(it) ? "jour" : "mois", date: it.date, mois: it.date.slice(0, 7),
-    m: it.m.map(String), per: isSujet(it) ? [...it.per] : [S.period], cc: [...it.cc], svc: it.svc, partner: it.partner || PARTNERS[0]?.k || "", newPartner: "", tf: it.tf, link: "", note: it.note, more: !!(it.tf || it.note),
+    m: it.m.map(String), per: isSujet(it) ? [...it.per] : [S.period], cc: [...it.cc], svc: it.svc, partner: it.partner || PARTNERS[0]?.k || "", newPartner: "", tf: it.tf, link: "", note: it.note, more: !!(it.tf || it.note), plus: multi(it), fin: it.fin || "",
     orig: JSON.parse(JSON.stringify(it)) });
   function openEdit(id) { const it = byId(id); if (!it) return; S.edit = draftOf(it); K.push((el, o) => renderEdit(el, o, id), { title: "Modifier" }); }
   function renderEdit(el, { back }) {
@@ -621,7 +636,7 @@ window.KPlan = (DATA, { greet = false } = {}) => {
       if (d.kind === "partner") next.partner = await partnerOf(d);
     } catch (e) { btn.disabled = false; return fail(e); }
     // seuls les champs changés dans le formulaire partent : une modification faite entre-temps par quelqu'un d'autre est gardée
-    const orig = S.edit.orig, keys = ["t", "date", "flou", "per", "svc", "cc", "m", "tf", "partner", "note"].filter((k) => JSON.stringify(orig[k]) !== JSON.stringify(next[k]));
+    const orig = S.edit.orig, keys = ["t", "date", "fin", "flou", "per", "svc", "cc", "m", "tf", "partner", "note"].filter((k) => JSON.stringify(orig[k]) !== JSON.stringify(next[k]));
     if (!keys.length) { btn.disabled = false; S.edit = null; K.pop(); return K.snack("Rien n'a changé."); }
     try { await Store.updateItem(id, next, keys); } catch (e) { return fail(e); } finally { btn.disabled = false; }
     const before = { ...it };
@@ -686,9 +701,9 @@ window.KPlan = (DATA, { greet = false } = {}) => {
       if (j.kind === "retrait") return { j, main: `Demande retirée : ${d.type || "demande"} à ${svcOf(d.dest).court}` };
       if (j.kind === "prevenu") return { j, main: d.n ? `Changement signalé à ${d.n} ${d.n > 1 ? "personnes" : "personne"}` : "Changement signalé" };
       // la date et sa précision (« Nov. », « Date à confirmer ») forment une seule ligne
-      const dt = (i) => { const f = d.flou ? d.flou[i] : it.flou, x = d.date ? d.date[i] : it.date; return f || (x ? fmtShort(x) : "—"); };
+      const dt = (i) => { const f = d.flou ? d.flou[i] : it.flou, x = d.date ? d.date[i] : it.date, y = d.fin ? d.fin[i] : it.fin; return f || (x ? (y ? fmtRange(x, y) : fmtShort(x)) : "—"); };
       // un sujet n'a pas de date à montrer : ses périodes suffisent
-      const ks = Object.keys(FIELDS).filter((k) => (d[k] || (k === "date" && d.flou)) && !(k === "date" && isSujet(it)));
+      const ks = Object.keys(FIELDS).filter((k) => (d[k] || (k === "date" && (d.flou || d.fin))) && !(k === "date" && isSujet(it)));
       if (!ks.length) return null;
       return { j, main: `Modification : ${K.fr.list(ks.map((k) => FIELDS[k]))}`,
         det: ks.map((k) => (k === "date" ? det("date", `${dt(0)} → ${dt(1)}`) : k === "note" ? det("précisions", d.note[1] ? quote(d.note[1]) : "retirées") : det(FIELDS[k], `${valTxt(k, d[k][0])} → ${valTxt(k, d[k][1])}`))).join("") };
@@ -765,7 +780,7 @@ window.KPlan = (DATA, { greet = false } = {}) => {
   function calHTML(id, sel, month) {
     const first = D(month + "-01"), y = first.getFullYear(), mo = first.getMonth(), n = new Date(y, mo + 1, 0).getDate(), lead = (first.getDay() + 6) % 7;
     const prev = iso(new Date(y, mo - 1, 1)).slice(0, 7), next = iso(new Date(y, mo + 1, 1)).slice(0, 7);
-    const tf = new Set(DB.items.filter((it) => isTF(it) && precise(it) && it.st !== "retire").map((it) => it.date));
+    const tf = new Set(DB.items.filter((it) => isTF(it) && precise(it) && it.st !== "retire").flatMap(daysOf));
     const nav = (m, dir, off) => `<button type="button" class="cal-nav" data-cal-nav="${m}" data-for="${id}" aria-label="${dir}"${off ? " disabled" : ""}>${dir === "Mois suivant" ? `<span class="flip">${I.chevL}</span>` : I.chevL}</button>`;
     const cells = Array.from({ length: n }, (_, i) => {
       const d = `${month}-${String(i + 1).padStart(2, "0")}`;
@@ -787,6 +802,9 @@ window.KPlan = (DATA, { greet = false } = {}) => {
     } else if (day) {
       const f = document.getElementById(day.dataset.for);
       f.value = day.dataset.calDay; f.querySelector("span").textContent = fmtLong(f.value);
+      // un premier jour qui passe après le dernier : le dernier suit (une semaine du lundi au vendredi)
+      const fin = /-date$/.test(f.id) && document.getElementById(f.id.replace(/date$/, "fin"));
+      if (fin && fin.value <= f.value) { fin.value = [addDays(f.value, 4), DMAX].sort()[0]; fin.querySelector("span").textContent = fmtLong(fin.value); }
       document.getElementById(f.id + "-cal").hidden = true; f.setAttribute("aria-expanded", "false"); f.focus();
     }
   });
@@ -1014,7 +1032,7 @@ window.KPlan = (DATA, { greet = false } = {}) => {
       const cov = MESSAGES.map((m) => ({ m, n: acts.filter((it) => it.m.includes(m.n)).length }));
       const rowsH = tfs.map((tf) => {
         const past = isPast(tf), linked = DB.items.filter((a) => a.tf === tf.id && alive(a));
-        const when = isSujet(tf) ? "Toute la période" : precise(tf) ? cap(D(tf.date).toLocaleDateString("fr-FR", { weekday: "short", day: "numeric", month: "short" })) : cap(tf.flou);
+        const when = isSujet(tf) ? "Toute la période" : multi(tf) ? cap(fmtRange(tf.date, tf.fin)) : precise(tf) ? cap(D(tf.date).toLocaleDateString("fr-FR", { weekday: "short", day: "numeric", month: "short" })) : cap(tf.flou);
         const cells = COLS.map((c) => {
           const l = linked.filter(c.f).sort(sortDate);
           if (l.length) return `<div class="mx-c">${l.map((a) => relay(a, tf)).join("")}</div>`;
@@ -1116,7 +1134,7 @@ window.KPlan = (DATA, { greet = false } = {}) => {
       <span class="cp-t"><b>${esc(it.t)}</b><span>${isPay(it) ? payBadge : ""}${esc([svcLabel(it), k === "d" ? "" : stWord(it)].filter(Boolean).join(" · "))}</span></span></button>`;
     const col = (k, title, list, empty) => `<section class="cp-col ${k}" aria-label="${esc(title)}"><h3>${esc(title)} <b>${list.length}</b></h3>
       ${list.map((it) => row(it, k)).join("") || `<p class="cp-empty">${esc(empty)}</p>`}</section>`;
-    const chip = (it) => `<button type="button" class="cp-tf${isSujet(it) ? " suj" : ""}${isPast(it) ? " past" : ""}" data-cp-open="${it.id}">${isSujet(it) ? I.bookmark : `<span>${esc(precise(it) ? fmtShort(it.date) : it.flou)}</span>`}${esc(it.t)}</button>`;
+    const chip = (it) => `<button type="button" class="cp-tf${isSujet(it) ? " suj" : ""}${isPast(it) ? " past" : ""}" data-cp-open="${it.id}">${isSujet(it) ? I.bookmark : `<span>${esc(precise(it) ? (multi(it) ? when(it) : fmtShort(it.date)) : it.flou)}</span>`}${esc(it.t)}</button>`;
     // couverture des 5 messages sur la période, comme à l'écran réunion
     const acts = b.l.filter((it) => !isPay(it)), cov = MESSAGES.map((m) => ({ m, n: acts.filter((it) => it.m.includes(m.n)).length }));
     const all = shownP.map((x) => bilan(x.i)), nAll = all.reduce((s, x) => s + x.l.length, 0), nDone = all.reduce((s, x) => s + x.done.length, 0);
@@ -1279,7 +1297,9 @@ window.KPlan = (DATA, { greet = false } = {}) => {
         .finally(() => K.refresh());
     }
     // « Date à préciser » : le choix du jour laisse la place au choix du mois
-    if (t.dataset.prec) { const px = t.dataset.prec; document.getElementById(`${px}-jour`).hidden = t.checked; document.getElementById(`${px}-moisw`).hidden = !t.checked; }
+    if (t.dataset.prec) { const px = t.dataset.prec, pr = document.getElementById(`${px}-plusr`); document.getElementById(`${px}-jour`).hidden = t.checked; document.getElementById(`${px}-moisw`).hidden = !t.checked; if (pr) pr.hidden = t.checked; }
+    // « Sur plusieurs jours » : un premier et un dernier jour
+    if (t.dataset.plus) { const px = t.dataset.plus; document.getElementById(`${px}-finw`).hidden = !t.checked; document.getElementById(`${px}-date-l`).textContent = t.checked ? "Du" : "Date"; }
   });
   app.addEventListener("kui:change", (e) => {
     const t = e.target;

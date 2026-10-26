@@ -53,7 +53,7 @@ window.KStore = (() => {
       me: user.id, email: user.email || "",
       db: {
         items: items.map((r) => ({
-          id: r.id, kind: r.kind, t: r.t, date: r.date, flou: r.flou, per: r.per.map(perIndex).filter((i) => i >= 0),
+          id: r.id, kind: r.kind, t: r.t, date: r.date, fin: r.fin || "", flou: r.flou, per: r.per.map(perIndex).filter((i) => i >= 0),
           svc: r.svc, cc: r.cc, m: r.m.map((x) => (x === "INC" ? "INC" : +x)), st: r.st, tf: r.tf || "", partner: r.partner || "",
           lieu: r.lieu, note: r.note, by: r.author || "", at: day(r.at), ts: r.at, links: byItem.get(r.id) || [],
         })),
@@ -70,7 +70,7 @@ window.KStore = (() => {
 
   // ---------- écriture ----------
   const itemRow = (it) => ({
-    t: it.t, date: it.date, flou: it.flou, per: it.per.map((i) => PERIODS[i].n), svc: it.svc, cc: it.cc,
+    t: it.t, date: it.date, fin: it.fin || null, flou: it.flou, per: it.per.map((i) => PERIODS[i].n), svc: it.svc, cc: it.cc,
     m: it.m.map(String), st: it.st, tf: it.tf || null, partner: it.partner || null, lieu: it.lieu, note: it.note,
   });
   const addItem = (it) => run(sb.from("items").insert({ id: it.id, kind: it.kind, ...itemRow(it) }));

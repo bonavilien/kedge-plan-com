@@ -27,4 +27,6 @@ $D -f supabase/migrations/0008_suppression.sql
 $D -f test/db/suppression.sql
 $D -f supabase/migrations/0009_direction_programme.sql
 $D -f test/db/programme.sql
+$D -f supabase/migrations/0010_plusieurs_jours.sql
+$D -f test/db/plusieurs.sql
 echo "Base : tout est bon"

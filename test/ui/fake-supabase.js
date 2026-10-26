@@ -59,7 +59,7 @@
     return true;
   }
   // les déclencheurs de la migration 0003 : l'historique se remplit tout seul
-  const FIELDS = ["t", "date", "flou", "per", "svc", "cc", "m", "st", "tf", "partner", "lieu", "note"];
+  const FIELDS = ["t", "date", "fin", "flou", "per", "svc", "cc", "m", "st", "tf", "partner", "lieu", "note"];
   const jot = (item, kind, diff = {}, author = db.session.user.id, at = new Date().toISOString()) =>
     db.journal.push({ id: (db.journal.at(-1)?.id || 0) + 1, item, author, at, kind, diff });
   const norm = (v) => (v === undefined || v === "" ? null : v);
