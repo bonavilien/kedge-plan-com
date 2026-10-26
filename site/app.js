@@ -315,7 +315,6 @@ window.KPlan = (DATA, { greet = false } = {}) => {
     const list = S.msgF ? base.filter((it) => it.m.includes(+S.msgF) && it.st !== "retire") : base;
     const past = cur ? list.filter(isPast) : [];
     const shown = cur && !S.pastP ? list.filter((it) => !isPast(it)) : list;
-    const rest = restTxt(P);
     // les 7 derniers jours d'une période : ce qui ouvre la suivante (ses deux premières semaines) se voit déjà
     const nx = PERIODS[S.period + 1], left = days(P.au);
     const soon = cur && nx && left >= 0 && left <= 6
@@ -354,16 +353,7 @@ window.KPlan = (DATA, { greet = false } = {}) => {
     const colsH = () => `<div class="svc-cols">${[...SERVICES.map((s) => ({ nom: s.nom, l: shown.filter((it) => it.svc === s.k) })), ...(chefL.length ? [{ nom: CHEF.nom, l: chefL }] : [])].map(({ nom, l }) =>
       `<section class="svc-col" aria-label="${esc(nom)}"><h2 class="col-h">${esc(nom)}<span>${l.filter((it) => it.st !== "retire").length}</span></h2>${l.length ? agenda(l, { who: "tf" }) : `<p class="col-empty">Rien sur cette période.</p>`}</section>`).join("")}</div>`;
     el.innerHTML = K.navbar({ title: "Ma période", actions: (chef ? `<button type="button" class="txt-btn strong wide-only" data-act="meeting">Mode réunion</button>` : "") + addBtn() + profileBtn() }) + `<div class="scroll${wide ? " page-wide" : ""}"><div class="swipe" id="swipe">
-      <section class="panel lg phead" aria-label="${esc(`Période ${S.period + 1} sur ${PERIODS.length}`)}">
-        <div class="ph-nav">
-          <button type="button" class="ph-arrow" data-act="prev" aria-label="Période précédente"${S.period === 0 ? " disabled" : ""}>${I.chevL}</button>
-          <div class="ph-t"><h1 class="ph-title"><em>${esc(perName(P))}</em></h1><p>${esc(P.lib)} · ${rest}</p></div>
-          <button type="button" class="ph-arrow" data-act="next" aria-label="Période suivante"${S.period === PERIODS.length - 1 ? " disabled" : ""}><span class="flip">${I.chevL}</span></button>
-        </div>
-        <div class="pdots" aria-hidden="true">${PERIODS.map((x, i) => `<i${i === S.period ? ' class="on"' : ""}></i>`).join("")}</div>
-        ${cover}
-      </section>
-      ${cur ? "" : `<p class="back-now"><button type="button" class="link" data-act="now">Revenir à ${esc(perName(PERIODS[CUR]))}</button></p>`}
+      ${periodHead(cover)}
       ${clsH}
       ${news}
       ${bar}
@@ -372,6 +362,20 @@ window.KPlan = (DATA, { greet = false } = {}) => {
     </div></div>`;
     wireSwipe(el.querySelector("#swipe"));
     syncBadge();
+  }
+  // le bandeau de la période regardée (Ma période, Calendrier sur téléphone) : flèches, points, et on glisse pour changer
+  function periodHead(cover = "", h = "h1") {
+    const P = PERIODS[S.period];
+    return `<section class="panel lg phead" aria-label="${esc(`Période ${S.period + 1} sur ${PERIODS.length}`)}">
+        <div class="ph-nav">
+          <button type="button" class="ph-arrow" data-act="prev" aria-label="Période précédente"${S.period === 0 ? " disabled" : ""}>${I.chevL}</button>
+          <div class="ph-t"><${h} class="ph-title"><em>${esc(perName(P))}</em></${h}><p>${esc(P.lib)} · ${restTxt(P)}</p></div>
+          <button type="button" class="ph-arrow" data-act="next" aria-label="Période suivante"${S.period === PERIODS.length - 1 ? " disabled" : ""}><span class="flip">${I.chevL}</span></button>
+        </div>
+        <div class="pdots" aria-hidden="true">${PERIODS.map((x, i) => `<i${i === S.period ? ' class="on"' : ""}></i>`).join("")}</div>
+        ${cover}
+      </section>
+      ${S.period === CUR ? "" : `<p class="back-now"><button type="button" class="link" data-act="now">Revenir à ${esc(perName(PERIODS[CUR]))}</button></p>`}`;
   }
   function filterSheet() {
     const p = me(), cur = curFilter();
@@ -407,7 +411,8 @@ window.KPlan = (DATA, { greet = false } = {}) => {
   }
   function changePeriod(dir, sw) {
     const n = S.period + dir; if (!dir || n < 0 || n >= PERIODS.length) return;
-    const go = () => { S.period = n; S.msgF = null; K.refresh(); const v = document.getElementById("v-periode"); v.querySelector(".scroll").scrollTop = 0; v.querySelector("#swipe")?.classList.add(dir > 0 ? "in-r" : "in-l"); };
+    const vid = sw?.closest(".view")?.id || "v-periode";
+    const go = () => { S.period = n; S.msgF = null; S.gpast = false; K.refresh(); const v = document.getElementById(vid); v.querySelector(".scroll").scrollTop = 0; v.querySelector(".swipe")?.classList.add(dir > 0 ? "in-r" : "in-l"); };
     if (!sw || K.reduceMotion()) return go();
     sw.classList.add("anim"); sw.style.transform = `translateX(${dir > 0 ? "-" : ""}${Math.round(sw.clientWidth * 0.6)}px)`; sw.style.opacity = "0";
     setTimeout(go, 180);
@@ -429,7 +434,7 @@ window.KPlan = (DATA, { greet = false } = {}) => {
   // téléphone : le tableau à deux dimensions ne tient pas dans 390 px ; le calendrier se lit comme un agenda,
   // une période à la fois, semaine par semaine, avec les mêmes lignes que Ma période (date, titre, service, message, état)
   function renderGrillePhone(el) {
-    const i = S.gp ?? Math.max(0, CUR), P = PERIODS[i];
+    const i = S.period;
     const w0 = wkStart(i), w1 = i < PERIODS.length - 1 ? Math.max(w0 + 1, wkStart(i + 1)) : GN;
     const live = DB.items.filter((it) => !isSujet(it));
     const dm = (d) => premier(D(d).toLocaleDateString("fr-FR", { day: "numeric", month: "short" }));
@@ -455,15 +460,15 @@ window.KPlan = (DATA, { greet = false } = {}) => {
         ${x.its.length ? `<div class="group">${rows(x.its, { mode: "week" })}</div>` : ""}</section>`;
     }).join("");
     const suj = DB.items.filter((it) => isSujet(it) && it.per.includes(i));
+    // la même période que Ma période : changer ici change là-bas, et inversement
     el.innerHTML = K.navbar({ title: "Calendrier", actions: addBtn() + profileBtn() }) + `<div class="scroll">
       <h1 class="large-title">Calendrier</h1>
-      <nav class="pg-nav" aria-label="Période">${PERIODS.map((Q, j) => `<button type="button" class="pg-l${j === CUR ? " now" : ""}" data-act="gper" data-i="${j}" aria-pressed="${j === i}">${esc(perName(Q))}</button>`).join("")}</nav>
-      <p class="pg-lib">${esc(P.lib)}${i === CUR ? " · en cours" : ""}</p>
+      <div class="swipe">${periodHead("", "h2")}
       ${suj.length ? `<h2 class="pw-h">Toute la période</h2><div class="group">${rows(suj, { mode: "week" })}</div>` : ""}
       ${past ? `<p class="past-p"><button type="button" class="link" data-act="gpast">${S.gpast ? "Masquer les semaines passées" : seeMore(past, past > 1 ? "semaines passées" : "semaine passée")}</button></p>` : ""}
       ${weeks}
-    </div>`;
-    requestAnimationFrame(() => el.querySelector(`.pg-nav [aria-pressed="true"]`)?.scrollIntoView({ block: "nearest", inline: "center" }));
+    </div></div>`;
+    wireSwipe(el.querySelector(".swipe"));
     syncBadge();
   }
   // téléphone : « Ajouter » quitte la barre du bas et devient un + en haut des écrans principaux
@@ -1328,8 +1333,8 @@ window.KPlan = (DATA, { greet = false } = {}) => {
     if (t.dataset.link) return window.open(t.dataset.link, "_blank", "noopener");
     if (t.dataset.setf) { S.filter = t.dataset.setf; S.msgF = null; K.sheet.close(); return K.refresh(); }
     const a = t.dataset.act, id = t.dataset.id;
-    if (a === "prev" || a === "next") changePeriod(a === "next" ? 1 : -1, document.getElementById("swipe"));
-    if (a === "now") changePeriod(CUR - S.period, document.getElementById("swipe"));
+    if (a === "prev" || a === "next") changePeriod(a === "next" ? 1 : -1, t.closest(".view")?.querySelector(".swipe"));
+    if (a === "now") changePeriod(CUR - S.period, t.closest(".view")?.querySelector(".swipe"));
     if (a === "clearf") { S.msgF = null; K.refresh(); }
     if (a === "pastp") { S.pastP = !S.pastP; K.refresh(); }
     if (a === "filter") filterSheet();
@@ -1340,7 +1345,6 @@ window.KPlan = (DATA, { greet = false } = {}) => {
     if (a === "meeting") openMeeting();
     if (a === "copil") openCopil();
     if (a === "gpast") { S.gpast = !S.gpast; K.refresh(); }
-    if (a === "gper") { S.gp = +t.dataset.i; K.refresh(); document.querySelector("#v-grille .scroll")?.scrollTo({ top: 0 }); }
     if (a === "today" && !document.getElementById("gwrap")) document.getElementById("pw-now")?.scrollIntoView({ behavior: K.reduceMotion() ? "auto" : "smooth", block: "start" });
     if (a === "today") { const gw = document.getElementById("gwrap"), x = ((D(TODAY) - D(G0)) / 864e5 / 7 - (S.zoom === "annee" ? 4 : 0.5)) * colW(); gw?.scrollTo({ left: Math.max(0, x), behavior: K.reduceMotion() ? "auto" : "smooth" }); }
     // un brouillon déjà commencé n'est pas effacé : on change seulement de type (et de fiche liée)

@@ -11,8 +11,9 @@ const login = async (p, who) => {
   await p.waitForFunction(() => document.getElementById("brand").hidden); await p.waitForTimeout(400);
 };
 const findWk = async (p, sel) => { // grille téléphone : cherche dans chaque période, semaines passées dépliées
-  for (const i of await p.$$eval(".pg-nav button", (bs) => bs.map((x) => x.dataset.i))) {
-    await p.click(`.pg-nav [data-i="${i}"]`); await p.waitForTimeout(200);
+  while (await p.$('#v-grille [data-act="prev"]:not([disabled])')) { await p.click('#v-grille [data-act="prev"]'); await p.waitForTimeout(400); }
+  for (let k = 0; k < 20; k++) {
+    if (k) { if (!(await p.$('#v-grille [data-act="next"]:not([disabled])'))) break; await p.click('#v-grille [data-act="next"]'); await p.waitForTimeout(400); }
     if (await p.$('[data-act="gpast"]') && /Voir/.test(await p.textContent('[data-act="gpast"]'))) { await p.click('[data-act="gpast"]'); await p.waitForTimeout(200); }
     const n = (await p.$$(sel)).length; if (n) return n;
   }

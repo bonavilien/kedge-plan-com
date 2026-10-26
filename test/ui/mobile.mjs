@@ -46,9 +46,22 @@ for (const [w, h] of [[360, 740], [390, 844]]) {
   ok(sw <= w, `${w}px : rien ne déborde en largeur (${sw})`);
   if (await p.$('[data-act="gpast"]')) { await p.click('[data-act="gpast"]'); await p.waitForTimeout(250); ok(await p.$(`#v-grille [data-open="${ID(3)}"]`), `${w}px : « Voir les semaines passées » les déplie`); }
   ok((await p.$$(`#v-grille .ag-row[data-open="${ID(1)}"]`)).length === 1 && (await p.$$(`#v-grille .pw-cont[data-open="${ID(1)}"]`)).length >= 1, `${w}px : un temps fort sur plusieurs jours : sa ligne la semaine où il commence, un rappel les suivantes`);
-  await p.click('.pg-nav [data-i="1"]'); await p.waitForTimeout(300);
-  ok(await p.$eval('.pg-nav [data-i="1"]', (x) => x.getAttribute("aria-pressed")) === "true" && !(await p.$("#pw-now")), `${w}px : on passe à la période suivante`);
-  await p.click(`#v-grille .ag-row >> nth=0`).catch(() => {}); await p.waitForTimeout(400);
+  const t0 = await p.textContent("#v-grille .ph-title");
+  await p.click('#v-grille [data-act="next"]'); await p.waitForTimeout(500);
+  const t1 = await p.textContent("#v-grille .ph-title");
+  ok(t1 !== t0 && !(await p.$("#pw-now")), `${w}px : la flèche passe à la période suivante (${t0} → ${t1})`);
+  // glisser franchement vers la gauche : période d'après ; un petit geste ne change rien
+  const box = await p.$eval("#v-grille .swipe", (x) => { const r = x.getBoundingClientRect(); return { x: r.x, y: r.y + 60, w: r.width }; });
+  const drag = async (dx) => { await p.mouse.move(box.x + box.w * 0.8, box.y); await p.mouse.down(); for (let k = 1; k <= 8; k++) { await p.mouse.move(box.x + box.w * 0.8 + (dx * k) / 8, box.y + 2, { steps: 2 }); await p.waitForTimeout(30); } await p.mouse.up(); await p.waitForTimeout(500); };
+  await drag(-40);
+  ok(await p.textContent("#v-grille .ph-title") === t1, `${w}px : un petit glissement ne change pas de période`);
+  await drag(-box.w * 0.5);
+  const t2 = await p.textContent("#v-grille .ph-title");
+  ok(t2 !== t1, `${w}px : un glissement franc change de période (${t1} → ${t2})`);
+  await tab(p, "periode");
+  ok(await p.textContent("#v-periode .ph-title") === t2, `${w}px : Ma période montre la même période que le calendrier`);
+  await p.click('#v-periode [data-act="now"]'); await p.waitForTimeout(500); await tab(p, "grille");
+  ok(await p.$("#pw-now"), `${w}px : revenir à la période en cours depuis Ma période vaut aussi pour le calendrier`);
   await p.screenshot({ path: `${OUT}/mobile-grille-${w}.png` });
   await p.context().close();
 }

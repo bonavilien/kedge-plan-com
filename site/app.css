@@ -723,14 +723,9 @@ button.dl:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px;
 .app[data-os] .add-btn { width: 34px; height: 34px; margin: 5px; background: var(--yellow); color: var(--anth); }
 .app[data-os] .add-btn svg { display: block; width: 20px; height: 20px; }
 
-/* calendrier sur téléphone : un agenda, une période à la fois, semaine par semaine */
-.pg-nav { display: flex; gap: 6px; margin: 0 -16px; padding: 4px 16px 6px; overflow-x: auto; scrollbar-width: none; }
-.pg-nav::-webkit-scrollbar { display: none; }
-.pg-l { flex: none; display: inline-flex; align-items: center; gap: 7px; min-height: 36px; padding: 0 14px; border: 0; border-radius: 18px; background: var(--fill); color: var(--text); font: inherit; font-size: 15px; font-weight: 600; cursor: pointer; }
-.pg-l.now::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--text2); }
-.pg-l[aria-pressed="true"] { background: var(--text); color: var(--bg); }
-.pg-l[aria-pressed="true"]::before { display: none; }
-.pg-lib { margin: 4px 4px 0; font-size: 14px; color: var(--text2); }
+/* calendrier sur téléphone : un agenda, une période à la fois (le bandeau de Ma période), semaine par semaine */
+#v-grille .phead { margin-top: 0; }
+#v-grille .phead + .pw-h, #v-grille .back-now + .pw-h { margin-top: 26px; }
 .pw { scroll-margin-top: 56px; }
 .pw-h { display: flex; align-items: center; gap: 10px; margin: 30px 4px 10px; font-family: var(--serif); font-size: 20px; font-weight: 700; line-height: 1.2; }
 .pw-now { padding: 3px 9px; border-radius: 6px; background: var(--yellow); color: var(--anth); font-family: var(--font); font-size: 12.5px; font-style: normal; font-weight: 700; }
@@ -740,4 +735,3 @@ button.dl:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px;
 .pw-empty { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; margin: 26px 4px 0; scroll-margin-top: 56px; font-size: 15px; color: var(--text2); }
 .pw-empty > span:first-child { font-weight: 600; color: var(--text); }
 .pw-none::before { content: "· "; }
-.pg-lib + .past-p, .pg-lib + .pw-h { margin-top: 18px; }
