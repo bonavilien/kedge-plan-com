@@ -562,7 +562,10 @@ window.KPlan = (DATA, { greet = false } = {}) => {
 
   function renderAjouter(el) {
     // un compte média sans service ne saisit que des partenariats
+    // un brouillon en cours garde tout ce qui a été saisi quand l'écran se redessine (changement d'onglet, temps réel)
+    if (S.draft && el._draft === S.draft && el.querySelector("#f-t")) S.draft = readForm(el, "f", S.draft);
     if (!S.draft || (!canAdd() && S.draft.kind !== "partner")) S.draft = newDraft(canAdd() ? "action" : "partner");
+    el._draft = S.draft;
     el.innerHTML = K.navbar({ title: "Ajouter", actions: profileBtn() }) + `<div class="scroll"><h1 class="large-title">Ajouter</h1>${canAdd() || isMedia() ? formHTML(S.draft, "f", false)
       : isVisit() ? `<div class="group"><div class="empty"><span>Mode visiteur : tu peux tout consulter, sans rien ajouter ni modifier.</span></div></div>`
       : `<div class="group"><div class="empty"><span>Ton compte n'est rattaché à aucun service : tu peux tout consulter et demander des éléments. Pour publier, demande à ${esc(CHEF.qui)} de t'ajouter à ton service.</span></div></div>`}</div>`;
