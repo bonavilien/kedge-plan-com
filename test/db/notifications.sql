@@ -1,4 +1,4 @@
--- Vérifie la page Notifications (migration 0016) : chacun ne lit que les siennes, de moins de 7 jours, non effacées ; effacer ne touche que les siennes.
+-- Vérifie la page Notifications (migration 0017) : chacun ne lit que les siennes, de moins de 7 jours, non effacées ; effacer ne touche que les siennes.
 \set ON_ERROR_STOP on
 set client_min_messages = warning;
 

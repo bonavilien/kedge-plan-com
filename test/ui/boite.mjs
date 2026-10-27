@@ -1,4 +1,4 @@
-// Page Notifications (migration 0016) : la cloche en haut à gauche, la liste des 7 derniers jours, effacer une ou toutes.
+// Page Notifications (migration 0017) : la cloche en haut à gauche, la liste des 7 derniers jours, effacer une ou toutes.
 import { chromium } from "/opt/node22/lib/node_modules/playwright/index.mjs";
 const OUT = process.argv[2] || "/tmp", URL0 = "http://localhost:8790/test.html";
 const b = await chromium.launch();

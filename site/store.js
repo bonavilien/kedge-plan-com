@@ -33,7 +33,7 @@ window.KStore = (() => {
       run(sb.from("answers").select("key,val").eq("user_id", user.id)), run(sb.from("seen").select("item").eq("user_id", user.id)), all("meta", "k"),
       // sans la migration 0003, l'appli marche quand même, sans historique
       all("journal", "id").catch(() => []),
-      // les notifications reçues ces 7 derniers jours et pas effacées (la base ne rend que celles-là, migration 0016)
+      // les notifications reçues ces 7 derniers jours et pas effacées (la base ne rend que celles-là, migration 0017)
       run(sb.from("outbox").select("id,title,body,url,created_at").order("created_at", { ascending: false })).catch(() => []),
     ]);
     PERIODS = per.map((p) => ({ n: p.n, nom: p.nom, du: p.du, au: p.au, lib: p.lib }));

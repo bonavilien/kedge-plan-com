@@ -84,7 +84,7 @@
     const tab = db[q.t]; const match = (r) => q.filters.every(([c, v]) => r[c] === v);
     if (q.op === "select") {
       let rows = tab.filter(match);
-      // migration 0016 : chacun ne lit que ses notifications de moins de 7 jours, non effacées
+      // migration 0017 : chacun ne lit que ses notifications de moins de 7 jours, non effacées
       if (q.t === "outbox") { let n = Math.max(0, ...tab.map((r) => r.id || 0)); tab.forEach((r) => { r.id ||= ++n; r.created_at ||= new Date().toISOString(); }); save();
         rows = rows.filter((r) => r.user_id === db.session.user.id && !r.efface_at && Date.now() - new Date(r.created_at) < 7 * 864e5); }
       if (q.order) rows = rows.slice().sort((a, b) => (typeof a[q.order] === "number" ? a[q.order] - b[q.order] : String(a[q.order]).localeCompare(String(b[q.order]))));
@@ -184,7 +184,7 @@
     await new Promise((r) => setTimeout(r, 40));
     window.__fake.calls.push({ t: fn, op: "rpc" });
     if (window.__fake.failNext) { const e = window.__fake.failNext; window.__fake.failNext = null; return { data: null, error: e === true ? denied : e }; }
-    // migration 0016 : effacer ses notifications (certaines ou toutes)
+    // migration 0017 : effacer ses notifications (certaines ou toutes)
     if (fn === "effacer_notifs") {
       const ids = arguments[1].p_ids, now = new Date().toISOString();
       db.outbox.forEach((r) => { if (r.user_id === db.session.user.id && !r.efface_at && (!ids || ids.includes(r.id))) r.efface_at = now; }); save();
