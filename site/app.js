@@ -111,6 +111,10 @@ window.KPlan = (DATA, { greet = false } = {}) => {
   const canEdit = (it) => (isPay(it) ? isMedia() : me().chef || (!!me().svc && it.svc === me().svc));
   // lever un blocage : les chefs, l'auteur du blocage, ceux qui modifient la fiche (mêmes règles que la base)
   const canLift = (b, it) => me().chef || b.by === ME || canEdit(it);
+  // « à trancher en réunion » : un blocage au motif réservé, levé une fois tranché (pas de colonne en plus dans la base)
+  const TRANCHER = "à trancher en réunion";
+  const isTr = (b) => b.why === TRANCHER;
+  const trOf = (id) => DB.blocks.find((b) => b.item === id && !b.leve && isTr(b));
   // ajouter un document : ceux qui publient (service, chef, média)
   const canLink = () => canAdd() || isMedia();
   const partnerName = (it) => (PARTNERS.find((p) => p.k === it.partner) || { nom: "Partenaire" }).nom;
@@ -245,7 +249,7 @@ window.KPlan = (DATA, { greet = false } = {}) => {
     const rappels = jalons(p).filter((j) => !DB.answers[j.key]);
     const cites = DB.items.filter((it) => it.cc.includes(p.svc) && it.svc !== p.svc && person(it.by).svc !== p.svc && it.at >= addDays(TODAY, -30)
       && days(it.date) >= 0 && it.st !== "retire" && !vu.includes(it.id)).sort((a, b) => b.at.localeCompare(a.at));
-    const blocages = DB.blocks.filter((b) => !b.leve && byId(b.item) && (p.chef || byId(b.item).svc === p.svc));
+    const blocages = DB.blocks.filter((b) => !b.leve && !isTr(b) && byId(b.item) && (p.chef || byId(b.item).svc === p.svc));
     const envoyees = DB.reqs.filter((r) => mine(r) && r.to !== MOI.k && r.st === "ouverte" && byId(r.item)).sort((a, b) => a.pour.localeCompare(b.pour));
     return { demandes, rappels, cites, blocages, envoyees, count: demandes.length + rappels.length + cites.length + blocages.length };
   }
@@ -839,7 +843,7 @@ window.KPlan = (DATA, { greet = false } = {}) => {
     // les documents de la fiche, et ceux de son temps fort partagés avec tous ses relais
     const r = root(it), edit = canEdit(it), links = famille(it).filter((x) => x.st !== "retire" || x === it || x === r).flatMap((x) => (x.links || []).map((l) => ({ ...l, on: x })));
     const linkedTF = !isTF(it) && it.tf ? byId(it.tf) : null, past = isTF(it) && isPast(it);
-    const reqs = reqsOf(it), blocks = DB.blocks.filter((b) => b.item === id && !b.leve);
+    const reqs = reqsOf(it), blocks = DB.blocks.filter((b) => b.item === id && !b.leve && !isTr(b)), tr = trOf(id);
     const kv = (k, v) => `<div class="row"><span class="row-main"><b>${k}</b></span><span class="row-value">${v}</span></div>`;
     const choices = isTF(it) ? ["confirmer", "planifie"] : isPay(it) ? ["confirmer", "planifie", "diffuse"] : ["idee", "confirmer", "planifie", "production", "diffuse"];
     const status = edit && !past && it.st !== "retire"
@@ -861,6 +865,7 @@ window.KPlan = (DATA, { greet = false } = {}) => {
         ${isCls(it) && (it.rang || it.cible) ? `<div class="rk">${it.rang ? `<span class="rk-n" aria-label="Rang de KEDGE : ${rgTxt(it.rang)}"><b>${it.rang}</b>${it.rang === 1 ? "er" : "e"}</span>` : ""}${it.cible ? `<span class="rk-g">Objectif<b>Top ${it.cible}</b></span>` : ""}</div>` : ""}
       </div>
       ${it.st === "retire" || isVisit() ? "" : `<div class="cta fiche-cta"><button type="button" class="btn block" data-act="ask" data-id="${id}">${I.chat}Demander des éléments</button></div>`}
+      ${tr && it.st !== "retire" ? `<div class="group blk-group"><div class="row"><span class="row-main"><b><span class="tr-l">Réunion</span>À trancher</b><span>${esc(person(tr.by).nom)}, ${ago(tr.at)}</span></span>${canLift(tr, it) ? `<button type="button" class="btn small tonal" data-act="untrancher" data-b="${tr.id}">Retirer</button>` : ""}</div></div>` : ""}
       ${blocks.length ? `<div class="group blk-group">${blocks.map((b) => `<div class="row"><span class="row-main"><b><span class="blk-l">Bloqué</span>${esc(b.why)}</b><span>${esc(person(b.by).nom)}, ${ago(b.at)}</span></span>${canLift(b, it) ? `<button type="button" class="btn small tonal" data-act="unblock" data-b="${b.id}">Lever</button>` : ""}</div>`).join("")}</div>` : ""}
       <div class="group facts">
         ${status}
@@ -880,7 +885,7 @@ window.KPlan = (DATA, { greet = false } = {}) => {
       ${hist && edit ? "" : `<p class="foot-note">${hist ? "" : `Ajouté par ${esc(person(it.by).nom)} le ${fmtDay(it.at)}. `}${edit ? "" : `Modifiable par ${esc(editors(it))}.`}</p>`}
       ${it.st === "retire" ? (edit ? `<p class="retire-p"><button type="button" class="txt-btn strong" data-act="unretire" data-id="${id}">Remettre ${isTF(it) ? `ce ${momWord(it)}` : "cette action"}</button><button type="button" class="txt-btn danger" data-act="delete" data-id="${id}">Supprimer définitivement</button></p>` : "")
         : isVisit() ? ""
-        : `<p class="retire-p"><button type="button" class="txt-btn" data-act="block" data-id="${id}">Signaler un blocage</button>${edit ? `<button type="button" class="txt-btn danger" data-act="retire" data-id="${id}">Retirer ${isTF(it) ? `ce ${momWord(it)}` : "cette action"}</button>` : ""}</p>`}
+        : `<p class="retire-p">${tr ? "" : `<button type="button" class="txt-btn strong" data-act="trancher" data-id="${id}">À trancher en réunion</button>`}<button type="button" class="txt-btn" data-act="block" data-id="${id}">Signaler un blocage</button>${edit ? `<button type="button" class="txt-btn danger" data-act="retire" data-id="${id}">Retirer ${isTF(it) ? `ce ${momWord(it)}` : "cette action"}</button>` : ""}</p>`}
     </div>`;
   }
 
@@ -1179,7 +1184,8 @@ window.KPlan = (DATA, { greet = false } = {}) => {
         </div>${rowsH || freeRow ? "" : `<p class="ma-empty">${perState(g.P) === "fini" ? "La dernière période de l'année est terminée : les périodes de l'année suivante s'ajoutent dans la base." : "Rien de prévu pour l'instant."}</p>`}</section>`;
     };
 
-    const bl = DB.blocks.filter((b) => !b.leve && byId(b.item));
+    const bl = DB.blocks.filter((b) => !b.leve && !isTr(b) && byId(b.item));
+    const tr = DB.blocks.filter((b) => !b.leve && isTr(b) && byId(b.item) && byId(b.item).st !== "retire").sort((a, b) => byId(a.item).date.localeCompare(byId(b.item).date));
     const late = DB.reqs.filter((r) => r.st === "ouverte" && r.pour < TODAY && byId(r.item));
     const row = (it, sub, k) => `<button type="button" class="ma-item ${k}" data-mt-open="${it.id}"><b>${esc(it.t)}</b><span>${esc(sub)}</span></button>`;
     const since = (x) => Date.parse(x.ts) > Date.parse(DB.lastMeetingTs);
@@ -1190,6 +1196,8 @@ window.KPlan = (DATA, { greet = false } = {}) => {
     ].sort((a, b) => Date.parse(b.ts) - Date.parse(a.ts));
     const shownC = MT.contrib ? contrib : contrib.slice(0, 3);
     const aside = `<aside class="mt-aside panel lg" aria-label="À traiter en réunion">
+      ${tr.length ? `<section class="ma-sec"><h2>À trancher <span class="tnum">${tr.length}</span></h2>
+        ${tr.map((b) => { const it = byId(b.item); return `<div class="ma-tr">${row(it, `${cap(when(it))} · ${laneOf(it)} · ${person(b.by).nom}`, "tr")}<button type="button" class="ma-ok" data-mt="tranche" data-b="${b.id}" aria-label="Tranché : ${esc(it.t)}">Tranché</button></div>`; }).join("")}</section>` : ""}
       <section class="ma-sec"><h2>À débloquer <span class="tnum">${bl.length + late.length}</span></h2>
         ${bl.map((b) => row(byId(b.item), `${b.why} ${person(b.by).nom}, ${laneOf(byId(b.item))}.`, "bloq")).join("")}
         ${late.map((r) => row(byId(r.item), `${person(r.from).nom} attend ${ASK[r.type] || "des éléments"} de ${quiOf(r)} : deadline dépassée (${fmtDay(r.pour)}).`, "late")).join("")}
@@ -1211,6 +1219,7 @@ window.KPlan = (DATA, { greet = false } = {}) => {
     const b = e.target.closest("[data-mt],[data-mt-open]"); if (!b) return;
     if (b.dataset.mt === "close") closeMeeting();
     if (b.dataset.mt === "held") { const ts = new Date().toISOString(); Object.assign(DB, { lastMeeting: TODAY, lastMeetingTs: ts }); renderMeeting(); K.snack("Les contributions repartent de zéro."); Store.setMeta("last_meeting", ts).catch(fail); }
+    if (b.dataset.mt === "tranche") { const x = DB.blocks.find((y) => y.id === b.dataset.b); if (x) { x.leve = true; renderMeeting(); quick(Store.liftBlock(x.id), "Tranché."); } }
     if (b.dataset.mt === "more") { MT[b.dataset.k] = !MT[b.dataset.k]; renderMeeting(); }
     if (b.dataset.mt === "free") { const sc = meeting.querySelector(".mt-main").scrollTop; MT.free[b.dataset.k] = !MT.free[b.dataset.k]; renderMeeting(); meeting.querySelector(".mt-main").scrollTop = sc; }
     if (b.dataset.mtOpen) { closeMeeting(); openItem(b.dataset.mtOpen); }
@@ -1360,6 +1369,9 @@ window.KPlan = (DATA, { greet = false } = {}) => {
     if (a === "nope") { DB.answers[t.dataset.key] = "non"; quick(Store.answer(t.dataset.key, "non"), "Noté, pas besoin d'éléments."); }
     if (a === "vu") { DB.vu[ME] = [...(DB.vu[ME] || []), id]; quick(Store.markSeen(id)); }
     if (a === "block") blockSheet(id);
+    if (a === "trancher" && !trOf(id)) { const b = { id: uid(), item: id, by: me().k, why: TRANCHER, at: TODAY, ts: new Date().toISOString(), leve: false };
+      DB.blocks.push(b); quick(Store.addBlock(b), "Ajouté aux sujets à trancher en réunion."); }
+    if (a === "untrancher") { const b = DB.blocks.find((x) => x.id === t.dataset.b); if (b) { b.leve = true; quick(Store.liftBlock(b.id), "Retiré de la réunion."); } }
     if (a === "unblock") { const b = DB.blocks.find((x) => x.id === t.dataset.b); if (b) { b.leve = true; quick(Store.liftBlock(b.id), "Blocage levé."); } }
     if (a === "addlink") linkSheet(id);
     if (a === "unlink") { const on = byId(id), l = on?.links.find((x) => x.id === t.dataset.l);
