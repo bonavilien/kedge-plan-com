@@ -28,3 +28,21 @@ select from pg_temp.as_user('00000000-0000-0000-0000-000000000003');
 insert into public.blocks (item, why) values ('5a000000-0000-0000-0000-0000000000f1', 'rushs pas reçus');
 reset role;
 select from pg_temp.check(not exists (select 1 from public.outbox where title <> 'Blocage') and exists (select 1 from public.outbox), 'un blocage reste « Blocage »');
+
+-- 0016 : la raison suit le motif et passe dans la notification
+\ir ../../supabase/migrations/0016_trancher_raison.sql
+delete from public.outbox;
+select from pg_temp.as_user('00000000-0000-0000-0000-000000000003');
+insert into public.blocks (item, why) values ('5a000000-0000-0000-0000-0000000000f1', 'à trancher en réunion : on décale ?');
+reset role;
+select from pg_temp.check(not exists (select 1 from public.outbox where title <> 'Sujet à trancher') and exists (select 1 from public.outbox where body like '% met « CP rentrée » à l''ordre du jour de la réunion : on décale ?'), 'raison dans la notification');
+delete from public.outbox;
+select from pg_temp.as_user('00000000-0000-0000-0000-000000000003');
+insert into public.blocks (item, why) values ('5a000000-0000-0000-0000-0000000000f1', 'à trancher en réunion');
+reset role;
+select from pg_temp.check(exists (select 1 from public.outbox where title = 'Sujet à trancher' and body like '% de la réunion'), 'sans raison : texte court');
+delete from public.outbox;
+select from pg_temp.as_user('00000000-0000-0000-0000-000000000003');
+insert into public.blocks (item, why) values ('5a000000-0000-0000-0000-0000000000f1', 'rushs pas reçus');
+reset role;
+select from pg_temp.check(exists (select 1 from public.outbox where title = 'Blocage'), 'un blocage reste « Blocage »');

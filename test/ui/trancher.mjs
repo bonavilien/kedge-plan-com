@@ -32,11 +32,17 @@ for (const [x, nom] of [[cp, "action"], [pay, "partenariat"], [jpo, "temps fort"
   const btn = fiche().locator('[data-act="trancher"]');
   ok(await btn.isVisible(), `${nom} : bouton « Sujet à trancher » sur la fiche`);
   await btn.click(); await p.waitForTimeout(300);
-  ok(/Réunion\s*Sujet à trancher/.test(await fiche().locator(".blk-group").innerText()) && !(await fiche().locator('[data-act="trancher"]').count()), `${nom} : la fiche affiche « Réunion · À trancher en réunion », le bouton disparaît`);
+  ok(await p.isVisible("#tr-why"), `${nom} : une feuille demande la raison (facultative)`);
+  if (x !== jpo) await p.fill("#tr-why", x === cp ? "On garde la date   ou on décale ?" : "Payer ou pas la double page ?");
+  if (x === cp) await p.screenshot({ path: `${OUT}/t0-feuille.png` });
+  await p.click('.sheet [data-kui="ok"]'); await p.waitForTimeout(400);
+  const want = x === cp ? /À trancher\s*On garde la date ou on décale \?/ : x === pay ? /Payer ou pas/ : /À trancher\s*Sujet à trancher en réunion/;
+  ok(want.test(await fiche().locator(".blk-group").innerText()) && !(await fiche().locator('[data-act="trancher"]').count()), `${nom} : la fiche affiche « Réunion · À trancher en réunion », le bouton disparaît`);
   if (x === cp) await p.screenshot({ path: `${OUT}/t1-fiche.png` });
 }
 const rows = await p.evaluate(() => window.__fake.db.blocks.filter((b) => b.why === "à trancher en réunion").length);
-ok(rows === 3, "trois sujets enregistrés dans la base");
+ok(rows === 1, "sans raison : le motif seul");
+ok(await p.evaluate(() => window.__fake.db.blocks.some((b) => b.why === "à trancher en réunion : On garde la date ou on décale ?")), "avec raison : « à trancher en réunion : … », espaces resserrés");
 // À faire : un sujet à trancher n'est pas un blocage
 await p.evaluate(() => { location.hash = ""; }); await p.click('.side-btn[data-kui-tab="afaire"], .tab[data-kui-tab="afaire"] >> visible=true').catch(() => {}); await p.waitForTimeout(300);
 ok(!/Blocages/.test(await p.locator("#v-afaire").innerText().catch(() => "")), "À faire : pas compté comme blocage");
@@ -44,7 +50,7 @@ ok(!/Blocages/.test(await p.locator("#v-afaire").innerText().catch(() => "")), "
 await p.click('.side-btn[data-act="meeting"]'); await p.waitForTimeout(400);
 const aside = () => p.locator(".mt-aside").innerText();
 let a = await aside(); console.log("   " + a.split("\n").slice(0, 8).join(" | "));
-ok(/À trancher\s*3/.test(a) && /CP de rentrée/.test(a) && /Guide Prépa/.test(a) && /Journées portes ouvertes/.test(a), "réunion : section « À trancher » avec les trois sujets");
+ok(/À trancher\s*3/.test(a) && /CP de rentrée/.test(a) && /Guide Prépa/.test(a) && /Journées portes ouvertes/.test(a) && /On garde la date ou on décale \?/.test(a), "réunion : section « À trancher » avec les trois sujets");
 ok(/Rien ne bloque/.test(a), "réunion : les sujets à trancher ne sont pas des blocages");
 await p.screenshot({ path: `${OUT}/t2-reunion.png` });
 await p.locator('.ma-tr:has-text("CP de rentrée") .ma-ok').click(); await p.waitForTimeout(300);
@@ -62,7 +68,7 @@ await p.evaluate(() => { const f = window.__fake; f.db.session = null; f.save();
 await login("aurelie@kedgebs.com");
 await open(pay.id);
 ok(await fiche().locator('[data-act="trancher"]').isVisible(), "un service voit le bouton sur un partenariat");
-await fiche().locator('[data-act="trancher"]').click(); await p.waitForTimeout(300);
+await fiche().locator('[data-act="trancher"]').click(); await p.waitForTimeout(300); await p.click('.sheet [data-kui="ok"]'); await p.waitForTimeout(400);
 ok(await fiche().locator('[data-act="untrancher"]').isVisible(), "et peut retirer le sujet qu'il a proposé");
 await p.setViewportSize({ width: 390, height: 844 }); await p.waitForTimeout(300);
 await p.screenshot({ path: `${OUT}/t3-fiche-390.png` });

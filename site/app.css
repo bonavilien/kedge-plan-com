@@ -306,6 +306,7 @@ details.more > .lbl:first-of-type { margin-top: 6px; }
 .ma-item.tr::before { border-radius: 2px; background: var(--panel-ink); }
 .ma-tr { display: flex; align-items: flex-start; gap: 10px; }
 .ma-tr .ma-item { flex: 1; min-width: 0; }
+.ma-item q.ma-why { font-size: 14px; line-height: 1.4; color: var(--panel-ink); quotes: "« " " »"; }
 .ma-ok { flex: none; min-height: 36px; margin-top: 4px; padding: 0 12px; border: 0; border-radius: 999px; background: var(--panel-raise); color: var(--panel-ink); font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; }
 .ma-ok:hover { background: var(--yellow); color: var(--anth); }
 .ma-ok:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }

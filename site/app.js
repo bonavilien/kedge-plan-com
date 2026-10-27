@@ -111,9 +111,11 @@ window.KPlan = (DATA, { greet = false } = {}) => {
   const canEdit = (it) => (isPay(it) ? isMedia() : me().chef || (!!me().svc && it.svc === me().svc));
   // lever un blocage : les chefs, l'auteur du blocage, ceux qui modifient la fiche (mêmes règles que la base)
   const canLift = (b, it) => me().chef || b.by === ME || canEdit(it);
-  // « à trancher en réunion » : un blocage au motif réservé, levé une fois tranché (pas de colonne en plus dans la base)
+  // « à trancher en réunion » : un blocage au motif réservé, levé une fois tranché (pas de colonne en plus dans la base).
+  // La raison, facultative, suit le motif : « à trancher en réunion : on décale ou pas ? »
   const TRANCHER = "à trancher en réunion";
-  const isTr = (b) => b.why === TRANCHER;
+  const isTr = (b) => b.why === TRANCHER || b.why.startsWith(TRANCHER + " : ");
+  const trWhy = (b) => b.why.slice(TRANCHER.length + 3).trim();
   const trOf = (id) => DB.blocks.find((b) => b.item === id && !b.leve && isTr(b));
   // ajouter un document : ceux qui publient (service, chef, média)
   const canLink = () => canAdd() || isMedia();
@@ -865,7 +867,7 @@ window.KPlan = (DATA, { greet = false } = {}) => {
         ${isCls(it) && (it.rang || it.cible) ? `<div class="rk">${it.rang ? `<span class="rk-n" aria-label="Rang de KEDGE : ${rgTxt(it.rang)}"><b>${it.rang}</b>${it.rang === 1 ? "er" : "e"}</span>` : ""}${it.cible ? `<span class="rk-g">Objectif<b>Top ${it.cible}</b></span>` : ""}</div>` : ""}
       </div>
       ${it.st === "retire" || isVisit() ? "" : `<div class="cta fiche-cta"><button type="button" class="btn block" data-act="ask" data-id="${id}">${I.chat}Demander des éléments</button></div>`}
-      ${tr && it.st !== "retire" ? `<div class="group blk-group"><div class="row"><span class="row-main"><b><span class="tr-l">Réunion</span>Sujet à trancher</b><span>${esc(person(tr.by).nom)}, ${ago(tr.at)}</span></span>${canLift(tr, it) ? `<button type="button" class="btn small tonal" data-act="untrancher" data-b="${tr.id}">Retirer</button>` : ""}</div></div>` : ""}
+      ${tr && it.st !== "retire" ? `<div class="group blk-group"><div class="row"><span class="row-main"><b><span class="tr-l">À trancher</span>${esc(trWhy(tr) || "Sujet à trancher en réunion")}</b><span>${esc(person(tr.by).nom)}, ${ago(tr.at)}</span></span>${canLift(tr, it) ? `<button type="button" class="btn small tonal" data-act="untrancher" data-b="${tr.id}">Retirer</button>` : ""}</div></div>` : ""}
       ${blocks.length ? `<div class="group blk-group">${blocks.map((b) => `<div class="row"><span class="row-main"><b><span class="blk-l">Bloqué</span>${esc(b.why)}</b><span>${esc(person(b.by).nom)}, ${ago(b.at)}</span></span>${canLift(b, it) ? `<button type="button" class="btn small tonal" data-act="unblock" data-b="${b.id}">Lever</button>` : ""}</div>`).join("")}</div>` : ""}
       <div class="group facts">
         ${status}
@@ -972,6 +974,14 @@ window.KPlan = (DATA, { greet = false } = {}) => {
         const b = { id: uid(), item: id, by: me().k, why: w.value.trim(), at: TODAY, ts: new Date().toISOString(), leve: false };
         try { await Store.addBlock(b); } catch (e) { fail(e); return false; }
         DB.blocks.push(b); K.refresh(); K.snack("Blocage signalé. Il remontera en réunion."); } });
+  }
+  function trSheet(id) {
+    const it = byId(id);
+    K.sheet.open({ title: "Sujet à trancher", ok: "Ajouter à la réunion", body: `${sheetFor(it)}<label class="lbl" for="tr-why">Qu'est-ce qu'il faut trancher ? <span class="opt">facultatif</span></label><textarea class="in" id="tr-why" rows="3" maxlength="300" placeholder="Ex. on garde la date ou on décale d'une semaine ?"></textarea>`,
+      onOk: async (s) => { const w = s.querySelector("#tr-why").value.replace(/\s+/g, " ").trim();
+        const b = { id: uid(), item: id, by: me().k, why: w ? `${TRANCHER} : ${w}` : TRANCHER, at: TODAY, ts: new Date().toISOString(), leve: false };
+        try { await Store.addBlock(b); } catch (e) { fail(e); return false; }
+        DB.blocks.push(b); K.refresh(); K.snack("Ajouté aux sujets à trancher en réunion."); } });
   }
   function linkSheet(id) {
     const it = byId(id), r = root(it);
@@ -1197,7 +1207,7 @@ window.KPlan = (DATA, { greet = false } = {}) => {
     const shownC = MT.contrib ? contrib : contrib.slice(0, 3);
     const aside = `<aside class="mt-aside panel lg" aria-label="À traiter en réunion">
       ${tr.length ? `<section class="ma-sec"><h2>À trancher <span class="tnum">${tr.length}</span></h2>
-        ${tr.map((b) => { const it = byId(b.item); return `<div class="ma-tr">${row(it, `${cap(when(it))} · ${laneOf(it)} · ${person(b.by).nom}`, "tr")}<button type="button" class="ma-ok" data-mt="tranche" data-b="${b.id}" aria-label="Tranché : ${esc(it.t)}">Tranché</button></div>`; }).join("")}</section>` : ""}
+        ${tr.map((b) => { const it = byId(b.item); return `<div class="ma-tr"><button type="button" class="ma-item tr" data-mt-open="${it.id}"><b>${esc(it.t)}</b>${trWhy(b) ? `<q class="ma-why">${esc(trWhy(b))}</q>` : ""}<span>${esc(`${cap(when(it))} · ${laneOf(it)} · ${person(b.by).nom}`)}</span></button><button type="button" class="ma-ok" data-mt="tranche" data-b="${b.id}" aria-label="Tranché : ${esc(it.t)}">Tranché</button></div>`; }).join("")}</section>` : ""}
       <section class="ma-sec"><h2>À débloquer <span class="tnum">${bl.length + late.length}</span></h2>
         ${bl.map((b) => row(byId(b.item), `${b.why} ${person(b.by).nom}, ${laneOf(byId(b.item))}.`, "bloq")).join("")}
         ${late.map((r) => row(byId(r.item), `${person(r.from).nom} attend ${ASK[r.type] || "des éléments"} de ${quiOf(r)} : deadline dépassée (${fmtDay(r.pour)}).`, "late")).join("")}
@@ -1369,8 +1379,7 @@ window.KPlan = (DATA, { greet = false } = {}) => {
     if (a === "nope") { DB.answers[t.dataset.key] = "non"; quick(Store.answer(t.dataset.key, "non"), "Noté, pas besoin d'éléments."); }
     if (a === "vu") { DB.vu[ME] = [...(DB.vu[ME] || []), id]; quick(Store.markSeen(id)); }
     if (a === "block") blockSheet(id);
-    if (a === "trancher" && !trOf(id)) { const b = { id: uid(), item: id, by: me().k, why: TRANCHER, at: TODAY, ts: new Date().toISOString(), leve: false };
-      DB.blocks.push(b); quick(Store.addBlock(b), "Ajouté aux sujets à trancher en réunion."); }
+    if (a === "trancher" && !trOf(id)) trSheet(id);
     if (a === "untrancher") { const b = DB.blocks.find((x) => x.id === t.dataset.b); if (b) { b.leve = true; quick(Store.liftBlock(b.id), "Retiré de la réunion."); } }
     if (a === "unblock") { const b = DB.blocks.find((x) => x.id === t.dataset.b); if (b) { b.leve = true; quick(Store.liftBlock(b.id), "Blocage levé."); } }
     if (a === "addlink") linkSheet(id);
