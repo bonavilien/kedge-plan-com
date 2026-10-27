@@ -1,5 +1,5 @@
 // Service worker : l'appli s'ouvre même sans réseau (dernière version vue) et reçoit les notifications.
-const CACHE = "kplan-v13"; // à changer à chaque mise en ligne qui touche plusieurs fichiers : hors ligne, deux versions ne se mélangent pas
+const CACHE = "kplan-v14"; // à changer à chaque mise en ligne qui touche plusieurs fichiers : hors ligne, deux versions ne se mélangent pas
 // tout ce que la page charge, mis de côté dès l'installation : l'appli s'ouvre hors ligne dès la première visite
 const CORE = ["./", "index.html", "manifest.webmanifest", "theme/tokens.css", "theme/base.css", "components/components.css", "components/brand.css", "app.css",
   "components/icons.js", "components/ui.js", "vendor/supabase-2.117.3.js", "config.js", "store.js", "app.js", "boot.js",
