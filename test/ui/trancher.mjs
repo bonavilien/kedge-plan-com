@@ -30,9 +30,9 @@ await login("julien@kedgebs.com");
 for (const [x, nom] of [[cp, "action"], [pay, "partenariat"], [jpo, "temps fort"]]) {
   await open(x.id);
   const btn = fiche().locator('[data-act="trancher"]');
-  ok(await btn.isVisible(), `${nom} : bouton « À trancher en réunion » sur la fiche`);
+  ok(await btn.isVisible(), `${nom} : bouton « Sujet à trancher » sur la fiche`);
   await btn.click(); await p.waitForTimeout(300);
-  ok(/Réunion\s*À trancher/.test(await fiche().locator(".blk-group").innerText()) && !(await fiche().locator('[data-act="trancher"]').count()), `${nom} : la fiche affiche « Réunion · À trancher en réunion », le bouton disparaît`);
+  ok(/Réunion\s*Sujet à trancher/.test(await fiche().locator(".blk-group").innerText()) && !(await fiche().locator('[data-act="trancher"]').count()), `${nom} : la fiche affiche « Réunion · À trancher en réunion », le bouton disparaît`);
   if (x === cp) await p.screenshot({ path: `${OUT}/t1-fiche.png` });
 }
 const rows = await p.evaluate(() => window.__fake.db.blocks.filter((b) => b.why === "à trancher en réunion").length);

@@ -865,7 +865,7 @@ window.KPlan = (DATA, { greet = false } = {}) => {
         ${isCls(it) && (it.rang || it.cible) ? `<div class="rk">${it.rang ? `<span class="rk-n" aria-label="Rang de KEDGE : ${rgTxt(it.rang)}"><b>${it.rang}</b>${it.rang === 1 ? "er" : "e"}</span>` : ""}${it.cible ? `<span class="rk-g">Objectif<b>Top ${it.cible}</b></span>` : ""}</div>` : ""}
       </div>
       ${it.st === "retire" || isVisit() ? "" : `<div class="cta fiche-cta"><button type="button" class="btn block" data-act="ask" data-id="${id}">${I.chat}Demander des éléments</button></div>`}
-      ${tr && it.st !== "retire" ? `<div class="group blk-group"><div class="row"><span class="row-main"><b><span class="tr-l">Réunion</span>À trancher</b><span>${esc(person(tr.by).nom)}, ${ago(tr.at)}</span></span>${canLift(tr, it) ? `<button type="button" class="btn small tonal" data-act="untrancher" data-b="${tr.id}">Retirer</button>` : ""}</div></div>` : ""}
+      ${tr && it.st !== "retire" ? `<div class="group blk-group"><div class="row"><span class="row-main"><b><span class="tr-l">Réunion</span>Sujet à trancher</b><span>${esc(person(tr.by).nom)}, ${ago(tr.at)}</span></span>${canLift(tr, it) ? `<button type="button" class="btn small tonal" data-act="untrancher" data-b="${tr.id}">Retirer</button>` : ""}</div></div>` : ""}
       ${blocks.length ? `<div class="group blk-group">${blocks.map((b) => `<div class="row"><span class="row-main"><b><span class="blk-l">Bloqué</span>${esc(b.why)}</b><span>${esc(person(b.by).nom)}, ${ago(b.at)}</span></span>${canLift(b, it) ? `<button type="button" class="btn small tonal" data-act="unblock" data-b="${b.id}">Lever</button>` : ""}</div>`).join("")}</div>` : ""}
       <div class="group facts">
         ${status}
@@ -885,7 +885,7 @@ window.KPlan = (DATA, { greet = false } = {}) => {
       ${hist && edit ? "" : `<p class="foot-note">${hist ? "" : `Ajouté par ${esc(person(it.by).nom)} le ${fmtDay(it.at)}. `}${edit ? "" : `Modifiable par ${esc(editors(it))}.`}</p>`}
       ${it.st === "retire" ? (edit ? `<p class="retire-p"><button type="button" class="txt-btn strong" data-act="unretire" data-id="${id}">Remettre ${isTF(it) ? `ce ${momWord(it)}` : "cette action"}</button><button type="button" class="txt-btn danger" data-act="delete" data-id="${id}">Supprimer définitivement</button></p>` : "")
         : isVisit() ? ""
-        : `<p class="retire-p">${tr ? "" : `<button type="button" class="txt-btn strong" data-act="trancher" data-id="${id}">À trancher en réunion</button>`}<button type="button" class="txt-btn" data-act="block" data-id="${id}">Signaler un blocage</button>${edit ? `<button type="button" class="txt-btn danger" data-act="retire" data-id="${id}">Retirer ${isTF(it) ? `ce ${momWord(it)}` : "cette action"}</button>` : ""}</p>`}
+        : `<p class="retire-p">${tr ? "" : `<button type="button" class="txt-btn strong" data-act="trancher" data-id="${id}">Sujet à trancher</button>`}<button type="button" class="txt-btn" data-act="block" data-id="${id}">Signaler un blocage</button>${edit ? `<button type="button" class="txt-btn danger" data-act="retire" data-id="${id}">Retirer ${isTF(it) ? `ce ${momWord(it)}` : "cette action"}</button>` : ""}</p>`}
     </div>`;
   }
 
