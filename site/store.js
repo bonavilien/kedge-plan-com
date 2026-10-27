@@ -27,12 +27,14 @@ window.KStore = (() => {
   // ---------- lecture : tout, d'un coup (l'équipe est petite) ----------
   async function load() {
     const all = (t, order) => run(sb.from(t).select("*").order(order));
-    const [per, msg, svc, prt, prof, items, links, reqs, blocks, answers, seen, meta, journal] = await Promise.all([
+    const [per, msg, svc, prt, prof, items, links, reqs, blocks, answers, seen, meta, journal, notifs] = await Promise.all([
       all("periods", "du"), all("messages", "n"), all("services", "ordre"), all("partners", "nom"), all("profiles", "nom"),
       all("items", "date"), all("links", "at"), all("reqs", "at"), all("blocks", "at"),
       run(sb.from("answers").select("key,val").eq("user_id", user.id)), run(sb.from("seen").select("item").eq("user_id", user.id)), all("meta", "k"),
       // sans la migration 0003, l'appli marche quand même, sans historique
       all("journal", "id").catch(() => []),
+      // les notifications reçues ces 7 derniers jours et pas effacées (la base ne rend que celles-là, migration 0016)
+      run(sb.from("outbox").select("id,title,body,url,created_at").order("created_at", { ascending: false })).catch(() => []),
     ]);
     PERIODS = per.map((p) => ({ n: p.n, nom: p.nom, du: p.du, au: p.au, lib: p.lib }));
     // svc vaut « chef » pour les chefs de projet ; ownSvc garde le service réglé dans le profil
@@ -63,6 +65,7 @@ window.KStore = (() => {
         vu: { [user.id]: seen.map((s) => s.item) },
         // historique : la base note chaque création, modification, document et relance
         journal: journal.map((j) => ({ id: j.id, item: j.item, by: j.author || "", kind: j.kind, diff: j.diff || {}, at: day(j.at), ts: j.at })),
+        notifs: notifs.map((n) => ({ id: n.id, t: n.title, body: n.body || "", url: n.url || "", ts: n.created_at })).sort((a, b) => b.ts.localeCompare(a.ts) || b.id - a.id),
         lastMeeting: day(lastTs.length === 10 ? lastTs + "T12:00:00" : lastTs), lastMeetingTs: lastTs,
       },
     };
@@ -111,6 +114,8 @@ window.KStore = (() => {
   // par la base : un téléphone déjà abonné pour quelqu'un d'autre passe à la personne connectée
   const savePush = (sub) => run(sb.rpc("save_push", { p_endpoint: sub.endpoint, p_p256dh: sub.keys.p256dh, p_auth: sub.keys.auth }));
   const removePush = (endpoint) => run(sb.from("push_subs").delete().eq("endpoint", endpoint));
+  // effacer des notifications de sa liste (ids) ou toutes (sans ids)
+  const clearNotifs = (ids) => run(sb.rpc("effacer_notifs", ids ? { p_ids: ids } : {}));
 
   // ---------- temps réel : un changement fait par quelqu'un d'autre recharge les données ----------
   function watch(cb) {
@@ -121,5 +126,5 @@ window.KStore = (() => {
     document.addEventListener("visibilitychange", () => { if (!document.hidden) kick(); });
   }
 
-  return { ready, session, signIn, signOut, setPassword, load, addItem, updateItem, setStatus, deleteItem, addLink, removeLink, addReq, setReq, answerReq, setReqPour, addBlock, liftBlock, answer, markSeen, setMeta, setProfile, addPartner, renotify, savePush, removePush, watch };
+  return { ready, session, signIn, signOut, setPassword, load, addItem, updateItem, setStatus, deleteItem, addLink, removeLink, addReq, setReq, answerReq, setReqPour, addBlock, liftBlock, answer, markSeen, setMeta, setProfile, addPartner, renotify, savePush, removePush, clearNotifs, watch };
 })();

@@ -710,3 +710,23 @@ button.dl:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px;
 .gi.is-tf.retire { background: none; box-shadow: inset 0 0 0 1px var(--tf-edge); color: var(--text2); }
 .gi.is-tf.retire .gi-d i { color: var(--text2); }
 .gi-cont, .gi-cont .gi-t b { color: var(--text2); font-weight: 500; }
+
+/* Notifications : la cloche en haut à gauche, avec le nombre de nouvelles */
+.bell-btn { position: relative; }
+.bell-badge { position: absolute; top: 4px; left: calc(50% + 3px); min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; background: var(--yellow); color: var(--anth);
+  font-size: 11px; font-weight: 700; line-height: 18px; text-align: center; box-shadow: 0 0 0 2px var(--bg); font-variant-numeric: tabular-nums; }
+.app[data-os="android"] .bell-badge { top: 6px; }
+/* la liste : le titre, l'heure à part, le texte en dessous ; une nouvelle a un point jaune */
+.nt-sec + .nt-sec { margin-top: 22px; }
+.nt-sec .sec-h::first-letter { text-transform: uppercase; }
+.row.nt { align-items: flex-start; padding-right: 4px; gap: 4px; }
+.nt-open { flex: 1; min-width: 0; display: grid; gap: 3px; padding: 2px 0; border: 0; background: none; color: inherit; font: inherit; text-align: left; }
+.nt-open:disabled { opacity: 1; cursor: default; }
+.nt-top { display: flex; align-items: baseline; gap: 10px; }
+.nt-top b { flex: 1; min-width: 0; font-weight: 600; font-size: 16px; }
+.nt-top time { flex: none; font-size: 13px; color: var(--text2); font-variant-numeric: tabular-nums; }
+.nt-body { font-size: 15px; line-height: 1.35; color: var(--text2); overflow-wrap: anywhere; }
+.nt.is-new .nt-top b::before { content: ""; display: inline-block; width: 8px; height: 8px; margin: 0 7px 1px 0; border-radius: 50%; background: var(--yellow); box-shadow: 0 0 0 1px color-mix(in srgb, var(--anth) 25%, transparent); vertical-align: middle; }
+.nt-x { flex: none; width: 36px; height: 36px; margin-top: -4px; color: var(--text2); }
+.nt-x svg { width: 18px; height: 18px; }
+.app[data-os="android"] .nt-x { width: 40px; height: 40px; color: var(--text2); }

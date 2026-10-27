@@ -257,11 +257,37 @@ window.KPlan = (DATA, { greet = false } = {}) => {
   }
   function syncBadge() {
     syncSide();
+    app.querySelectorAll(".bell-btn").forEach((b) => { b.outerHTML = bellBtn(); });
     const n = todo().count, tab = app.querySelector('.tab[data-kui-tab="afaire"]'); if (!tab) return;
     let b = tab.querySelector(".tab-badge");
     if (!n) { b?.remove(); tab.removeAttribute("aria-label"); return; }
     if (!b) { b = document.createElement("span"); b.className = "tab-badge"; b.setAttribute("aria-hidden", "true"); tab.append(b); }
     b.textContent = n; tab.setAttribute("aria-label", `À faire, ${n} en attente`);
+  }
+
+  // ---------- Notifications : celles reçues ces 7 derniers jours (la base oublie les plus vieilles), sous la cloche en haut à gauche ----------
+  const NOTIF_VU = "notifs_vues"; // la plus récente déjà vue, rangée dans answers
+  const unread = () => (DB.notifs || []).filter((n) => n.ts > (DB.answers[NOTIF_VU] || ""));
+  const bellBtn = () => { const n = unread().length;
+    return `<button type="button" class="icon-btn bell-btn" data-act="notifs" aria-label="Notifications${n ? `, ${n} ${n > 1 ? "nouvelles" : "nouvelle"}` : ""}">${I.bell}${n ? `<span class="bell-badge" aria-hidden="true">${n > 9 ? "9+" : n}</span>` : ""}</button>`; };
+  // ce qui était déjà vu à l'ouverture : les nouvelles restent marquées pendant la visite
+  let notifSeen = "";
+  function openNotifs() { notifSeen = DB.answers[NOTIF_VU] || ""; K.push(renderNotifs, { title: "Notifications" }); }
+  function renderNotifs(el, { back }) {
+    const L = DB.notifs || [], last = L[0]?.ts;
+    if (last && last > (DB.answers[NOTIF_VU] || "")) { DB.answers[NOTIF_VU] = last; Store.answer(NOTIF_VU, last).catch(() => {}); setTimeout(syncBadge); }
+    const dayOf = (ts) => { const d = iso(new Date(ts)), n = -days(d); return n <= 0 ? "Aujourd'hui" : n === 1 ? "Hier" : cap(D(d).toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" })); };
+    const hour = (ts) => new Date(ts).toLocaleTimeString("fr-FR", { hour: "numeric", minute: "2-digit" }).replace(":", " h ");
+    const groups = [];
+    L.forEach((n) => { const h = dayOf(n.ts); if (groups.at(-1)?.h !== h) groups.push({ h, l: [] }); groups.at(-1).l.push(n); });
+    const row = (n) => `<div class="row wrap nt${n.ts > notifSeen ? " is-new" : ""}">
+      <button type="button" class="nt-open" data-notif="${n.id}"${n.url ? "" : " disabled"}><span class="nt-top"><b>${esc(n.t)}</b><time datetime="${esc(n.ts)}">${hour(n.ts)}</time></span>${n.body ? `<span class="nt-body">${esc(n.body)}</span>` : ""}</button>
+      <button type="button" class="icon-btn nt-x" data-act="unnotif" data-n="${n.id}" aria-label="Effacer « ${esc(n.t)} »">${I.close}</button></div>`;
+    el.innerHTML = K.navbar({ title: "Notifications", back, actions: L.length ? `<button type="button" class="txt-btn strong" data-act="clearnotifs">Tout effacer</button>` : "" }) + `<div class="scroll">
+      <h1 class="large-title">Notifications</h1>
+      ${L.length ? groups.map((g) => `<section class="nt-sec"><h2 class="sec-h">${g.h}</h2><div class="group">${g.l.map(row).join("")}</div></section>`).join("")
+        : `<div class="all-good"><span class="hl-ic big">${I.bell}</span><b>Aucune notification.</b><span>Elles restent ici 7 jours.</span></div>`}
+    </div>`;
   }
 
   function renderAfaire(el) {
@@ -288,7 +314,7 @@ window.KPlan = (DATA, { greet = false } = {}) => {
     const sent = T.envoyees.length ? `<section class="todo-sec"><h2 class="sec-h">${sentH} · ${T.envoyees.length}</h2><div class="group">${T.envoyees.map((r) => { const it = byId(r.item);
       return `<div class="row wrap rq"><span class="row-main"><button type="button" class="rq-open" data-open="${it.id}"><b>${esc(it.t)}</b><span>${esc(r.type)}${r.from !== ME ? ` · par ${esc(person(r.from).nom)}` : ""} · demandé à ${esc(quiOf(r))}</span></button>${dlTag(r)}${canPour(r) ? `<button type="button" class="txt-btn rq-x" data-act="unreq" data-r="${r.id}">Retirer la demande</button>` : ""}</span>${forMe(r) ? `<button type="button" class="btn small" data-act="repondre" data-r="${r.id}">C'est reçu</button>` : ""}</div>`; }).join("")}</div></section>` : "";
 
-    el.innerHTML = K.navbar({ title: "À faire", actions: addBtn() + profileBtn() }) + `<div class="scroll page-wide">
+    el.innerHTML = K.navbar({ title: "À faire", lead: bellBtn(), actions: addBtn() + profileBtn() }) + `<div class="scroll page-wide">
       <h1 class="large-title">À faire</h1>
       ${T.count ? "" : `<div class="all-good"><span class="hl-ic big">${I.check}</span><b>Tout est à jour.</b><span>Rien n'attend ta réponse.</span></div>`}
       <div class="todo-board">
@@ -365,7 +391,7 @@ window.KPlan = (DATA, { greet = false } = {}) => {
     const chefL = shown.filter(isChefAct);
     const colsH = () => `<div class="svc-cols">${[...SERVICES.map((s) => ({ nom: s.nom, l: shown.filter((it) => it.svc === s.k) })), ...(chefL.length ? [{ nom: CHEF.nom, l: chefL }] : [])].map(({ nom, l }) =>
       `<section class="svc-col" aria-label="${esc(nom)}"><h2 class="col-h">${esc(nom)}<span>${l.filter((it) => it.st !== "retire").length}</span></h2>${l.length ? agenda(l, { who: "tf" }) : `<p class="col-empty">Rien sur cette période.</p>`}</section>`).join("")}</div>`;
-    el.innerHTML = K.navbar({ title: "Ma période", actions: (chef ? `<button type="button" class="txt-btn strong wide-only" data-act="meeting">Mode réunion</button>` : "") + addBtn() + profileBtn() }) + `<div class="scroll${wide ? " page-wide" : ""}"><div class="swipe" id="swipe">
+    el.innerHTML = K.navbar({ title: "Ma période", lead: bellBtn(), actions: (chef ? `<button type="button" class="txt-btn strong wide-only" data-act="meeting">Mode réunion</button>` : "") + addBtn() + profileBtn() }) + `<div class="scroll${wide ? " page-wide" : ""}"><div class="swipe" id="swipe">
       ${periodHead(cover)}
       ${clsH}
       ${news}
@@ -476,7 +502,7 @@ window.KPlan = (DATA, { greet = false } = {}) => {
         ${x.its.length ? `<div class="group">${rows(x.its, { mode: "week" })}</div>` : ""}</section>`;
     }).join("");
     // la même période que Ma période : changer ici change là-bas, et inversement
-    el.innerHTML = K.navbar({ title: "Calendrier", actions: addBtn() + profileBtn() }) + `<div class="scroll">
+    el.innerHTML = K.navbar({ title: "Calendrier", lead: bellBtn(), actions: addBtn() + profileBtn() }) + `<div class="scroll">
       <h1 class="large-title">Calendrier</h1>
       <div class="swipe">${periodHead("", "h2")}
       ${suj.length ? `<h2 class="pw-h">Toute la période</h2><div class="group">${rows(suj, { mode: "week" })}</div>` : ""}
@@ -504,7 +530,7 @@ window.KPlan = (DATA, { greet = false } = {}) => {
     const rowsH = ws.map((x) => `<div class="gt-r${x.here ? " now" : ""}" role="row"${x.here ? ' id="pw-now"' : ""}>
         <div class="gt-w" role="rowheader"><b>${esc(range(x.d0, addDays(x.d0, 6)))}</b>${x.here ? `<em class="pw-now">Cette semaine</em>` : ""}</div>
         ${C.map((c, k) => `<div class="gt-c" role="cell">${k === 0 ? x.cont.map(contL).join("") : ""}${x.its.filter(c.f).map(item).join("")}</div>`).join("")}</div>`).join("");
-    el.innerHTML = K.navbar({ title: "Calendrier", actions: profileBtn() }) + `<div class="scroll page-wide">
+    el.innerHTML = K.navbar({ title: "Calendrier", lead: bellBtn(), actions: profileBtn() }) + `<div class="scroll page-wide">
       <h1 class="large-title">Calendrier</h1>
       <div class="swipe">${periodHead("", "h2")}
       ${suj.length ? `<h2 class="sec-h suj-h">Toute la période · ${suj.length}</h2><div class="suj-grid">${suj.map(sujCard).join("")}</div>` : ""}
@@ -574,7 +600,7 @@ window.KPlan = (DATA, { greet = false } = {}) => {
       ${g.l.length ? `${g.suj.length || g.cls.length ? `<h3 class="sec-h suj-h">Temps forts · ${g.l.length}</h3>` : ""}<div class="tbl tbl-${k}" style="--nr:${RCOLS.length - 1}">${k === "tf" ? tfHead + g.l.map(tfRow).join("") : payHead + g.l.map(payRow).join("")}</div>` : ""}</section>`;
     const nav = wide && secs.length > 1 ? `<nav class="per-nav" aria-label="Aller à une période">${secs.map((g) => `<button type="button" class="per-l${g.i === CUR ? " now" : ""}" data-act="goper" data-k="${k}" data-i="${g.i}">${esc(g.P.nom)}</button>`).join("")}
       ${pastN ? `<button type="button" class="link" data-act="past" data-k="${k}">${open ? "Masquer les passés" : seeMore(pastN, "passés")}</button>` : ""}</nav>` : "";
-    el.innerHTML = K.navbar({ title, actions: action + profileBtn() }) + `<div class="scroll${wide ? " page-wide" : ""}">
+    el.innerHTML = K.navbar({ title, lead: bellBtn(), actions: action + profileBtn() }) + `<div class="scroll${wide ? " page-wide" : ""}">
       <h1 class="large-title">${title}</h1>${lead}
       ${wide && secs.length > 1 ? nav : pastN ? `<p class="past-p"><button type="button" class="link" data-act="past" data-k="${k}">${open ? "Masquer les passés" : seeMore(pastN, "passés")}</button></p>` : ""}
       ${secs.length ? secs.map(wide ? desk : phone).join("") : `<div class="group"><div class="empty"><span>${pastN ? "Plus rien à venir." : empty}</span>${pastN ? "" : add}</div></div>`}
@@ -677,7 +703,7 @@ window.KPlan = (DATA, { greet = false } = {}) => {
     if (S.draft && el._draft === S.draft && el.querySelector("#f-t")) S.draft = readForm(el, "f", S.draft);
     if (!S.draft || (!canAdd() && S.draft.kind !== "partner")) S.draft = newDraft(canAdd() ? "action" : "partner");
     el._draft = S.draft;
-    el.innerHTML = K.navbar({ title: "Ajouter", actions: profileBtn() }) + `<div class="scroll"><h1 class="large-title">Ajouter</h1>${canAdd() || isMedia() ? formHTML(S.draft, "f", false)
+    el.innerHTML = K.navbar({ title: "Ajouter", lead: bellBtn(), actions: profileBtn() }) + `<div class="scroll"><h1 class="large-title">Ajouter</h1>${canAdd() || isMedia() ? formHTML(S.draft, "f", false)
       : isVisit() ? `<div class="group"><div class="empty"><span>Mode visiteur : tu peux tout consulter, sans rien ajouter ni modifier.</span></div></div>`
       : `<div class="group"><div class="empty"><span>Ton compte n'est rattaché à aucun service : tu peux tout consulter et demander des éléments. Pour publier, demande à ${esc(CHEF.qui)} de t'ajouter à ton service.</span></div></div>`}</div>`;
     syncBadge();
@@ -800,7 +826,7 @@ window.KPlan = (DATA, { greet = false } = {}) => {
     if (k === "partner") return (PARTNERS.find((x) => x.k === v) || { nom: "—" }).nom;
     return quote(String(v));
   }
-  const stamp = (ts) => { const d = new Date(ts), day = iso(d); return `${day === TODAY ? "aujourd'hui" : fmtDay(day)} à ${d.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}`; };
+  const stamp = (ts) => { const d = new Date(ts), day = iso(d); return `${day === TODAY ? "aujourd'hui" : fmtDay(day)} à ${d.toLocaleTimeString("fr-FR", { hour: "numeric", minute: "2-digit" })}`; };
   // une ligne par événement : quoi (gras), qui et quand (gris), puis le détail avant → après
   function histOf(it) {
     const det = (k, v) => `<span class="h-d"><i>${esc(k)}</i>${esc(v)}</span>`;
@@ -1327,7 +1353,7 @@ window.KPlan = (DATA, { greet = false } = {}) => {
     media: { label: "Partenariats", icon: "megaphone", render: renderMedia },
     ajouter: { label: "Ajouter", icon: "plus", render: renderAjouter },
     grille: { label: "Calendrier", icon: "calendar", render: renderGrille },
-    afaire: { label: "À faire", icon: "bell", render: renderAfaire },
+    afaire: { label: "À faire", icon: "tasks", render: renderAfaire },
   });
 
   // ordinateur et tablette : la barre d'onglets devient un menu latéral, la marque en haut, le profil et la réunion en bas
@@ -1345,7 +1371,9 @@ window.KPlan = (DATA, { greet = false } = {}) => {
   [MQ_COLS, MQ_PANEL, MQ_DESK].forEach((m) => m.addEventListener("change", () => K.refresh()));
 
   app.addEventListener("click", async (e) => {
-    const t = e.target.closest("[data-open],[data-act],[data-msgf],[data-link],[data-setf]"); if (!t || !app.contains(t) || meeting.contains(t)) return;
+    const t = e.target.closest("[data-open],[data-act],[data-msgf],[data-link],[data-setf],[data-notif]"); if (!t || !app.contains(t) || meeting.contains(t)) return;
+    // une notification ouvre ce qu'elle annonce, comme sur le téléphone (la liste reste derrière)
+    if (t.dataset.notif) { const n = (DB.notifs || []).find((x) => String(x.id) === t.dataset.notif); if (n?.url) route(new URL(n.url, location.href).hash); return; }
     if (t.dataset.open) {
       if (panel() && !t.closest(".view.pushed")) { while (app.dataset.pushed === "1") K.pop(); markSel(t.dataset.open); }
       return openItem(t.dataset.open);
@@ -1363,6 +1391,14 @@ window.KPlan = (DATA, { greet = false } = {}) => {
     if (a === "goper") document.getElementById(`per-${t.dataset.k}-${t.dataset.i}`)?.scrollIntoView({ behavior: K.reduceMotion() ? "auto" : "smooth", block: "start" });
     if (a === "allnew") K.push(renderAllNew, { title: "Nouveautés" });
     if (a === "meeting") openMeeting();
+    if (a === "notifs") openNotifs();
+    if (a === "unnotif") { const n = +t.dataset.n; DB.notifs = (DB.notifs || []).filter((x) => x.id !== n); quick(Store.clearNotifs([n]), "Notification effacée."); }
+    if (a === "clearnotifs") {
+      const ids = (DB.notifs || []).map((x) => x.id);
+      if (ids.length && (await K.alert({ title: "Tout effacer ?", text: `${ids.length > 1 ? `Les ${ids.length} notifications disparaissent` : "La notification disparaît"} de cette liste.`, ok: "Tout effacer", danger: true }))) {
+        DB.notifs = []; quick(Store.clearNotifs(ids), "Notifications effacées.");
+      }
+    }
     if (a === "copil") openCopil();
     if (a === "gpast") { S.gpast = !S.gpast; K.refresh(); }
     // un brouillon déjà commencé n'est pas effacé : on change seulement de type (et de fiche liée)

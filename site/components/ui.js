@@ -59,8 +59,9 @@ window.KUI = (() => {
 
   // ---------- barre du haut ----------
   // back : libellé du bouton retour (iOS l'affiche, Android montre une flèche) ; actions : HTML des boutons de droite
-  function navbar({ title = "", back = "", actions = "" } = {}) {
-    const lead = back ? `<div class="nb-lead"><button type="button" class="back" data-kui="back" aria-label="Retour${back === "Retour" ? "" : " : " + esc(back)}">${isAndroid() ? I.arrowL : I.chevL}<span>${esc(back)}</span></button></div>` : `<div class="nb-lead"></div>`;
+  // lead : HTML du bouton de gauche quand il n'y a pas de retour
+  function navbar({ title = "", back = "", actions = "", lead: leadHTML = "" } = {}) {
+    const lead = back ? `<div class="nb-lead"><button type="button" class="back" data-kui="back" aria-label="Retour${back === "Retour" ? "" : " : " + esc(back)}">${isAndroid() ? I.arrowL : I.chevL}<span>${esc(back)}</span></button></div>` : `<div class="nb-lead">${leadHTML}</div>`;
     return `<header class="nb">${lead}<span class="nb-title">${esc(title)}</span><div class="nb-trail">${actions}</div></header>`;
   }
   const iconBtn = (icon, label, attrs = "") => `<button type="button" class="icon-btn" aria-label="${esc(label)}" ${attrs}>${I[icon] || ""}</button>`;
