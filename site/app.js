@@ -1250,7 +1250,7 @@ window.KPlan = (DATA, { greet = false } = {}) => {
       <div class="mt-body"><div class="mt-main">${groups.map(section).join("")}</div>${aside}</div>`;
   }
   const openMeeting = () => { renderMeeting(); meeting.hidden = false; meeting.querySelector(".mt-head [data-mt='close']")?.focus(); };
-  const closeMeeting = () => { meeting.hidden = true; };
+  const closeMeeting = () => { meeting.hidden = true; while (app.dataset.mtFiche && app.dataset.pushed === "1") K.pop(); };
   meeting.addEventListener("click", (e) => {
     const b = e.target.closest("[data-mt],[data-mt-open]"); if (!b) return;
     if (b.dataset.mt === "close") closeMeeting();
@@ -1258,9 +1258,20 @@ window.KPlan = (DATA, { greet = false } = {}) => {
     if (b.dataset.mt === "tranche") { const x = DB.blocks.find((y) => y.id === b.dataset.b); if (x) { x.leve = true; renderMeeting(); quick(Store.liftBlock(x.id), "Tranché."); } }
     if (b.dataset.mt === "more") { MT[b.dataset.k] = !MT[b.dataset.k]; renderMeeting(); }
     if (b.dataset.mt === "free") { const sc = meeting.querySelector(".mt-main").scrollTop; MT.free[b.dataset.k] = !MT.free[b.dataset.k]; renderMeeting(); meeting.querySelector(".mt-main").scrollTop = sc; }
-    if (b.dataset.mtOpen) { closeMeeting(); openItem(b.dataset.mtOpen); }
+    if (b.dataset.mtOpen) openFromMeeting(b.dataset.mtOpen);
   });
-  document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !meeting.hidden) { e.stopImmediatePropagation(); closeMeeting(); } }, true);
+  // une fiche ouverte depuis la réunion : en panneau par-dessus l'écran réunion, qui reste ouvert derrière ;
+  // la croix (ou Échap) referme la fiche et on retrouve la réunion, redessinée si la fiche a changé quelque chose
+  function openFromMeeting(id) {
+    while (app.dataset.pushed === "1") K.pop();
+    app.dataset.mtFiche = "1"; openItem(id);
+    meeting.querySelectorAll("[data-mt-open].on").forEach((x) => x.classList.remove("on"));
+    meeting.querySelectorAll(`[data-mt-open="${id}"]`).forEach((x) => x.classList.add("on"));
+  }
+  new MutationObserver(() => {
+    if (app.dataset.pushed !== "1" && app.dataset.mtFiche) { delete app.dataset.mtFiche; if (!meeting.hidden) redrawOverlays(); }
+  }).observe(app, { attributes: true, attributeFilter: ["data-pushed"] });
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !meeting.hidden && !app.dataset.mtFiche) { e.stopImmediatePropagation(); closeMeeting(); } }, true);
 
   // =====================================================================
   // Écran copil PGE : l'année en cinq cartes, ce qui est diffusé, ce qui ne l'est pas encore, ce qui arrive

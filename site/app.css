@@ -235,6 +235,12 @@ details.more > .lbl:first-of-type { margin-top: 6px; }
 /* ---------- écran réunion (ordinateur) ---------- */
 .meeting { position: absolute; inset: 0; z-index: 45; display: grid; grid-template-rows: auto minmax(0, 1fr); background: var(--bg); color: var(--text); font-size: 16px; }
 .meeting[hidden] { display: none; }
+/* fiche ouverte depuis la réunion : le panneau passe devant l'écran réunion, la réunion reste derrière (le reste de l'appli est masqué) */
+.app[data-mt-fiche] .meeting { z-index: 2; }
+.app[data-mt-fiche] .views > .view:not(.pushed), .app[data-mt-fiche] .tabbar { visibility: hidden; }
+.app[data-mt-fiche] .views > .view.pushed { z-index: 4; }
+.meeting [data-mt-open].on { background: color-mix(in srgb, var(--yellow) 30%, transparent); }
+.meeting .mt-aside [data-mt-open].on { background: rgba(255, 255, 255, .08); border-radius: 8px; }
 .mt-head { display: flex; align-items: center; gap: 22px; padding: 22px 36px 20px; }
 .mt-head img { height: 30px; width: auto; }
 .logo-d { display: none; } .app[data-dark="1"] .logo-l { display: none; } .app[data-dark="1"] .logo-d { display: block; }

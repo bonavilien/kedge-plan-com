@@ -61,9 +61,12 @@ await p.locator('.ma-tr:has-text("CP de rentrée") .ma-ok').click(); await p.wai
 a = await aside();
 ok(/À trancher\s*2/.test(a) && !(await p.locator('.ma-tr:has-text("CP de rentrée")').count()), "« Tranché » le retire de la réunion");
 await p.locator('.ma-tr:has-text("Guide Prépa") .ma-item').click(); await p.waitForTimeout(400);
-ok(await p.isHidden("#meeting") && /Guide Prépa/.test(await fiche().innerText()), "un sujet ouvre sa fiche");
+ok(await p.isVisible("#meeting") && /Guide Prépa/.test(await fiche().innerText()), "un sujet ouvre sa fiche, par-dessus la réunion");
 await fiche().locator('[data-act="untrancher"]').click(); await p.waitForTimeout(300);
 ok(await fiche().locator('[data-act="trancher"]').isVisible(), "« Retirer » sur la fiche : le bouton revient");
+await fiche().locator(".nb .back").click(); await p.waitForTimeout(400);
+ok(/À trancher\s*1/.test(await aside()), "fiche refermée : la réunion est à jour (un seul sujet restant)");
+await p.evaluate(() => document.querySelector('#meeting .mt-head [data-mt="close"]').click()); await p.waitForTimeout(300);
 await open(cp.id);
 ok(await fiche().locator('[data-act="trancher"]').isVisible(), "un sujet tranché peut être remis à l'ordre du jour");
 
