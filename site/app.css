@@ -450,7 +450,7 @@ details.more > .lbl:first-of-type { margin-top: 6px; }
   .app[data-os] .alert .acts { display: flex; justify-content: flex-end; gap: 10px; box-shadow: none; }
   .app[data-os] .alert .acts button { min-height: 42px; padding: 0 20px; border-radius: var(--r-btn); background: var(--fill); color: var(--text); font-size: 15px; font-weight: 600; box-shadow: none; cursor: pointer; }
   .app[data-os] .alert .acts button[data-a="1"] { background: var(--sel); color: var(--on-sel); }
-  .app[data-os] .alert .acts button.danger { background: var(--red); color: #fff; }
+  .app[data-os] .alert .acts button.danger { background: var(--red); color: var(--bg) !important; } /* .danger de base.css force le rouge */
   /* sélecteur de type (Ajouter) : lisible à la souris */
   .seg button { min-height: 38px; font-size: 15px; cursor: pointer; }
   /* la grille prend toute la largeur ; À faire et Ma période s'élargissent */
@@ -588,7 +588,7 @@ details.more > .lbl:first-of-type { margin-top: 6px; }
 }
 
 /* deadline d'une demande d'éléments : toujours visible, jaune à trois jours, rouge une fois passée */
-.dl { display: inline-flex; align-items: center; gap: 6px; align-self: flex-start; margin-top: 6px; padding: 4px 10px; border: 0; border-radius: 8px; background: var(--fill); color: var(--text); font: inherit; font-size: 13px; font-weight: 600; line-height: 1.3; }
+.dl { display: inline-flex; align-items: center; gap: 6px; text-align: left; align-self: flex-start; margin-top: 6px; padding: 4px 10px; border: 0; border-radius: 8px; background: var(--fill); color: var(--text); font: inherit; font-size: 13px; font-weight: 600; line-height: 1.3; }
 .dl svg { width: 15px; height: 15px; flex: none; }
 .dl.soon { background: var(--yellow); color: var(--anth); }
 .dl.late { background: var(--red); color: var(--bg); }
@@ -635,14 +635,14 @@ button.dl:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px;
 /* « encore 5 jours » ne laisse pas un mot seul à la ligne */
 .ph-t p { text-wrap: balance; }
 /* « À suivre » : la période suivante annoncée, séparée de la période en cours par un filet */
-.soon { margin-top: 30px; padding-top: 6px; border-top: 2px dashed var(--sep); }
+section.soon { margin-top: 30px; padding-top: 6px; border-top: 2px dashed var(--sep); }
 .soon-h { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; margin: 16px 4px 0; font-family: var(--serif); font-weight: 700; font-size: 21px; line-height: 1.15; color: var(--text2); }
 .soon-h span { font-family: var(--font); font-weight: 500; font-size: 14px; }
-/* À faire, téléphone : la deadline et le bouton passent sous la demande plutôt que de la serrer */
-@media (max-width: 480px) {
-  .rq { flex-wrap: wrap; }
-  .rq > .btn { margin-left: auto; }
-}
+/* une demande : le bouton passe sous la demande plutôt que de la serrer (téléphone, colonnes d'À faire sur ordinateur),
+   sinon la deadline se coupe sur deux lignes */
+.rq { flex-wrap: wrap; row-gap: 8px; }
+.rq > .row-main { flex: 1 1 240px; }
+.rq > .btn { margin-left: auto; }
 /* écran réunion entre 1024 et 1180 px : le panneau « À débloquer » passe sous le tableau, les colonnes gardent de la place */
 @media (max-width: 1179px) {
   .mt-body { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto; padding: 0 24px 20px; }
