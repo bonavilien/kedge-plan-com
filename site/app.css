@@ -735,3 +735,13 @@ section.soon { margin-top: 30px; padding-top: 6px; border-top: 2px dashed var(--
 .nt-x { flex: none; width: 36px; height: 36px; margin-top: -4px; color: var(--text2); }
 .nt-x svg { width: 18px; height: 18px; }
 .app[data-os="android"] .nt-x { width: 40px; height: 40px; color: var(--text2); }
+/* notes de la fiche : du texte lisible, pas une mention en petit gris ; un appui pour l'écrire sur place */
+.note-t { display: grid; gap: 8px; width: 100%; padding: 14px 16px; border: 0; background: none; color: var(--text); font: inherit; text-align: left; }
+button.note-t { cursor: pointer; }
+.note-x { font-size: 16px; line-height: 1.5; white-space: pre-line; overflow-wrap: anywhere; }
+.note-m { display: flex; align-items: center; gap: 12px; font-size: 13px; color: var(--text2); }
+.note-e { display: inline-flex; align-items: center; gap: 4px; margin-left: auto; font-weight: 600; color: var(--accent); }
+.note-e svg { width: 14px; height: 14px; }
+.note-ed { display: grid; gap: 10px; }
+.note-ed .in { font-size: 16px; line-height: 1.5; }
+.note-acts { display: flex; justify-content: flex-end; gap: 8px; }

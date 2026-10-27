@@ -864,6 +864,18 @@ window.KPlan = (DATA, { greet = false } = {}) => {
   const reqRow = (q, id) => { const o = q.item !== id && byId(q.item), docs = q.st === "recue" ? reqDocs(q) : [];
     const rep = q.st === "recue" && (q.reponse || docs.length) ? `<span class="rq-rep">${q.reponse ? `<span class="rq-msg">${esc(q.reponse)}</span>` : ""}${docs.map((l) => `<button type="button" class="rq-doc" data-link="${esc(l.url)}">${I.external}${esc(l.nom)}</button>`).join("")}${q.by ? `<small>${esc(person(q.by).nom)}${q.rts ? `, ${ago(iso(new Date(q.rts)))}` : ""}</small>` : ""}</span>` : "";
     return `<div class="row wrap rq"><span class="row-main">${o ? `<button type="button" class="rq-for" data-open="${o.id}">${esc(o.t)}${o.st === "retire" ? " (retirée)" : ""}</button>` : ""}<b>${esc(reqTxt(q))}</b><span>De ${esc(person(q.from).nom)} à ${esc(quiOf(q))}</span>${dlTag(q)}${rep}${canPour(q) ? `<button type="button" class="txt-btn rq-x" data-act="unreq" data-r="${q.id}">Retirer la demande</button>` : ""}</span>${q.st === "recue" ? `<span class="tag">Reçu</span>` : forMe(q) ? `<button type="button" class="btn small" data-act="repondre" data-r="${q.id}">${q.to === PROG.k ? "C'est reçu" : q.to === MOI.k ? "C'est fait" : "Répondre"}</button>` : ""}</div>`; };
+  // notes : une section à part, lisible comme du texte ; ceux qui modifient la fiche l'écrivent sur place, sans passer par Modifier
+  const noteHTML = (it, edit) => {
+    const id = it.id, on = S.note === id;
+    if (on) return `<h2 class="sec-h"><label for="nt-${id}">Notes</label></h2><div class="note-ed"><textarea class="in" id="nt-${id}" rows="5" maxlength="2000" placeholder="Contexte, contact, ce qu'il faut savoir…">${esc(it.note)}</textarea>
+      <div class="note-acts"><button type="button" class="btn small outline" data-act="note-x">Annuler</button><button type="button" class="btn small" data-act="note-ok" data-id="${id}">Enregistrer</button></div></div>`;
+    if (!it.note && !edit) return "";
+    const last = (DB.journal || []).filter((j) => j.item === id && j.diff && "note" in j.diff).sort((a, b) => b.ts.localeCompare(a.ts))[0];
+    const by = last ? `${person(last.by).nom}, ${ago(last.at)}` : "";
+    return `<h2 class="sec-h">Notes</h2><div class="group">${it.note
+      ? `${edit ? `<button type="button" class="note-t" data-act="note" data-id="${id}" aria-label="Modifier la note">` : `<div class="note-t">`}<span class="note-x">${esc(it.note)}</span>${by || edit ? `<span class="note-m">${esc(by)}${edit ? `<span class="note-e">${I.edit}Modifier</span>` : ""}</span>` : ""}${edit ? "</button>" : "</div>"}`
+      : `<button type="button" class="row add-row" data-act="note" data-id="${id}"><span class="add-ic">${I.plus}</span><span class="row-main"><b>Ajouter une note</b></span></button>`}</div>`;
+  };
   function openItem(id) { const it = byId(id); if (!it) return; K.push((el, o) => renderItem(el, o, id), { title: kindName(it) }); }
   function renderItem(el, { back }, id) {
     const it = byId(id);
@@ -901,7 +913,7 @@ window.KPlan = (DATA, { greet = false } = {}) => {
         ${linkedTF ? `<button type="button" class="row" data-open="${linkedTF.id}"><span class="row-main"><b>${cap(momWord(linkedTF))} lié</b><span>${esc(linkedTF.t)}</span></span>${I.chevR}</button>` : ""}
         ${it.lieu ? kv("Lieu", esc(it.lieu)) : ""}
       </div>
-      ${it.note ? `<p class="sec-f">${esc(it.note)}</p>` : ""}
+      ${noteHTML(it, edit && it.st !== "retire")}
       ${reqs.length ? `<h2 class="sec-h">Demandes d'éléments · ${reqs.length}</h2><div class="group">${reqs.map((q) => reqRow(q, id)).join("")}</div>
         ${r !== it ? `<p class="sec-f">Partagées avec le ${momWord(r)} « ${esc(r.t)} » et ses relais.</p>` : reqs.some((q) => q.item !== id) ? `<p class="sec-f">Avec celles de ses relais.</p>` : ""}` : ""}
       ${links.length || canLink() ? `<h2 class="sec-h">Documents${links.length ? ` · ${links.length}` : ""}</h2><div class="group">${links.map((l) => `<div class="row lk"><button type="button" class="row-main lk-open" data-link="${esc(l.url)}"><b>${esc(l.nom)}</b><span>${esc(hostOf(l.url))}${l.on !== it ? ` · ${esc(isTF(l.on) ? momWord(l.on) : l.on.t)}` : ""}</span></button>
@@ -1426,6 +1438,11 @@ window.KPlan = (DATA, { greet = false } = {}) => {
     if (a === "nope") { DB.answers[t.dataset.key] = "non"; quick(Store.answer(t.dataset.key, "non"), "Noté, pas besoin d'éléments."); }
     if (a === "vu") { DB.vu[ME] = [...(DB.vu[ME] || []), id]; quick(Store.markSeen(id)); }
     if (a === "block") blockSheet(id);
+    if (a === "note") { S.note = id; K.refresh(); const ta = document.getElementById(`nt-${id}`); if (ta) { ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length); } }
+    if (a === "note-x") { S.note = null; K.refresh(); }
+    if (a === "note-ok") { const it = byId(id), v = document.getElementById(`nt-${id}`).value.trim(); S.note = null;
+      if (v === it.note) { K.refresh(); return; }
+      it.note = v; quick(Store.updateItem(id, it, ["note"]), v ? "Note enregistrée." : "Note retirée."); sync(); }
     if (a === "trancher" && !trOf(id)) trSheet(id);
     if (a === "untrancher") { const b = DB.blocks.find((x) => x.id === t.dataset.b); if (b) { b.leve = true; quick(Store.liftBlock(b.id), "Retiré de la réunion."); } }
     if (a === "unblock") { const b = DB.blocks.find((x) => x.id === t.dataset.b); if (b) { b.leve = true; quick(Store.liftBlock(b.id), "Blocage levé."); } }
