@@ -60,7 +60,9 @@
     if (t === "links" && op === "insert") return p.chef || p.media || !!p.svc;
     // migration 0009 : seul un chef note une demande à la Direction du Programme
     if (t === "reqs" && op === "insert" && row.dest === "programme" && !p.chef) return false;
-    if (t === "reqs" && op === "insert" && db.reqs.some((q) => q.item === row.item && q.dest === row.dest && q.type === row.type && q.st === "ouverte")) return false;
+    // migration 0013 : « Moi », pour les chefs ; la même note par un autre chef reste possible
+    if (t === "reqs" && op === "insert" && row.dest === "moi" && !p.chef) return false;
+    if (t === "reqs" && op === "insert" && db.reqs.some((q) => q.item === row.item && q.dest === row.dest && q.type === row.type && q.st === "ouverte" && (row.dest !== "moi" || q.asker === row.asker))) return false;
     return true;
   }
   // les déclencheurs de la migration 0003 : l'historique se remplit tout seul

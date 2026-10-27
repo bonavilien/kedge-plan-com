@@ -33,4 +33,6 @@ $D -f supabase/migrations/0011_classements.sql
 $D -f test/db/classements.sql
 $D -f supabase/migrations/0012_corrections_26_oct.sql
 $D -f test/db/corrections26.sql
+$D -f supabase/migrations/0013_demande_a_soi.sql
+$D -f test/db/moi.sql
 echo "Base : tout est bon"
