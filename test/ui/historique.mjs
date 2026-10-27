@@ -47,18 +47,23 @@ ok(h.length === 1 && h[0].startsWith("Création") && h[0].includes("Aurélie, au
 ok(!(await topv().locator(".foot-note").count()), "plus de « Ajouté par » quand l'historique est là");
 
 // titre et précisions changent : on propose de prévenir Julien (prévenu de tout) et Stéphane (RS cité)
-await edit(async () => { await p.fill("#e-t", "Reportage JPO Bordeaux"); if (!(await p.$eval("#e-more", (d) => d.open))) await p.click("#e-more summary"); await p.fill("#e-note", "Rendez-vous à 9 h devant l'amphi"); });
+// la note s'écrit sur la fiche, sans « Prévenir du changement ? » (27 octobre) ; elle entre dans l'historique
+await topv().locator('[data-act="note"]').click(); await p.waitForTimeout(300);
+await topv().locator('textarea[id^="nt-"]').fill("Rendez-vous à 9 h devant l'amphi"); await topv().locator('[data-act="note-ok"]').click(); await p.waitForTimeout(700);
+ok(!(await alertShown()), "note enregistrée sur la fiche : pas de « Prévenir du changement ? »");
+ok(/Rendez-vous à 9 h devant l'amphi/.test(await topv().locator(".note-x").innerText()), "la note s'affiche dans la section Notes");
+await edit(async () => { await p.fill("#e-t", "Reportage JPO Bordeaux"); ok(!(await p.locator("#e-note").count()), "plus de champ Note dans Modifier"); });
 ok(await alertShown(), "après la modification : « Prévenir du changement ? »");
 const at = await alertText();
-ok(/Titre : « Reportage JPO » → « Reportage JPO Bordeaux »/.test(at) && /Précisions : « Rendez-vous à 9 h devant l'amphi »/.test(at), "la question montre le changement");
+ok(/Titre : « Reportage JPO » → « Reportage JPO Bordeaux »/.test(at), "la question montre le changement");
 ok(at.includes("Julien et Stéphane recevront une notification"), "elle dit qui sera prévenu");
 await p.screenshot({ path: `${OUT}/h1-prevenir.png` });
 await p.click(".alert .acts button:last-child"); await p.waitForTimeout(600);
 ok((await p.textContent(".snack")).includes("Notification envoyée à Julien et Stéphane"), "confirmation après l'envoi");
 let db = await fake();
-ok(db.outbox.length === 2 && db.outbox.every((o) => o.title === "Modifié : Reportage JPO Bordeaux" && o.body.startsWith("Aurélie : titre : « Reportage JPO » → « Reportage JPO Bordeaux » ; précisions :")), "deux notifications, avec le changement");
+ok(db.outbox.length === 2 && db.outbox.every((o) => o.title === "Modifié : Reportage JPO Bordeaux" && o.body.startsWith("Aurélie : titre : « Reportage JPO » → « Reportage JPO Bordeaux »")), "deux notifications, avec le changement");
 h = await hist();
-ok(h[0].startsWith("Changement signalé à 2 personnes") && h[1].startsWith("Modification : titre et précisions"), "historique : relance puis modification, la plus récente en haut");
+ok(h[0].startsWith("Changement signalé à 2 personnes") && h[1].startsWith("Modification : titre") && h[2].startsWith("Modification : précisions"), "historique : relance puis modification, la plus récente en haut");
 ok(h[1].includes("titre« Reportage JPO » → « Reportage JPO Bordeaux »") || h[1].includes("titre\n« Reportage JPO » → « Reportage JPO Bordeaux »") || /titre\s*« Reportage JPO » → « Reportage JPO Bordeaux »/.test(h[1]), "détail avant → après");
 await topv().locator(".hist").scrollIntoViewIfNeeded();
 await p.screenshot({ path: `${OUT}/h2-historique.png` });
@@ -84,9 +89,9 @@ await topv().locator("select[data-st]").selectOption("production"); await p.wait
 await p.evaluate(() => window.__fake.rt && window.__fake.rt()); await p.waitForTimeout(700);
 h = await hist();
 ok(h[0].startsWith("Modification : statut") && /Planifié → En production/.test(h[0]), "historique : statut");
-ok(h.length === 3 && (await topv().locator("text=Voir tout l'historique (6)").count()) === 1, "trois lignes, puis « Voir tout l'historique »");
-await topv().locator("text=Voir tout l'historique (6)").click(); await p.waitForTimeout(300);
-ok((await hist()).length === 6, "tout l'historique déplié");
+ok(h.length === 3 && (await topv().locator("text=Voir tout l'historique (7)").count()) === 1, "trois lignes, puis « Voir tout l'historique »");
+await topv().locator("text=Voir tout l'historique (7)").click(); await p.waitForTimeout(300);
+ok((await hist()).length === 7, "tout l'historique déplié");
 
 // un lien ajouté sur une action liée va sur le temps fort : il apparaît dans l'historique du temps fort
 await logout();

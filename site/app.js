@@ -626,7 +626,7 @@ window.KPlan = (DATA, { greet = false } = {}) => {
     // le temps fort déjà lié reste dans la liste, même retiré ou passé : enregistrer ne doit pas le détacher
     const tfs = DB.items.filter((it) => isTF(it) && (it.id === d.tf || (it.st !== "retire" && (precise(it) ? days(endOf(it)) >= -7 : !isPast(it))))).sort(sortDate);
     const opt = (it) => `<option value="${it.id}"${d.tf === it.id ? " selected" : ""}>${esc(`${when(it)} · ${it.t}`)}</option>`;
-    const open = d.more || !!d.tf || !!d.link || !!d.note;
+    const open = d.more || !!d.tf || !!d.link || (!edit && !!d.note);
     const ph = suj ? "Ex. Salle Bloomberg" : cls ? "Ex. Financial Times" : tf ? "Ex. Venue de Columbia à Bordeaux" : pay ? "Ex. Article sur le consortium" : "Ex. Reel alumni chez EY";
     return `${edit ? "" : `<div class="seg" data-seg id="${px}-kind" role="group" aria-label="Type d'ajout">${kinds.map(([k, l]) => `<button type="button" value="${k}" aria-pressed="${d.kind === k}">${I.check}${l}</button>`).join("")}</div>`}
       <label class="lbl" for="${px}-t">${pay ? "Dispositif" : "Titre"}</label><input class="in" id="${px}-t" value="${esc(d.t)}" placeholder="${ph}" aria-describedby="${px}-t-err"><p class="err" id="${px}-t-err" hidden>Donne un titre.</p>
@@ -646,12 +646,12 @@ window.KPlan = (DATA, { greet = false } = {}) => {
         <p class="err" id="${px}-m-err" hidden>Choisis un message, ou « Incontournable ».</p><p class="sec-f" id="${px}-m-f">Incontournable : à couvrir même sans message (admissibles, JPO…).</p>`}
       ${pay ? "" : `<span class="lbl" id="${px}-cc-l">Qui prévenir ?</span><div class="chips" data-chips="multi" id="${px}-cc" role="group" aria-labelledby="${px}-cc-l">${SERVICES.filter((s) => s.k !== p.svc).map((s) => chip(s.court, d.cc.includes(s.k), s.k)).join("")}</div>
         <p class="sec-f">${told ? `Ils reçoivent une notification, ${esc(told)} aussi.` : "Ils reçoivent une notification."}</p>`}
-      <details class="more" id="${px}-more"${open ? " open" : ""}><summary>Plus d'options${down}</summary>
+      ${edit && tf ? "" : `<details class="more" id="${px}-more"${open ? " open" : ""}><summary>Plus d'options${down}</summary>
         ${tf ? "" : `<label class="lbl" for="${px}-tf">Temps fort, sujet ou classement lié</label><select class="in" id="${px}-tf"><option value="">Aucun</option>
           <optgroup label="Temps forts">${tfs.filter(isTfDay).map(opt).join("")}</optgroup><optgroup label="Sujets">${tfs.filter(isSujet).map(opt).join("")}</optgroup>${tfs.some(isCls) ? `<optgroup label="Classements">${tfs.filter(isCls).map(opt).join("")}</optgroup>` : ""}</select>`}
         ${edit ? "" : `<label class="lbl" for="${px}-link">Lien SharePoint</label><input class="in" id="${px}-link" type="url" inputmode="url" value="${esc(d.link)}" placeholder="https://kedgebs.sharepoint.com/…" aria-describedby="${px}-link-err"><p class="err" id="${px}-link-err" hidden>Colle un lien qui commence par https://</p>`}
-        <label class="lbl" for="${px}-note">Note</label><textarea class="in" id="${px}-note" rows="3" placeholder="Contexte, contact…">${esc(d.note)}</textarea>
-      </details>
+        ${edit ? "" : `<label class="lbl" for="${px}-note">Note</label><textarea class="in" id="${px}-note" rows="3" placeholder="Contexte, contact…">${esc(d.note)}</textarea>`}
+      </details>`}
       <div class="cta"><button type="button" class="btn block" data-act="${edit ? "save" : "publish"}"${edit ? ` data-id="${d.id}"` : ""}>${edit ? "Enregistrer" : "Publier"}</button></div>`;
   }
   function readForm(el, px, base) {
@@ -867,7 +867,7 @@ window.KPlan = (DATA, { greet = false } = {}) => {
   // notes : une section à part, lisible comme du texte ; ceux qui modifient la fiche l'écrivent sur place, sans passer par Modifier
   const noteHTML = (it, edit) => {
     const id = it.id, on = S.note === id;
-    if (on) return `<h2 class="sec-h"><label for="nt-${id}">Notes</label></h2><div class="note-ed"><textarea class="in" id="nt-${id}" rows="5" maxlength="2000" placeholder="Contexte, contact, ce qu'il faut savoir…">${esc(it.note)}</textarea>
+    if (on) return `<h2 class="sec-h"><label for="nt-${id}">Notes</label></h2><div class="note-ed"><textarea class="in" id="nt-${id}" rows="5" maxlength="2000" placeholder="Contexte, contact, ce qu'il faut savoir…">${esc(S.noteDraft ?? it.note)}</textarea>
       <div class="note-acts"><button type="button" class="btn small outline" data-act="note-x">Annuler</button><button type="button" class="btn small" data-act="note-ok" data-id="${id}">Enregistrer</button></div></div>`;
     if (!it.note && !edit) return "";
     const last = (DB.journal || []).filter((j) => j.item === id && j.diff && "note" in j.diff).sort((a, b) => b.ts.localeCompare(a.ts))[0];
@@ -1438,9 +1438,9 @@ window.KPlan = (DATA, { greet = false } = {}) => {
     if (a === "nope") { DB.answers[t.dataset.key] = "non"; quick(Store.answer(t.dataset.key, "non"), "Noté, pas besoin d'éléments."); }
     if (a === "vu") { DB.vu[ME] = [...(DB.vu[ME] || []), id]; quick(Store.markSeen(id)); }
     if (a === "block") blockSheet(id);
-    if (a === "note") { S.note = id; K.refresh(); const ta = document.getElementById(`nt-${id}`); if (ta) { ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length); } }
-    if (a === "note-x") { S.note = null; K.refresh(); }
-    if (a === "note-ok") { const it = byId(id), v = document.getElementById(`nt-${id}`).value.trim(); S.note = null;
+    if (a === "note") { S.note = id; S.noteDraft = null; K.refresh(); const ta = document.getElementById(`nt-${id}`); if (ta) { ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length); } }
+    if (a === "note-x") { S.note = S.noteDraft = null; K.refresh(); }
+    if (a === "note-ok") { const it = byId(id), v = document.getElementById(`nt-${id}`).value.trim(); S.note = S.noteDraft = null;
       if (v === it.note) { K.refresh(); return; }
       it.note = v; quick(Store.updateItem(id, it, ["note"]), v ? "Note enregistrée." : "Note retirée."); sync(); }
     if (a === "trancher" && !trOf(id)) trSheet(id);
@@ -1529,6 +1529,8 @@ window.KPlan = (DATA, { greet = false } = {}) => {
   });
   app.addEventListener("input", (e) => {
     const t = e.target;
+    // une note en cours d'écriture survit à un rafraîchissement (temps réel)
+    if (t.id.startsWith("nt-")) S.noteDraft = t.value;
     if ((t.id === "f-np" || t.id === "e-np") && t.value.trim()) document.querySelectorAll(`#${t.id.replace("np", "pt")} .chip`).forEach((c) => c.setAttribute("aria-pressed", "false"));
   });
 

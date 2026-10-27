@@ -79,8 +79,9 @@ const openItem = async (p, id) => { await p.evaluate((id) => { location.hash = "
   await p.evaluate(({ id }) => { const f = window.__fake; f.db.links.push({ id: crypto.randomUUID(), item: id, nom: "Script du reel", url: "https://kedgebs.sharepoint.com/s", author: "00000000-0000-0000-0000-000000000004", at: new Date().toISOString() }); f.save(); }, { id: a.id });
   await p.reload(); await p.waitForFunction(() => document.getElementById("brand").hidden);
   await openItem(p, a.id);
-  await top(p).locator('[data-act="edit"]').click(); await p.waitForTimeout(300);
-  await p.fill("#e-note", "Tournage le 5"); await p.click('[data-act="save"]'); await p.waitForTimeout(600);
+  // la note s'écrit sur la fiche (depuis le 27 octobre)
+  await top(p).locator('[data-act="note"]').click(); await p.waitForTimeout(300);
+  await p.fill(`#nt-${a.id}`, "Tournage le 5"); await top(p).locator('[data-act="note-ok"]').click(); await p.waitForTimeout(600);
   await p.click(".alert .acts button:first-child").catch(() => {});
   let db = await fake(p);
   ok(db.items.find((x) => x.id === a.id).tf === tf.id, "modifier une action liée à un temps fort retiré ne la détache pas");
