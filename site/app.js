@@ -48,7 +48,9 @@ window.KPlan = (DATA, { greet = false } = {}) => {
   const offre = () => ({ k: "offre", nom: "Responsable de l'offre", court: "Resp. offre", qui: K.fr.list(PEOPLE.filter((p) => p.offre).map((p) => p.nom)) || "la Resp. offre" });
   // « Moi » : un chef se note des éléments qu'il doit fournir lui-même (personne d'autre n'est prévenu)
   const MOI = { k: "moi", nom: "Soi-même", court: "Soi-même", qui: "soi-même" };
-  const svcOf = (k) => SERVICES.find((s) => s.k === k) || (k === PROG.k ? PROG : k === MOI.k ? MOI : k === "offre" ? offre() : CHEF);
+  // un chef de projet nommé : on peut lui demander à lui seul (dest = son identifiant)
+  const chefTo = (k) => { const x = PEOPLE.find((y) => y.k === k); return x && { k, nom: x.nom, court: x.nom, qui: x.nom }; };
+  const svcOf = (k) => SERVICES.find((s) => s.k === k) || (k === PROG.k ? PROG : k === MOI.k ? MOI : k === "offre" ? offre() : chefTo(k) || CHEF);
   // à qui la demande est faite, en toutes lettres : « Moi », c'est la personne qui l'a notée
   const quiOf = (q) => (q.to === MOI.k ? person(q.from).nom : svcOf(q.to).qui);
   const noNotif = (q) => q.to === PROG.k || q.to === MOI.k;
@@ -224,10 +226,10 @@ window.KPlan = (DATA, { greet = false } = {}) => {
       .map((it) => { const n = days(it.date), j = n <= 7 ? 7 : n <= 15 ? 15 : 30; return { it, n, j, key: jalKey(it, j) }; })
       .sort((a, b) => a.n - b.n);
   }
-  // une demande reçue par mon service (ou par les chefs si j'en suis un)
+  // une demande reçue par mon service, par les chefs si j'en suis un, ou par moi nommément
   // (une demande à la Direction du Programme : les chefs de projet la marquent reçue, celui qui l'a notée ou un autre ;
   // une demande à la Resp. offre : pour la responsable de l'offre)
-  const forMe = (q, p = me()) => q.to === p.svc || (!!p.ownSvc && q.to === p.ownSvc) || (q.to === PROG.k && !!p.chef) || (q.to === "offre" && !!p.offre) || (q.to === MOI.k && q.from === p.k);
+  const forMe = (q, p = me()) => q.to === p.svc || (!!p.ownSvc && q.to === p.ownSvc) || (q.to === PROG.k && !!p.chef) || (q.to === "offre" && !!p.offre) || (q.to === MOI.k && q.from === p.k) || q.to === p.k;
   // la deadline d'une demande se voit partout : en rouge une fois passée, en jaune à trois jours
   const dlTxt = (pour) => { const n = days(pour); return n < 0 ? `En retard · deadline ${fmtDay(pour)}` : n === 0 ? "Deadline aujourd'hui" : n === 1 ? "Deadline demain" : `Deadline ${fmtDay(pour)} · dans ${nJours(n)}`; };
   const dlCls = (q) => (q.st === "recue" ? "" : days(q.pour) < 0 ? " late" : days(q.pour) <= 3 ? " soon" : "");
@@ -931,22 +933,25 @@ window.KPlan = (DATA, { greet = false } = {}) => {
     // deadline proposée : une semaine avant, au plus tôt dans trois jours, et jamais après l'action elle-même
     let pour = [addDays(it.date, -7), addDays(TODAY, 3)].sort().pop();
     if (precise(it) && it.date > TODAY && pour >= it.date) pour = [TODAY, addDays(it.date, -1)].sort().pop();
-    // la Resp. offre, quand quelqu'un l'est (et pas soi-même) ; la Direction du Programme, pour les chefs
+    // chaque chef de projet par son nom (un chef qui est aussi Resp. offre : sous « Resp. offre ») ; la Resp. offre, quand quelqu'un
+    // l'est (et pas soi-même) ; la Direction du Programme et « Moi », pour les chefs
     const of = PEOPLE.some((x) => x.offre && x.k !== ME) && !p.offre ? [offre()] : [];
-    const to = [...(p.chef ? [] : [CHEF]), ...SERVICES.filter((s) => s.k !== p.svc), ...of, ...(p.chef ? [PROG, MOI] : [])];
-    // déjà demandé : seulement à ceux qu'on peut solliciter (pas à son propre service)
-    const r = root(it), deja = reqsOf(it).filter((q) => q.st === "ouverte" && to.some((s) => s.k === q.to) && (q.to !== MOI.k || q.from === ME));
+    const chefs = PEOPLE.filter((x) => x.chef && !x.visiteur && x.k !== ME && !(x.offre && of.length)).map((x) => chefTo(x.k));
+    const to = [...chefs, ...SERVICES.filter((s) => s.k !== p.svc), ...of, ...(p.chef ? [PROG, MOI] : [])];
+    // déjà demandé : seulement à ceux qu'on peut solliciter (pas à son propre service) ; aussi à « les chefs », comme avant
+    const r = root(it), deja = reqsOf(it).filter((q) => q.st === "ouverte" && (to.some((s) => s.k === q.to) || (q.to === CHEF.k && !p.chef)) && (q.to !== MOI.k || q.from === ME));
     K.sheet.open({ title: "Demander des éléments", ok: "Envoyer", full: true, body: `${sheetFor(it)}
       ${deja.length ? `<div class="deja"><span class="lbl">Déjà demandé</span><ul>${deja.map((q) => `<li><b>${esc(reqTxt(q))}</b><span>${esc(q.to === MOI.k ? "Moi" : svcOf(q.to).court)} · deadline ${fmtDay(q.pour)}${q.item !== id ? ` · ${esc(byId(q.item)?.t || "")}` : ""}</span></li>`).join("")}</ul></div>` : ""}
       <span class="lbl" id="ask-type-l">Quoi ?</span><div class="chips" data-chips id="ask-type" role="group" aria-labelledby="ask-type-l">${TYPES.map((t, i) => chip(t, i === 0)).join("")}</div>
-      <span class="lbl" id="ask-to-l">À qui ?</span><div class="chips" data-chips id="ask-to" role="group" aria-labelledby="ask-to-l">${to.map((s, i) => chip(s === CHEF ? CHEF.qui : s === PROG ? PROG.nom : s === MOI ? "Moi" : s.court, i === 0, s.k)).join("")}</div>
+      <span class="lbl" id="ask-to-l">À qui ?</span><div class="chips" data-chips id="ask-to" role="group" aria-labelledby="ask-to-l">${to.map((s, i) => chip(s === PROG ? PROG.nom : s === MOI ? "Moi" : s.court, i === 0, s.k)).join("")}</div>
       <label class="lbl" for="ask-pour">Deadline</label>${dateField("ask-pour", pour)}<p class="err" id="ask-err" hidden></p>
       <label class="lbl" for="ask-quoi">Précision <span class="opt">facultatif</span></label><textarea class="in" id="ask-quoi" rows="2" placeholder="Ex. les éléments de langage validés"></textarea>
       ${r !== it ? `<p class="sec-f">Visible aussi sur le ${momWord(r)} « ${esc(r.t)} » et ses relais.</p>` : isTF(it) ? `<p class="sec-f">Visible aussi sur ses relais.</p>` : ""}`,
       onOk: async (s) => {
         const type = pressed("#ask-type", s)[0] || "Autre", dest = pressed("#ask-to", s)[0] || to[0].k;
         // la même demande, au même service, déjà ouverte pour ce temps fort ou ses relais : on ne la renvoie pas
-        const twin = deja.find((q) => q.to === dest && q.type === type);
+        // (une demande faite avant à « les chefs » vaut pour chacun d'eux)
+        const twin = deja.find((q) => q.type === type && (q.to === dest || (q.to === CHEF.k && chefs.some((c) => c.k === dest))));
         const e = s.querySelector("#ask-err"), v = s.querySelector("#ask-pour").value || pour, bad = pourErr(it, v);
         if (twin || bad) { e.textContent = twin ? `Déjà demandé à ${dest === MOI.k ? "toi-même" : svcOf(dest).qui}, deadline ${fmtDay(twin.pour)}. Change la deadline depuis la fiche si besoin.` : bad; e.hidden = false; return false; }
         const q = { id: uid(), item: id, from: p.k, to: dest, type, quoi: s.querySelector("#ask-quoi").value.trim(), pour: v, st: "ouverte", at: TODAY, ts: new Date().toISOString() };

@@ -62,6 +62,8 @@
     if (t === "reqs" && op === "insert" && row.dest === "programme" && !p.chef) return false;
     // migration 0013 : « Moi », pour les chefs ; la même note par un autre chef reste possible
     if (t === "reqs" && op === "insert" && row.dest === "moi" && !p.chef) return false;
+    // migration 0014 : à un chef nommé, pas à soi-même ni à quelqu'un qui n'est pas chef
+    if (t === "reqs" && op === "insert" && /^[0-9a-f]{8}-/.test(row.dest) && (row.dest === p.id || !db.profiles.some((x) => x.id === row.dest && x.chef && !x.visiteur))) return false;
     if (t === "reqs" && op === "insert" && db.reqs.some((q) => q.item === row.item && q.dest === row.dest && q.type === row.type && q.st === "ouverte" && (row.dest !== "moi" || q.asker === row.asker))) return false;
     return true;
   }
@@ -100,8 +102,8 @@
       tab.push(r);
       if (q.t === "items") jot(r.id, "creation", {}, r.author, r.at);
       if (q.t === "links") jot(r.item, "document", { nom: r.nom }, r.author);
-      // les destinataires d'une demande, comme la base (0012) : un service, les chefs, la Resp. offre ; personne pour la Direction du Programme
-      if (q.t === "reqs") db.profiles.filter((x) => x.id !== r.asker && ((r.dest === "chef" && x.chef) || x.svc === r.dest || (r.dest === "offre" && x.offre)))
+      // les destinataires d'une demande, comme la base (0012, 0014) : un service, les chefs, la Resp. offre, un chef nommé ; personne pour la Direction du Programme
+      if (q.t === "reqs") db.profiles.filter((x) => x.id !== r.asker && ((r.dest === "chef" && x.chef) || x.svc === r.dest || (r.dest === "offre" && x.offre) || x.id === r.dest))
         .forEach((x) => db.outbox.push({ user_id: x.id, title: "Demande d'éléments", body: r.type, url: `#item=${r.item}`, dedupe: `req:${r.id}:${x.id}` }));
       save();
       return { data: q.single ? r : [r], error: null };

@@ -124,10 +124,10 @@ const foot = await topv(p).locator(".foot-note").textContent(); console.log("   
 ok(foot.includes("Modifiable par Estelle et Julien") || foot.includes("Modifiable par Julien et Estelle"), "pied de fiche : qui peut modifier");
 await topv(p).locator('[data-act="ask"]').first().click(); await p.waitForTimeout(300);
 const askTo = await p.textContent("#ask-to"); console.log("   à qui :", askTo);
-ok(/Estelle et Julien|Julien et Estelle/.test(askTo), "demande : les chefs nommés");
+ok(/Julien/.test(askTo) && !/Estelle et Julien|Julien et Estelle/.test(askTo), "demande : le chef de projet par son nom");
 await p.click('.sheet [data-kui="ok"]'); await p.waitForTimeout(500);
 db = await fake(p);
-ok(db.reqs.length === 1 && db.reqs[0].dest === "chef" && db.reqs[0].asker.endsWith("3"), "demande envoyée aux chefs");
+ok(db.reqs.length === 1 && db.reqs[0].dest.endsWith("0001") && db.reqs[0].asker.endsWith("3"), "demande envoyée à Julien");
 ok(p.errs.length === 0, "Aurélie : aucune erreur JS " + p.errs.join(" | "));
 await logout(p);
 
