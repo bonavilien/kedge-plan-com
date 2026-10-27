@@ -624,7 +624,10 @@ window.KPlan = (DATA, { greet = false } = {}) => {
     const kinds = [...(canAdd() ? [["action", "Action"], ["tf", "Temps fort"], ["sujet", "Sujet"], ...(p.chef ? [["classement", "Classement"]] : [])] : []), ...(isMedia() ? [["partner", "Partenariat"]] : [])];
     const told = K.fr.list(toldAll());
     // le temps fort déjà lié reste dans la liste, même retiré ou passé : enregistrer ne doit pas le détacher
-    const tfs = DB.items.filter((it) => isTF(it) && (it.id === d.tf || (it.st !== "retire" && (precise(it) ? days(endOf(it)) >= -7 : !isPast(it))))).sort(sortDate);
+    // les temps forts passés restent proposés, à part et du plus récent au plus ancien : une action peut être diffusée après son temps fort
+    const recent = (it) => (precise(it) ? days(endOf(it)) >= -7 : !isPast(it));
+    const tfs = DB.items.filter((it) => isTF(it) && (it.id === d.tf || (it.st !== "retire" && recent(it)))).sort(sortDate);
+    const olds = DB.items.filter((it) => isTF(it) && it.st !== "retire" && !recent(it) && it.id !== d.tf).sort(sortDate).reverse();
     const opt = (it) => `<option value="${it.id}"${d.tf === it.id ? " selected" : ""}>${esc(`${when(it)} · ${it.t}`)}</option>`;
     const open = d.more || !!d.tf || !!d.link || (!edit && !!d.note);
     const ph = suj ? "Ex. Salle Bloomberg" : cls ? "Ex. Financial Times" : tf ? "Ex. Venue de Columbia à Bordeaux" : pay ? "Ex. Article sur le consortium" : "Ex. Reel alumni chez EY";
@@ -648,7 +651,7 @@ window.KPlan = (DATA, { greet = false } = {}) => {
         <p class="sec-f">${told ? `Ils reçoivent une notification, ${esc(told)} aussi.` : "Ils reçoivent une notification."}</p>`}
       ${edit && tf ? "" : `<details class="more" id="${px}-more"${open ? " open" : ""}><summary>Plus d'options${down}</summary>
         ${tf ? "" : `<label class="lbl" for="${px}-tf">Temps fort, sujet ou classement lié</label><select class="in" id="${px}-tf"><option value="">Aucun</option>
-          <optgroup label="Temps forts">${tfs.filter(isTfDay).map(opt).join("")}</optgroup><optgroup label="Sujets">${tfs.filter(isSujet).map(opt).join("")}</optgroup>${tfs.some(isCls) ? `<optgroup label="Classements">${tfs.filter(isCls).map(opt).join("")}</optgroup>` : ""}</select>`}
+          <optgroup label="Temps forts">${tfs.filter(isTfDay).map(opt).join("")}</optgroup><optgroup label="Sujets">${tfs.filter(isSujet).map(opt).join("")}</optgroup>${tfs.some(isCls) ? `<optgroup label="Classements">${tfs.filter(isCls).map(opt).join("")}</optgroup>` : ""}${olds.length ? `<optgroup label="Déjà passés">${olds.map(opt).join("")}</optgroup>` : ""}</select>`}
         ${edit ? "" : `<label class="lbl" for="${px}-link">Lien SharePoint</label><input class="in" id="${px}-link" type="url" inputmode="url" value="${esc(d.link)}" placeholder="https://kedgebs.sharepoint.com/…" aria-describedby="${px}-link-err"><p class="err" id="${px}-link-err" hidden>Colle un lien qui commence par https://</p>`}
         ${edit ? "" : `<label class="lbl" for="${px}-note">Note</label><textarea class="in" id="${px}-note" rows="3" placeholder="Contexte, contact…">${esc(d.note)}</textarea>`}
       </details>`}
