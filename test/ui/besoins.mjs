@@ -162,7 +162,7 @@ await p.click('[data-act="meeting"] >> visible=true'); await tick(600);
 const aside = await p.locator(".mt-aside").innerText(); console.log("     réunion :", aside.replace(/\n+/g, " | "));
 ok(/Rushs|des rushs[\s\S]*deadline dépassée \(20 octobre\)/.test(aside), "réunion : demande en retard dans « À débloquer » avec sa deadline");
 const ctb = await p.locator(".mt-aside .ma-item.ctb").allInnerTexts();
-bug(ctb.some((t) => /demande/.test(t)) && !ctb.some((t) => /deadline|avant le/i.test(t)), "réunion, « Contributions » : les demandes d'éléments n'affichent pas leur deadline (ni jaune pour celles à ≤ 3 jours)");
+ok(!ctb.some((t) => /demande/.test(t)), "réunion, « Contributions » : plus de demandes d'éléments (décision du 27 octobre), seulement les ajouts");
 await p.screenshot({ path: `${OUT}/besoins-reunion.png` });
 ok(!errs.length, "aucune erreur dans la page" + (errs.length ? " : " + errs.join(" | ") : ""));
 await b.close();

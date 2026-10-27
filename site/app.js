@@ -1225,15 +1225,15 @@ window.KPlan = (DATA, { greet = false } = {}) => {
     const late = DB.reqs.filter((r) => r.st === "ouverte" && r.pour < TODAY && byId(r.item));
     const row = (it, sub, k) => `<button type="button" class="ma-item ${k}" data-mt-open="${it.id}"><b>${esc(it.t)}</b><span>${esc(sub)}</span></button>`;
     const since = (x) => Date.parse(x.ts) > Date.parse(DB.lastMeetingTs);
+    // contributions : ce qui a été ajouté depuis la dernière réunion (temps forts, sujets, classements, partenariats, actions), pas les demandes
+    const nouveau = (it) => (isTF(it) ? `nouveau ${momWord(it)}` : isPay(it) ? "nouveau partenariat" : `nouvelle action ${svcOf(it.svc).court}`);
     const contrib = [
-      ...DB.items.filter((it) => isTF(it) && since(it)).map((it) => ({ at: it.at, ts: it.ts, it, sub: `${person(it.by).nom} · nouveau ${momWord(it)}` })),
-      ...DB.reqs.filter((r) => since(r) && r.st !== "annulee" && byId(r.item)).map((r) => ({ at: r.at, ts: r.ts, it: byId(r.item), k: dlCls(r).trim(),
-        sub: `${person(r.from).nom} demande ${ASK[r.type] || "des éléments"} à ${quiOf(r)}${r.st === "recue" ? " (reçu)" : `, deadline ${fmtDay(r.pour)}`}` })),
+      ...DB.items.filter((it) => since(it) && it.st !== "retire").map((it) => ({ at: it.at, ts: it.ts, it, k: isTF(it) ? "ctb-tf" : "", sub: `${person(it.by).nom} · ${nouveau(it)}` })),
     ].sort((a, b) => Date.parse(b.ts) - Date.parse(a.ts));
     const shownC = MT.contrib ? contrib : contrib.slice(0, 3);
     const aside = `<aside class="mt-aside panel lg" aria-label="À traiter en réunion">
       ${tr.length ? `<section class="ma-sec"><h2>À trancher <span class="tnum">${tr.length}</span></h2>
-        ${tr.map((b) => { const it = byId(b.item); return `<div class="ma-tr"><button type="button" class="ma-item tr" data-mt-open="${it.id}"><b>${esc(it.t)}</b>${trWhy(b) ? `<q class="ma-why">${esc(trWhy(b))}</q>` : ""}<span>${esc(`${cap(when(it))} · ${laneOf(it)} · ${person(b.by).nom}`)}</span></button><button type="button" class="ma-ok" data-mt="tranche" data-b="${b.id}" aria-label="Tranché : ${esc(it.t)}">Tranché</button></div>`; }).join("")}</section>` : ""}
+        ${tr.map((b) => { const it = byId(b.item); return `<div class="ma-tr"><button type="button" class="ma-item trch" data-mt-open="${it.id}"><b>${esc(it.t)}</b>${trWhy(b) ? `<q class="ma-why">${esc(trWhy(b))}</q>` : ""}<span>${esc(`${cap(when(it))} · ${laneOf(it)} · ${person(b.by).nom}`)}</span></button><button type="button" class="ma-ok" data-mt="tranche" data-b="${b.id}" aria-label="Tranché : ${esc(it.t)}">Tranché</button></div>`; }).join("")}</section>` : ""}
       <section class="ma-sec"><h2>À débloquer <span class="tnum">${bl.length + late.length}</span></h2>
         ${bl.map((b) => row(byId(b.item), `${b.why} ${person(b.by).nom}, ${laneOf(byId(b.item))}.`, "bloq")).join("")}
         ${late.map((r) => row(byId(r.item), `${person(r.from).nom} attend ${ASK[r.type] || "des éléments"} de ${quiOf(r)} : deadline dépassée (${fmtDay(r.pour)}).`, "late")).join("")}
