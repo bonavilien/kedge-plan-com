@@ -32,7 +32,7 @@ await p.evaluate(({ I, date }) => { window.__fake.db.items.push({ id: I, kind: "
 // un service n'a pas « Moi »
 await login("aurelie");
 await open(I); await topv().locator('[data-act="ask"]').click(); await p.waitForTimeout(350);
-ok(!(await p.locator('#ask-to .chip:text-is("Moi")').count()), "RP : pas de « Moi » dans « À qui ? »");
+ok(!(await p.locator('#ask-to .chip:text-is("Moi (mémo)")').count()), "RP : pas de « Moi » dans « À qui ? »");
 await p.goto(URL0); await p.waitForTimeout(600);
 await logout();
 
@@ -40,8 +40,8 @@ await logout();
 await login("julien");
 const n0 = (await fake()).outbox.length;
 await open(I); await topv().locator('[data-act="ask"]').click(); await p.waitForTimeout(350);
-ok((await p.locator('#ask-to .chip:text-is("Moi")').count()) === 1, "chef : « Moi » dans « À qui ? »");
-await p.click('#ask-type .chip:has-text("Programme")'); await p.click('#ask-to .chip:text-is("Moi")');
+ok((await p.locator('#ask-to .chip:text-is("Moi (mémo)")').count()) === 1, "chef : « Moi » dans « À qui ? »");
+await p.click('#ask-type .chip:has-text("Programme")'); await p.click('#ask-to .chip:text-is("Moi (mémo)")');
 await p.screenshot({ path: `${OUT}/m1-a-qui.png` });
 await p.click('.sheet [data-kui="ok"]'); await p.waitForTimeout(500);
 ok((await p.textContent(".snack")).includes("Noté dans ton À faire."), "confirmation : « Noté dans ton À faire. »");

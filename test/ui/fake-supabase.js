@@ -59,7 +59,7 @@
     if (t === "partners") return p.media;
     if (t === "links" && op === "insert") return p.chef || p.media || !!p.svc;
     // migration 0009 : seul un chef note une demande à la Direction du Programme
-    if (t === "reqs" && op === "insert" && row.dest === "programme" && !p.chef) return false;
+    if (t === "reqs" && op === "insert" && ["programme", "marketing", "recrutement"].includes(row.dest) && !p.chef) return false;
     // migration 0013 : « Moi », pour les chefs ; la même note par un autre chef reste possible
     if (t === "reqs" && op === "insert" && row.dest === "moi" && !p.chef) return false;
     // migration 0014 : à un chef nommé, pas à soi-même ni à quelqu'un qui n'est pas chef

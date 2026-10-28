@@ -41,4 +41,6 @@ $D -f supabase/migrations/0015_sujet_a_trancher.sql
 $D -f test/db/trancher.sql
 $D -f supabase/migrations/0017_notifications.sql
 $D -f test/db/notifications.sql
+$D -f supabase/migrations/0018_marketing_recrutement.sql
+$D -f test/db/directions.sql
 echo "Base : tout est bon"

@@ -44,16 +44,19 @@ window.KPlan = (DATA, { greet = false } = {}) => {
   const ASK = { "Programme": "le programme", "Contexte": "du contexte", "Éléments de langage": "des éléments de langage", "Visuels": "des visuels", "Contact": "un contact", "Rushs": "des rushs", "Autre": "des éléments" };
   // la Direction du Programme : un chef de projet y note pour lui-même une info qu'il ira chercher (personne n'est notifié)
   const PROG = { k: "programme", nom: "Direction du Programme", court: "Dir. Programme", qui: "la Direction du Programme" };
+  // de même pour la Direction marketing et le Recrutement, qui n'ont pas de compte dans l'appli
+  const EXT = [PROG, { k: "marketing", nom: "Direction marketing", court: "Dir. marketing", qui: "la Direction marketing" }, { k: "recrutement", nom: "Recrutement", court: "Recrutement", qui: "le Recrutement" }];
+  const isExt = (k) => EXT.some((x) => x.k === k);
   // la responsable de l'offre reçoit des demandes comme un service (les profils cochés « Resp. offre » dans Équipe)
   const offre = () => ({ k: "offre", nom: "Responsable de l'offre", court: "Resp. offre", qui: K.fr.list(PEOPLE.filter((p) => p.offre).map((p) => p.nom)) || "la Resp. offre" });
   // « Moi » : un chef se note des éléments qu'il doit fournir lui-même (personne d'autre n'est prévenu)
   const MOI = { k: "moi", nom: "Soi-même", court: "Soi-même", qui: "soi-même" };
   // un chef de projet nommé : on peut lui demander à lui seul (dest = son identifiant)
   const chefTo = (k) => { const x = PEOPLE.find((y) => y.k === k); return x && { k, nom: x.nom, court: x.nom, qui: x.nom }; };
-  const svcOf = (k) => SERVICES.find((s) => s.k === k) || (k === PROG.k ? PROG : k === MOI.k ? MOI : k === "offre" ? offre() : chefTo(k) || CHEF);
+  const svcOf = (k) => SERVICES.find((s) => s.k === k) || (EXT.find((x) => x.k === k) || (k === MOI.k ? MOI : k === "offre" ? offre() : chefTo(k) || CHEF));
   // à qui la demande est faite, en toutes lettres : « Moi », c'est la personne qui l'a notée
   const quiOf = (q) => (q.to === MOI.k ? person(q.from).nom : svcOf(q.to).qui);
-  const noNotif = (q) => q.to === PROG.k || q.to === MOI.k;
+  const noNotif = (q) => isExt(q.to) || q.to === MOI.k;
   const fonctionOf = (p) => p.fonction || (p.svc ? svcOf(p.svc).nom : "");
   const person = (k) => PEOPLE.find((p) => p.k === k) || { k, nom: "Ancien compte", svc: "", fonction: "" };
   const me = () => person(ME);
@@ -235,7 +238,7 @@ window.KPlan = (DATA, { greet = false } = {}) => {
   // une demande reçue par mon service, par les chefs si j'en suis un, ou par moi nommément
   // (une demande à la Direction du Programme : les chefs de projet la marquent reçue, celui qui l'a notée ou un autre ;
   // une demande à la Resp. offre : pour la responsable de l'offre)
-  const forMe = (q, p = me()) => q.to === p.svc || (!!p.ownSvc && q.to === p.ownSvc) || (q.to === PROG.k && !!p.chef) || (q.to === "offre" && !!p.offre) || (q.to === MOI.k && q.from === p.k) || q.to === p.k;
+  const forMe = (q, p = me()) => q.to === p.svc || (!!p.ownSvc && q.to === p.ownSvc) || (isExt(q.to) && !!p.chef) || (q.to === "offre" && !!p.offre) || (q.to === MOI.k && q.from === p.k) || q.to === p.k;
   // la deadline d'une demande se voit partout : en rouge une fois passée, en jaune à trois jours
   const dlTxt = (pour) => { const n = days(pour); return n < 0 ? `En retard · deadline ${fmtDay(pour)}` : n === 0 ? "Deadline aujourd'hui" : n === 1 ? "Deadline demain" : `Deadline ${fmtDay(pour)} · dans ${nJours(n)}`; };
   const dlCls = (q) => (q.st === "recue" ? "" : days(q.pour) < 0 ? " late" : days(q.pour) <= 3 ? " soon" : "");
@@ -302,7 +305,7 @@ window.KPlan = (DATA, { greet = false } = {}) => {
     };
     const demande = (r) => { const it = byId(r.item), tf = root(it);
       return card(it, { body: `${r.to === MOI.k ? "À fournir toi-même :" : `<b>${esc(person(r.from).nom)}</b> demande`} ${esc(ASK[r.type] || "des éléments")}${r.quoi && r.quoi !== r.type ? ` : « ${esc(r.quoi)} »` : ""}.${tf !== it ? `<span class="todo-tf">Pour le ${momWord(tf)} « ${esc(tf.t)} »</span>` : ""}`,
-        left: dlTag(r), acts: `<button type="button" class="btn small" data-act="repondre" data-r="${r.id}">${r.to === PROG.k ? "C'est reçu" : r.to === MOI.k ? "C'est fait" : "Répondre"}</button>` }); };
+        left: dlTag(r), acts: `<button type="button" class="btn small" data-act="repondre" data-r="${r.id}">${isExt(r.to) ? "C'est reçu" : r.to === MOI.k ? "C'est fait" : "Répondre"}</button>` }); };
     const rappel = ({ it, n, key }) => card(it, { left: `<span class="jal">J-${n}</span>`,
       acts: `<button type="button" class="btn small" data-act="ask" data-id="${it.id}" data-key="${key}">Oui, je demande</button><button type="button" class="btn small outline" data-act="nope" data-key="${key}">Pas besoin</button>` });
     const cite = (it) => card(it, { left: `Ajouté par ${esc(person(it.by).nom)}, ${ago(it.at)}`, acts: `<button type="button" class="btn small tonal" data-act="vu" data-id="${it.id}">Vu</button>` });
@@ -391,7 +394,7 @@ window.KPlan = (DATA, { greet = false } = {}) => {
     const chefL = shown.filter(isChefAct);
     const colsH = () => `<div class="svc-cols">${[...SERVICES.map((s) => ({ nom: s.nom, l: shown.filter((it) => it.svc === s.k) })), ...(chefL.length ? [{ nom: CHEF.nom, l: chefL }] : [])].map(({ nom, l }) =>
       `<section class="svc-col" aria-label="${esc(nom)}"><h2 class="col-h">${esc(nom)}<span>${l.filter((it) => it.st !== "retire").length}</span></h2>${l.length ? agenda(l, { who: "tf" }) : `<p class="col-empty">Rien sur cette période.</p>`}</section>`).join("")}</div>`;
-    el.innerHTML = K.navbar({ title: "Ma période", lead: bellBtn(), actions: (chef ? `<button type="button" class="txt-btn strong wide-only" data-act="meeting">Mode réunion</button>` : "") + addBtn() + profileBtn() }) + `<div class="scroll${wide ? " page-wide" : ""}"><div class="swipe" id="swipe">
+    el.innerHTML = K.navbar({ title: "Ma période", lead: bellBtn(), actions: `<button type="button" class="txt-btn strong wide-only" data-act="meeting">Mode réunion</button>` + addBtn() + profileBtn() }) + `<div class="scroll${wide ? " page-wide" : ""}"><div class="swipe" id="swipe">
       ${periodHead(cover)}
       ${clsH}
       ${news}
@@ -706,7 +709,7 @@ window.KPlan = (DATA, { greet = false } = {}) => {
     if (S.draft && el._draft === S.draft && el.querySelector("#f-t")) S.draft = readForm(el, "f", S.draft);
     if (!S.draft || (!canAdd() && S.draft.kind !== "partner")) S.draft = newDraft(canAdd() ? "action" : "partner");
     el._draft = S.draft;
-    el.innerHTML = K.navbar({ title: "Ajouter", lead: bellBtn(), actions: profileBtn() }) + `<div class="scroll"><h1 class="large-title">Ajouter</h1>${canAdd() || isMedia() ? formHTML(S.draft, "f", false)
+    el.innerHTML = K.navbar({ title: "Ajouter", lead: bellBtn(), actions: (S.mtBack ? `<button type="button" class="txt-btn strong" data-act="backmeeting">Retour à la réunion</button>` : "") + profileBtn() }) + `<div class="scroll"><h1 class="large-title">Ajouter</h1>${canAdd() || isMedia() ? formHTML(S.draft, "f", false)
       : isVisit() ? `<div class="group"><div class="empty"><span>Mode visiteur : tu peux tout consulter, sans rien ajouter ni modifier.</span></div></div>`
       : `<div class="group"><div class="empty"><span>Ton compte n'est rattaché à aucun service : tu peux tout consulter et demander des éléments. Pour publier, demande à ${esc(CHEF.qui)} de t'ajouter à ton service.</span></div></div>`}</div>`;
     syncBadge();
@@ -755,7 +758,7 @@ window.KPlan = (DATA, { greet = false } = {}) => {
     K.refresh();
     K.snack(linkErr ? `C'est publié, mais le lien n'a pas été ajouté (${esc(errText(linkErr))}). Ajoute-le depuis la fiche.`
       : told.length ? `C'est publié. Notification envoyée à ${esc(K.fr.list(told))}.` : "C'est publié.", linkErr ? 6000 : undefined);
-    openItem(it.id);
+    if (S.mtBack) { S.mtBack = false; openMeeting(); openFromMeeting(it.id); } else openItem(it.id);
   }
   const draftOf = (it) => ({ id: it.id, kind: isSujet(it) ? "sujet" : isCls(it) ? "classement" : isTF(it) ? "tf" : isPay(it) ? "partner" : "action", t: it.t, prec: precise(it) ? "jour" : "mois", date: it.date, mois: it.date.slice(0, 7),
     m: it.m.map(String), per: isSujet(it) ? [...it.per] : [S.period], cc: [...it.cc], svc: it.svc, partner: it.partner || PARTNERS[0]?.k || "", newPartner: "", tf: it.tf, link: "", note: it.note, more: !!(it.tf || it.note), plus: multi(it), fin: it.fin || "", rang: it.rang ?? "", cible: it.cible ?? "",
@@ -866,7 +869,7 @@ window.KPlan = (DATA, { greet = false } = {}) => {
   const reqDocs = (q) => { const it = byId(q.item); return it ? famille(it).flatMap((x) => x.links || []).filter((l) => l.req === q.id) : []; };
   const reqRow = (q, id) => { const o = q.item !== id && byId(q.item), docs = q.st === "recue" ? reqDocs(q) : [];
     const rep = q.st === "recue" && (q.reponse || docs.length) ? `<span class="rq-rep">${q.reponse ? `<span class="rq-msg">${esc(q.reponse)}</span>` : ""}${docs.map((l) => `<button type="button" class="rq-doc" data-link="${esc(l.url)}">${I.external}${esc(l.nom)}</button>`).join("")}${q.by ? `<small>${esc(person(q.by).nom)}${q.rts ? `, ${ago(iso(new Date(q.rts)))}` : ""}</small>` : ""}</span>` : "";
-    return `<div class="row wrap rq"><span class="row-main">${o ? `<button type="button" class="rq-for" data-open="${o.id}">${esc(o.t)}${o.st === "retire" ? " (retirée)" : ""}</button>` : ""}<b>${esc(reqTxt(q))}</b><span>De ${esc(person(q.from).nom)} à ${esc(quiOf(q))}</span>${dlTag(q)}${rep}${canPour(q) ? `<button type="button" class="txt-btn rq-x" data-act="unreq" data-r="${q.id}">Retirer la demande</button>` : ""}</span>${q.st === "recue" ? `<span class="tag">Reçu</span>` : forMe(q) ? `<button type="button" class="btn small" data-act="repondre" data-r="${q.id}">${q.to === PROG.k ? "C'est reçu" : q.to === MOI.k ? "C'est fait" : "Répondre"}</button>` : ""}</div>`; };
+    return `<div class="row wrap rq"><span class="row-main">${o ? `<button type="button" class="rq-for" data-open="${o.id}">${esc(o.t)}${o.st === "retire" ? " (retirée)" : ""}</button>` : ""}<b>${esc(reqTxt(q))}</b><span>De ${esc(person(q.from).nom)} à ${esc(quiOf(q))}</span>${dlTag(q)}${rep}${canPour(q) ? `<button type="button" class="txt-btn rq-x" data-act="unreq" data-r="${q.id}">Retirer la demande</button>` : ""}</span>${q.st === "recue" ? `<span class="tag">Reçu</span>` : forMe(q) ? `<button type="button" class="btn small" data-act="repondre" data-r="${q.id}">${isExt(q.to) ? "C'est reçu" : q.to === MOI.k ? "C'est fait" : "Répondre"}</button>` : ""}</div>`; };
   // notes : une section à part, lisible comme du texte ; ceux qui modifient la fiche l'écrivent sur place, sans passer par Modifier
   const noteHTML = (it, edit) => {
     const id = it.id, on = S.note === id;
@@ -982,16 +985,16 @@ window.KPlan = (DATA, { greet = false } = {}) => {
     let pour = [addDays(it.date, -7), addDays(TODAY, 3)].sort().pop();
     if (precise(it) && it.date > TODAY && pour >= it.date) pour = [TODAY, addDays(it.date, -1)].sort().pop();
     // chaque chef de projet par son nom (un chef qui est aussi Resp. offre : sous « Resp. offre ») ; la Resp. offre, quand quelqu'un
-    // l'est (et pas soi-même) ; la Direction du Programme et « Moi », pour les chefs
+    // l'est (et pas soi-même) ; la Direction du Programme, la Direction marketing, le Recrutement et « Moi », pour les chefs
     const of = PEOPLE.some((x) => x.offre && x.k !== ME) && !p.offre ? [offre()] : [];
     const chefs = PEOPLE.filter((x) => x.chef && !x.visiteur && x.k !== ME && !(x.offre && of.length)).map((x) => chefTo(x.k));
-    const to = [...chefs, ...SERVICES.filter((s) => s.k !== p.svc), ...of, ...(p.chef ? [PROG, MOI] : [])];
+    const to = [...chefs, ...SERVICES.filter((s) => s.k !== p.svc), ...of, ...(p.chef ? [...EXT, MOI] : [])];
     // déjà demandé : seulement à ceux qu'on peut solliciter (pas à son propre service) ; aussi à « les chefs », comme avant
     const r = root(it), deja = reqsOf(it).filter((q) => q.st === "ouverte" && (to.some((s) => s.k === q.to) || (q.to === CHEF.k && !p.chef)) && (q.to !== MOI.k || q.from === ME));
     K.sheet.open({ title: "Demander des éléments", ok: "Envoyer", full: true, body: `${sheetFor(it)}
       ${deja.length ? `<div class="deja"><span class="lbl">Déjà demandé</span><ul>${deja.map((q) => `<li><b>${esc(reqTxt(q))}</b><span>${esc(q.to === MOI.k ? "Moi" : svcOf(q.to).court)} · deadline ${fmtDay(q.pour)}${q.item !== id ? ` · ${esc(byId(q.item)?.t || "")}` : ""}</span></li>`).join("")}</ul></div>` : ""}
       <span class="lbl" id="ask-type-l">Quoi ?</span><div class="chips" data-chips id="ask-type" role="group" aria-labelledby="ask-type-l">${TYPES.map((t, i) => chip(t, i === 0)).join("")}</div>
-      <span class="lbl" id="ask-to-l">À qui ?</span><div class="chips" data-chips id="ask-to" role="group" aria-labelledby="ask-to-l">${to.map((s, i) => chip(s === PROG ? PROG.nom : s === MOI ? "Moi" : s.court, i === 0, s.k)).join("")}</div>
+      <span class="lbl" id="ask-to-l">À qui ?</span><div class="chips" data-chips id="ask-to" role="group" aria-labelledby="ask-to-l">${to.map((s, i) => chip(isExt(s.k) ? s.nom : s === MOI ? "Moi (mémo)" : s.court, i === 0, s.k)).join("")}</div>
       <label class="lbl" for="ask-pour">Deadline</label>${dateField("ask-pour", pour)}<p class="err" id="ask-err" hidden></p>
       <label class="lbl" for="ask-quoi">Précision <span class="opt">facultatif</span></label><textarea class="in" id="ask-quoi" rows="2" placeholder="Ex. les éléments de langage validés"></textarea>
       ${r !== it ? `<p class="sec-f">Visible aussi sur le ${momWord(r)} « ${esc(r.t)} » et ses relais.</p>` : isTF(it) ? `<p class="sec-f">Visible aussi sur ses relais.</p>` : ""}`,
@@ -1005,7 +1008,7 @@ window.KPlan = (DATA, { greet = false } = {}) => {
         const q = { id: uid(), item: id, from: p.k, to: dest, type, quoi: s.querySelector("#ask-quoi").value.trim(), pour: v, st: "ouverte", at: TODAY, ts: new Date().toISOString() };
         try { await Store.addReq(q); if (key) await Store.answer(key, "oui"); } catch (e) { fail(e); return false; }
         DB.reqs.push(q); if (key) DB.answers[key] = "oui";
-        K.refresh(); K.snack(dest === PROG.k ? "Noté : à demander à la Direction du Programme." : dest === MOI.k ? "Noté dans ton À faire." : `Demande envoyée à ${esc(svcOf(dest).qui)}.`);
+        K.refresh(); K.snack(isExt(dest) ? `Noté : à demander à ${esc(svcOf(dest).qui)}.` : dest === MOI.k ? "Noté dans ton À faire." : `Demande envoyée à ${esc(svcOf(dest).qui)}.`);
       } });
   }
   function blockSheet(id) {
@@ -1040,7 +1043,7 @@ window.KPlan = (DATA, { greet = false } = {}) => {
     const r = root(it);
     // une info notée par un chef (Direction du Programme) : on note ce qu'on a reçu, sans « répondre » à quelqu'un
     // une note à soi-même : on note ce qu'on a préparé
-    const self = q.from === ME || q.to === PROG.k, moi = q.to === MOI.k;
+    const self = q.from === ME || isExt(q.to), moi = q.to === MOI.k;
     K.sheet.open({ title: moi ? "C'est fait" : self ? "C'est reçu" : "Répondre", ok: self ? "Enregistrer" : "Envoyer", full: true, body: `${sheetFor(it)}<p class="sec-f">${moi ? "À fournir toi-même" : self ? `À demander à ${esc(svcOf(q.to).qui)}` : `${esc(person(q.from).nom)} demande`} : ${esc(reqTxt(q))}.</p>
       <label class="lbl" for="rp-msg">${moi ? "Ce que tu as préparé" : self ? "Ce que tu as reçu" : "Message"} <span class="opt">facultatif</span></label><textarea class="in" id="rp-msg" rows="3" maxlength="1000" placeholder="${moi ? "Ex. programme envoyé à l'équipe" : self ? "Ex. programme validé par la direction" : "Ex. les visuels validés sont dans le dossier"}"></textarea>
       <label class="lbl" for="rp-url">Lien SharePoint <span class="opt">facultatif</span></label><input class="in" id="rp-url" type="url" inputmode="url" placeholder="https://kedgebs.sharepoint.com/…" aria-describedby="rp-err"><p class="err" id="rp-err" hidden>Colle un lien qui commence par https://</p>
@@ -1248,7 +1251,7 @@ window.KPlan = (DATA, { greet = false } = {}) => {
     const shownC = MT.contrib ? contrib : contrib.slice(0, 3);
     const aside = `<aside class="mt-aside panel lg" aria-label="À traiter en réunion">
       ${tr.length ? `<section class="ma-sec"><h2>À trancher <span class="tnum">${tr.length}</span></h2>
-        ${tr.map((b) => { const it = byId(b.item); return `<div class="ma-tr"><button type="button" class="ma-item trch" data-mt-open="${it.id}"><b>${esc(it.t)}</b>${trWhy(b) ? `<q class="ma-why">${esc(trWhy(b))}</q>` : ""}<span>${esc(`${cap(when(it))} · ${laneOf(it)} · ${person(b.by).nom}`)}</span></button><button type="button" class="ma-ok" data-mt="tranche" data-b="${b.id}" aria-label="Tranché : ${esc(it.t)}">Tranché</button></div>`; }).join("")}</section>` : ""}
+        ${tr.map((b) => { const it = byId(b.item); return `<div class="ma-tr"><button type="button" class="ma-item trch" data-mt-open="${it.id}"><b>${esc(it.t)}</b>${trWhy(b) ? `<q class="ma-why">${esc(trWhy(b))}</q>` : ""}<span>${esc(`${cap(when(it))} · ${laneOf(it)} · ${person(b.by).nom}`)}</span></button>${canLift(b, it) ? `<button type="button" class="ma-ok" data-mt="tranche" data-b="${b.id}" aria-label="Tranché : ${esc(it.t)}">Tranché</button>` : ""}</div>`; }).join("")}</section>` : ""}
       <section class="ma-sec"><h2>À débloquer <span class="tnum">${bl.length + late.length}</span></h2>
         ${bl.map((b) => row(byId(b.item), `${b.why} ${person(b.by).nom}, ${laneOf(byId(b.item))}.`, "bloq")).join("")}
         ${late.map((r) => row(byId(r.item), `${person(r.from).nom} attend ${ASK[r.type] || "des éléments"} de ${quiOf(r)} : deadline dépassée (${fmtDay(r.pour)}).`, "late")).join("")}
@@ -1261,14 +1264,18 @@ window.KPlan = (DATA, { greet = false } = {}) => {
     meeting.innerHTML = `<div class="mt-small"><p>L'écran réunion est prévu pour un ordinateur. Agrandis la fenêtre ou ouvre l'appli sur ton ordinateur.</p><button type="button" class="btn small" data-mt="close">Fermer</button></div>
       <header class="mt-head"><img class="logo-l" src="assets/kedge-logo-anthracite.png" alt="KEDGE Business School" height="30"><img class="logo-d" src="assets/kedge-logo-blanc.png" alt="" height="30">
         <div class="mt-title"><h1>Réunion de quinzaine</h1><p>${esc(premier(cap(K.fr.day(T0))))} · <em>${esc(perName(P))}</em>${N ? ` puis <em>${esc(perName(N))}</em>` : ""}</p></div>
-        <button type="button" class="btn small tonal" data-mt="held">Réunion tenue</button><button type="button" class="btn small" data-mt="close">Quitter</button></header>
+        ${canAdd() || isMedia() ? `<button type="button" class="btn small tonal" data-mt="add">${I.plus}Ajouter</button>` : ""}${me().chef ? `<button type="button" class="btn small tonal" data-mt="held">Réunion tenue</button>` : ""}<button type="button" class="btn small" data-mt="close">Quitter</button></header>
       <div class="mt-body"><div class="mt-main">${groups.map(section).join("")}</div>${aside}</div>`;
   }
+  // ajouter pendant la réunion : le formulaire s'ouvre en plein écran (la réunion le cachait), « Retour à la réunion »
+  // y ramène, et une fois publiée la fiche s'ouvre dans la réunion
+  const addFromMeeting = () => { if (meeting.hidden) return; closeMeeting(); S.mtBack = true; };
   const openMeeting = () => { renderMeeting(); meeting.hidden = false; meeting.querySelector(".mt-head [data-mt='close']")?.focus(); };
   const closeMeeting = () => { meeting.hidden = true; while (app.dataset.mtFiche && app.dataset.pushed === "1") K.pop(); };
   meeting.addEventListener("click", (e) => {
     const b = e.target.closest("[data-mt],[data-mt-open]"); if (!b) return;
     if (b.dataset.mt === "close") closeMeeting();
+    if (b.dataset.mt === "add") { addFromMeeting(); S.draft = keptDraft() || newDraft(); K.showTab("ajouter"); }
     if (b.dataset.mt === "held") { const ts = new Date().toISOString(); Object.assign(DB, { lastMeeting: TODAY, lastMeetingTs: ts }); renderMeeting(); K.snack("Les contributions repartent de zéro."); Store.setMeta("last_meeting", ts).catch(fail); }
     if (b.dataset.mt === "tranche") { const x = DB.blocks.find((y) => y.id === b.dataset.b); if (x) { x.leve = true; renderMeeting(); quick(Store.liftBlock(x.id), "Tranché."); } }
     if (b.dataset.mt === "more") { MT[b.dataset.k] = !MT[b.dataset.k]; renderMeeting(); }
@@ -1365,7 +1372,8 @@ window.KPlan = (DATA, { greet = false } = {}) => {
   function syncSide() {
     const f = document.getElementById("side-foot"); if (!f) return;
     const p = me();
-    f.innerHTML = `${p.chef ? `<button type="button" class="side-btn" data-act="meeting">${I.people}<span>Mode réunion</span></button><button type="button" class="side-btn" data-act="copil">${I.board}<span>Copil PGE</span></button>` : ""}
+    // le mode réunion pour tout le monde ; le copil PGE pour les chefs
+    f.innerHTML = `<button type="button" class="side-btn" data-act="meeting">${I.people}<span>Mode réunion</span></button>${p.chef ? `<button type="button" class="side-btn" data-act="copil">${I.board}<span>Copil PGE</span></button>` : ""}
       <button type="button" class="side-me" data-act="profil" aria-label="Profil de ${esc(p.nom)}"><span class="av sm" aria-hidden="true">${K.initials(p.nom)}</span><span><b>${esc(p.nom)}</b><small>${esc(fonctionOf(p))}</small></span></button>`;
   }
   const markSel = (id) => { app.querySelectorAll(".sel[data-open]").forEach((x) => x.classList.remove("sel")); app.querySelectorAll(`#v-${app.dataset.tab} [data-open="${id}"]`).forEach((x) => x.classList.add("sel")); };
@@ -1417,6 +1425,7 @@ window.KPlan = (DATA, { greet = false } = {}) => {
     if (a === "goper") document.getElementById(`per-${t.dataset.k}-${t.dataset.i}`)?.scrollIntoView({ behavior: K.reduceMotion() ? "auto" : "smooth", block: "start" });
     if (a === "allnew") K.push(renderAllNew, { title: "Nouveautés" });
     if (a === "meeting") openMeeting();
+    if (a === "backmeeting") { S.mtBack = false; openMeeting(); }
     if (a === "notifs") openNotifs();
     if (a === "unnotif") { const n = +t.dataset.n; DB.notifs = (DB.notifs || []).filter((x) => x.id !== n); quick(Store.clearNotifs([n]), "Notification effacée."); }
     if (a === "clearnotifs") {
@@ -1428,6 +1437,7 @@ window.KPlan = (DATA, { greet = false } = {}) => {
     if (a === "copil") openCopil();
     if (a === "gpast") { S.gpast = !S.gpast; K.refresh(); }
     // un brouillon déjà commencé n'est pas effacé : on change seulement de type (et de fiche liée)
+    if (["goadd", "addtf", "addpartner", "addlinked"].includes(a)) addFromMeeting();
     if (a === "goadd") { S.draft = keptDraft() || newDraft(); K.showTab("ajouter"); }
     if (a === "addtf") { const k = keptDraft(); S.draft = k ? { ...k, kind: "tf" } : newDraft("tf"); K.showTab("ajouter"); }
     if (a === "addpartner") { const k = keptDraft(); S.draft = k ? { ...k, kind: "partner" } : newDraft("partner"); K.showTab("ajouter"); }

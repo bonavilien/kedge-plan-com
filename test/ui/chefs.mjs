@@ -79,7 +79,7 @@ db = await fake();
 ok(db.reqs.find((x) => x.id === q.id).st === "recue", "réponse enregistrée");
 await open(I); await topv().locator('[data-act="ask"]').click(); await p.waitForTimeout(350);
 to = await chips();
-ok(!to.includes("Julien") && to.includes("Moi"), `Julien : pas lui-même, mais « Moi » (choix : ${to.join(", ")})`);
+ok(!to.includes("Julien") && to.includes("Moi (mémo)"), `Julien : pas lui-même, mais « Moi » (choix : ${to.join(", ")})`);
 
 ok(!errs.length, "aucune erreur dans la page" + (errs.length ? " : " + errs.join(" | ") : ""));
 await b.close();
