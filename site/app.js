@@ -44,16 +44,20 @@ window.KPlan = (DATA, { greet = false } = {}) => {
   const ASK = { "Programme": "le programme", "Contexte": "du contexte", "Éléments de langage": "des éléments de langage", "Visuels": "des visuels", "Contact": "un contact", "Rushs": "des rushs", "Autre": "des éléments" };
   // la Direction du Programme : un chef de projet y note pour lui-même une info qu'il ira chercher (personne n'est notifié)
   const PROG = { k: "programme", nom: "Direction du Programme", court: "Dir. Programme", qui: "la Direction du Programme" };
-  // de même pour la Direction marketing et le Recrutement, qui n'ont pas de compte dans l'appli
-  const EXT = [PROG, { k: "marketing", nom: "Direction marketing", court: "Dir. marketing", qui: "la Direction marketing" }, { k: "recrutement", nom: "Recrutement", court: "Recrutement", qui: "le Recrutement" }];
+  // une note : 5 000 caractères au plus, le compteur sous le champ le montre en tapant
+  const NOTE_MAX = 5000;
+  const countHTML = (v, max) => `<p class="count" aria-live="polite">${(v || "").length.toLocaleString("fr-FR")} / ${max.toLocaleString("fr-FR")} caractères</p>`;
+  const EXT = [PROG];
   const isExt = (k) => EXT.some((x) => x.k === k);
   // la responsable de l'offre reçoit des demandes comme un service (les profils cochés « Resp. offre » dans Équipe)
   const offre = () => ({ k: "offre", nom: "Responsable de l'offre", court: "Resp. offre", qui: K.fr.list(PEOPLE.filter((p) => p.offre).map((p) => p.nom)) || "la Resp. offre" });
+  // de même pour la Direction marketing et recrutement (profils cochés dans Équipe)
+  const mkt = () => ({ k: "marketing", nom: "Direction marketing et recrutement", court: "Dir. marketing et recrutement", qui: K.fr.list(PEOPLE.filter((p) => p.marketing).map((p) => p.nom)) || "la Direction marketing et recrutement" });
   // « Moi » : un chef se note des éléments qu'il doit fournir lui-même (personne d'autre n'est prévenu)
   const MOI = { k: "moi", nom: "Soi-même", court: "Soi-même", qui: "soi-même" };
   // un chef de projet nommé : on peut lui demander à lui seul (dest = son identifiant)
   const chefTo = (k) => { const x = PEOPLE.find((y) => y.k === k); return x && { k, nom: x.nom, court: x.nom, qui: x.nom }; };
-  const svcOf = (k) => SERVICES.find((s) => s.k === k) || (EXT.find((x) => x.k === k) || (k === MOI.k ? MOI : k === "offre" ? offre() : chefTo(k) || CHEF));
+  const svcOf = (k) => SERVICES.find((s) => s.k === k) || (EXT.find((x) => x.k === k) || (k === MOI.k ? MOI : k === "offre" ? offre() : k === "marketing" ? mkt() : chefTo(k) || CHEF));
   // à qui la demande est faite, en toutes lettres : « Moi », c'est la personne qui l'a notée
   const quiOf = (q) => (q.to === MOI.k ? person(q.from).nom : svcOf(q.to).qui);
   const noNotif = (q) => isExt(q.to) || q.to === MOI.k;
@@ -238,7 +242,7 @@ window.KPlan = (DATA, { greet = false } = {}) => {
   // une demande reçue par mon service, par les chefs si j'en suis un, ou par moi nommément
   // (une demande à la Direction du Programme : les chefs de projet la marquent reçue, celui qui l'a notée ou un autre ;
   // une demande à la Resp. offre : pour la responsable de l'offre)
-  const forMe = (q, p = me()) => q.to === p.svc || (!!p.ownSvc && q.to === p.ownSvc) || (isExt(q.to) && !!p.chef) || (q.to === "offre" && !!p.offre) || (q.to === MOI.k && q.from === p.k) || q.to === p.k;
+  const forMe = (q, p = me()) => q.to === p.svc || (!!p.ownSvc && q.to === p.ownSvc) || (isExt(q.to) && !!p.chef) || (q.to === "offre" && !!p.offre) || (q.to === "marketing" && !!p.marketing) || (q.to === MOI.k && q.from === p.k) || q.to === p.k;
   // la deadline d'une demande se voit partout : en rouge une fois passée, en jaune à trois jours
   const dlTxt = (pour) => { const n = days(pour); return n < 0 ? `En retard · deadline ${fmtDay(pour)}` : n === 0 ? "Deadline aujourd'hui" : n === 1 ? "Deadline demain" : `Deadline ${fmtDay(pour)} · dans ${nJours(n)}`; };
   const dlCls = (q) => (q.st === "recue" ? "" : days(q.pour) < 0 ? " late" : days(q.pour) <= 3 ? " soon" : "");
@@ -656,7 +660,7 @@ window.KPlan = (DATA, { greet = false } = {}) => {
         ${tf ? "" : `<label class="lbl" for="${px}-tf">Temps fort, sujet ou classement lié</label><select class="in" id="${px}-tf"><option value="">Aucun</option>
           <optgroup label="Temps forts">${tfs.filter(isTfDay).map(opt).join("")}</optgroup><optgroup label="Sujets">${tfs.filter(isSujet).map(opt).join("")}</optgroup>${tfs.some(isCls) ? `<optgroup label="Classements">${tfs.filter(isCls).map(opt).join("")}</optgroup>` : ""}${olds.length ? `<optgroup label="Déjà passés">${olds.map(opt).join("")}</optgroup>` : ""}</select>`}
         ${edit ? "" : `<label class="lbl" for="${px}-link">Lien SharePoint</label><input class="in" id="${px}-link" type="url" inputmode="url" value="${esc(d.link)}" placeholder="https://kedgebs.sharepoint.com/…" aria-describedby="${px}-link-err"><p class="err" id="${px}-link-err" hidden>Colle un lien qui commence par https://</p>`}
-        ${edit ? "" : `<label class="lbl" for="${px}-note">Note</label><textarea class="in" id="${px}-note" rows="3" placeholder="Contexte, contact…">${esc(d.note)}</textarea>`}
+        ${edit ? "" : `<label class="lbl" for="${px}-note">Note</label><textarea class="in" id="${px}-note" rows="3" maxlength="${NOTE_MAX}" data-count placeholder="Contexte, contact…">${esc(d.note)}</textarea>${countHTML(d.note, NOTE_MAX)}`}
       </details>`}
       <div class="cta"><button type="button" class="btn block" data-act="${edit ? "save" : "publish"}"${edit ? ` data-id="${d.id}"` : ""}>${edit ? "Enregistrer" : "Publier"}</button></div>`;
   }
@@ -873,7 +877,7 @@ window.KPlan = (DATA, { greet = false } = {}) => {
   // notes : une section à part, lisible comme du texte ; ceux qui modifient la fiche l'écrivent sur place, sans passer par Modifier
   const noteHTML = (it, edit) => {
     const id = it.id, on = S.note === id;
-    if (on) return `<h2 class="sec-h"><label for="nt-${id}">Notes</label></h2><div class="note-ed"><textarea class="in" id="nt-${id}" rows="5" maxlength="2000" placeholder="Contexte, contact, ce qu'il faut savoir…">${esc(S.noteDraft ?? it.note)}</textarea>
+    if (on) return `<h2 class="sec-h"><label for="nt-${id}">Notes</label></h2><div class="note-ed"><textarea class="in" id="nt-${id}" rows="5" maxlength="${NOTE_MAX}" data-count placeholder="Contexte, contact, ce qu'il faut savoir…">${esc(S.noteDraft ?? it.note)}</textarea>${countHTML(S.noteDraft ?? it.note, NOTE_MAX)}
       <div class="note-acts"><button type="button" class="btn small outline" data-act="note-x">Annuler</button><button type="button" class="btn small" data-act="note-ok" data-id="${id}">Enregistrer</button></div></div>`;
     if (!it.note && !edit) return "";
     const last = (DB.journal || []).filter((j) => j.item === id && j.diff && "note" in j.diff).sort((a, b) => b.ts.localeCompare(a.ts))[0];
@@ -985,9 +989,9 @@ window.KPlan = (DATA, { greet = false } = {}) => {
     let pour = [addDays(it.date, -7), addDays(TODAY, 3)].sort().pop();
     if (precise(it) && it.date > TODAY && pour >= it.date) pour = [TODAY, addDays(it.date, -1)].sort().pop();
     // chaque chef de projet par son nom (un chef qui est aussi Resp. offre : sous « Resp. offre ») ; la Resp. offre, quand quelqu'un
-    // l'est (et pas soi-même) ; la Direction du Programme, la Direction marketing, le Recrutement et « Moi », pour les chefs
-    const of = PEOPLE.some((x) => x.offre && x.k !== ME) && !p.offre ? [offre()] : [];
-    const chefs = PEOPLE.filter((x) => x.chef && !x.visiteur && x.k !== ME && !(x.offre && of.length)).map((x) => chefTo(x.k));
+    // l'est (et pas soi-même), de même pour la Direction marketing et recrutement ; la Direction du Programme et « Moi », pour les chefs
+    const of = [...(PEOPLE.some((x) => x.offre && x.k !== ME) && !p.offre ? [offre()] : []), ...(PEOPLE.some((x) => x.marketing && x.k !== ME) && !p.marketing ? [mkt()] : [])];
+    const chefs = PEOPLE.filter((x) => x.chef && !x.visiteur && x.k !== ME && !(x.offre && of.some((o) => o.k === "offre"))).map((x) => chefTo(x.k));
     const to = [...chefs, ...SERVICES.filter((s) => s.k !== p.svc), ...of, ...(p.chef ? [...EXT, MOI] : [])];
     // déjà demandé : seulement à ceux qu'on peut solliciter (pas à son propre service) ; aussi à « les chefs », comme avant
     const r = root(it), deja = reqsOf(it).filter((q) => q.st === "ouverte" && (to.some((s) => s.k === q.to) || (q.to === CHEF.k && !p.chef)) && (q.to !== MOI.k || q.from === ME));
@@ -1124,7 +1128,7 @@ window.KPlan = (DATA, { greet = false } = {}) => {
 
   // ---------- équipe (chefs de projet) : service et droits de chaque compte ----------
   // les comptes se créent dans Supabase ; on règle ici qui fait quoi
-  const rights = (p) => p.visiteur ? "Visiteur · lecture seule" : [...new Set([p.fonction, p.chef ? "Chef de projet" : p.ownSvc ? svcOf(p.ownSvc).nom : "Sans service", p.media ? "Partenariats" : "", p.offre ? "Resp. offre" : "", p.notifAll ? "Prévenu de tout" : ""].filter(Boolean))].join(" · ");
+  const rights = (p) => p.visiteur ? "Visiteur · lecture seule" : [...new Set([p.fonction, p.chef ? "Chef de projet" : p.ownSvc ? svcOf(p.ownSvc).nom : "Sans service", p.media ? "Partenariats" : "", p.offre ? "Resp. offre" : "", p.marketing ? "Dir. marketing et recrutement" : "", p.notifAll ? "Prévenu de tout" : ""].filter(Boolean))].join(" · ");
   function renderTeam(el, { back }) {
     const list = [...PEOPLE].sort((a, b) => a.nom.localeCompare(b.nom, "fr"));
     el.innerHTML = K.navbar({ title: "Équipe", back }) + `<div class="scroll"><h1 class="large-title">Équipe</h1>
@@ -1137,13 +1141,13 @@ window.KPlan = (DATA, { greet = false } = {}) => {
     K.sheet.open({ title: p.nom, ok: "Enregistrer", full: true, body: `<label class="lbl" for="pp-nom">Prénom</label><input class="in" id="pp-nom" value="${esc(p.nom)}">
       <label class="lbl" for="pp-fn">Fonction <span class="opt">facultatif</span></label><input class="in" id="pp-fn" value="${esc(p.fonction)}" placeholder="Ex. Responsable de l'offre">
       <span class="lbl" id="pp-svc-l">Service</span><div class="chips" data-chips id="pp-svc" role="group" aria-labelledby="pp-svc-l">${[{ k: "", court: "Aucun" }, ...SERVICES].map((s) => chip(s.court, p.ownSvc === s.k, s.k)).join("")}</div>
-      <div class="group" style="margin-top:16px">${sw("chef", "Chef de projet", "Modifie tout, anime la réunion", p.chef, self)}${sw("media", "Partenariats média", isMedia() ? "Saisit les partenariats payants" : `Saisit les partenariats payants. Seul ${mediaNames()} peut changer ce droit.`, p.media, !isMedia())}${sw("offre", "Resp. offre", "Reçoit les demandes d'éléments faites à la responsable de l'offre", p.offre)}${sw("all", "Prévenu de chaque ajout", "Une notification à chaque nouveauté", p.notifAll)}${self ? "" : sw("visit", "Visiteur", p.media && !isMedia() ? `Voit tout, ne modifie rien. Seul ${mediaNames()} peut retirer ses droits de partenariats.` : "Voit tout, ne modifie rien", p.visiteur, p.media && !isMedia())}</div>
+      <div class="group" style="margin-top:16px">${sw("chef", "Chef de projet", "Modifie tout, anime la réunion", p.chef, self)}${sw("media", "Partenariats média", isMedia() ? "Saisit les partenariats payants" : `Saisit les partenariats payants. Seul ${mediaNames()} peut changer ce droit.`, p.media, !isMedia())}${sw("offre", "Resp. offre", "Reçoit les demandes d'éléments faites à la responsable de l'offre", p.offre)}${sw("mkt", "Dir. marketing et recrutement", "Reçoit les demandes d'éléments faites à la Direction marketing et recrutement", p.marketing)}${sw("all", "Prévenu de chaque ajout", "Une notification à chaque nouveauté", p.notifAll)}${self ? "" : sw("visit", "Visiteur", p.media && !isMedia() ? `Voit tout, ne modifie rien. Seul ${mediaNames()} peut retirer ses droits de partenariats.` : "Voit tout, ne modifie rien", p.visiteur, p.media && !isMedia())}</div>
       ${self ? `<p class="sec-f">Un autre chef de projet peut changer tes droits de chef.</p>` : ""}`,
       onOk: async (s) => {
         const v = { nom: s.querySelector("#pp-nom").value.trim() || p.nom, fonction: s.querySelector("#pp-fn").value.trim(), ownSvc: pressed("#pp-svc", s)[0] || "",
-          chef: s.querySelector("#pp-chef").checked, media: s.querySelector("#pp-media").checked, notifAll: s.querySelector("#pp-all").checked, offre: s.querySelector("#pp-offre").checked, visiteur: !!s.querySelector("#pp-visit")?.checked };
+          chef: s.querySelector("#pp-chef").checked, media: s.querySelector("#pp-media").checked, notifAll: s.querySelector("#pp-all").checked, offre: s.querySelector("#pp-offre").checked, marketing: s.querySelector("#pp-mkt").checked, visiteur: !!s.querySelector("#pp-visit")?.checked };
         // la base retire au visiteur tout service et tout droit : on fait pareil ici
-        if (v.visiteur) Object.assign(v, { ownSvc: "", chef: false, media: false, notifAll: false, offre: false });
+        if (v.visiteur) Object.assign(v, { ownSvc: "", chef: false, media: false, notifAll: false, offre: false, marketing: false });
         try { await Store.setProfile(id, v); } catch (e) { fail(e); return false; }
         Object.assign(p, v, { svc: v.chef ? "chef" : v.ownSvc });
         K.refresh(); K.snack(`${esc(v.nom)} : c'est enregistré.`); sync();
@@ -1544,6 +1548,7 @@ window.KPlan = (DATA, { greet = false } = {}) => {
     const t = e.target;
     // une note en cours d'écriture survit à un rafraîchissement (temps réel)
     if (t.id.startsWith("nt-")) S.noteDraft = t.value;
+    if (t.hasAttribute?.("data-count")) { const c = t.nextElementSibling, max = +t.maxLength; if (c?.classList.contains("count")) { c.textContent = `${t.value.length.toLocaleString("fr-FR")} / ${max.toLocaleString("fr-FR")} caractères`; c.classList.toggle("full", t.value.length >= max * 0.9); } }
     if ((t.id === "f-np" || t.id === "e-np") && t.value.trim()) document.querySelectorAll(`#${t.id.replace("np", "pt")} .chip`).forEach((c) => c.setAttribute("aria-pressed", "false"));
   });
 

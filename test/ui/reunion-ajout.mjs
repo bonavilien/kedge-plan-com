@@ -1,4 +1,4 @@
-// Mode réunion : ajouter une action depuis la réunion (fiche liée ou bouton Ajouter), réunion ouverte à tous, demandes aux directions.
+// Mode réunion : ajouter une action depuis la réunion (fiche liée ou bouton Ajouter), réunion ouverte à tous ; demandes à la Direction marketing et recrutement.
 import { chromium } from "/opt/node22/lib/node_modules/playwright/index.mjs";
 const OUT = process.argv[2] || "/tmp", URL0 = "http://localhost:8790/test.html";
 const b = await chromium.launch();
@@ -13,7 +13,7 @@ const cp = it({ t: "CP JPO", date: plus(5), tf: jpo.id });
 const p = await (await b.newContext({ viewport: { width: 1440, height: 900 } })).newPage();
 const errs = []; p.on("pageerror", (e) => errs.push(e.message));
 await p.goto(URL0); await p.evaluate(() => localStorage.clear()); await p.goto(URL0); await p.waitForSelector("#login");
-await p.evaluate((items) => { const f = window.__fake; f.db.items.push(...items); f.save(); }, [jpo, cp]);
+await p.evaluate((items) => { const f = window.__fake; f.db.items.push(...items); f.db.profiles.find((x) => x.nom === "Aurélie").marketing = true; f.save(); }, [jpo, cp]);
 const login = async (who) => { await p.fill("#lg-mail", `${who}@kedgebs.com`); await p.fill("#lg-pw", "motdepasse"); await p.click("#login button"); await p.waitForFunction(() => document.getElementById("brand").hidden); await p.waitForTimeout(500); };
 await login("julien");
 // 1. depuis la fiche d'un temps fort ouverte dans la réunion : « Ajouter une action liée »
@@ -36,19 +36,23 @@ ok(await p.isHidden("#meeting") && await p.isVisible("#v-ajouter #f-t"), "bouton
 await p.click('#v-ajouter [data-act="backmeeting"]'); await p.waitForTimeout(400);
 ok(await p.isVisible("#meeting"), "Retour à la réunion");
 await p.click('#meeting .mt-head [data-mt="close"]'); await p.waitForTimeout(300);
-// 3. demandes : Direction marketing, Recrutement, Moi (mémo)
+// 3. demandes : Direction marketing et recrutement (Aurélie cochée), Moi (mémo)
 await p.evaluate(() => { location.hash = "#item=70000000-0000-4000-8000-000000000002"; }); await p.waitForTimeout(600);
 await p.locator('.view.pushed [data-act="ask"]').first().click(); await p.waitForTimeout(400);
 const chips = await p.$$eval("#ask-to .chip", (c) => c.map((x) => x.textContent.trim()));
-ok(chips.includes("Direction marketing") && chips.includes("Recrutement") && chips.includes("Moi (mémo)"), "À qui ? : Direction marketing, Recrutement, Moi (mémo)", chips.join(", "));
-await p.click('#ask-to .chip:has-text("Recrutement")'); await p.click('.sheet.show [data-kui="ok"]'); await p.waitForTimeout(600);
-ok(await p.evaluate(() => window.__fake.db.reqs.some((q) => q.dest === "recrutement")), "demande notée pour le Recrutement");
+ok(chips.includes("Dir. marketing et recrutement") && chips.includes("Moi (mémo)"), "À qui ? : Dir. marketing et recrutement, Moi (mémo)", chips.join(", "));
+await p.click('#ask-to .chip:has-text("marketing")'); await p.click('.sheet.show [data-kui="ok"]'); await p.waitForTimeout(600);
+ok(await p.evaluate(() => window.__fake.db.reqs.some((q) => q.dest === "marketing")), "demande envoyée à la Direction marketing et recrutement");
+ok(/Aurélie/.test(await p.textContent(".snack")), "le message dit qu'Aurélie la reçoit", await p.textContent(".snack"));
 // 4. un compte service : mode réunion accessible, sans « Réunion tenue »
 await p.evaluate(() => { const f = window.__fake; f.db.session = null; f.save(); }); await p.goto(URL0); await p.waitForSelector("#login"); await login("aurelie");
 ok(await p.locator('.side-btn[data-act="meeting"]').count() === 1 && await p.locator('.side-btn[data-act="copil"]').count() === 0, "Aurélie (RP) : Mode réunion dans le menu, pas le copil");
 await p.click('.side-btn[data-act="meeting"]'); await p.waitForTimeout(400);
 ok(await p.isVisible("#meeting") && await p.locator('#meeting [data-mt="held"]').count() === 0 && await p.locator('#meeting [data-mt="add"]').count() === 1, "Aurélie : réunion ouverte, Ajouter, pas « Réunion tenue »");
 await p.screenshot({ path: `${OUT}/ra2-reunion-aurelie.png` });
+await p.click('#meeting .mt-head [data-mt="close"]'); await p.waitForTimeout(300);
+await p.click('.tab[data-kui-tab="afaire"] >> visible=true').catch(() => p.evaluate(() => window.KUI.showTab("afaire"))); await p.waitForTimeout(400);
+ok(/Julien demande des visuels|Julien demande/.test(await p.textContent("#v-afaire")), "Aurélie (cochée) voit la demande dans son À faire");
 ok(!errs.length, "aucune erreur JS" + (errs.length ? " : " + errs.join(" / ") : ""));
 await b.close();
 console.log(fails ? `${fails} échec(s)` : "Réunion, ajout : tout est bon");

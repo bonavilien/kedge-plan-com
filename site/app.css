@@ -745,3 +745,5 @@ button.note-t { cursor: pointer; }
 .note-ed { display: grid; gap: 10px; }
 .note-ed .in { font-size: 16px; line-height: 1.5; }
 .note-acts { display: flex; justify-content: flex-end; gap: 8px; }
+.count { margin: 4px 2px 0; font-size: 13px; text-align: right; color: var(--text2); font-variant-numeric: tabular-nums; }
+.count.full { color: var(--red); font-weight: 600; }

@@ -59,7 +59,7 @@
     if (t === "partners") return p.media;
     if (t === "links" && op === "insert") return p.chef || p.media || !!p.svc;
     // migration 0009 : seul un chef note une demande à la Direction du Programme
-    if (t === "reqs" && op === "insert" && ["programme", "marketing", "recrutement"].includes(row.dest) && !p.chef) return false;
+    if (t === "reqs" && op === "insert" && row.dest === "programme" && !p.chef) return false;
     // migration 0013 : « Moi », pour les chefs ; la même note par un autre chef reste possible
     if (t === "reqs" && op === "insert" && row.dest === "moi" && !p.chef) return false;
     // migration 0014 : à un chef nommé, pas à soi-même ni à quelqu'un qui n'est pas chef
@@ -106,7 +106,7 @@
       if (q.t === "items") jot(r.id, "creation", {}, r.author, r.at);
       if (q.t === "links") jot(r.item, "document", { nom: r.nom }, r.author);
       // les destinataires d'une demande, comme la base (0012, 0014) : un service, les chefs, la Resp. offre, un chef nommé ; personne pour la Direction du Programme
-      if (q.t === "reqs") db.profiles.filter((x) => x.id !== r.asker && ((r.dest === "chef" && x.chef) || x.svc === r.dest || (r.dest === "offre" && x.offre) || x.id === r.dest))
+      if (q.t === "reqs") db.profiles.filter((x) => x.id !== r.asker && ((r.dest === "chef" && x.chef) || x.svc === r.dest || (r.dest === "offre" && x.offre) || (r.dest === "marketing" && x.marketing) || x.id === r.dest))
         .forEach((x) => db.outbox.push({ user_id: x.id, title: "Demande d'éléments", body: r.type, url: `#item=${r.item}`, dedupe: `req:${r.id}:${x.id}` }));
       save();
       return { data: q.single ? r : [r], error: null };
@@ -130,7 +130,7 @@
         if (q.t === "reqs" && r.st === "ouverte" && q.row.st === "annulee") jot(r.item, "retrait", { type: r.type, dest: r.dest });
         Object.assign(r, q.row);
         // migration 0005 : un visiteur perd service et droits
-        if (q.t === "profiles" && r.visiteur) Object.assign(r, { svc: null, chef: false, media: false, notif_all: false, offre: false }); }); save();
+        if (q.t === "profiles" && r.visiteur) Object.assign(r, { svc: null, chef: false, media: false, notif_all: false, offre: false, marketing: false }); }); save();
       return { data: rows.map((r) => ({ ...r })), error: null };
     }
     if (q.op === "upsert") {
