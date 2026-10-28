@@ -11,6 +11,8 @@ body {
 }
 button, input, select, textarea { font: inherit; color: inherit; }
 button { cursor: pointer; -webkit-tap-highlight-color: transparent; }
+/* pas d'attente du double tap (zoom) sur les éléments qu'on touche */
+button, a, input, select, textarea, label, summary { touch-action: manipulation; }
 img, svg { display: block; }
 .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 .tnum { font-variant-numeric: tabular-nums; }

@@ -3,6 +3,7 @@
   "short_name": "Plan de com",
   "description": "Planifier la production et la diffusion autour des messages clés et des temps forts de l'année.",
   "lang": "fr",
+  "id": "./",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

@@ -695,6 +695,8 @@ section.soon { margin-top: 30px; padding-top: 6px; border-top: 2px dashed var(--
 .gt-w b { font-family: var(--serif); font-size: 16px; font-weight: 700; line-height: 1.2; }
 .gt-c { display: grid; align-content: start; gap: 2px; min-width: 0; padding: 8px 6px; box-shadow: inset .5px 0 0 var(--sep); }
 .gt-r.now { background: var(--fill); }
+/* sur le fond de la semaine en cours, le gris secondaire passe à 5:1 (il était à 4,2:1) */
+.app[data-dark="0"] .gt-r.now { --text2: #5E6065; }
 .gt-w .pw-now { white-space: nowrap; }
 /* une fiche ouverte depuis le calendrier passe par-dessus ses dernières colonnes au lieu de tout resserrer */
 @media (min-width: 1100px) { .app[data-pushed="1"][data-tab="grille"] .views > #v-grille:not(.pushed) { right: 0; } }

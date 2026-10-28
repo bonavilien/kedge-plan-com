@@ -216,7 +216,7 @@ window.KPlan = (DATA, { greet = false } = {}) => {
   function agenda(list, opts = {}) {
     const by = new Map();
     list.slice().sort(sortDate).forEach((it) => { const m = it.date.slice(0, 7); by.set(m, [...(by.get(m) || []), it]); });
-    return [...by].map(([m, l]) => `<h3 class="ag-month">${cap(D(m + "-01").toLocaleDateString("fr-FR", { month: "long" }))}</h3><div class="group">${rows(l, opts)}</div>`).join("");
+    return [...by].map(([m, l]) => `<h2 class="ag-month">${cap(D(m + "-01").toLocaleDateString("fr-FR", { month: "long" }))}</h2><div class="group">${rows(l, opts)}</div>`).join("");
   }
 
   // =====================================================================

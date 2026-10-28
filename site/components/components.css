@@ -188,6 +188,8 @@ select.in { appearance: none; -webkit-appearance: none; padding-right: 40px; bac
 /* ligne de réglage : libellé à gauche, valeur éditable à droite (iOS) ; champ souligné en dessous (Android) */
 .field-row input, .field-row select { flex: 1; min-width: 0; border: 0; background: transparent; text-align: right; font-size: 17px; color: var(--text2); padding: 0; min-height: 30px; }
 .field-row input:focus, .field-row select:focus { outline: none; color: var(--text); }
+/* le champ sans contour : c'est la ligne entière qui montre le focus clavier */
+.field-row:has(:focus-visible) { outline: 3px solid var(--accent); outline-offset: -3px; border-radius: 10px; }
 .field-row select { text-align-last: right; appearance: none; -webkit-appearance: none; cursor: pointer; }
 .field-row label { flex: none; }
 .app[data-os="android"] .field-row { flex-wrap: wrap; gap: 4px 12px; }
@@ -215,8 +217,9 @@ select.in { appearance: none; -webkit-appearance: none; padding-right: 40px; bac
 .sheet [data-kui="ok"][disabled] { opacity: .55; pointer-events: none; }
 
 /* ---------- alerte (boîte de dialogue) ---------- */
-.alert-wrap { position: absolute; inset: 0; z-index: var(--z-alert); display: grid; place-items: center; background: rgba(0, 0, 0, .3); opacity: 0; pointer-events: none; transition: opacity .2s; }
-.alert-wrap.show { opacity: 1; pointer-events: auto; }
+/* fermée, l'alerte est aussi retirée des lecteurs d'écran (visibility), après le fondu */
+.alert-wrap { position: absolute; inset: 0; z-index: var(--z-alert); display: grid; place-items: center; background: rgba(0, 0, 0, .3); opacity: 0; visibility: hidden; pointer-events: none; transition: opacity .2s, visibility 0s .2s; }
+.alert-wrap.show { opacity: 1; visibility: visible; pointer-events: auto; transition: opacity .2s; }
 .alert { width: 270px; border-radius: var(--r-dialog); background: var(--bar); backdrop-filter: blur(30px); -webkit-backdrop-filter: blur(30px); color: var(--text); text-align: center; overflow: hidden; transform: scale(1.08); transition: transform .2s; }
 .alert-wrap.show .alert { transform: none; }
 .alert h2 { margin: 18px 16px 2px; font-size: 17px; font-weight: 600; }
