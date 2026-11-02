@@ -14,6 +14,8 @@ La base démarre **vierge** : seules les 5 périodes, les 5 messages et les 3 se
 | `scripts/setup.mjs` | Installe ou met à jour la base Supabase en une commande. |
 | `test/` | Tests de la base (Postgres local), de l'interface (faux Supabase) et de l'envoi des notifications (Deno). |
 
+La recherche (loupe en haut de l'écran sur téléphone, « Rechercher » en haut du menu ou Ctrl+K sur ordinateur) parcourt dans l'appli toutes les fiches déjà chargées : titre, note, lieu, partenaire, temps fort lié, documents, demandes, message, service, auteur ; sans accents ni majuscules.
+
 Les données sont dans Supabase (hébergé en Europe). Le dépôt ne contient aucune donnée ni aucun secret : la clé de `config.js` est la clé publique, qui ne donne que les droits écrits dans la base.
 
 ## Qui peut faire quoi
@@ -56,5 +58,5 @@ Rappels J-30, J-15 et J-7 avant chaque action datée au jour près (chaque matin
 ## Tests
 
 - Base : `PSQL="psql -h localhost -U postgres" sh test/db/run.sh` (une base Postgres locale suffit). Puis, sur la base `kplan_test` qu'il laisse : `droits.sql` et `contenu.sql` (`$PSQL -d kplan_test -f test/db/droits.sql`) ; `sh test/db/besoins.sh` crée sa propre base (rappels, demandes, deadlines).
-- Interface : `node test/ui/serve.mjs` puis `node test/ui/flows.mjs <dossier des captures>` (et `historique.mjs`, `copil.mjs`, `demandes.mjs`, `corrections.mjs`, `contenu.mjs`, `droits.mjs`, `sansprofil.mjs`, `besoins.mjs`, `periodes.mjs`, `notifs.mjs`, `visiteur.mjs`, `profil.mjs`, `reponses.mjs`, `services.mjs`, `suppression.mjs`, `programme.mjs`, `moi.mjs`, `chefs.mjs`, `brouillon.mjs`, `plusieurs.mjs`, `classements.mjs`, `corrections26.mjs`, `mobile.mjs`).
+- Interface : `node test/ui/serve.mjs` puis `node test/ui/flows.mjs <dossier des captures>` (et `historique.mjs`, `copil.mjs`, `demandes.mjs`, `corrections.mjs`, `contenu.mjs`, `droits.mjs`, `sansprofil.mjs`, `besoins.mjs`, `periodes.mjs`, `notifs.mjs`, `visiteur.mjs`, `profil.mjs`, `reponses.mjs`, `services.mjs`, `suppression.mjs`, `programme.mjs`, `moi.mjs`, `chefs.mjs`, `brouillon.mjs`, `plusieurs.mjs`, `classements.mjs`, `corrections26.mjs`, `mobile.mjs`, `recherche.mjs`).
 - Notifications : `node test/push/run.mjs <dossier avec deno, web-push et http_ece installés>`.

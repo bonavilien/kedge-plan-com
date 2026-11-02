@@ -115,7 +115,8 @@ window.KUI = (() => {
     state.stack.push(entry); app.dataset.pushed = "1";
     keepScroll(el, () => render(el, { back: entry.back })); syncInert();
     el.classList.add("enter"); setTimeout(() => el.classList.remove("enter"), 400);
-    setTimeout(() => $(".back", el)?.focus({ preventScroll: true }), 50);
+    // un écran qui place lui-même le focus (un champ de recherche) le garde
+    setTimeout(() => { if (!el.contains(document.activeElement)) $(".back", el)?.focus({ preventScroll: true }); }, 50);
     return el;
   }
   function pop() {

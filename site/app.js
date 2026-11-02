@@ -156,13 +156,15 @@ window.KPlan = (DATA, { greet = false } = {}) => {
   // ordinateur et tablette : trois colonnes de services dès 768 px, fiche en panneau à droite dès 1100 px
   const MQ_COLS = matchMedia("(min-width: 768px)"), MQ_PANEL = matchMedia("(min-width: 1100px)"), MQ_DESK = matchMedia("(min-width: 1280px)");
   const cols = () => MQ_COLS.matches, panel = () => MQ_PANEL.matches;
-  const S = { period: CUR, filter: null, msgF: null, pastP: false, past: { tf: false, media: false }, open: {}, draft: null, edit: null };
+  const S = { period: CUR, filter: null, msgF: null, pastP: false, past: { tf: false, media: false }, open: {}, draft: null, edit: null, q: "" };
 
   // ---------- petits gabarits ----------
   const chip = (label, on, value) => `<button type="button" class="chip" value="${esc(value ?? label)}" aria-pressed="${!!on}">${I.check}${esc(label)}</button>`;
   const pressed = (sel, root = document) => [...root.querySelectorAll(`${sel} .chip[aria-pressed="true"]`)].map((b) => b.value);
   const down = `<span class="down" aria-hidden="true">${I.chevL}</span>`;
   const profileBtn = () => K.iconBtn("user", "Profil", 'data-act="profil"');
+  // sur ordinateur et tablette, la recherche est en haut du menu
+  const searchBtn = () => `<button type="button" class="icon-btn phone-only" aria-label="Rechercher" data-act="search">${I.search}</button>`;
   const payBadge = `<span class="pay">Payant</span>`;
   const tfBadge = `<span class="tf-b">Temps fort</span>`, sujBadge = `<span class="tf-b suj">Sujet</span>`, clsBadge = `<span class="tf-b cls">${I.podium}Classement</span>`;
   // ligne d'identité d'un objet : le type se voit avant de se lire
@@ -189,9 +191,46 @@ window.KPlan = (DATA, { greet = false } = {}) => {
     return r.has.length ? `Relais ${K.fr.list(r.has)}` : "";
   };
 
+  // ---------- recherche : sans accents ni majuscules (« evenement » trouve « Événement », « oe » trouve « œ ») ----------
+  const fold1 = (c) => c.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/œ/g, "oe").replace(/æ/g, "ae").replace(/[’‘]/g, "'");
+  // le texte replié, et pour chaque caractère replié sa place dans le texte d'origine (pour surligner au bon endroit)
+  const folded = (str) => { let f = ""; const map = []; [...(str || "")].forEach((c, i) => { for (const x of fold1(c)) { f += x; map.push(i); } }); return { f, map, chars: [...(str || "")] }; };
+  const qWords = (q) => fold1(q.trim()).split(/\s+/).filter(Boolean);
+  // le texte, échappé, avec les mots cherchés en <mark>
+  function markHTML(str, words) {
+    const { f, map, chars } = folded(str), on = new Array(chars.length).fill(false);
+    words.forEach((w) => { for (let i = f.indexOf(w); i >= 0; i = f.indexOf(w, i + 1)) for (let j = i; j < i + w.length; j++) on[map[j]] = true; });
+    let out = "", open = false;
+    chars.forEach((c, i) => { if (on[i] !== open) { out += on[i] ? "<mark>" : "</mark>"; open = on[i]; } out += esc(c); });
+    return out + (open ? "</mark>" : "");
+  }
+  // un bout de texte autour du premier mot trouvé : « … la salle Bloomberg ouvre en janvier … »
+  function excerpt(str, w) {
+    const { f, map, chars } = folded(str), i = f.indexOf(w); if (i < 0) return "";
+    let a = Math.max(0, map[i] - 40), b = Math.min(chars.length, map[i + w.length - 1] + 1 + 70);
+    if (a > 0) { const sp = chars.indexOf(" ", a); a = sp >= 0 && sp < map[i] ? sp + 1 : a; }
+    if (b < chars.length) { const sp = chars.lastIndexOf(" ", b); b = sp > map[i + w.length - 1] ? sp : b; }
+    return (a > 0 ? "… " : "") + chars.slice(a, b).join("").replace(/\s+/g, " ") + (b < chars.length ? " …" : "");
+  }
+  // où chercher dans une fiche, avec le nom montré sous le résultat quand le mot n'est pas dans le titre
+  // (le type et la date comptent, sans extrait : ils se voient déjà sur la ligne)
+  function searchFields(it) {
+    const tf = !isTF(it) && it.tf ? byId(it.tf) : null;
+    return [
+      { l: "", v: it.t }, { l: "Note", v: it.note }, { l: "Lieu", v: it.lieu }, { l: "Partenaire", v: isPay(it) ? partnerName(it) : "" },
+      { l: tf ? cap(momWord(tf)) : "", v: tf ? tf.t : "" },
+      ...(it.links || []).map((x) => ({ l: "Document", v: x.nom })),
+      ...DB.reqs.filter((q) => q.item === it.id && q.st !== "annulee").flatMap((q) => [{ l: "Demande", v: reqTxt(q) }, { l: "Réponse", v: q.reponse }]),
+      // les plus larges en dernier : un mot trouvé ailleurs se montre d'abord là
+      { l: "Message", v: msgText(it) }, { l: "Porté par", v: isPay(it) || isTF(it) ? "" : `${svcOf(it.svc).nom} ${svcOf(it.svc).court}` },
+      { l: "Ajouté par", v: person(it.by).nom }, { l: null, v: `${kindName(it)} ${when(it)} ${fmtDay(it.date)}` },
+    ].filter((x) => x.v).map((x) => ({ ...x, f: folded(x.v).f }));
+  }
+
   // une ligne d'agenda : date à gauche, titre, une ligne secondaire.
   // who : "all" nomme le service ; "tf" le tait (liste d'un seul service)
-  function agRow(it, { date = true, mode = "week", who = "all", mark = true } = {}) {
+  // recherche : extra ajoute une ligne (où le mot a été trouvé), hl surligne les mots cherchés dans le titre
+  function agRow(it, { date = true, mode = "week", who = "all", mark = true, extra = "", hl = null } = {}) {
     const t = typeOf(it), dt = D(it.date), p = precise(it), mon = monShort(it.date);
     const dcol = !date ? "" : t === "suj" ? `<b class="ic">${I.bookmark}</b>` : p ? `<b>${dt.getDate()}</b><span>${esc(mode === "week" ? dt.toLocaleDateString("fr-FR", { weekday: "short" }) : mon)}</span>` : `<b class="m">${esc(mon)}</b>`;
     const flouTxt = multi(it) ? `jusqu'au ${fmtShort(it.fin)}` : it.flou && (p || norm(it.flou) !== norm(mon)) ? it.flou : "";
@@ -212,7 +251,7 @@ window.KPlan = (DATA, { greet = false } = {}) => {
     const side = done ? `<span class="done">${I.check}</span>` : t === "tf" ? `<span class="ag-flag">${I.flag}</span>` : t === "cls" ? `<span class="ag-flag">${I.podium}</span>` : "";
     return `<button type="button" class="row ag-row is-${t}${it.st === "retire" ? " retire" : ""}" data-open="${it.id}" aria-label="${esc(label)}">
       <span class="ag-date">${dcol}</span>
-      <span class="row-main"><b>${isNew ? `<i class="new-dot"></i>` : ""}${esc(it.t)}</b>${line || badge ? `<span class="ag-sub">${badge}${line}</span>` : ""}</span>
+      <span class="row-main"><b>${isNew ? `<i class="new-dot"></i>` : ""}${hl ? markHTML(it.t, hl) : esc(it.t)}</b>${line || badge ? `<span class="ag-sub">${badge}${line}</span>` : ""}${extra}</span>
       ${side ? `<span class="ag-side">${side}</span>` : ""}</button>`;
   }
   // la date ne s'affiche qu'une fois par jour
@@ -297,6 +336,54 @@ window.KPlan = (DATA, { greet = false } = {}) => {
     </div>`;
   }
 
+  // =====================================================================
+  // Rechercher : toutes les fiches, toutes périodes, pendant la frappe. À venir d'abord, puis le passé, puis le retiré
+  // =====================================================================
+  let searchEl = null;
+  function openSearch() {
+    // déjà ouverte : on y revient (une fiche ouverte depuis un résultat se ferme)
+    if (searchEl?.isConnected && !searchEl.classList.contains("leave")) {
+      for (let n = 0; n < 20 && K.topView() !== searchEl; n++) K.pop();
+      return searchEl.querySelector(".q-in")?.focus();
+    }
+    if (panel()) while (app.dataset.pushed === "1") K.pop();
+    searchEl = K.push(renderSearch, { title: "Rechercher" });
+  }
+  // le champ n'est dessiné qu'une fois : un rechargement (temps réel) ne redessine que les résultats, sans perdre la frappe
+  function renderSearch(el, { back }) {
+    if (!el.querySelector(".q-in")) {
+      el.innerHTML = K.navbar({ title: "Rechercher", back }) + `<div class="scroll">
+        <label class="q-box">${I.search}<input class="in q-in" type="search" enterkeyhint="search" autocomplete="off" spellcheck="false" placeholder="Action, temps fort, partenaire, note…" aria-label="Rechercher dans le plan de com" aria-describedby="q-n"></label>
+        <p class="q-n" id="q-n" aria-live="polite"></p><div class="q-res"></div></div>`;
+      const inp = el.querySelector(".q-in");
+      inp.value = S.q;
+      inp.addEventListener("input", () => { S.q = inp.value; drawHits(el); el.querySelector(".scroll").scrollTop = 0; });
+      // Échap vide d'abord le champ, puis ferme la recherche
+      inp.addEventListener("keydown", (e) => { if (e.key === "Escape" && inp.value) { e.preventDefault(); e.stopPropagation(); inp.value = S.q = ""; drawHits(el); } });
+      inp.focus({ preventScroll: true });
+    }
+    drawHits(el);
+  }
+  function drawHits(el) {
+    const words = qWords(S.q), res = el.querySelector(".q-res"), n = el.querySelector(".q-n");
+    if (words.join("").length < 2) { n.textContent = ""; res.innerHTML = `<p class="q-hint">Cherche dans les titres, les notes, les partenaires, les documents et les demandes, sur toute l'année.</p>`; return; }
+    const hits = DB.items.map((it) => ({ it, fs: searchFields(it) })).filter(({ fs }) => words.every((w) => fs.some((x) => x.f.includes(w))));
+    n.textContent = hits.length ? `${hits.length} ${hits.length > 1 ? "résultats" : "résultat"}` : "";
+    if (!hits.length) { res.innerHTML = `<div class="empty"><span>Rien ne correspond à « ${esc(S.q.trim())} ».</span></div>`; return; }
+    // un mot absent du titre : on montre où il a été trouvé
+    const snip = ({ fs }) => {
+      const miss = words.filter((w) => !fs[0].f.includes(w)), x = fs.find((y) => y.l && miss.some((w) => y.f.includes(w)));
+      return x ? `<span class="q-snip"><b>${esc(x.l)}</b> ${markHTML(excerpt(x.v, miss.find((w) => x.f.includes(w))), words)}</span>` : "";
+    };
+    const live = hits.filter(({ it }) => it.st !== "retire");
+    const groups = [
+      { h: "À venir", l: live.filter(({ it }) => !isPast(it)).sort((a, b) => sortDate(a.it, b.it)) },
+      { h: "Passé", l: live.filter(({ it }) => isPast(it)).sort((a, b) => sortDate(b.it, a.it)) },
+      { h: "Retiré", l: hits.filter(({ it }) => it.st === "retire").sort((a, b) => sortDate(b.it, a.it)) },
+    ].filter((g) => g.l.length);
+    res.innerHTML = groups.map((g) => `<section class="q-sec"><h2 class="sec-h">${g.h}</h2><div class="group">${g.l.map((h) => agRow(h.it, { mode: "month", extra: snip(h), hl: words })).join("")}</div></section>`).join("");
+  }
+
   function renderAfaire(el) {
     const T = todo();
     const head = (it) => `<button type="button" class="todo-act" data-open="${it.id}"><span><b>${esc(it.t)}</b><span class="todo-meta">${metaHTML(it)}</span></span>${I.chevR}</button>`;
@@ -321,7 +408,7 @@ window.KPlan = (DATA, { greet = false } = {}) => {
     const sent = T.envoyees.length ? `<section class="todo-sec"><h2 class="sec-h">${sentH} · ${T.envoyees.length}</h2><div class="group">${T.envoyees.map((r) => { const it = byId(r.item);
       return `<div class="row wrap rq"><span class="row-main"><button type="button" class="rq-open" data-open="${it.id}"><b>${esc(it.t)}</b><span>${esc(r.type)}${r.from !== ME ? ` · par ${esc(person(r.from).nom)}` : ""} · demandé à ${esc(quiOf(r))}</span></button>${dlTag(r)}${canPour(r) ? `<button type="button" class="txt-btn rq-x" data-act="unreq" data-r="${r.id}">Retirer la demande</button>` : ""}</span>${forMe(r) ? `<button type="button" class="btn small" data-act="repondre" data-r="${r.id}">C'est reçu</button>` : ""}</div>`; }).join("")}</div></section>` : "";
 
-    el.innerHTML = K.navbar({ title: "À faire", lead: bellBtn(), actions: addBtn() + profileBtn() }) + `<div class="scroll page-wide">
+    el.innerHTML = K.navbar({ title: "À faire", lead: bellBtn() + searchBtn(), actions: addBtn() + profileBtn() }) + `<div class="scroll page-wide">
       <h1 class="large-title">À faire</h1>
       ${T.count ? "" : `<div class="all-good"><span class="hl-ic big">${I.check}</span><b>Tout est à jour.</b><span>Rien n'attend ta réponse.</span></div>`}
       <div class="todo-board">
@@ -398,7 +485,7 @@ window.KPlan = (DATA, { greet = false } = {}) => {
     const chefL = shown.filter(isChefAct);
     const colsH = () => `<div class="svc-cols">${[...SERVICES.map((s) => ({ nom: s.nom, l: shown.filter((it) => it.svc === s.k) })), ...(chefL.length ? [{ nom: CHEF.nom, l: chefL }] : [])].map(({ nom, l }) =>
       `<section class="svc-col" aria-label="${esc(nom)}"><h2 class="col-h">${esc(nom)}<span>${l.filter((it) => it.st !== "retire").length}</span></h2>${l.length ? agenda(l, { who: "tf" }) : `<p class="col-empty">Rien sur cette période.</p>`}</section>`).join("")}</div>`;
-    el.innerHTML = K.navbar({ title: "Ma période", lead: bellBtn(), actions: `<button type="button" class="txt-btn strong wide-only" data-act="meeting">Mode réunion</button>` + addBtn() + profileBtn() }) + `<div class="scroll${wide ? " page-wide" : ""}"><div class="swipe" id="swipe">
+    el.innerHTML = K.navbar({ title: "Ma période", lead: bellBtn() + searchBtn(), actions: `<button type="button" class="txt-btn strong wide-only" data-act="meeting">Mode réunion</button>` + addBtn() + profileBtn() }) + `<div class="scroll${wide ? " page-wide" : ""}"><div class="swipe" id="swipe">
       ${periodHead(cover)}
       ${clsH}
       ${news}
@@ -509,7 +596,7 @@ window.KPlan = (DATA, { greet = false } = {}) => {
         ${x.its.length ? `<div class="group">${rows(x.its, { mode: "week" })}</div>` : ""}</section>`;
     }).join("");
     // la même période que Ma période : changer ici change là-bas, et inversement
-    el.innerHTML = K.navbar({ title: "Calendrier", lead: bellBtn(), actions: addBtn() + profileBtn() }) + `<div class="scroll">
+    el.innerHTML = K.navbar({ title: "Calendrier", lead: bellBtn() + searchBtn(), actions: addBtn() + profileBtn() }) + `<div class="scroll">
       <h1 class="large-title">Calendrier</h1>
       <div class="swipe">${periodHead("", "h2")}
       ${suj.length ? `<h2 class="pw-h">Toute la période</h2><div class="group">${rows(suj, { mode: "week" })}</div>` : ""}
@@ -537,7 +624,7 @@ window.KPlan = (DATA, { greet = false } = {}) => {
     const rowsH = ws.map((x) => `<div class="gt-r${x.here ? " now" : ""}" role="row"${x.here ? ' id="pw-now"' : ""}>
         <div class="gt-w" role="rowheader"><b>${esc(range(x.d0, addDays(x.d0, 6)))}</b>${x.here ? `<em class="pw-now">Cette semaine</em>` : ""}</div>
         ${C.map((c, k) => `<div class="gt-c" role="cell">${k === 0 ? x.cont.map(contL).join("") : ""}${x.its.filter(c.f).map(item).join("")}</div>`).join("")}</div>`).join("");
-    el.innerHTML = K.navbar({ title: "Calendrier", lead: bellBtn(), actions: profileBtn() }) + `<div class="scroll page-wide">
+    el.innerHTML = K.navbar({ title: "Calendrier", lead: bellBtn() + searchBtn(), actions: profileBtn() }) + `<div class="scroll page-wide">
       <h1 class="large-title">Calendrier</h1>
       <div class="swipe">${periodHead("", "h2")}
       ${suj.length ? `<h2 class="sec-h suj-h">Toute la période · ${suj.length}</h2><div class="suj-grid">${suj.map(sujCard).join("")}</div>` : ""}
@@ -607,7 +694,7 @@ window.KPlan = (DATA, { greet = false } = {}) => {
       ${g.l.length ? `${g.suj.length || g.cls.length ? `<h3 class="sec-h suj-h">Temps forts · ${g.l.length}</h3>` : ""}<div class="tbl tbl-${k}" style="--nr:${RCOLS.length - 1}">${k === "tf" ? tfHead + g.l.map(tfRow).join("") : payHead + g.l.map(payRow).join("")}</div>` : ""}</section>`;
     const nav = wide && secs.length > 1 ? `<nav class="per-nav" aria-label="Aller à une période">${secs.map((g) => `<button type="button" class="per-l${g.i === CUR ? " now" : ""}" data-act="goper" data-k="${k}" data-i="${g.i}">${esc(g.P.nom)}</button>`).join("")}
       ${pastN ? `<button type="button" class="link" data-act="past" data-k="${k}">${open ? "Masquer les passés" : seeMore(pastN, "passés")}</button>` : ""}</nav>` : "";
-    el.innerHTML = K.navbar({ title, lead: bellBtn(), actions: action + profileBtn() }) + `<div class="scroll${wide ? " page-wide" : ""}">
+    el.innerHTML = K.navbar({ title, lead: bellBtn() + searchBtn(), actions: action + profileBtn() }) + `<div class="scroll${wide ? " page-wide" : ""}">
       <h1 class="large-title">${title}</h1>${lead}
       ${wide && secs.length > 1 ? nav : pastN ? `<p class="past-p"><button type="button" class="link" data-act="past" data-k="${k}">${open ? "Masquer les passés" : seeMore(pastN, "passés")}</button></p>` : ""}
       ${secs.length ? secs.map(wide ? desk : phone).join("") : `<div class="group"><div class="empty"><span>${pastN ? "Plus rien à venir." : empty}</span>${pastN ? "" : add}</div></div>`}
@@ -713,7 +800,7 @@ window.KPlan = (DATA, { greet = false } = {}) => {
     if (S.draft && el._draft === S.draft && el.querySelector("#f-t")) S.draft = readForm(el, "f", S.draft);
     if (!S.draft || (!canAdd() && S.draft.kind !== "partner")) S.draft = newDraft(canAdd() ? "action" : "partner");
     el._draft = S.draft;
-    el.innerHTML = K.navbar({ title: "Ajouter", lead: bellBtn(), actions: (S.mtBack ? `<button type="button" class="txt-btn strong" data-act="backmeeting">Retour à la réunion</button>` : "") + profileBtn() }) + `<div class="scroll"><h1 class="large-title">Ajouter</h1>${canAdd() || isMedia() ? formHTML(S.draft, "f", false)
+    el.innerHTML = K.navbar({ title: "Ajouter", lead: bellBtn() + searchBtn(), actions: (S.mtBack ? `<button type="button" class="txt-btn strong" data-act="backmeeting">Retour à la réunion</button>` : "") + profileBtn() }) + `<div class="scroll"><h1 class="large-title">Ajouter</h1>${canAdd() || isMedia() ? formHTML(S.draft, "f", false)
       : isVisit() ? `<div class="group"><div class="empty"><span>Mode visiteur : tu peux tout consulter, sans rien ajouter ni modifier.</span></div></div>`
       : `<div class="group"><div class="empty"><span>Ton compte n'est rattaché à aucun service : tu peux tout consulter et demander des éléments. Pour publier, demande à ${esc(CHEF.qui)} de t'ajouter à ton service.</span></div></div>`}</div>`;
     syncBadge();
@@ -1399,6 +1486,15 @@ window.KPlan = (DATA, { greet = false } = {}) => {
   side.setAttribute("aria-label", "Menu");
   side.insertAdjacentHTML("afterbegin", `<div class="side-head"><img class="logo-l" src="assets/kedge-logo-anthracite.png" alt="KEDGE Business School" height="28"><img class="logo-d" src="assets/kedge-logo-blanc.png" alt="" height="28"><span>Plan de com 2026-2027</span></div>`);
   side.insertAdjacentHTML("beforeend", `<div class="side-foot" id="side-foot"></div>`);
+  // la recherche, en haut du menu ; Ctrl+K (⌘K sur Mac) ou « / » l'ouvre d'où qu'on soit
+  const MAC = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
+  side.querySelector(".side-head").insertAdjacentHTML("afterend", `<button type="button" class="side-search" data-act="search" aria-label="Rechercher" aria-keyshortcuts="${MAC ? "Meta+K" : "Control+K"}">${I.search}<span>Rechercher</span><kbd>${MAC ? "⌘" : "Ctrl"} K</kbd></button>`);
+  document.addEventListener("keydown", (e) => {
+    const typing = /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName) || e.target.isContentEditable;
+    if (!(((e.ctrlKey || e.metaKey) && !e.altKey && e.key.toLowerCase() === "k") || (e.key === "/" && !typing && !e.ctrlKey && !e.metaKey))) return;
+    if (!meeting.hidden || !copil.hidden || app.querySelector(".sheet.show, .alert-wrap.show")) return;
+    e.preventDefault(); openSearch();
+  });
   syncSide();
   // la liste (ou le formulaire Ajouter) reste utilisable pendant qu'une fiche est ouverte dans le panneau,
   // même quand l'écran se redessine (temps réel) ; la ligne ouverte reste marquée
@@ -1431,6 +1527,7 @@ window.KPlan = (DATA, { greet = false } = {}) => {
     if (a === "meeting") openMeeting();
     if (a === "backmeeting") { S.mtBack = false; openMeeting(); }
     if (a === "notifs") openNotifs();
+    if (a === "search") openSearch();
     if (a === "unnotif") { const n = +t.dataset.n; DB.notifs = (DB.notifs || []).filter((x) => x.id !== n); quick(Store.clearNotifs([n]), "Notification effacée."); }
     if (a === "clearnotifs") {
       const ids = (DB.notifs || []).map((x) => x.id);

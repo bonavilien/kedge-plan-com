@@ -747,3 +747,30 @@ button.note-t { cursor: pointer; }
 .note-acts { display: flex; justify-content: flex-end; gap: 8px; }
 .count { margin: 4px 2px 0; font-size: 13px; text-align: right; color: var(--text2); font-variant-numeric: tabular-nums; }
 .count.full { color: var(--red); font-weight: 600; }
+
+/* =====================================================================
+   Rechercher : une loupe dans la barre du haut sur téléphone, en haut du menu sur ordinateur et tablette.
+   ===================================================================== */
+.side-search { display: none; }
+@media (min-width: 768px) {
+  .side-search { flex: none; display: flex; align-items: center; justify-content: center; gap: 10px; min-height: 52px; margin-bottom: 8px; padding: 0; border: 0; border-radius: 12px; background: var(--fill); color: var(--text2); font: inherit; cursor: pointer; }
+  .side-search:hover { color: var(--text); background: color-mix(in srgb, var(--text) 12%, transparent); }
+  .side-search svg { flex: none; width: 22px; height: 22px; }
+  .side-search span, .side-search kbd { display: none; }
+}
+@media (min-width: 1100px) {
+  .side-search { justify-content: flex-start; min-height: 42px; margin-bottom: 14px; padding: 0 12px; font-size: 15px; }
+  .side-search svg { width: 20px; height: 20px; }
+  .side-search span { display: inline; }
+  .side-search kbd { display: inline; margin-left: auto; padding: 1px 6px; border-radius: 6px; background: var(--surface); font: 600 12px var(--font); color: var(--text2); }
+}
+.q-box { position: relative; display: block; margin: 8px 0 0; }
+.q-box svg { position: absolute; left: 13px; top: 50%; width: 20px; height: 20px; transform: translateY(-50%); color: var(--text2); pointer-events: none; }
+.q-in { padding-left: 42px; -webkit-appearance: none; appearance: none; }
+.q-in::-webkit-search-decoration { -webkit-appearance: none; }
+.q-n { min-height: 18px; margin: 8px 4px 0; font-size: 13.5px; color: var(--text2); }
+.q-hint { margin: 6px 4px; font-size: 15px; line-height: 1.45; color: var(--text2); }
+.q-sec .sec-h { margin-top: 14px; }
+.q-snip { display: block; margin-top: 4px; font-size: 13.5px; line-height: 1.4; color: var(--text2); overflow-wrap: anywhere; }
+.ag-row .row-main .q-snip b { display: inline; font-size: inherit; font-weight: 600; color: var(--text); }
+.ag-row mark, .q-snip mark { padding: 0 1px; border-radius: 3px; background: color-mix(in srgb, var(--yellow) 75%, transparent); color: inherit; }
