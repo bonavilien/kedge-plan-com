@@ -1195,8 +1195,8 @@ window.KPlan = (DATA, { greet = false } = {}) => {
       <h2 class="sec-h">Apparence</h2>
       <div class="seg" data-seg id="pf-theme" role="group" aria-label="Apparence">${[["system", "Système"], ["light", "Clair"], ["dark", "Sombre"]].map(([k, l]) => `<button type="button" value="${k}" aria-pressed="${K.theme === k}">${I.check}${l}</button>`).join("")}</div>
       <h2 class="sec-h">Compte</h2>
-      <div class="group">${p.chef ? `<button type="button" class="row" data-act="team"><span class="row-main"><b>Équipe</b><span>Services et droits de chacun</span></span>${I.chevR}</button>
-        <button type="button" class="row" data-act="copil"><span class="row-main"><b>Écran copil PGE</b><span>L'année en cinq périodes : diffusé, pas encore, à venir</span></span>${I.chevR}</button>` : ""}
+      <div class="group">${p.chef ? `<button type="button" class="row" data-act="team"><span class="row-main"><b>Équipe</b><span>Services et droits de chacun</span></span>${I.chevR}</button>` : ""}
+        <button type="button" class="row" data-act="copil"><span class="row-main"><b>Écran copil PGE</b><span>L'année en cinq périodes : diffusé, pas encore, à venir</span></span>${I.chevR}</button>
         ${isVisit() ? "" : `<button type="button" class="row" data-act="password"><span class="row-main"><b>Changer de mot de passe</b></span>${I.chevR}</button>`}
         <button type="button" class="row" data-act="logout"><span class="row-main"><b class="danger" style="font-weight:400">Se déconnecter</b></span></button></div>
       <p class="sec-f">${isVisit() ? "Mode visiteur : consultation seule." : `Connecté avec ${esc(DATA.email)}.`}</p>
@@ -1463,8 +1463,8 @@ window.KPlan = (DATA, { greet = false } = {}) => {
   function syncSide() {
     const f = document.getElementById("side-foot"); if (!f) return;
     const p = me();
-    // le mode réunion pour tout le monde ; le copil PGE pour les chefs
-    f.innerHTML = `<button type="button" class="side-btn" data-act="meeting">${I.people}<span>Mode réunion</span></button>${p.chef ? `<button type="button" class="side-btn" data-act="copil">${I.board}<span>Copil PGE</span></button>` : ""}
+    // le mode réunion et le copil PGE pour tout le monde (le copil ne fait que montrer : chaque fiche garde ses droits)
+    f.innerHTML = `<button type="button" class="side-btn" data-act="meeting">${I.people}<span>Mode réunion</span></button><button type="button" class="side-btn" data-act="copil">${I.board}<span>Copil PGE</span></button>
       <button type="button" class="side-me" data-act="profil" aria-label="Profil de ${esc(p.nom)}"><span class="av sm" aria-hidden="true">${K.initials(p.nom)}</span><span><b>${esc(p.nom)}</b><small>${esc(fonctionOf(p))}</small></span></button>`;
   }
   const markSel = (id) => { app.querySelectorAll(".sel[data-open]").forEach((x) => x.classList.remove("sel")); app.querySelectorAll(`#v-${app.dataset.tab} [data-open="${id}"]`).forEach((x) => x.classList.add("sel")); };
@@ -1691,7 +1691,7 @@ window.KPlan = (DATA, { greet = false } = {}) => {
     if (m && byId(m[1])) { if (!meeting.hidden) closeMeeting(); closeCopil(); openItem(m[1]); }
     else if (m) K.snack("Cette fiche a été supprimée.");
     else if (hash === "#afaire") { closeMeeting(); closeCopil(); K.showTab("afaire"); }
-    else if (hash === "#copil" && me().chef) { closeMeeting(); openCopil(); }
+    else if (hash === "#copil") { closeMeeting(); openCopil(); }
   }
   const routeHash = () => { if (!location.hash) return; route(location.hash); history.replaceState(null, "", location.pathname + location.search); };
   routeHash();

@@ -4,12 +4,15 @@ const OUT = process.argv[2] || "/tmp", URL0 = "http://localhost:8790/test.html";
 const b = await chromium.launch();
 let fails = 0;
 const ok = (c, msg) => { console.log(`${c ? "OK  " : "FAIL"} ${msg}`); if (!c) fails++; };
-const iso = (d) => d.toISOString().slice(0, 10), plus = (n) => { const d = new Date(); d.setDate(d.getDate() + n); return iso(d); };
+// horloge figée au 25 octobre 2026 (Installer en cours), comme quand le test a été écrit : il ne dépend pas du jour où il tourne
+const NOW = new Date("2026-10-25T12:00:00+02:00");
+const iso = (d) => d.toISOString().slice(0, 10), plus = (n) => { const d = new Date(NOW); d.setDate(d.getDate() + n); return iso(d); };
 const U = (n) => `00000000-0000-0000-0000-00000000000${n}`;
 let k = 0;
 const it = (o) => ({ id: `30000000-0000-4000-8000-${String(++k).padStart(12, "0")}`, kind: "action", flou: "", per: [], svc: "rp", cc: [], m: ["1"], st: "planifie", tf: null, partner: null, lieu: "", note: "", author: U(1), at: new Date().toISOString(), ...o });
 
-const p = await (await b.newContext({ viewport: { width: 1440, height: 900 }, deviceScaleFactor: 1 })).newPage();
+const p = await (await b.newContext({ viewport: { width: 1440, height: 900 }, deviceScaleFactor: 1, timezoneId: "Europe/Paris" })).newPage();
+await p.clock.install({ time: NOW });
 const errs = [];
 p.on("pageerror", (e) => errs.push(e.message));
 await p.goto(URL0); await p.evaluate(() => localStorage.clear()); await p.goto(URL0); await p.waitForSelector("#login");

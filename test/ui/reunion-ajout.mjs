@@ -46,7 +46,7 @@ ok(await p.evaluate(() => window.__fake.db.reqs.some((q) => q.dest === "marketin
 ok(/Aurélie/.test(await p.textContent(".snack")), "le message dit qu'Aurélie la reçoit", await p.textContent(".snack"));
 // 4. un compte service : mode réunion accessible, sans « Réunion tenue »
 await p.evaluate(() => { const f = window.__fake; f.db.session = null; f.save(); }); await p.goto(URL0); await p.waitForSelector("#login"); await login("aurelie");
-ok(await p.locator('.side-btn[data-act="meeting"]').count() === 1 && await p.locator('.side-btn[data-act="copil"]').count() === 0, "Aurélie (RP) : Mode réunion dans le menu, pas le copil");
+ok(await p.locator('.side-btn[data-act="meeting"]').count() === 1 && await p.locator('.side-btn[data-act="copil"]').count() === 1, "Aurélie (RP) : Mode réunion et Copil PGE dans le menu");
 await p.click('.side-btn[data-act="meeting"]'); await p.waitForTimeout(400);
 ok(await p.isVisible("#meeting") && await p.locator('#meeting [data-mt="held"]').count() === 0 && await p.locator('#meeting [data-mt="add"]').count() === 1, "Aurélie : réunion ouverte, Ajouter, pas « Réunion tenue »");
 await p.screenshot({ path: `${OUT}/ra2-reunion-aurelie.png` });
