@@ -973,7 +973,7 @@ window.KPlan = (DATA, { greet = false } = {}) => {
       ? `${edit ? `<button type="button" class="note-t" data-act="note" data-id="${id}" aria-label="Modifier la note">` : `<div class="note-t">`}<span class="note-x">${esc(it.note)}</span>${by || edit ? `<span class="note-m">${esc(by)}${edit ? `<span class="note-e">${I.edit}Modifier</span>` : ""}</span>` : ""}${edit ? "</button>" : "</div>"}`
       : `<button type="button" class="row add-row" data-act="note" data-id="${id}"><span class="add-ic">${I.plus}</span><span class="row-main"><b>Ajouter une note</b></span></button>`}</div>`;
   };
-  function openItem(id) { const it = byId(id); if (!it) return; K.push((el, o) => renderItem(el, o, id), { title: kindName(it) }); }
+  function openItem(id, back) { const it = byId(id); if (!it) return; K.push((el, o) => renderItem(el, o, id), { title: kindName(it), back }); }
   function renderItem(el, { back }, id) {
     const it = byId(id);
     if (!it) { el.innerHTML = K.navbar({ title: "Fiche", back }) + `<div class="scroll"><div class="empty"><span>Cette fiche n'existe plus.</span></div></div>`; return; }
@@ -1442,19 +1442,31 @@ window.KPlan = (DATA, { greet = false } = {}) => {
           ${acts.length ? `<div class="mp-cov" aria-label="Actions par message sur la période">${cov.map((c) => `<span class="${c.n ? "" : "zero"}">${esc(c.m.nom)} <b>${c.n}</b></span>`).join("")}</div>` : ""}
         </section>
       </div>`;
+    markCp();
   }
-  const openCopil = () => { CP.sel = CUR; renderCopil(); copil.hidden = false; copil.querySelector("[data-cp='close']")?.focus(); };
-  const closeCopil = () => { copil.hidden = true; };
+  const openCopil = () => { while (app.dataset.cpFiche && app.dataset.pushed === "1") K.pop(); CP.sel = CUR; CP.on = null; renderCopil(); copil.hidden = false; copil.querySelector("[data-cp='close']")?.focus(); };
+  const closeCopil = () => { copil.hidden = true; while (app.dataset.cpFiche && app.dataset.pushed === "1") K.pop(); };
+  // une fiche ouverte depuis le copil : par-dessus lui (en panneau sur ordinateur), le copil reste ouvert derrière ;
+  // la croix, le retour ou Échap referment la fiche et on retrouve le copil, comme dans le mode réunion
+  const markCp = () => copil.querySelectorAll("[data-cp-open]").forEach((x) => x.classList.toggle("on", x.dataset.cpOpen === CP.on));
+  function openFromCopil(id) {
+    while (app.dataset.pushed === "1") K.pop();
+    app.dataset.cpFiche = "1"; CP.on = id; openItem(id, "Copil"); markCp();
+  }
+  new MutationObserver(() => {
+    if (app.dataset.pushed !== "1" && app.dataset.cpFiche) { delete app.dataset.cpFiche; CP.on = null; if (!copil.hidden) redrawOverlays(); }
+  }).observe(app, { attributes: true, attributeFilter: ["data-pushed"] });
   const pickPer = (i) => { if (i < 0 || i >= PERIODS.length) return; CP.sel = i; renderCopil(); copil.querySelector(`.cp-card[data-i="${i}"]`)?.focus(); };
   copil.addEventListener("click", (e) => {
     const b = e.target.closest("[data-cp],[data-cp-open]"); if (!b) return;
     if (b.dataset.cp === "close") closeCopil();
     if (b.dataset.cp === "per") pickPer(+b.dataset.i);
-    if (b.dataset.cpOpen) { closeCopil(); openItem(b.dataset.cpOpen); }
+    if (b.dataset.cpOpen) openFromCopil(b.dataset.cpOpen);
   });
   // une télécommande de présentation envoie les flèches ou page suivante : on passe d'une période à l'autre
+  // (une fiche ouverte par-dessus garde ses touches : Échap la referme)
   document.addEventListener("keydown", (e) => {
-    if (copil.hidden) return;
+    if (copil.hidden || app.dataset.cpFiche) return;
     if (e.key === "Escape") { e.stopImmediatePropagation(); closeCopil(); }
     else if (["ArrowRight", "PageDown"].includes(e.key)) { e.preventDefault(); pickPer(CP.sel + 1); }
     else if (["ArrowLeft", "PageUp"].includes(e.key)) { e.preventDefault(); pickPer(CP.sel - 1); }

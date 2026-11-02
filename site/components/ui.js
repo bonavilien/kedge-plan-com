@@ -106,11 +106,12 @@ window.KUI = (() => {
   }
   const renderTab = (k) => keepScroll($(`#v-${k}`, app), () => state.tabs[k].render($(`#v-${k}`, app)));
   // push(render, { title }) : ouvre un écran par-dessus ; render(el, { back }) remplit l'écran
-  function push(render, { title = "" } = {}) {
+  // back : le libellé du retour, quand l'écran d'en dessous n'est pas l'onglet (ex. « Copil »)
+  function push(render, { title = "", back: backLabel = "" } = {}) {
     const el = document.createElement("section");
     el.className = "view pushed"; el.setAttribute("aria-label", title); el.dataset.depth = state.stack.length;
     $(".views", app).append(el);
-    const back = state.stack.length ? state.stack[state.stack.length - 1].title : state.tabs[state.tab].label;
+    const back = backLabel || (state.stack.length ? state.stack[state.stack.length - 1].title : state.tabs[state.tab].label);
     const entry = { el, render, title, back: back.length > 13 ? "Retour" : back };
     state.stack.push(entry); app.dataset.pushed = "1";
     keepScroll(el, () => render(el, { back: entry.back })); syncInert();

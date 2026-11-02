@@ -63,7 +63,7 @@ await p.screenshot({ path: `${OUT}/c2-copil-considerer.png` });
 await p.keyboard.press("ArrowLeft"); await p.waitForTimeout(200);
 // une ligne ouvre sa fiche
 await p.locator('.cp-row:has-text("Interview directeur")').click(); await p.waitForTimeout(400);
-ok(await p.isHidden("#copil") && /Interview directeur/.test(await p.locator(".view.pushed").last().innerText()), "une ligne ouvre la fiche");
+ok(await p.isVisible("#copil") && /Interview directeur/.test(await p.locator(".view.pushed").last().innerText()), "une ligne ouvre la fiche, par-dessus le copil");
 // lien direct #copil, et Échap ferme
 await p.evaluate(() => { location.hash = "#copil"; }); await p.waitForTimeout(400);
 ok(await p.isVisible("#copil"), "lien #copil ouvre l'écran");
