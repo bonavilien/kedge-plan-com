@@ -2,6 +2,10 @@
 
 Généré depuis `site/js/version.js` par `node scripts/version.mjs`. Ne pas modifier à la main.
 
+## 2.0 bêta 13 · 2026-11-16
+
+- La V2 a sa propre base, copie de celle de la V1 : l'appli y est branchée, la V1 et sa base ne changent pas
+
 ## 2.0 bêta 12 · 2026-11-16
 
 - Les liens des notifications ouvrent la bonne fiche
