@@ -25,12 +25,12 @@
       rows.push(["Date", v("f-date", it.flou ? `<span class="tbc">${h(KP.dateLong(it))}</span> <small class="muted">date à préciser</small>` : `${h(KP.fmt.long(it.date))} <small class="muted">${h(KP.fmt.relatif(it.date))}</small>`)]);
       if (tf && !it.flou && (can || it.fin)) rows.push(["Jusqu'au", v("f-fin", it.fin ? h(KP.fmt.long(it.fin)) : "Un seul jour", !it.fin)]);
     }
-    if (!tf) rows.push(["Service", v("f-svc", h((KP.service(it.svc) || {}).nom || ""))]);
+    if (it.variant === "partenariat") rows.push(["Média", v("f-partner", h(it.partner) || "Choisir le média", !it.partner)]);
+    else if (!tf) rows.push(["Service", v("f-svc", h((KP.service(it.svc) || {}).nom || ""))]);
     rows.push(["Messages", v("f-msg", h(KP.msgNames(it)) || "Choisir", !it.m.length)]);
     if (!tf) rows.push(["Temps fort", v("f-tf", par ? `<i class="tfdot"></i>${h(par.t)}` : "Aucun", !par) + (par ? `<button type="button" class="ib" data-act="open" data-id="${par.id}" data-tip="Ouvrir le temps fort" aria-label="Ouvrir le temps fort">${ic("chevR")}</button>` : "")]);
     if (tf && it.variant !== "sujet") rows.push(["Lieu", can ? `<input class="val" id="f-lieu" data-f="lieu" list="dl-lieux" value="${h(it.lieu || "")}" placeholder="Choisir ou écrire un lieu" autocomplete="off"><datalist id="dl-lieux">${store.lieux().map((l) => `<option value="${h(l)}"></option>`).join("")}</datalist>` : `<span class="val${it.lieu ? "" : " none"}">${h(it.lieu || "—")}</span>`]);
     if (it.variant === "classement") rows.push(["Rang", inp("rang", it.rang, "À la parution")], ["Objectif", inp("cible", it.cible, "Top…")]);
-    if (it.variant === "partenariat") rows.push(["Média", v("f-partner", h(it.partner) || "Choisir le média", !it.partner)]);
     rows.push(["État", it.annule ? KP.pill(it) : can ? `<div class="seg" role="group" aria-label="État">${KP.STATUTS.map((s) => `<button type="button" data-act="f-st" data-k="${s.k}" class="${it.st === s.k ? "on" : ""}" aria-pressed="${it.st === s.k}">${s.k === "diffuse" && it.st === s.k ? ic("check") : ""}${s.nom}</button>`).join("")}</div>` : KP.pill(it)]);
 
     const req = (r) => {

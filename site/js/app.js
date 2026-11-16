@@ -161,7 +161,9 @@
         ${s.variant === "sujet"
           ? `<label class="field"><span>Période</span><select class="input" name="per">${KP.PERIODS.map((p) => `<option value="${p.k}" ${p.k === s.per ? "selected" : ""}>${p.nom}, ${p.lib}</option>`).join("")}</select></label>`
           : `<div class="field"><span>Date</span><button type="button" class="input" data-pick="date">${ic("calendar")}${s.flou ? `<span class="tbc">courant ${h(KP.fmt.mois(s.date))}</span>` : h(KP.fmt.long(s.date))}</button></div>`}
-        ${s.kind === "action"
+        ${s.kind === "action" && s.variant === "partenariat"
+          ? `<label class="field"><span>Média partenaire</span><select class="input" name="partner"><option value="">À choisir</option>${store.partners().map((x) => `<option ${x === s.partner ? "selected" : ""}>${h(x)}</option>`).join("")}</select></label>`
+          : s.kind === "action"
           ? `<label class="field"><span>Service</span><select class="input" name="svc" ${u.role === "service" ? "disabled" : ""}>${KP.SERVICES.map((x) => `<option value="${x.k}" ${x.k === s.svc ? "selected" : ""}>${x.nom}</option>`).join("")}</select></label>`
           : `<label class="field"><span>Forme</span><select class="input" name="variant"><option value="">Un jour ou quelques jours</option><option value="sujet" ${s.variant === "sujet" ? "selected" : ""}>Sujet sur toute la période</option><option value="classement" ${s.variant === "classement" ? "selected" : ""}>Classement</option></select></label>`}
       </div>
@@ -170,7 +172,6 @@
       ${s.kind === "action" && !s.tf && near().length ? `<div class="field"><span>C'est pour un temps fort ?</span><div class="picks">${near().map((x) => `<button type="button" class="pick" data-tf="${x.id}"><i class="tfdot"></i> ${h(x.t)} · ${h(KP.dateShort(x))}</button>`).join("")}<button type="button" class="pick" data-tf-other>Un autre</button><button type="button" class="pick" aria-pressed="true" disabled>Non</button></div></div>` : ""}
       ${s.kind === "action" && (s.tf || s.other || !near().length) ? `<label class="field"><span>Pour un temps fort</span><select class="input" name="tf"><option value="">Aucun</option>${tfs.map((x) => `<option value="${x.id}" ${x.id === s.tf ? "selected" : ""}>${h(x.t)}, ${KP.dateShort(x)}</option>`).join("")}</select></label>` : ""}
       ${s.kind === "action" && u.role === "pilote" ? `<button type="button" class="check" data-pay aria-pressed="${s.variant === "partenariat"}"><span class="box">${ic("check")}</span>Partenariat média payant</button>` : ""}
-      ${s.variant === "partenariat" ? `<label class="field"><span>Média partenaire</span><select class="input" name="partner"><option value="">À choisir</option>${store.partners().map((x) => `<option ${x === s.partner ? "selected" : ""}>${h(x)}</option>`).join("")}</select></label>` : ""}
       <div class="foot"><span class="hint">Ctrl + Entrée pour créer</span><button type="button" class="btn quiet" data-close>Annuler</button><button class="btn primary" type="submit">Créer</button></div>
     </form>`;
     const d = KP.dialog(form());
@@ -182,7 +183,7 @@
       const m = e.target.closest("[data-m]"); if (m) { const v = m.dataset.m; s.m = s.m.includes(v) ? s.m.filter((x) => x !== v) : [...s.m, v]; m.setAttribute("aria-pressed", s.m.includes(v)); return; }
       const lk = e.target.closest("[data-tf]"); if (lk) { keep(); s.tf = lk.dataset.tf; const par = store.get(s.tf); if (par && !s.m.length) s.m = [...par.m]; return redraw("[name=tf]"); }
       if (e.target.closest("[data-tf-other]")) { keep(); s.other = true; return redraw("[name=tf]"); }
-      const pay = e.target.closest("[data-pay]"); if (pay) { keep(); s.variant = s.variant === "partenariat" ? "" : "partenariat"; return redraw("[data-pay]"); }
+      const pay = e.target.closest("[data-pay]"); if (pay) { keep(); s.variant = s.variant === "partenariat" ? "" : "partenariat"; return redraw(s.variant ? "[name=partner]" : "[data-pay]"); }
       const pf = e.target.closest("[data-pick-fin]"); if (pf) return KP.datepick(pf, s.fin || s.date, (v) => { s.fin = v && v > s.date ? v : ""; redraw("[data-pick-fin]"); }, { clear: !!s.fin });
       const pk = e.target.closest("[data-pick]"); if (pk) KP.datepick(pk, s.date, (v) => { if (v) { s.flou = v.length === 7; s.date = s.flou ? v + "-01" : v; if (s.flou || s.fin <= s.date) s.fin = ""; } redraw("[data-pick]"); }, { month: true });
     });
@@ -191,7 +192,7 @@
       keep();
       if (!s.t.trim()) { e.preventDefault(); const t = d.querySelector("[name=t]"); t.focus(); t.placeholder = "Un titre, pour le retrouver"; return; }
       const o = { kind: s.kind, variant: s.variant, t: s.t.trim(), date: s.date, flou: s.flou, fin: s.kind === "tf" && !s.flou ? s.fin : "", m: s.m, st: "confirmer", partner: s.variant === "partenariat" ? s.partner : "" };
-      if (s.kind === "action") Object.assign(o, { svc: u.role === "service" ? u.svc : s.svc, tf: s.tf });
+      if (s.kind === "action") Object.assign(o, { svc: s.variant === "partenariat" ? "" : u.role === "service" ? u.svc : s.svc, tf: s.tf });
       if (s.variant === "sujet") { const p = KP.PERIODS.find((x) => x.k === s.per); Object.assign(o, { per: p.k, date: p.du, fin: p.au, flou: false, st: "prevu" }); }
       const it = store.add(o);
       const per = KP.periodOf(it.date).k;

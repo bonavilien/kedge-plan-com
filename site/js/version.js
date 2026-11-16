@@ -5,6 +5,7 @@
    (il met à jour version.json, sw.js et CHANGELOG.md, et vérifie que tout concorde). */
 window.KP = window.KP || {};
 window.KP.VERSIONS = [
+  { n: "2.0.0-beta.14", date: "2026-11-17", notes: ["Un partenariat payant n'a pas de service : le média partenaire prend sa place, dans la fiche, la liste, la grille (sa propre colonne) et la fenêtre Nouveau"] },
   { n: "2.0.0-beta.13", date: "2026-11-16", notes: ["La V2 a sa propre base, copie de celle de la V1 : l'appli y est branchée, la V1 et sa base ne changent pas"] },
   { n: "2.0.0-beta.12", date: "2026-11-16", notes: ["Les liens des notifications ouvrent la bonne fiche", "Côté base, prêt pour la bascule : trois choix de notifications et ménage", "Notifications sur téléphone : s'activent dans Réglages, Mon profil, une fois l'appli branchée"] },
   { n: "2.0.0-beta.11", date: "2026-11-16", notes: ["L'appli sait se brancher sur la base : connexion par adresse et mot de passe, lecture et enregistrement. Le branchement reste éteint jusqu'à la bascule", "Un sujet peut couvrir plusieurs périodes"] },

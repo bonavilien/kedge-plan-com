@@ -2,6 +2,10 @@
 
 Généré depuis `site/js/version.js` par `node scripts/version.mjs`. Ne pas modifier à la main.
 
+## 2.0 bêta 14 · 2026-11-17
+
+- Un partenariat payant n'a pas de service : le média partenaire prend sa place, dans la fiche, la liste, la grille (sa propre colonne) et la fenêtre Nouveau
+
 ## 2.0 bêta 13 · 2026-11-16
 
 - La V2 a sa propre base, copie de celle de la V1 : l'appli y est branchée, la V1 et sa base ne changent pas

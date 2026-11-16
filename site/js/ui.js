@@ -140,10 +140,10 @@
   /* une ligne du plan, la même partout (liste, accueil, réunion) */
   KP.row = (it, opt = {}) => {
     const par = it.tf && KP.store.get(it.tf);
-    const svc = it.kind === "tf" ? "" : (KP.service(it.svc) || {}).nom || "";
+    const svc = it.kind === "tf" ? "" : it.variant === "partenariat" ? it.partner || "Média à choisir" : (KP.service(it.svc) || {}).nom || "";
     return `<div class="row ${it.kind === "tf" ? "tf" : ""}${it.annule ? " off" : ""}${KP.route && KP.route.fiche === it.id ? " sel" : ""}" role="button" tabindex="0" data-act="open" data-id="${it.id}">
       <span class="d">${opt.date || KP.dateCell(it)}</span>
-      <span class="t">${it.kind === "tf" ? '<i class="tfdot"></i>' : ""}<span class="tt">${KP.h(it.t)}</span>${it.variant === "classement" && it.rang ? `<span class="rang">${KP.h(it.rang)}</span>` : ""}${!it.annule && KP.recent(it.report) ? `<span class="badge">Reporté</span>` : ""}${it.variant === "partenariat" ? `<span class="badge">Payant${it.partner ? " · " + KP.h(it.partner) : ""}</span>` : ""}${opt.sub ? `<small>${KP.h(opt.sub)}</small>` : par ? `<small>pour ${KP.h(par.t)}</small>` : it.variant === "classement" && it.cible ? `<small>objectif ${KP.h(it.cible)}</small>` : ""}</span>
+      <span class="t">${it.kind === "tf" ? '<i class="tfdot"></i>' : ""}<span class="tt">${KP.h(it.t)}</span>${it.variant === "classement" && it.rang ? `<span class="rang">${KP.h(it.rang)}</span>` : ""}${!it.annule && KP.recent(it.report) ? `<span class="badge">Reporté</span>` : ""}${it.variant === "partenariat" ? `<span class="badge">Payant</span>` : ""}${opt.sub ? `<small>${KP.h(opt.sub)}</small>` : par ? `<small>pour ${KP.h(par.t)}</small>` : it.variant === "classement" && it.cible ? `<small>objectif ${KP.h(it.cible)}</small>` : ""}</span>
       ${opt.slim ? "" : `<span class="svc">${KP.h(svc)}</span><span class="msg">${KP.h(KP.msgNames(it))}</span>`}
       ${opt.mid != null ? opt.mid : ""}
       <span class="st">${KP.pill(it, KP.store.canEdit(it))}</span>${opt.end || ""}

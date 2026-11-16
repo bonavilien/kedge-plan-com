@@ -6,7 +6,7 @@
   const TYPES = [{ v: "tf", nom: "Temps forts" }, { v: "action", nom: "Actions" }, { v: "classement", nom: "Classements" }, { v: "partenariat", nom: "Partenariats payants" }];
   const inPeriod = (it, p) => it.variant === "sujet" ? (it.pers ? it.pers.includes(p.k) : it.per === p.k) : it.date <= p.au && (it.flou ? it.date : it.fin || it.date) >= p.du;
   const match = (it, r) =>
-    (!r.svc || it.kind === "tf" || it.svc === r.svc) &&
+    (!r.svc || it.kind === "tf" || (it.svc === r.svc && it.variant !== "partenariat")) &&
     (!r.msg || it.m.includes(r.msg)) &&
     (!r.type || (r.type === "tf" ? it.kind === "tf" : r.type === "action" ? it.kind === "action" : it.variant === r.type));
   const order = (a, b) => a.date.localeCompare(b.date) || (a.kind === b.kind ? a.t.localeCompare(b.t) : a.kind === "tf" ? -1 : 1);
@@ -72,9 +72,10 @@
     const fold = past.length && rest.length && !KP.ui.past;
     const u = KP.me();
     const lanes = [{ k: "", nom: "Temps forts", sub: "" }, ...KP.SERVICES.filter((s) => !r.svc || s.k === r.svc).map((s) => ({ k: s.k, nom: s.nom, sub: KP.PEOPLE.filter((x) => x.svc === s.k).map((x) => x.nom).join(", ") }))];
+    if (items.some((it) => it.variant === "partenariat")) lanes.push({ k: "pay", nom: "Partenariats payants", sub: "" });
     const cell = (b, lane) => {
-      const its = b.items.filter((it) => lane.k ? it.kind === "action" && it.svc === lane.k : it.kind === "tf");
-      const can = !b.tbc && store.canCreate() && (u.role === "pilote" || !lane.k || lane.k === u.svc);
+      const its = b.items.filter((it) => lane.k === "pay" ? it.variant === "partenariat" : lane.k ? it.kind === "action" && it.svc === lane.k && it.variant !== "partenariat" : it.kind === "tf");
+      const can = lane.k !== "pay" && !b.tbc && store.canCreate() && (u.role === "pilote" || !lane.k || lane.k === u.svc);
       return `<div class="g-c${b.now ? " g-row-now" : b.tbc ? " g-row-tbc" : ""}">${its.map((it) => `<button type="button" class="g-i ${it.kind === "tf" ? "tf " : ""}${it.annule ? "off " : ""}${it.st}${r.fiche === it.id ? " sel" : ""}" data-act="open" data-id="${it.id}">${it.flou ? "" : `<b>${h(KP.fmt.court(it.date))}${it.fin && it.fin !== it.date ? " → " + KP.parse(it.fin).getDate() : ""}</b>`}${h(it.t)}</button>`).join("")}
         ${can ? `<button type="button" class="g-add" data-act="new" data-date="${b.date}" ${lane.k ? `data-svc="${lane.k}"` : 'data-kind="tf"'} aria-label="Ajouter : ${h(lane.nom)}, ${h(b.label.toLowerCase())}">${ic("plus")}</button>` : ""}</div>`;
     };
