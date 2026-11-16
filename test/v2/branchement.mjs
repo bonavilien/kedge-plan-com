@@ -136,6 +136,7 @@ await p.context().close();
 
 // ---------- sans branchement : la démonstration ----------
 const ctx = await b.newContext({ serviceWorkers: "block" }); p = await ctx.newPage();
+await p.route("**/config.js", (r) => r.fulfill({ contentType: "text/javascript", body: `window.KPLAN_CONFIG = { brancher: false, supabaseUrl: "http://faux", supabaseKey: "faux" };` }));
 await p.goto(base); await p.waitForSelector("#main h1");
 ok(await p.locator("#login").count() === 0 && !(await p.evaluate(() => KP.store.remote())), "config « brancher: false » : démonstration, aucune connexion à la base");
 await b.close();
