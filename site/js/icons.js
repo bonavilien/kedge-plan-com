@@ -28,3 +28,26 @@ window.KUI_ICONS = {
   info: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 11v5.5M12 7.6v.1"/></svg>',
   external: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 4.5h5.5V10M19.5 4.5 11 13"/><path d="M17 14v5.5H4.5V7H10"/></svg>',
 };
+
+// V2 : icônes ajoutées (même grille 24, même trait)
+(() => {
+  const s = (d, w = 1.7) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
+  Object.assign(window.KUI_ICONS, {
+    copy: s('<rect x="8.5" y="8.5" width="11.5" height="11.5" rx="2.5"/><path d="M15.5 5.5v-.2A1.8 1.8 0 0 0 13.7 3.5H5.8A2.3 2.3 0 0 0 3.5 5.8v7.9c0 1 .8 1.8 1.8 1.8h.2"/>'),
+    link: s('<path d="M10 14a4.2 4.2 0 0 0 6 0l3-3a4.2 4.2 0 0 0-6-6l-1 1"/><path d="M14 10a4.2 4.2 0 0 0-6 0l-3 3a4.2 4.2 0 0 0 6 6l1-1"/>'),
+    print: s('<path d="M7 8V3.5h10V8"/><rect x="3.5" y="8" width="17" height="9" rx="2.5"/><path d="M7 14h10v6.5H7z"/>'),
+    expand: s('<path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/>'),
+    list: s('<path d="M8.5 6.5h11M8.5 12h11M8.5 17.5h11"/><circle cx="4.5" cy="6.5" r=".6" fill="currentColor"/><circle cx="4.5" cy="12" r=".6" fill="currentColor"/><circle cx="4.5" cy="17.5" r=".6" fill="currentColor"/>'),
+    grid: s('<rect x="3.5" y="4" width="17" height="16" rx="2.5"/><path d="M3.5 9.5h17M9.5 9.5V20M15 9.5V20"/>'),
+    filter: s('<path d="M4 6h16M7 12h10M10 18h4"/>'),
+    shift: s('<rect x="3.5" y="5" width="17" height="15.5" rx="3"/><path d="M3.5 10h17M8.5 3v4M15.5 3v4"/><path d="M8.5 15h7M13 12.5l2.5 2.5-2.5 2.5"/>'),
+    bookmark: s('<path d="M7 4h10a1 1 0 0 1 1 1v15.5l-6-4-6 4V5a1 1 0 0 1 1-1z"/>'),
+    megaphone: s('<path d="M4 10v4a1 1 0 0 0 1 1h2.5L14 19V5L7.5 9H5a1 1 0 0 0-1 1z"/><path d="M17.5 9.5a3.5 3.5 0 0 1 0 5"/>'),
+    undo: s('<path d="M8 5 4 9l4 4"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/>'),
+    doc: s('<path d="M7 3.5h7l4 4V19a1.5 1.5 0 0 1-1.5 1.5h-9A1.5 1.5 0 0 1 6 19V5a1.5 1.5 0 0 1 1-1.5z"/><path d="M14 3.5V8h4"/>'),
+    spark: s('<path d="M12 4v4M12 16v4M4 12h4M16 12h4M6.5 6.5l2.5 2.5M15 15l2.500 2.500M17.5 6.5 15 9M9 15l-2.500 2.500"/>'),
+    meet: s('<rect x="3.500" y="5" width="17" height="11" rx="2.500"/><path d="M9 20h6M12 16v4"/>'),
+    chevD: s('<path d="m6 9.500 6 6 6-6"/>', 2),
+    sun: s('<circle cx="12" cy="12" r="4"/><path d="M12 2.500v2M12 19.500v2M2.500 12h2M19.500 12h2M5.300 5.300l1.400 1.400M17.300 17.300l1.400 1.400M18.700 5.300l-1.400 1.400M6.700 17.300l-1.400 1.400"/>'),
+  });
+})();

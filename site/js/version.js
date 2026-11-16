@@ -1,0 +1,28 @@
+/* Plan de com KEDGE · V2 — la version, à un seul endroit.
+   Numéro = MAJEUR.MINEUR.CORRECTIF. MAJEUR : refonte (V1, V2). MINEUR : une nouveauté visible.
+   CORRECTIF : une réparation, rien de nouveau à apprendre. Tant que la V2 est à l'essai : « bêta N ».
+   Pour sortir une version : ajouter une entrée EN TÊTE de cette liste, puis `node scripts/version.mjs`
+   (il met à jour version.json, sw.js et CHANGELOG.md, et vérifie que tout concorde). */
+window.KP = window.KP || {};
+window.KP.VERSIONS = [
+  { n: "2.0.0-beta.10", date: "2026-11-16", notes: ["La V2 rejoint le dépôt d'origine, sur la branche v2 ; la V1 est archivée sur la branche v1", "L'historique des versions de la V1 est repris dans cette liste"] },
+  { n: "2.0.0-beta.9", date: "2026-11-16", notes: ["Sur téléphone, les cinq périodes tiennent sur la largeur de l'écran, filtres et affichage sur la ligne du dessous"] },
+  { n: "2.0.0-beta.8", date: "2026-11-16", notes: ["Étiquette « Recrutement » pour les rendez-vous avec les candidats (JPO, admissibles), à part des 5 messages", "Sur téléphone : la fenêtre Nouveau ne déborde plus, la grille est plus lisible"] },
+  { n: "2.0.0-beta.7", date: "2026-11-16", notes: ["Plus de bouton « Vérifier les mises à jour » : l'appli le fait seule et prévient quand une version plus récente est en ligne"] },
+  { n: "2.0.0-beta.6", date: "2026-11-16", notes: ["Numéro de version affiché dans le menu, liste des nouveautés dans Réglages, message quand une version plus récente est en ligne", "L'appli s'installe sur le téléphone et s'ouvre même sans réseau"] },
+  { n: "2.0.0-beta.5", date: "2026-11-16", notes: ["Reporter ou annuler avec un motif, visible sur les relais", "Carnet de lieux et de contacts", "Notifications effaçables", "Service Content", "Réglages : mon profil, équipe, services, médias, lieux, contacts"] },
+  { n: "2.0.0-beta.4", date: "2026-11-16", notes: ["À la création d'une action, les temps forts proches sont proposés en un clic", "Les infos du temps fort s'affichent sur ses actions, et les documents des relais sur le temps fort"] },
+  { n: "2.0.0-beta.3", date: "2026-11-16", notes: ["Un temps fort sur plusieurs jours se règle dès la création"] },
+  { n: "2.0.0-beta.2", date: "2026-11-16", notes: ["Date à préciser : « courant novembre » en attendant le jour", "Choix du média pour un partenariat payant", "Grille sans défilement latéral : semaines en lignes, services en colonnes"] },
+  { n: "2.0.0-beta.1", date: "2026-11-16", notes: ["Première V2 : Accueil personnalisé, Le plan en liste ou en grille, fiche à droite, Réunion, recherche et clavier"] },
+  /* La V1, reconstituée depuis l'historique du dépôt (archive : branche v1) */
+  { n: "1.5.0", date: "2026-11-02", notes: ["Rechercher dans toutes les fiches pendant la frappe", "Copil PGE ouvert à tous les comptes, une fiche s'ouvre par-dessus sans le quitter"] },
+  { n: "1.4.0", date: "2026-10-28", notes: ["Demandes à la Direction marketing et recrutement", "Notes jusqu'à 5 000 caractères", "Ajouter une action depuis l'écran réunion"] },
+  { n: "1.3.0", date: "2026-10-27", notes: ["Demander des éléments à soi-même ou à un chef de projet par son nom", "Sujet à trancher en réunion, avec sa raison", "Page Notifications : relire et effacer", "Notes sur la fiche"] },
+  { n: "1.2.0", date: "2026-10-26", notes: ["Supprimer une fiche retirée", "Temps forts sur plusieurs jours", "Classements avec le rang de KEDGE et l'objectif", "Calendrier : grille par semaine et par service"] },
+  { n: "1.1.0", date: "2026-10-25", notes: ["Historique des fiches", "Écran copil PGE", "Mode visiteur", "Répondre à une demande d'éléments ou la retirer"] },
+  { n: "1.0.0", date: "2026-10-24", notes: ["Première mise en ligne : plan par période, temps forts, demandes d'éléments, rappels J-30, J-15, J-7, notifications sur téléphone"] },
+];
+window.KP.VERSION = window.KP.VERSIONS[0];
+/* « 2.0.0-beta.6 » se lit « 2.0 bêta 6 », « 2.1.3 » se lit « 2.1.3 » */
+window.KP.versionLabel = (n) => { const [core, pre] = n.split("-"); const [a, b, c] = core.split("."); return (c === "0" ? `${a}.${b}` : core) + (pre ? " bêta " + pre.split(".")[1] : ""); };

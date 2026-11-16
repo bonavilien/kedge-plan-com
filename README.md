@@ -1,5 +1,60 @@
 # Plan de com KEDGE
 
+> **Branche `v2` : la V2 en préparation.** Elle n'est pas en ligne. Le site publié vient de `main` (la V1) tant que la bascule n'est pas faite.
+
+## Les branches
+
+| Branche | Contenu |
+|---|---|
+| `main` | Ce qui est en ligne sur GitHub Pages. La V1 jusqu'à la bascule. |
+| `v1` | Archive de la V1, figée à sa dernière version (1.5, 2 novembre 2026). On n'y touche plus. |
+| `v2` | La V2 : nouvelle interface, pensée pour l'ordinateur et repliée pour le téléphone. |
+
+## État de la V2
+
+L'interface est complète sur des **données de démonstration**, gardées dans le navigateur (`localStorage`).
+La base Supabase n'est pas encore branchée : `site/js/data.js` expose un magasin (`KP.store`) dont l'interface est celle que l'adaptateur Supabase reprendra. `site/config.js` et `site/vendor/` (clé publique et client Supabase) sont gardés pour ce branchement.
+
+**Ne pas fusionner `v2` dans `main` avant que la base soit branchée et migrée** : le site en ligne perdrait ses données réelles.
+
+| Dossier | Contenu |
+|---|---|
+| `site/` | La V2 : `index.html`, `css/v2.css`, `js/` (un fichier par écran), `sw.js` et `manifest.webmanifest` (installation sur téléphone). Aucun outil de construction. |
+| `supabase/migrations/` | Le schéma de la base (0001 à 0018 : la V1). Les migrations de la V2 s'y ajoutent. |
+| `supabase/functions/push/` | La fonction qui envoie les notifications sur les téléphones. |
+| `scripts/setup.mjs` | Installe ou met à jour la base Supabase. |
+| `scripts/version.mjs` | Sort une version (voir plus bas). |
+| `test/db`, `test/push` | Tests de la base et de l'envoi des notifications. Les tests d'interface de la V1 sont dans la branche `v1`. |
+
+Lancer en local : `cd site && python3 -m http.server 8000`.
+
+## Versions
+
+Numéro `MAJEUR.MINEUR.CORRECTIF` : MAJEUR pour une refonte (V1, V2), MINEUR pour une nouveauté visible, CORRECTIF pour une réparation.
+Tant que la V2 est à l'essai, les versions s'appellent `2.0.0-beta.N` (« 2.0 bêta N » à l'écran).
+La liste complète, V1 comprise (1.0 à 1.5, reconstituées depuis l'historique), est dans `site/js/version.js` et `CHANGELOG.md`.
+
+| Version de la V1 | Date | Commit |
+|---|---|---|
+| 1.0 | 24 octobre 2026 | `0095f9d` |
+| 1.1 | 25 octobre 2026 | `93b4d7f` |
+| 1.2 | 26 octobre 2026 | `c17ca59` |
+| 1.3 | 27 octobre 2026 | `d79d5f3` |
+| 1.4 | 28 octobre 2026 | `e2ca108` |
+| 1.5 | 2 novembre 2026 | `0d35b40` |
+
+Sortir une version :
+
+1. ajouter une entrée en tête de `site/js/version.js` (numéro, date, nouveautés en une phrase chacune) ;
+2. `node scripts/version.mjs` : met à jour `site/version.json`, le cache de `site/sw.js` et `CHANGELOG.md` ;
+3. `git commit`.
+
+Le numéro s'affiche en bas du menu et dans Réglages > Version. L'appli relit `version.json` et propose « Mettre à jour » quand une version plus récente est en ligne.
+
+---
+
+# Rappel : la V1 (base et règles, toujours valables pour la base actuelle)
+
 Appli web (installable sur téléphone) pour planifier la production et la diffusion autour des 5 messages clés et des temps forts de l'année 2026-2027 : Ma période, Temps forts, Partenariats média, Ajouter, Grille de diffusion, À faire, l'écran réunion sur ordinateur et l'écran copil PGE (une carte par période : diffusé, pas encore diffusé, à venir).
 
 La base démarre **vierge** : seules les 5 périodes, les 5 messages et les 3 services (RP, RS, Vidéo) sont pré-remplis, et restent modifiables.
