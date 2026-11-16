@@ -43,4 +43,10 @@ $D -f supabase/migrations/0017_notifications.sql
 $D -f test/db/notifications.sql
 $D -f supabase/migrations/0018_marketing_recrutement.sql
 $D -f test/db/directions.sql
+# V2 : à appliquer le jour de la bascule
+$D -f supabase/migrations/0019_v2_content_recrutement.sql
+$D -f supabase/migrations/0020_v2_report_annulation.sql
+$D -f supabase/migrations/0021_v2_carnet.sql
+$D -f supabase/migrations/0022_v2_profils.sql
+$D -f test/db/v2.sql
 echo "Base : tout est bon"

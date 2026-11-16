@@ -26,6 +26,13 @@ La base Supabase n'est pas encore branchée : `site/js/data.js` expose un magasi
 | `scripts/version.mjs` | Sort une version (voir plus bas). |
 | `test/db`, `test/push` | Tests de la base et de l'envoi des notifications. Les tests d'interface de la V1 sont dans la branche `v1`. |
 
+## Base : sauvegarde et migrations de la V2
+
+- **Sauvegarder** (lecture seule, rien n'est modifié) : `SUPABASE_ACCESS_TOKEN=… node scripts/sauvegarde.mjs <référence du projet>`. Le fichier va dans `~/kedge-plan-com-sauvegardes`, hors du dépôt (le dépôt est public). Vérifier un fichier : `node scripts/sauvegarde.mjs --verifier <fichier>`.
+- **Migrations 0019 à 0022** : Content et « Recrutement », report et annulation avec motif, carnet de lieux et de contacts, profil modifiable par chacun. Elles s'appliquent **le jour de la bascule seulement**, après une sauvegarde : la V1 en ligne ne connaît pas « Recrutement ». Attention, `scripts/setup.mjs` applique toutes les migrations du dossier : ne pas le lancer depuis cette branche avant la bascule.
+- Reste à écrire avec le branchement de la V2 sur la base : demande à une personne nommée, respect des trois choix de notifications, et le ménage (statuts ramenés à 3, services prévenus, blocages, cases média, offre et marketing, destinataires Direction du Programme et Dir. marketing).
+- Vérifier : `test/db/v2.sql` (se suffit à lui-même, sur une base où 0001 à 0022 sont appliquées).
+
 Lancer en local : `cd site && python3 -m http.server 8000`.
 
 ## Versions
