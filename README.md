@@ -38,13 +38,18 @@ Le branchement sur la base est écrit (`site/js/remote.js`) mais **éteint** : i
 
 ## Le jour de la bascule
 
-1. Prévenir l'équipe : personne ne saisit pendant la bascule (dix minutes).
-2. **Sauvegarder** la base (`scripts/sauvegarde.mjs`), vérifier le fichier, en garder une copie ailleurs.
-3. Appliquer les migrations **0019 à 0024**, dans l'ordre (SQL Editor de Supabase, ou `scripts/setup.mjs` depuis cette branche).
-4. Passer `brancher` à `true` dans `site/config.js`, sortir la version 2.0.0, fusionner `v2` dans `main` : GitHub Pages publie.
-5. Se connecter, vérifier une fiche, une demande, une notification. Chacun réactive au besoin les notifications dans Réglages.
+La V2 part sur une **nouvelle base** ; l'ancienne reste telle quelle pour pouvoir revenir à la V1.
 
-Revenir en arrière : remettre `main` sur la branche `v1` et restaurer la sauvegarde (la V1 ne connaît ni « Recrutement » ni les trois statuts).
+1. Créer un projet Supabase vide (même organisation, Frankfurt).
+2. Prévenir l'équipe : personne ne saisit pendant la bascule.
+3. `node scripts/copie.mjs <ancienne> <nouvelle>` : schéma, contenu, comptes, puis migrations de la V2. L'ancienne base n'est que lue. On peut le faire une première fois pour essayer, puis recommencer le jour J sur un projet neuf.
+4. `node scripts/setup.mjs <nouvelle> <adresse du site>` : notifications, connexion, `site/config.js`.
+5. Passer `brancher` à `true` dans `site/config.js`, sortir la version 2.0.0, fusionner `v2` dans `main` : GitHub Pages publie.
+6. Se connecter, vérifier une fiche, une demande, une notification. Chacun réactive les notifications dans Réglages.
+
+Revenir en arrière : remettre `main` sur la branche `v1`, qui pointe toujours vers l'ancienne base. Ce qui a été saisi dans la V2 entre-temps n'y est pas.
+
+Répéter la copie en local : `sh test/v2/copie.sh`.
 
 Lancer en local : `cd site && python3 -m http.server 8000`.
 
