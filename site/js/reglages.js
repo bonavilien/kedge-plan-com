@@ -28,6 +28,8 @@
       </section>
       <section class="set"><h2>Me prévenir</h2>
         <div class="checks">${chk("demandes", "Quand on me demande des éléments, ou qu'on me répond")}${chk("changements", "Quand un temps fort que je relaie change, est reporté ou annulé")}${chk("creations", u.role === "pilote" ? "À chaque nouvelle action ou nouveau temps fort" : "Quand un temps fort est créé")}</div>
+        ${store.remote() && KP.remote.push.can() ? `<p class="muted push-row">${KP.remote.push.blocked() ? "Les notifications sont bloquées pour ce site dans les réglages du navigateur." : KP.remote.push.on ? "Cet appareil reçoit les notifications." : "Cet appareil ne reçoit pas encore les notifications."}
+          ${KP.remote.push.blocked() ? "" : `<button type="button" class="btn quiet small" data-act="push-toggle">${KP.remote.push.on ? "Ne plus recevoir ici" : "Recevoir sur cet appareil"}</button>`}</p>` : ""}
       </section>`;
   }
 
@@ -93,6 +95,7 @@
   });
 
   Object.assign(KP.acts, {
+    "push-toggle": async () => { const p = KP.remote.push; try { if (p.on) { await p.disable(); KP.toast("Cet appareil ne reçoit plus les notifications"); } else { await p.enable(); KP.toast("Notifications activées sur cet appareil"); } } catch (e) { KP.toast(e.message || "Impossible d'activer les notifications"); } KP.render(); },
     "set-tab": (a) => KP.go({ set: a.dataset.k }),
     "set-theme": (a) => store.setPref("theme", a.dataset.k),
     "set-notif": (a) => { const on = { ...(store.prefs().notif || {}) }; on[a.dataset.k] = on[a.dataset.k] === false; store.setPref("notif", on); },

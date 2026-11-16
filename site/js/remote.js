@@ -269,8 +269,27 @@
     if (!location.hash) history.replaceState(null, "", "#/accueil");
     KP.render();
     watch();
+    push.check().then((on) => { if (on) KP.render(); });
   }
+  /* ---------- notifications sur cet appareil (téléphone ou ordinateur) ---------- */
+  const b64key = (s) => { const p = "=".repeat((4 - (s.length % 4)) % 4), raw = atob((s + p).replace(/-/g, "+").replace(/_/g, "/")); return Uint8Array.from([...raw].map((c) => c.charCodeAt(0))); };
+  const push = {
+    on: false,
+    can: () => !!C.vapidPublicKey && "serviceWorker" in navigator && "PushManager" in window && "Notification" in window,
+    blocked: () => "Notification" in window && Notification.permission === "denied",
+    async check() { try { const r = push.can() && (await navigator.serviceWorker.getRegistration()); const s = r && (await r.pushManager.getSubscription()); push.on = !!s && Notification.permission === "granted"; } catch (e) { push.on = false; } return push.on; },
+    async enable() {
+      if ((await Notification.requestPermission()) !== "granted") throw new Error("Les notifications sont bloquées pour ce site dans les réglages du navigateur.");
+      const r = await navigator.serviceWorker.ready;
+      const s = (await r.pushManager.getSubscription()) || (await r.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64key(C.vapidPublicKey) }));
+      const j = s.toJSON(); await run(sb.rpc("save_push", { p_endpoint: j.endpoint, p_p256dh: j.keys.p256dh, p_auth: j.keys.auth })); push.on = true;
+    },
+    async disable() { const r = await navigator.serviceWorker.getRegistration(); const s = r && (await r.pushManager.getSubscription()); if (s) { await run(sb.from("push_subs").delete().eq("endpoint", s.endpoint)).catch(() => {}); await s.unsubscribe(); } push.on = false; },
+  };
+  if (navigator.serviceWorker) navigator.serviceWorker.addEventListener("message", (e) => { if (e.data && e.data.type === "open" && e.data.url) { const h2 = new URL(e.data.url).hash; if (h2) location.hash = h2; } });
+
   KP.remote = {
+    push,
     get email() { return user ? user.email || "" : ""; },
     signOut: async () => { try { await sb.auth.signOut(); } catch (e) {} location.reload(); },
     reload,

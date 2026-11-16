@@ -32,9 +32,19 @@ Le branchement sur la base est écrit (`site/js/remote.js`) mais **éteint** : i
 - **Migrations 0019 à 0024** : Content et « Recrutement », report et annulation avec motif, carnet de lieux et de contacts, profil modifiable par chacun. Elles s'appliquent **le jour de la bascule seulement**, après une sauvegarde : la V1 en ligne ne connaît pas « Recrutement ». Attention, `scripts/setup.mjs` applique toutes les migrations du dossier : ne pas le lancer depuis cette branche avant la bascule.
 - **0023** : demander des éléments à n'importe quelle personne de l'équipe ; la Direction du Programme et la Dir. marketing ne sont plus des destinataires.
 - **0024, le ménage** : trois statuts, plus de services prévenus ni de blocages (« à trancher en réunion » reste), plus de Direction du Programme, Dir. marketing ni Resp. offre comme destinataires, un pilote gère les partenariats, et chacun choisit ses notifications. Les colonnes devenues inutiles restent en place, vides.
-- Reste à écrire : les notifications sur téléphone dans la V2 (abonnement push depuis l'appli).
+- Les notifications sur téléphone passent par la même fonction `push` que la V1 ; chacun les active dans Réglages, Mon profil (les abonnements de la V1 restent valables tant que l'appli garde la même adresse).
 - Vérifier la base : `sh test/v2/base.sh` répète la bascule sur un Postgres local (la V1, des données à la façon de la V1, puis les migrations de la V2 et `test/db/v2.sql`).
 - Vérifier le branchement : `(cd site && python3 -m http.server 8812)` puis `node test/v2/branchement.mjs` (faux client Supabase, sans réseau : il vérifie la traduction entre l'appli et la base, pas les droits).
+
+## Le jour de la bascule
+
+1. Prévenir l'équipe : personne ne saisit pendant la bascule (dix minutes).
+2. **Sauvegarder** la base (`scripts/sauvegarde.mjs`), vérifier le fichier, en garder une copie ailleurs.
+3. Appliquer les migrations **0019 à 0024**, dans l'ordre (SQL Editor de Supabase, ou `scripts/setup.mjs` depuis cette branche).
+4. Passer `brancher` à `true` dans `site/config.js`, sortir la version 2.0.0, fusionner `v2` dans `main` : GitHub Pages publie.
+5. Se connecter, vérifier une fiche, une demande, une notification. Chacun réactive au besoin les notifications dans Réglages.
+
+Revenir en arrière : remettre `main` sur la branche `v1` et restaurer la sauvegarde (la V1 ne connaît ni « Recrutement » ni les trois statuts).
 
 Lancer en local : `cd site && python3 -m http.server 8000`.
 

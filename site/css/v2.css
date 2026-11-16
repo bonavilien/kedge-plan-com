@@ -487,3 +487,4 @@ dialog.cmdk { margin-top: 12vh; width: min(600px, calc(100vw - 32px)); overflow:
 .login-card .link { justify-self: center; }
 .login-err { min-height: 1.3em; color: var(--red, #c0392b); font-size: 13.5px; margin: 0; }
 .login-ver { text-align: center; font-size: 12.5px; color: var(--text2); margin: 0; }
+.push-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 12px; }

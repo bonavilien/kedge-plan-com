@@ -6,6 +6,7 @@ Généré depuis `site/js/version.js` par `node scripts/version.mjs`. Ne pas mod
 
 - Les liens des notifications ouvrent la bonne fiche
 - Côté base, prêt pour la bascule : trois choix de notifications et ménage
+- Notifications sur téléphone : s'activent dans Réglages, Mon profil, une fois l'appli branchée
 
 ## 2.0 bêta 11 · 2026-11-16
 

@@ -12,3 +12,21 @@ self.addEventListener("fetch", (e) => {
   e.respondWith(fetch(e.request, { cache: "no-cache" }).then((r) => { if (r.ok) { const copy = r.clone(); caches.open(CACHE).then((c) => c.put(e.request, copy)); } return r; })
     .catch(() => caches.match(e.request, { ignoreSearch: true }).then((r) => r || caches.match("index.html"))));
 });
+
+/* une notification envoyée par la base (fonction push) */
+self.addEventListener("push", (e) => {
+  let d = {};
+  try { d = e.data.json(); } catch (x) { d = { body: e.data ? e.data.text() : "" }; }
+  e.waitUntil(self.registration.showNotification(d.title || "Plan de com", { body: d.body || "", icon: "icons/icon-192.png", tag: d.tag || undefined, data: { url: d.url || "" } }));
+});
+/* toucher la notification ouvre la fiche concernée, dans l'appli déjà ouverte s'il y en a une */
+self.addEventListener("notificationclick", (e) => {
+  e.notification.close();
+  const url = new URL(e.notification.data && e.notification.data.url || "", self.registration.scope).href;
+  e.waitUntil((async () => {
+    const wins = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+    const w = wins.find((c) => c.url.startsWith(self.registration.scope));
+    if (w) { await w.focus(); w.postMessage({ type: "open", url }); return; }
+    await self.clients.openWindow(url);
+  })());
+});
