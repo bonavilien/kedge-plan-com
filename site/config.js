@@ -3,9 +3,9 @@
 window.KPLAN_CONFIG = {
   // V2 : false = données de démonstration ; true = l'appli lit et écrit dans la base (le jour de la bascule, après les migrations 0019 et suivantes)
   brancher: false,
-  supabaseUrl: "https://othdqswtbhzphjhpvvsb.supabase.co",
-  supabaseKey: "sb_publishable_u_XJ4ThpAf3BghAvzmK0YQ_1sYHge4V",
-  vapidPublicKey: "BLeiK92J7J8u4sC207c5bnF_SaZvTQLqNb4aWc83-6M9GpIwl0eGNcIZEtNV9Kl1lFgfq9gc06Cm_NHGNfRbUX4",
+  supabaseUrl: "https://zntbzyueqnndykukfaav.supabase.co",
+  supabaseKey: "sb_publishable_3FQRYT4f2SUFYyknWkOzhg_2St-pfLe",
+  vapidPublicKey: "BJUnpTxEcDGPsVqUrQxCxFi4KTWn6a9-EhJxGRQSC3TrDr7wC-PpFL0AJlQrLPBU7eOqD8aoZciwZjcxvf0qmf4",
   // compte visiteur (lecture seule) : l'écran de connexion propose « Entrer en visiteur » et ne demande que le mot de passe
   visiteur: "visiteur@kedgebs.com",
   // écran d'accueil
