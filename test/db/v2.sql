@@ -124,6 +124,28 @@ update public.reqs set st = 'recue', reponse = 'Dans le dossier partagé' where 
 select pg_temp.admin();
 select pg_temp.check((select st from public.reqs where id = '22300000-0000-0000-0000-000000000001') = 'recue', 'la personne nommée répond');
 
+-- ---------- 0024 : ménage et choix de notifications ----------
+select pg_temp.expect_fail($$insert into public.items (kind, t, date, svc, st) values ('action', 'x', current_date, 'rp', 'idee')$$, 'le statut « idée » n''existe plus');
+select pg_temp.expect_fail($$insert into public.items (kind, t, date, svc, cc) values ('action', 'x', current_date, 'rp', '{rs}')$$, 'plus de services prévenus');
+select pg_temp.check((select media from public.profiles where id = '22000000-0000-0000-0000-000000000001') and not (select media from public.profiles where id = '22000000-0000-0000-0000-000000000002'), 'un pilote gère les partenariats, un service non');
+select pg_temp.as_user('22000000-0000-0000-0000-000000000001');
+select pg_temp.expect_fail($$insert into public.reqs (item, dest, type, pour) values ('22100000-0000-0000-0000-000000000009', 'offre', 'Contact', current_date + 5)$$, 'la Resp. offre n''est plus un destinataire');
+select pg_temp.expect_fail($$insert into public.blocks (item, why) values ('22100000-0000-0000-0000-000000000009', 'en attente du budget')$$, 'plus de blocage');
+insert into public.blocks (item, why) values ('22100000-0000-0000-0000-000000000009', 'à trancher en réunion');
+-- Reseaux ne veut plus les notifications de demandes : il ne reçoit pas la suivante, mais reçoit toujours une création
+select pg_temp.as_user('22000000-0000-0000-0000-000000000003');
+update public.profiles set notif_demandes = false where id = '22000000-0000-0000-0000-000000000003';
+select pg_temp.admin();
+delete from public.outbox;
+select pg_temp.as_user('22000000-0000-0000-0000-000000000001');
+insert into public.reqs (item, dest, type, pour) values ('22100000-0000-0000-0000-000000000009', '22000000-0000-0000-0000-000000000003', 'Rushs', current_date + 6);
+insert into public.reqs (item, dest, type, pour) values ('22100000-0000-0000-0000-000000000009', '22000000-0000-0000-0000-000000000002', 'Rushs', current_date + 6);
+insert into public.items (kind, t, date, svc, m) values ('action', 'Story du jour', current_date + 3, 'rs', '{1}');
+select pg_temp.admin();
+select pg_temp.check((select array_agg(p.nom order by p.nom) from public.outbox o join public.profiles p on p.id = o.user_id where o.title = 'Demande d''éléments' and p.id::text like '22000000%') = '{"Presse B"}', 'qui a coupé les demandes ne les reçoit plus, les autres oui');
+select pg_temp.check(exists (select 1 from public.outbox o where o.user_id = '22000000-0000-0000-0000-000000000003' and o.title = 'Nouvelle action'), 'il reçoit toujours ce qui est confié à son service');
+delete from public.items where t = 'Story du jour';
+
 -- ménage
 delete from public.items where id::text like '22100000%';
 delete from public.contacts; delete from public.lieux;

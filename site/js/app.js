@@ -6,6 +6,9 @@
 
   /* ---------- une adresse par vue ---------- */
   const parseHash = () => {
+    /* liens des notifications de la base, au format de la V1 : « #item=<id> » ouvre la fiche, « #afaire » l'accueil */
+    const old = /^#item=([\w-]+)/.exec(location.hash);
+    if (old) history.replaceState(null, "", "#/accueil?fiche=" + old[1]); else if (location.hash === "#afaire") history.replaceState(null, "", "#/accueil");
     const [path, q = ""] = location.hash.replace(/^#\/?/, "").split("?");
     const seg = path.split("/").filter(Boolean), p = new URLSearchParams(q);
     const r = { screen: ["accueil", "plan", "reunion", "reglages"].includes(seg[0]) ? seg[0] : "accueil", per: curPer(), tab: "ordre", vue: p.get("vue") === "grille" ? "grille" : "liste", svc: p.get("svc") || "", msg: p.get("msg") || "", type: p.get("type") || "", fiche: p.get("fiche") || "" };

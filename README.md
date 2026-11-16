@@ -29,9 +29,10 @@ Le branchement sur la base est écrit (`site/js/remote.js`) mais **éteint** : i
 ## Base : sauvegarde et migrations de la V2
 
 - **Sauvegarder** (lecture seule, rien n'est modifié) : `SUPABASE_ACCESS_TOKEN=… node scripts/sauvegarde.mjs <référence du projet>`. Le fichier va dans `~/kedge-plan-com-sauvegardes`, hors du dépôt (le dépôt est public). Vérifier un fichier : `node scripts/sauvegarde.mjs --verifier <fichier>`.
-- **Migrations 0019 à 0023** : Content et « Recrutement », report et annulation avec motif, carnet de lieux et de contacts, profil modifiable par chacun. Elles s'appliquent **le jour de la bascule seulement**, après une sauvegarde : la V1 en ligne ne connaît pas « Recrutement ». Attention, `scripts/setup.mjs` applique toutes les migrations du dossier : ne pas le lancer depuis cette branche avant la bascule.
+- **Migrations 0019 à 0024** : Content et « Recrutement », report et annulation avec motif, carnet de lieux et de contacts, profil modifiable par chacun. Elles s'appliquent **le jour de la bascule seulement**, après une sauvegarde : la V1 en ligne ne connaît pas « Recrutement ». Attention, `scripts/setup.mjs` applique toutes les migrations du dossier : ne pas le lancer depuis cette branche avant la bascule.
 - **0023** : demander des éléments à n'importe quelle personne de l'équipe ; la Direction du Programme et la Dir. marketing ne sont plus des destinataires.
-- Reste à écrire : respect des trois choix de notifications, notifications sur téléphone dans la V2, et le ménage (statuts ramenés à 3, services prévenus, blocages, cases média, offre et marketing, destinataires Direction du Programme et Dir. marketing).
+- **0024, le ménage** : trois statuts, plus de services prévenus ni de blocages (« à trancher en réunion » reste), plus de Direction du Programme, Dir. marketing ni Resp. offre comme destinataires, un pilote gère les partenariats, et chacun choisit ses notifications. Les colonnes devenues inutiles restent en place, vides.
+- Reste à écrire : les notifications sur téléphone dans la V2 (abonnement push depuis l'appli).
 - Vérifier la base : `sh test/v2/base.sh` répète la bascule sur un Postgres local (la V1, des données à la façon de la V1, puis les migrations de la V2 et `test/db/v2.sql`).
 - Vérifier le branchement : `(cd site && python3 -m http.server 8812)` puis `node test/v2/branchement.mjs` (faux client Supabase, sans réseau : il vérifie la traduction entre l'appli et la base, pas les droits).
 

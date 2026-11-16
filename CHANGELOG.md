@@ -2,6 +2,11 @@
 
 Généré depuis `site/js/version.js` par `node scripts/version.mjs`. Ne pas modifier à la main.
 
+## 2.0 bêta 12 · 2026-11-16
+
+- Les liens des notifications ouvrent la bonne fiche
+- Côté base, prêt pour la bascule : trois choix de notifications et ménage
+
 ## 2.0 bêta 11 · 2026-11-16
 
 - L'appli sait se brancher sur la base : connexion par adresse et mot de passe, lecture et enregistrement. Le branchement reste éteint jusqu'à la bascule
