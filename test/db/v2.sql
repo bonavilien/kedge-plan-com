@@ -50,7 +50,7 @@ select pg_temp.as_user('22000000-0000-0000-0000-000000000001');
 update public.items set date = current_date + 44, report_de = '28 nov.', report_motif = 'Salle indisponible' where id = '22100000-0000-0000-0000-000000000001';
 select pg_temp.admin();
 select pg_temp.check((select report_par = '22000000-0000-0000-0000-000000000001' and report_at is not null from public.items where id = '22100000-0000-0000-0000-000000000001'), 'la base note qui reporte et quand');
-select pg_temp.check((select array_agg(p.nom order by p.nom) from public.outbox o join public.profiles p on p.id = o.user_id where o.title like 'Reporté%') = '{Presse}', 'le service qui relaie est prévenu du report, pas l''auteur');
+select pg_temp.check((select array_agg(p.nom order by p.nom) from public.outbox o join public.profiles p on p.id = o.user_id where o.title like 'Reporté%' and p.id::text like '22000000%') = '{Presse}', 'le service qui relaie est prévenu du report, pas l''auteur');
 select pg_temp.check((select body from public.outbox where title like 'Reporté%' limit 1) like '%Salle indisponible', 'la notification donne le motif');
 select pg_temp.check(exists (select 1 from public.journal where item = '22100000-0000-0000-0000-000000000001' and diff ? 'report_motif'), 'l''historique garde le motif du report');
 select pg_temp.as_user('22000000-0000-0000-0000-000000000001');
@@ -105,6 +105,24 @@ select pg_temp.as_user('22000000-0000-0000-0000-000000000001');
 update public.profiles set svc = 'rs' where id = '22000000-0000-0000-0000-000000000002';
 select pg_temp.admin();
 select pg_temp.check((select svc from public.profiles where id = '22000000-0000-0000-0000-000000000002') = 'rs', 'un chef règle le service de quelqu''un');
+
+-- ---------- 0023 : demandes ----------
+select pg_temp.as_user('22000000-0000-0000-0000-000000000001');
+insert into public.items (id, kind, t, date, svc, m) values ('22100000-0000-0000-0000-000000000009', 'action', 'Dossier', current_date + 15, 'content', '{1}');
+select pg_temp.admin();
+delete from public.outbox;
+select pg_temp.as_user('22000000-0000-0000-0000-000000000001');
+-- à une personne nommée qui n'est pas chef : elle seule est prévenue, et elle répond
+insert into public.reqs (id, item, dest, type, pour) values ('22300000-0000-0000-0000-000000000001', '22100000-0000-0000-0000-000000000009', '22000000-0000-0000-0000-000000000003', 'Visuels', current_date + 5);
+select pg_temp.expect_fail($$insert into public.reqs (item, dest, type, pour) values ('22100000-0000-0000-0000-000000000009', 'programme', 'Programme', current_date + 5)$$, 'la Direction du Programme n''est plus un destinataire');
+select pg_temp.expect_fail($$insert into public.reqs (item, dest, type, pour) values ('22100000-0000-0000-0000-000000000009', 'marketing', 'Visuels', current_date + 5)$$, 'la Dir. marketing n''est plus un destinataire');
+select pg_temp.expect_fail($$insert into public.reqs (item, dest, type, pour) values ('22100000-0000-0000-0000-000000000009', '22000000-0000-0000-0000-000000000004', 'Contact', current_date + 5)$$, 'on ne demande rien au compte lecteur');
+select pg_temp.admin();
+select pg_temp.check((select array_agg(p.nom order by p.nom) from public.outbox o join public.profiles p on p.id = o.user_id where p.id::text like '22000000%') = '{Reseaux}', 'seule la personne nommée est prévenue');
+select pg_temp.as_user('22000000-0000-0000-0000-000000000003');
+update public.reqs set st = 'recue', reponse = 'Dans le dossier partagé' where id = '22300000-0000-0000-0000-000000000001';
+select pg_temp.admin();
+select pg_temp.check((select st from public.reqs where id = '22300000-0000-0000-0000-000000000001') = 'recue', 'la personne nommée répond');
 
 -- ménage
 delete from public.items where id::text like '22100000%';

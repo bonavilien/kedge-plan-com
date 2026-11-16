@@ -4,7 +4,7 @@
   KP.ui = KP.ui || { past: false, gx: null, gper: "" };
 
   const TYPES = [{ v: "tf", nom: "Temps forts" }, { v: "action", nom: "Actions" }, { v: "classement", nom: "Classements" }, { v: "partenariat", nom: "Partenariats payants" }];
-  const inPeriod = (it, p) => it.variant === "sujet" ? it.per === p.k : it.date <= p.au && (it.flou ? it.date : it.fin || it.date) >= p.du;
+  const inPeriod = (it, p) => it.variant === "sujet" ? (it.pers ? it.pers.includes(p.k) : it.per === p.k) : it.date <= p.au && (it.flou ? it.date : it.fin || it.date) >= p.du;
   const match = (it, r) =>
     (!r.svc || it.kind === "tf" || it.svc === r.svc) &&
     (!r.msg || it.m.includes(r.msg)) &&

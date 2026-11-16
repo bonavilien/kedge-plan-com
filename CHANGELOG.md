@@ -2,6 +2,11 @@
 
 Généré depuis `site/js/version.js` par `node scripts/version.mjs`. Ne pas modifier à la main.
 
+## 2.0 bêta 11 · 2026-11-16
+
+- L'appli sait se brancher sur la base : connexion par adresse et mot de passe, lecture et enregistrement. Le branchement reste éteint jusqu'à la bascule
+- Un sujet peut couvrir plusieurs périodes
+
 ## 2.0 bêta 10 · 2026-11-16
 
 - La V2 rejoint le dépôt d'origine, sur la branche v2 ; la V1 est archivée sur la branche v1

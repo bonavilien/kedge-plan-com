@@ -3,7 +3,7 @@
   const KP = window.KP, { h, ic, store } = KP;
   const $ = (id) => document.getElementById(id);
   KP.dest = (k) => (KP.person(k) || KP.service(k) || { nom: k }).nom;
-  const mine = (r) => { const u = KP.me(); return r.a === u.k || (u.svc && r.a === u.svc); };
+  const mine = (r) => { const u = KP.me(); return r.a === u.k || (u.svc && r.a === u.svc) || (r.a === "chef" && u.role === "pilote"); };
   KP.reqMine = mine;
 
   KP.renderFiche = () => {

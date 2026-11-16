@@ -51,6 +51,7 @@
     $("tabbar").innerHTML = SCREENS.map(([k, nom, i]) => `<a href="${KP.href({ screen: k })}" class="${r.screen === k ? "on" : ""}">${ic(i)}${nom}</a>`).join("") + (store.canCreate() ? `<button class="plus" type="button" data-act="new" aria-label="Nouveau">${ic("plus")}</button>` : "<span></span>");
   }
   function render() {
+    if (KP.hold) return; /* branché sur la base : rien ne s'affiche avant la connexion */
     if (store.prefs().version !== KP.VERSION.n) { store.prefs().version = KP.VERSION.n; store.prefs().versionVue = Date.now(); }
     const t = store.prefs().theme; if (t === "light" || t === "dark") document.documentElement.dataset.theme = t; else delete document.documentElement.dataset.theme;
     const main = $("main"), top = main.scrollTop, act = document.activeElement, fid = act && act.id, sel = act && act.selectionStart;
@@ -114,12 +115,13 @@
     profile: (a) => {
       const u = KP.me();
       const p = KP.pop(a, `<button type="button" class="pop-i" data-go="reglages">${ic("gear")}<span>Réglages<small>${u.role === "pilote" ? "Mon profil, équipe, services, carnets" : "Mon profil, apparence, notifications"}</small></span></button>
-        <hr><h4>Démonstration : voir l'appli comme</h4>` + KP.PEOPLE.map((x) => `<button type="button" class="pop-i" data-user="${x.k}"><span class="avatar">${h((x.nom || "?")[0])}</span><span>${h(x.nom)}<small>${h(x.fonction)}</small></span>${x.k === u.k ? `<span class="r">${ic("check")}</span>` : ""}</button>`).join("") +
-        `<hr><button type="button" class="pop-i" data-reset="1">${ic("undo")}<span>Remettre la démonstration à zéro</span></button>`, { side: !!a.dataset.side, right: true });
+        ` + (store.remote() ? `<hr><button type="button" class="pop-i" data-out="1">${ic("undo")}<span>Se déconnecter<small>${h(KP.remote.email || "")}</small></span></button>` : `<hr><h4>Démonstration : voir l'appli comme</h4>` + KP.PEOPLE.map((x) => `<button type="button" class="pop-i" data-user="${x.k}"><span class="avatar">${h((x.nom || "?")[0])}</span><span>${h(x.nom)}<small>${h(x.fonction)}</small></span>${x.k === u.k ? `<span class="r">${ic("check")}</span>` : ""}</button>`).join("") +
+        `<hr><button type="button" class="pop-i" data-reset="1">${ic("undo")}<span>Remettre la démonstration à zéro</span></button>`), { side: !!a.dataset.side, right: true });
       p.el.addEventListener("click", (e) => {
         const b = e.target.closest("button"); if (!b) return; p.close();
         if (b.dataset.go) KP.go({ screen: "reglages", set: "profil", fiche: "" });
         if (b.dataset.user) { store.switchUser(b.dataset.user); KP.go({ screen: "accueil", fiche: "" }); KP.toast(`Tu vois l'appli comme ${KP.me().nom}`); }
+        if (b.dataset.out) KP.remote.signOut();
         if (b.dataset.reset) { store.reset(); KP.go({ screen: "accueil", fiche: "" }); KP.toast("Démonstration remise à zéro"); }
       });
     },

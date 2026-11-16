@@ -5,6 +5,7 @@
    (il met à jour version.json, sw.js et CHANGELOG.md, et vérifie que tout concorde). */
 window.KP = window.KP || {};
 window.KP.VERSIONS = [
+  { n: "2.0.0-beta.11", date: "2026-11-16", notes: ["L'appli sait se brancher sur la base : connexion par adresse et mot de passe, lecture et enregistrement. Le branchement reste éteint jusqu'à la bascule", "Un sujet peut couvrir plusieurs périodes"] },
   { n: "2.0.0-beta.10", date: "2026-11-16", notes: ["La V2 rejoint le dépôt d'origine, sur la branche v2 ; la V1 est archivée sur la branche v1", "L'historique des versions de la V1 est repris dans cette liste"] },
   { n: "2.0.0-beta.9", date: "2026-11-16", notes: ["Sur téléphone, les cinq périodes tiennent sur la largeur de l'écran, filtres et affichage sur la ligne du dessous"] },
   { n: "2.0.0-beta.8", date: "2026-11-16", notes: ["Étiquette « Recrutement » pour les rendez-vous avec les candidats (JPO, admissibles), à part des 5 messages", "Sur téléphone : la fenêtre Nouveau ne déborde plus, la grille est plus lisible"] },

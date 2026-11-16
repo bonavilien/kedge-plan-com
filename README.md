@@ -12,8 +12,8 @@
 
 ## État de la V2
 
-L'interface est complète sur des **données de démonstration**, gardées dans le navigateur (`localStorage`).
-La base Supabase n'est pas encore branchée : `site/js/data.js` expose un magasin (`KP.store`) dont l'interface est celle que l'adaptateur Supabase reprendra. `site/config.js` et `site/vendor/` (clé publique et client Supabase) sont gardés pour ce branchement.
+Par défaut l'appli tourne sur des **données de démonstration**, gardées dans le navigateur (`localStorage`).
+Le branchement sur la base est écrit (`site/js/remote.js`) mais **éteint** : il s'allume en passant `brancher` à `true` dans `site/config.js`, le jour de la bascule, une fois les migrations de la V2 appliquées. Branchée, l'appli demande l'adresse et le mot de passe, charge toute la base dans le magasin (`KP.store`, `site/js/data.js`), puis n'envoie à chaque geste que ce qui a changé. `?demo` dans l'adresse force la démonstration.
 
 **Ne pas fusionner `v2` dans `main` avant que la base soit branchée et migrée** : le site en ligne perdrait ses données réelles.
 
@@ -29,9 +29,11 @@ La base Supabase n'est pas encore branchée : `site/js/data.js` expose un magasi
 ## Base : sauvegarde et migrations de la V2
 
 - **Sauvegarder** (lecture seule, rien n'est modifié) : `SUPABASE_ACCESS_TOKEN=… node scripts/sauvegarde.mjs <référence du projet>`. Le fichier va dans `~/kedge-plan-com-sauvegardes`, hors du dépôt (le dépôt est public). Vérifier un fichier : `node scripts/sauvegarde.mjs --verifier <fichier>`.
-- **Migrations 0019 à 0022** : Content et « Recrutement », report et annulation avec motif, carnet de lieux et de contacts, profil modifiable par chacun. Elles s'appliquent **le jour de la bascule seulement**, après une sauvegarde : la V1 en ligne ne connaît pas « Recrutement ». Attention, `scripts/setup.mjs` applique toutes les migrations du dossier : ne pas le lancer depuis cette branche avant la bascule.
-- Reste à écrire avec le branchement de la V2 sur la base : demande à une personne nommée, respect des trois choix de notifications, et le ménage (statuts ramenés à 3, services prévenus, blocages, cases média, offre et marketing, destinataires Direction du Programme et Dir. marketing).
-- Vérifier : `test/db/v2.sql` (se suffit à lui-même, sur une base où 0001 à 0022 sont appliquées).
+- **Migrations 0019 à 0023** : Content et « Recrutement », report et annulation avec motif, carnet de lieux et de contacts, profil modifiable par chacun. Elles s'appliquent **le jour de la bascule seulement**, après une sauvegarde : la V1 en ligne ne connaît pas « Recrutement ». Attention, `scripts/setup.mjs` applique toutes les migrations du dossier : ne pas le lancer depuis cette branche avant la bascule.
+- **0023** : demander des éléments à n'importe quelle personne de l'équipe ; la Direction du Programme et la Dir. marketing ne sont plus des destinataires.
+- Reste à écrire : respect des trois choix de notifications, notifications sur téléphone dans la V2, et le ménage (statuts ramenés à 3, services prévenus, blocages, cases média, offre et marketing, destinataires Direction du Programme et Dir. marketing).
+- Vérifier la base : `sh test/v2/base.sh` répète la bascule sur un Postgres local (la V1, des données à la façon de la V1, puis les migrations de la V2 et `test/db/v2.sql`).
+- Vérifier le branchement : `(cd site && python3 -m http.server 8812)` puis `node test/v2/branchement.mjs` (faux client Supabase, sans réseau : il vérifie la traduction entre l'appli et la base, pas les droits).
 
 Lancer en local : `cd site && python3 -m http.server 8000`.
 

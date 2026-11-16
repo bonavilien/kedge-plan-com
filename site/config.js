@@ -1,6 +1,8 @@
 // Réglages publics du site. Rien de secret ici : la clé publique ne donne que les droits écrits dans la base.
 // scripts/setup.mjs remplit supabaseUrl, supabaseKey et vapidPublicKey.
 window.KPLAN_CONFIG = {
+  // V2 : false = données de démonstration ; true = l'appli lit et écrit dans la base (le jour de la bascule, après les migrations 0019 et suivantes)
+  brancher: false,
   supabaseUrl: "https://othdqswtbhzphjhpvvsb.supabase.co",
   supabaseKey: "sb_publishable_u_XJ4ThpAf3BghAvzmK0YQ_1sYHge4V",
   vapidPublicKey: "BLeiK92J7J8u4sC207c5bnF_SaZvTQLqNb4aWc83-6M9GpIwl0eGNcIZEtNV9Kl1lFgfq9gc06Cm_NHGNfRbUX4",

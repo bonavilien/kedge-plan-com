@@ -4,7 +4,7 @@
    un type de suggestion écarté 3 fois ne revient plus. */
 (() => {
   const KP = window.KP, { store } = KP;
-  const mine = (r) => { const u = KP.me(); return r.a === u.k || (!!u.svc && r.a === u.svc); };
+  const mine = (r) => { const u = KP.me(); return r.a === u.k || (!!u.svc && r.a === u.svc) || (r.a === "chef" && u.role === "pilote"); };
 
   /* demandes qui m'attendent, la plus pressée d'abord */
   KP.inbox = () => KP.me().role === "lecteur" ? [] : store.reqs().filter((r) => !r.fait && mine(r) && store.get(r.item)).sort((a, b) => a.pour.localeCompare(b.pour));

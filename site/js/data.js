@@ -165,15 +165,18 @@
   let db;
   const listeners = [];
   const read = () => { try { const o = JSON.parse(localStorage.getItem(KEY)); if (o && o.v === 7) return o; } catch (e) {} return null; };
-  const write = () => { try { localStorage.setItem(KEY, JSON.stringify(db)); } catch (e) {} };
+  /* distant : quand l'appli est branchée sur la base (js/remote.js), le magasin garde la même forme en mémoire
+     et chaque changement part vers la base au lieu du navigateur */
+  let remote = null;
+  const write = () => { if (remote) return remote.sync(db); try { localStorage.setItem(KEY, JSON.stringify(db)); } catch (e) {} };
   const emit = () => { write(); listeners.forEach((f) => f()); };
   db = read() || seed();
 
   const me = () => db.people.find((p) => p.k === db.moi) || db.people[0];
   const person = (k) => db.people.find((p) => p.k === k);
-  const service = (k) => db.services.find((s) => s.k === k);
+  const service = (k) => db.services.find((s) => s.k === k) || (remote && remote.pseudo[k]) || undefined;
   const message = (k) => MESSAGES.find((m) => m.k === k);
-  const nid = (p) => p + (++db.seq);
+  const nid = (p) => remote ? remote.uuid() : p + (++db.seq);
   const log = (item, txt) => db.journal.push({ id: nid("j"), item, qui: db.moi, quand: Date.now(), txt });
   const prefs = () => (db.prefs[db.moi] = db.prefs[db.moi] || {});
 
@@ -265,8 +268,13 @@
     setPref(k, v) { prefs()[k] = v; emit(); },
     pinned: (id) => (prefs().pins || []).includes(id),
     togglePin(id) { const p = prefs(); p.pins = p.pins || []; p.pins = p.pins.includes(id) ? p.pins.filter((x) => x !== id) : [...p.pins, id]; emit(); },
-    switchUser(k) { db.moi = k; emit(); },
-    reset() { db = seed(); emit(); },
+    switchUser(k) { if (remote) return; db.moi = k; emit(); },
+    /* branchement sur la base : remplace les données de démonstration, sans rien renvoyer vers la base */
+    _attach(r, data) { remote = r; db = data; listeners.forEach((f) => f()); },
+    _replace(data) { db = data; listeners.forEach((f) => f()); },
+    _db: () => db,
+    remote: () => !!remote,
+    reset() { if (remote) return; db = seed(); emit(); },
   };
 
   Object.defineProperty(KP, "PEOPLE", { get: () => db.people });

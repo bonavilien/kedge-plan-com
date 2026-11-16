@@ -475,3 +475,15 @@ dialog.cmdk { margin-top: 12vh; width: min(600px, calc(100vw - 32px)); overflow:
   .bar .seg.icons { margin-left: auto; }
   .bar [data-act="print"] { display: none; }
 }
+
+/* ---------- connexion (appli branchée sur la base) ---------- */
+.login { position: fixed; inset: 0; z-index: 100; display: grid; place-items: center; padding: 20px; background: var(--anthracite, #333539); overflow: auto; }
+.login-card { width: min(380px, 100%); display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; padding: 28px 26px 22px; border-radius: var(--r4); background: var(--card); color: var(--text); box-shadow: var(--shadow); }
+.login-logo { height: 26px; width: auto; justify-self: start; filter: invert(1) brightness(.2); }
+:root[data-theme="dark"] .login-logo { filter: none; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .login-logo { filter: none; } }
+.login-card h1 { font: 700 28px/1.1 var(--serif); margin: 2px 0 6px; }
+.login-card .btn { justify-content: center; height: 42px; }
+.login-card .link { justify-self: center; }
+.login-err { min-height: 1.3em; color: var(--red, #c0392b); font-size: 13.5px; margin: 0; }
+.login-ver { text-align: center; font-size: 12.5px; color: var(--text2); margin: 0; }
