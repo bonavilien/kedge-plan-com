@@ -206,6 +206,12 @@ button.mini:hover, a.mini:hover { background: var(--hover); }
 .mini .tt { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .mini small { color: var(--text2); }
 a.mini { text-decoration: none; grid-template-columns: 18px minmax(0, 1fr) 18px; }
+.memos { margin: 12px 0 4px; display: grid; gap: 6px; }
+.memo { display: flex; align-items: center; gap: 8px; padding: 4px 4px 4px 10px; background: var(--bg); border-radius: var(--r2); font-size: 14px; }
+.memo > svg { width: 16px; height: 16px; flex: none; color: var(--text2); }
+.memo .tt { flex: 1; min-width: 0; }
+.memo small { color: var(--text2); white-space: nowrap; }
+.memo.late small { color: var(--red); font-weight: 600; }
 .req { padding: 8px 0; }
 .req p { margin-top: 2px; }
 .req .meta { font-size: 13px; color: var(--text2); }

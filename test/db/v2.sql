@@ -146,6 +146,20 @@ select pg_temp.check((select array_agg(p.nom order by p.nom) from public.outbox 
 select pg_temp.check(exists (select 1 from public.outbox o where o.user_id = '22000000-0000-0000-0000-000000000003' and o.title = 'Nouvelle action'), 'il reçoit toujours ce qui est confié à son service');
 delete from public.items where t = 'Story du jour';
 
+-- 0025 : le rappel pour soi, ouvert à tous, privé, plusieurs par fiche
+select pg_temp.as_user('22000000-0000-0000-0000-000000000002');
+insert into public.reqs (item, dest, type, quoi, pour) values ('22100000-0000-0000-0000-000000000001', 'moi', 'Autre', 'Appeler le programme', current_date + 2);
+insert into public.reqs (item, dest, type, quoi, pour) values ('22100000-0000-0000-0000-000000000001', 'moi', 'Autre', 'Relire le texte', current_date + 3);
+select pg_temp.check((select count(*) from public.reqs where dest = 'moi' and asker = auth.uid()) = 2, 'un service se note deux rappels sur la même fiche');
+update public.reqs set st = 'recue' where dest = 'moi' and quoi = 'Relire le texte';
+select pg_temp.check((select count(*) from public.reqs where dest = 'moi' and st = 'recue') = 1, 'il coche son rappel');
+select pg_temp.as_user('22000000-0000-0000-0000-000000000001');
+select pg_temp.check((select count(*) from public.reqs where dest = 'moi' and asker = '22000000-0000-0000-0000-000000000002') = 0, 'même un pilote ne lit pas le rappel d''un autre');
+select pg_temp.as_user('22000000-0000-0000-0000-000000000004');
+select pg_temp.expect_fail($$insert into public.reqs (item, dest, type, quoi, pour) values ('22100000-0000-0000-0000-000000000001', 'moi', 'Autre', 'x', current_date + 2)$$, 'un visiteur ne se note rien');
+select pg_temp.admin();
+select pg_temp.check(not exists (select 1 from public.outbox where body like '%Appeler le programme%' or title like '%Appeler le programme%'), 'un rappel ne prévient personne');
+
 -- ménage
 delete from public.items where id::text like '22100000%';
 delete from public.contacts; delete from public.lieux;

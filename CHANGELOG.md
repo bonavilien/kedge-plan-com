@@ -4,7 +4,7 @@ Généré depuis `site/js/version.js` par `node scripts/version.mjs`. Ne pas mod
 
 ## 2.0.1 · 2026-11-17
 
-- Le mémo pour soi revient, à part des demandes : bouton « Rappel pour moi » sur la fiche. Une phrase et une date, toi seul le vois, tu le coches « C'est fait »
+- Rappel pour moi : l'horloge en haut de la fiche. Une phrase et une date, toi seul le vois, tu le coches quand c'est fait. Ouvert à tous les comptes
 
 ## 2.0 · 2026-11-17
 
