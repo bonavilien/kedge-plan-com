@@ -284,6 +284,9 @@
     relance(id) { const r = db.reqs.find((x) => x.id === id); if (!r) return; const nom = (person(r.a) || service(r.a) || { nom: "" }).nom, ok = () => KP.toast && KP.toast(`Relance envoyée à ${nom}`);
       if (remote && remote.relance) return remote.relance(id).then((sent) => sent && ok());
       log(r.item, `a relancé ${nom}`); emit(); ok(); },
+    prevenir(id, svc) { const nom = (service(svc) || { nom: "" }).nom, ok = () => KP.toast && KP.toast(`${nom} : prévenu`);
+      if (remote && remote.prevenir) return remote.prevenir(id, svc).then((sent) => sent && ok());
+      log(id, `a prévenu ${nom}`); emit(); ok(); },
     dropReq(id) { const r = db.reqs.find((x) => x.id === id); if (!r) return; db.reqs = db.reqs.filter((x) => x !== r); if (r.a !== r.de) log(r.item, "a retiré une demande"); emit(); },
     answer(id, rep) { const r = db.reqs.find((x) => x.id === id); if (!r) return () => {}; r.fait = true; r.rep = rep || ""; if (r.a !== r.de) log(r.item, "a répondu à une demande"); emit(); if (remote) return null; return () => { r.fait = false; r.rep = ""; emit(); }; },
     /* l'heure compte : ce qui a été créé ou annulé le matin de la réunion ne revient pas à l'ordre du jour */

@@ -179,3 +179,43 @@ grant execute on function public.relancer(uuid) to authenticated;
 -- 8. Un prénom et une fonction de taille raisonnable (les comptes existants ne sont pas vérifiés)
 alter table public.profiles add constraint profiles_nom_court check (char_length(coalesce(nom, '')) <= 60) not valid;
 alter table public.profiles add constraint profiles_fonction_courte check (char_length(coalesce(fonction, '')) <= 120) not valid;
+
+-- 9. Qui est prévenu à la création (décision de Julien, 17 novembre) :
+--    un temps fort, un sujet ou un classement prévient tous les services et les pilotes ;
+--    une action ne prévient que son service (et qui a coché « à chaque nouvelle fiche ») : elle se lit sous son temps fort.
+create or replace function public.on_item_added() returns trigger
+language plpgsql security definer set search_path = public as $$
+declare
+  quoi text := case when new.kind = 'classement' then 'Nouveau classement'
+                    when new.kind = 'tf' and cardinality(new.per) > 0 then 'Nouveau sujet'
+                    when new.kind = 'tf' then 'Nouveau temps fort'
+                    when new.partner is not null then 'Nouveau partenariat'
+                    else 'Nouvelle action' end;
+begin
+  perform public.notify(
+    array(select id from public.profiles where id is distinct from new.author and not visiteur and (
+      notif_all
+      or (new.kind in ('tf', 'classement') and (svc is not null or chef))
+      or (new.kind = 'action' and new.partner is null and (svc = new.svc or (new.svc = 'chef' and chef)))
+      or (new.partner is not null and media))),
+    quoi, public.nom_de(new.author) || ' : ' || new.t, '#item=' || new.id);
+  return new;
+end $$;
+
+-- 10. « Prévenir » : sur une action, l'auteur alerte un service précis (une fois par jour et par service)
+create or replace function public.prevenir(p_item uuid, p_svc text) returns void
+language plpgsql security definer set search_path = public as $$
+declare titre text;
+begin
+  if auth.uid() is null or public.is_visiteur() then raise exception 'le compte visiteur ne prévient pas' using errcode = '42501'; end if;
+  titre := (select t from public.items where id = p_item);
+  if titre is null then raise exception 'fiche introuvable' using errcode = '23503'; end if;
+  if not exists (select 1 from public.services where k = p_svc) and p_svc <> 'chef' then raise exception 'service inconnu' using errcode = '23503'; end if;
+  perform public.notify(
+    array(select id from public.req_dests(p_svc) as id where id is distinct from auth.uid()),
+    'Pour info', public.nom_de(auth.uid()) || ' te signale « ' || titre || ' »', '#item=' || p_item,
+    'prevenir:' || p_item || ':' || p_svc || ':' || to_char(now() at time zone 'Europe/Paris', 'YYYY-MM-DD'));
+  insert into public.journal (item, kind, diff) values (p_item, 'prevenu', jsonb_build_object('svc', p_svc));
+end $$;
+revoke execute on function public.prevenir(uuid, text) from public, anon;
+grant execute on function public.prevenir(uuid, text) to authenticated;

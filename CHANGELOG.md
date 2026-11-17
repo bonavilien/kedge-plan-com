@@ -5,6 +5,7 @@ Généré depuis `site/js/version.js` par `node scripts/version.mjs`. Ne pas mod
 ## 2.0.2 · 2026-11-17
 
 - Rappel pour moi : le crayon pour changer le texte ou la date, la corbeille pour l'effacer
+- Notifications : un nouveau temps fort prévient tous les services ; une action seulement le sien, et le mégaphone sur sa fiche prévient un autre service
 - Une action se rattache aussi à un temps fort déjà passé
 - Une demande se retire, se redate et se relance pour de vrai
 - Plus de modification perdue, « Annuler » ne touche que ton geste, « Dupliquer » réparé

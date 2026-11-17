@@ -5,7 +5,7 @@
    (il met à jour version.json, sw.js et CHANGELOG.md, et vérifie que tout concorde). */
 window.KP = window.KP || {};
 window.KP.VERSIONS = [
-  { n: "2.0.2", date: "2026-11-17", notes: ["Rappel pour moi : le crayon pour changer le texte ou la date, la corbeille pour l'effacer", "Une action se rattache aussi à un temps fort déjà passé", "Une demande se retire, se redate et se relance pour de vrai", "Plus de modification perdue, « Annuler » ne touche que ton geste, « Dupliquer » réparé"] },
+  { n: "2.0.2", date: "2026-11-17", notes: ["Rappel pour moi : le crayon pour changer le texte ou la date, la corbeille pour l'effacer", "Notifications : un nouveau temps fort prévient tous les services ; une action seulement le sien, et le mégaphone sur sa fiche prévient un autre service", "Une action se rattache aussi à un temps fort déjà passé", "Une demande se retire, se redate et se relance pour de vrai", "Plus de modification perdue, « Annuler » ne touche que ton geste, « Dupliquer » réparé"] },
   { n: "2.0.1", date: "2026-11-17", notes: ["Rappel pour moi : l'horloge en haut de la fiche. Une phrase et une date, toi seul le vois, tu le coches quand c'est fait. Ouvert à tous les comptes"] },
   { n: "2.0.0", date: "2026-11-17", notes: ["La V2 remplace la V1 : nouvel écran d'accueil, le plan en liste ou en grille, la fiche à côté, trois états, l'étiquette Recrutement", "Elle a sa propre base, copie de celle de la V1. La V1 reste archivée avec son ancienne base", "Notifications sur téléphone : à réactiver par chacun dans Réglages, Mon profil"] },
   { n: "2.0.0-beta.14", date: "2026-11-17", notes: ["Un partenariat payant n'a pas de service : le média partenaire prend sa place, dans la fiche, la liste, la grille (sa propre colonne) et la fenêtre Nouveau"] },

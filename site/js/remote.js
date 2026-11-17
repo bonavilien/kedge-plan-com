@@ -96,7 +96,8 @@
     if (j.kind === "document") return "a ajouté un document";
     if (j.kind === "reponse") return "a répondu à une demande";
     if (j.kind === "retrait") return "a retiré une demande";
-    if (j.kind === "prevenu") return "a prévenu d'un changement";
+    if (j.kind === "prevenu") return d.svc ? "a prévenu " + ((KP.service(d.svc) || {}).nom || "un service") : "a prévenu d'un changement";
+    if (j.kind === "relance") return "a relancé une demande";
     if (j.kind === "deadline") return "a changé l'échéance d'une demande";
     if (d.st && d.st[1] === "retire") return "a annulé" + (d.annule_motif && d.annule_motif[1] ? " : " + d.annule_motif[1] : "");
     if (d.st && d.st[0] === "retire") return "a rétabli";
@@ -289,7 +290,7 @@
   async function start() {
     const data = await load();
     shadow = snapshot(data);
-    store._attach({ sync, uuid, pseudo, relance: (id) => run(sb.rpc("relancer", { p_req: id })).then(() => true, (e) => { KP.toast("Relance non envoyée : " + frErr(e)); return false; }) }, data);
+    store._attach({ sync, uuid, pseudo, relance: (id) => run(sb.rpc("relancer", { p_req: id })).then(() => true, (e) => { KP.toast("Relance non envoyée : " + frErr(e)); return false; }), prevenir: (id, svc) => run(sb.rpc("prevenir", { p_item: id, p_svc: svc })).then(() => true, (e) => { KP.toast("Non envoyé : " + frErr(e)); return false; }) }, data);
     /* mêmes droits que la base : un service modifie les fiches de son service, un pilote tout */
     store.canEdit = (it) => { const u = KP.me(); return u.role === "pilote" || (u.role === "service" && !!it && it.variant !== "partenariat" && it.svc === u.svc); };
     const el = document.getElementById("login"); if (el) el.remove();

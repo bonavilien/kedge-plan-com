@@ -47,6 +47,7 @@
         <span class="kind">${tf ? '<i class="tfdot"></i>' : ""}${h(KP.kindName(it))}</span>
         ${reader ? "" : `<button type="button" class="ib${pinned ? " on" : ""}" data-act="f-pin" aria-pressed="${pinned}" data-tip="${pinned ? "Retirer de mon accueil" : "Épingler sur mon accueil"}" aria-label="${pinned ? "Retirer de mon accueil" : "Épingler sur mon accueil"}">${ic("bookmark")}</button>`}
         ${reader || it.annule ? "" : KP.ib("clock", "Rappel pour moi", "memo")}
+        ${reader || it.annule || tf ? "" : KP.ib("megaphone", "Prévenir un service", "prevenir")}
         ${KP.ib("link", "Copier le lien", "f-link")}
         ${can ? KP.ib("kebab", "Plus", "f-more", 'aria-haspopup="menu"') : ""}
         <button type="button" class="ib tip-l" data-act="close-fiche" data-tip="Fermer (Échap)" aria-label="Fermer">${ic("close")}</button>
@@ -67,7 +68,7 @@
             ${ans.map((q) => `<p class="il">${ic("chat")}<span><b>${h(q.quoi)}</b> · ${h(q.rep)} <small class="muted">${h(KP.dest(q.a))}</small></span></p>`).join("")}</section>`; })() : ""}
         ${tf ? `<section class="f-sec"><h3>Relais${rel.length ? " · " + rel.length : ""}${store.canCreate() ? `<button type="button" class="link" data-act="new" data-tf="${it.id}" data-date="${it.variant === "sujet" ? KP.TODAY : it.date}">Ajouter</button>` : ""}</h3>
           ${rel.length ? rel.map((r) => `<button type="button" class="mini" data-act="open" data-id="${r.id}"><span class="d">${h(KP.dateShort(r))}</span><span class="tt">${h(r.t)} <small>· ${h((KP.service(r.svc) || {}).court || "")}</small></span>${KP.pill(r)}</button>`).join("") : `<p class="muted">Aucun service ne s'en est encore saisi.</p>`}</section>` : ""}
-        ${memos.length ? `<div class="memos">${memos.map((r) => `<div class="memo${r.pour < KP.TODAY ? " late" : ""}">${ic("clock")}<span class="tt">${h(r.txt || r.quoi)}</span><small>${h(KP.fmt.court(r.pour))}</small><button type="button" class="ib" data-act="memo-fait" data-id="${r.id}" data-tip="C'est fait" aria-label="C'est fait">${ic("check")}</button></div>`).join("")}</div>` : ""}
+        ${memos.length ? `<div class="memos">${memos.map((r) => `<div class="memo${r.pour < KP.TODAY ? " late" : ""}">${ic("clock")}<span class="tt">${h(r.txt || r.quoi)}</span><small>${h(KP.fmt.court(r.pour))}</small>${KP.ib("edit", "Modifier le rappel", "memo", `data-id="${r.id}"`)}${KP.ib("trash", "Effacer le rappel", "req-drop", `data-id="${r.id}"`)}<button type="button" class="ib" data-act="memo-fait" data-id="${r.id}" data-tip="C'est fait" aria-label="C'est fait">${ic("check")}</button></div>`).join("")}</div>` : ""}
         ${reqs.length ? `<section class="f-sec"><h3>Demandes · ${reqs.length}</h3>${reqs.map(req).join("")}</section>` : ""}
         ${it.docs.length || can || rel.some((r) => r.docs.length) ? `<section class="f-sec"><h3>Documents${can ? `<button type="button" class="link" data-act="add-doc">Ajouter un lien</button>` : ""}</h3>
           ${it.docs.map((d, i) => `<div class="mini" style="grid-template-columns:minmax(0,1fr) auto"><a class="link" href="${h(d.url)}" target="_blank" rel="noopener">${h(d.t)}</a>${can ? `<button type="button" class="ib" data-act="rm-doc" data-i="${i}" data-tip="Retirer" aria-label="Retirer ${h(d.t)}">${ic("close")}</button>` : ""}</div>`).join("") || (rel.some((r) => r.docs.length) ? "" : `<p class="muted">Les liens SharePoint utiles à tous.</p>`)}
@@ -191,6 +192,8 @@
       d.addEventListener("click", (e) => { const pk = e.target.closest("[data-pick]"); if (pk) KP.datepick(pk, s.pour, (v) => { if (v) { s.pour = v; pk.querySelector("span:last-child").textContent = KP.fmt.court(v); } }); });
       d.querySelector("form").addEventListener("submit", () => { const txt = new FormData(d.querySelector("form")).get("txt").trim(); if (!txt) return; if (old) { store.editReq(old.id, { txt, pour: s.pour }); KP.toast("Rappel modifié"); } else { store.ask({ item: it.id, a: KP.me().k, quoi: "Autre", txt, pour: s.pour }); KP.toast("Rappel noté"); } });
     },
+    /* une action ne prévient que son service : « Prévenir » alerte un autre service, au cas par cas */
+    prevenir: (a) => { const it = cur(), u = KP.me(); KP.menu(a, KP.SERVICES.filter((s) => s.k !== it.svc && s.k !== u.svc).map((s) => ({ v: s.k, nom: s.nom })), (v) => store.prevenir(it.id, v), { right: true, title: "Prévenir un service" }); },
     "req-date": (a) => { const r = store.reqs().find((x) => x.id === a.dataset.id); if (r) KP.datepick(a, r.pour, (v) => { if (v && v !== r.pour) { store.editReq(r.id, { pour: v }); KP.toast(`Pour le ${KP.fmt.moyen(v)}`); } }); },
     "req-drop": (a) => { const r = store.reqs().find((x) => x.id === a.dataset.id); if (!r) return; store.dropReq(r.id); KP.toast(r.a === r.de ? "Rappel effacé" : `Demande à ${KP.dest(r.a)} retirée`); },
     relance: (a) => { const r = store.reqs().find((x) => x.id === a.dataset.id); if (r) store.relance(r.id); },

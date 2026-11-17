@@ -67,5 +67,18 @@ select pg_temp.check((select st from public.reqs where id = '22900000-0000-0000-
 -- supprimer le compte qui a annulé : accepté, le motif reste
 delete from auth.users where id = '22000000-0000-0000-0000-000000000001';
 select pg_temp.check((select annule_par is null and st = 'retire' from public.items where id = :TF), 'on supprime un compte qui a annulé une fiche');
+-- création : un temps fort prévient tous les services, une action seulement le sien ; « Prévenir » alerte un service
+select pg_temp.admin(); delete from public.outbox;
+insert into public.items (id, kind, t, date, svc, m) values ('22100000-0000-0000-0000-000000000009', 'tf', 'Salon test', current_date + 40, 'chef', '{1}');
+select pg_temp.as_user(:RP);
+insert into public.items (id, kind, t, date, svc, m) values ('22100000-0000-0000-0000-000000000008', 'action', 'Brève test', current_date + 10, 'rp', '{1}');
+select pg_temp.admin();
+select pg_temp.check(exists (select 1 from public.outbox where user_id = :RS and title = 'Nouveau temps fort'), 'un temps fort prévient les autres services');
+select pg_temp.check(not exists (select 1 from public.outbox where user_id = :RS and title = 'Nouvelle action'), 'une action ne prévient pas les autres services');
+select pg_temp.as_user(:RP);
+select public.prevenir('22100000-0000-0000-0000-000000000008', 'rs');
+select public.prevenir('22100000-0000-0000-0000-000000000008', 'rs');
+select pg_temp.admin();
+select pg_temp.check((select count(*) from public.outbox where user_id = :RS and title = 'Pour info') = 1, '« Prévenir » alerte le service, une fois par jour');
 rollback;
 \echo 'migration 0026 : tout est bon'
