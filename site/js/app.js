@@ -66,8 +66,11 @@
     KP.renderFiche();
     /* sur un grand écran, la fiche s'ouvre à côté du plan au lieu de le recouvrir */
     const fNow = $("fiche").hidden ? "" : $("fiche").dataset.id;
-    /* la grille garde toute la largeur : la fiche passe par-dessus, comme avant */
-    document.documentElement.classList.toggle("fiche-open", !!fNow && !(KP.route.screen === "plan" && KP.route.vue === "grille"));
+    /* partout, la fiche glisse à côté du contenu ; le calendrier seulement s'il garde des colonnes d'au moins 150 px,
+       sinon elle passe par-dessus sans rien décaler (choix de Julien, 17/11) */
+    const calFits = () => { const g = main.querySelector(".grille"); if (!g) return true; const lanes = g.querySelectorAll(".g-h").length - 1;
+      const room = Math.min(1180, window.innerWidth - ($("side").offsetWidth || 0) - 460) - 72; return 128 + lanes * 150 <= room; };
+    document.documentElement.classList.toggle("fiche-open", !!fNow && !(KP.route.screen === "plan" && KP.route.vue === "grille" && !calFits()));
     KP.autosize(document);
     /* la fiche qui s'ouvre prend le focus ; celle qui se ferme le rend à sa ligne */
     if (fNow && fNow !== fWas) $("fiche").focus({ preventScroll: true });
