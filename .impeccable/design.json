@@ -1,0 +1,189 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-11-17T16:43:55.926871Z",
+  "title": "Design System: Plan de com KEDGE",
+  "extensions": {
+    "colorMeta": {
+      "yellow": {
+        "role": "primary",
+        "displayName": "KEDGE yellow",
+        "tonalRamp": [
+          "#3D2F00",
+          "#5E4800",
+          "#806300",
+          "#A88300",
+          "#D4A800",
+          "#FFD452",
+          "#FFE58F",
+          "#FFF3C7"
+        ]
+      },
+      "anthracite": {
+        "role": "secondary",
+        "displayName": "Anthracite",
+        "tonalRamp": [
+          "#141517",
+          "#1E1F22",
+          "#26282B",
+          "#333539",
+          "#4A4C51",
+          "#6A6C71",
+          "#A4A6AB",
+          "#E9E9E5"
+        ]
+      },
+      "ok-bg": {
+        "role": "tertiary",
+        "displayName": "Diffusé green",
+        "tonalRamp": [
+          "#0F2E1C",
+          "#1C5A37",
+          "#2A7A4C",
+          "#3E9A64",
+          "#6DBB8C",
+          "#9ADBB3",
+          "#C3E9D1",
+          "#DCEFE3"
+        ]
+      },
+      "bg": {
+        "role": "neutral",
+        "displayName": "Warm paper"
+      },
+      "sel": {
+        "role": "neutral",
+        "displayName": "Selected row"
+      }
+    },
+    "typographyMeta": {
+      "page-title": {
+        "displayName": "Page title",
+        "purpose": "Screen titles in KRC Serif."
+      },
+      "group-title": {
+        "displayName": "Group title",
+        "purpose": "Week tables and home sections."
+      },
+      "row-title": {
+        "displayName": "Row title",
+        "purpose": "Action titles in tables; temps forts switch to the serif."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Column headers and field labels, sentence case."
+      }
+    },
+    "shadows": [
+      {
+        "name": "lift",
+        "value": "0 1px 2px rgba(20,20,20,.06), 0 3px 10px rgba(20,20,20,.05)",
+        "purpose": "Group tables, home lists, counters."
+      },
+      {
+        "name": "shadow",
+        "value": "0 1px 2px rgba(20,20,20,.06), 0 8px 28px rgba(20,20,20,.12)",
+        "purpose": "Menus, dialogs, fiche."
+      }
+    ],
+    "motion": [],
+    "breakpoints": [
+      {
+        "name": "phone",
+        "value": "767px"
+      },
+      {
+        "name": "medium",
+        "value": "1100px"
+      },
+      {
+        "name": "wide",
+        "value": "1200px"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Main action: Nouveau, Demander des éléments.",
+      "html": "<button class=\"ds-btn-primary\">Nouveau</button>",
+      "css": ".ds-btn-primary{display:inline-flex;align-items:center;height:36px;padding:0 14px;border:0;border-radius:8px;background:#FFD452;color:#26282B;font:600 15px -apple-system,Segoe UI,Roboto,sans-serif;cursor:pointer}.ds-btn-primary:hover{filter:brightness(1.05)}.ds-btn-primary:focus-visible{outline:2px solid #333539;outline-offset:2px}"
+    },
+    {
+      "name": "State cells",
+      "kind": "custom",
+      "refersTo": "state-prevu",
+      "description": "The three states as filled cells.",
+      "html": "<span class=\"ds-st ds-conf\">À confirmer</span> <span class=\"ds-st ds-prevu\">Prévu</span> <span class=\"ds-st ds-diff\"><svg width=\"14\" height=\"14\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.4\"><path d=\"m5 12 5 5 9-10\"/></svg>Diffusé</span>",
+      "css": ".ds-st{display:inline-flex;align-items:center;justify-content:center;gap:4px;height:28px;min-width:112px;padding:0 12px;border-radius:6px;font:650 13px -apple-system,Segoe UI,Roboto,sans-serif;box-sizing:border-box}.ds-conf{background:#EFEFEB;border:1.5px dashed #6A6C71;color:#2B2D31}.ds-prevu{background:#333539;color:#fff}.ds-diff{background:#DCEFE3;color:#1C5A37}.ds-st:hover{box-shadow:0 0 0 2px #DADAD5}"
+    },
+    {
+      "name": "Tags",
+      "kind": "chip",
+      "refersTo": "tag",
+      "description": "Message tags and the temps fort tag.",
+      "html": "<i class=\"ds-tag\">Filières</i> <i class=\"ds-tag ds-tf\">Temps fort</i>",
+      "css": ".ds-tag{font-style:normal;display:inline-flex;align-items:center;height:22px;padding:0 8px;border-radius:11px;background:#E6E6E2;color:#2B2D31;font:550 12px -apple-system,Segoe UI,Roboto,sans-serif}.ds-tf{background:#FFD452;color:#26282B;font-weight:700}"
+    },
+    {
+      "name": "Filter chip",
+      "kind": "chip",
+      "refersTo": "chip-filter",
+      "description": "Toolbar filters.",
+      "html": "<button class=\"ds-chip\">Service ▾</button>",
+      "css": ".ds-chip{height:32px;padding:0 10px;border:1px solid #DADAD5;border-radius:8px;background:transparent;color:#6A6C71;font:500 15px -apple-system,Segoe UI,Roboto,sans-serif}.ds-chip:hover{background:#ECECE8;color:#2B2D31}.ds-chip:focus-visible{outline:2px solid #333539;outline-offset:2px}"
+    },
+    {
+      "name": "Week group",
+      "kind": "card",
+      "refersTo": "group-card",
+      "description": "A week as a white table; the current week has a yellow header.",
+      "html": "<section class=\"ds-wk ds-now\"><div class=\"ds-wk-h\"><b>Cette semaine</b><small>16 – 22 nov.</small><span>3</span></div><div class=\"ds-row\"><span>jeu. 19</span><span>Page web de la journée portes ouvertes</span><span class=\"ds-svc\">Content</span></div><div class=\"ds-row ds-sel\"><span>dim. 22</span><span>Invitation presse locale</span><span class=\"ds-svc\">Relations presse</span></div></section>",
+      "css": ".ds-wk{background:#fff;border-radius:12px;box-shadow:0 1px 2px rgba(20,20,20,.06),0 3px 10px rgba(20,20,20,.05);overflow:hidden;font:15px -apple-system,Segoe UI,Roboto,sans-serif;color:#2B2D31}.ds-wk-h{display:flex;align-items:baseline;gap:10px;padding:14px 16px 12px;color:#6A6C71;font-size:13.5px}.ds-wk-h b{font:700 18px/1.2 'KRC Serif',Georgia,serif;color:#2B2D31}.ds-wk-h span{margin-left:auto;min-width:24px;height:22px;border-radius:11px;background:#E6E6E2;display:inline-grid;place-items:center;font-size:12px;font-weight:700;color:#2B2D31}.ds-now .ds-wk-h{background:#FFD452;color:#26282B}.ds-now .ds-wk-h span{background:#26282B;color:#fff}.ds-row{display:grid;grid-template-columns:96px 1fr 140px;gap:12px;min-height:50px;align-items:center;padding:0 16px;border-top:1px solid #DADAD5}.ds-row:hover{background:#ECECE8}.ds-sel,.ds-sel:hover{background:#FFF3C7;font-weight:650}.ds-svc{font-weight:600;font-size:13.5px}"
+    }
+  ],
+  "narrative": {
+    "northStar": "The team board, in KEDGE colours",
+    "overview": "The plan reads like the work boards the team already knows from Asana, Monday and Trello: every week is a white table with its own header, every row answers date, action, service, message and state, and the state is a filled cell you can read from across the room. Nothing about the layout is invented; the identity comes from KEDGE yellow, anthracite and KRC Serif, used with discipline.\n\nColour carries meaning, not decoration. Yellow marks what matters now (this week, temps forts, the main button, the selected row). Anthracite marks what is planned. Green marks what is done. Everything else stays warm grey and white.",
+    "keyCharacteristics": [
+      "Weeks as white group tables with a serif title, a date range and a count badge.",
+      "State as a filled cell: dashed « À confirmer », anthracite « Prévu », green « Diffusé » with a tick.",
+      "One yellow group: « Cette semaine ».",
+      "Desktop first, with a dark anthracite side menu; the phone folds the same tables into two-line rows.",
+      "Little text: labels are short, tags replace sentences, no legend needed."
+    ],
+    "rules": [
+      {
+        "name": "The Meaning Rule",
+        "body": "Yellow means now or important, anthracite means planned, green means done. No colour is used for decoration alone.",
+        "section": "colors"
+      },
+      {
+        "name": "The Selected Is Not Hover Rule",
+        "body": "Hover is neutral grey; the open row is pale yellow with a heavier title. Never a side stripe.",
+        "section": "colors"
+      },
+      {
+        "name": "The Sentence Case Rule",
+        "body": "Labels, section titles and column headers are written in sentence case, never uppercase with letter spacing.",
+        "section": "typography"
+      }
+    ],
+    "dos": [
+      "Do keep the order date, title, service, message, state on every row.",
+      "Do show state as a filled cell, never as plain text.",
+      "Do keep « Cette semaine » the only yellow group header.",
+      "Do write labels in sentence case and keep them short.",
+      "Do let the phone fold the same table rather than inventing a new layout."
+    ],
+    "donts": [
+      "Don't use coloured side stripes or borders on cards or rows.",
+      "Don't tint whole temps fort blocks yellow, add a top bar, a period frieze or service avatars (rejected 2026-11-17).",
+      "Don't use running-track or sport metaphors.",
+      "Don't show lists of what a service is missing to every service.",
+      "Don't use uppercase letter-spaced eyebrows above titles.",
+      "Don't call the calendar view « Grille »."
+    ]
+  }
+}

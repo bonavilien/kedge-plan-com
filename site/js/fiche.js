@@ -44,7 +44,7 @@
     el.hidden = false; el.dataset.id = it.id;
     el.innerHTML = `
       <div class="f-top">
-        <span class="kind">${tf ? '<i class="tfdot"></i>' : ""}${h(KP.kindName(it))}</span>
+        <span class="kind"><i class="tag${tf ? " tf" : ""}">${h(KP.kindName(it))}</i></span>
         ${reader ? "" : `<button type="button" class="ib f-x${pinned ? " on" : ""}" data-act="f-pin" aria-pressed="${pinned}" data-tip="${pinned ? "Retirer de mon accueil" : "Épingler sur mon accueil"}" aria-label="${pinned ? "Retirer de mon accueil" : "Épingler sur mon accueil"}">${ic("bookmark")}</button>`}
         ${reader || it.annule ? "" : KP.ib("clock", "Rappel pour moi", "memo", 'data-x="1"')}
         ${reader || it.annule || tf ? "" : KP.ib("megaphone", "Prévenir un service", "prevenir", 'data-x="1"')}

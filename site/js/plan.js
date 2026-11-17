@@ -28,13 +28,13 @@
       <div class="bar">
         <div class="seg pers" role="group" aria-label="Période">${KP.PERIODS.map((x) => `<button type="button" data-act="per" data-k="${x.k}" class="${x.k === p.k ? "on" : ""}" aria-pressed="${x.k === p.k}">${h(x.nom)}${x.k === now ? '<i class="now" title="Période en cours"></i>' : ""}</button>`).join("")}</div>
         <span class="sp"></span>
-        ${chip("svc", "Service", r.svc && KP.service(r.svc).nom)}${chip("msg", "Message", r.msg && KP.message(r.msg).nom)}${chip("type", "Type", r.type && TYPES.find((t) => t.v === r.type).nom)}
+        <div class="tools">${chip("svc", "Service", r.svc && KP.service(r.svc).nom)}${chip("msg", "Message", r.msg && KP.message(r.msg).nom)}${chip("type", "Type", r.type && TYPES.find((t) => t.v === r.type).nom)}
         ${filtered ? `<button type="button" class="ib" data-act="clear-filters" data-tip="Retirer les filtres" aria-label="Retirer les filtres">${ic("close")}</button>` : ""}
         <div class="seg icons" role="group" aria-label="Affichage">
           <button type="button" data-act="vue" data-k="liste" class="${r.vue === "liste" ? "on" : ""}" aria-pressed="${r.vue === "liste"}" data-tip="Liste" aria-label="Liste">${ic("list")}</button>
-          <button type="button" data-act="vue" data-k="grille" class="${r.vue === "grille" ? "on" : ""}" aria-pressed="${r.vue === "grille"}" data-tip="Grille" aria-label="Grille">${ic("grid")}</button>
+          <button type="button" data-act="vue" data-k="grille" class="${r.vue === "grille" ? "on" : ""}" aria-pressed="${r.vue === "grille"}" data-tip="Calendrier" aria-label="Calendrier">${ic("grid")}</button>
         </div>
-        <button type="button" class="ib tip-l" data-act="print" data-tip="Imprimer" aria-label="Imprimer">${ic("print")}</button>
+        <button type="button" class="ib tip-l" data-act="print" data-tip="Imprimer" aria-label="Imprimer">${ic("print")}</button></div>
       </div>
       ${sujets.length ? `<div class="sujets"><span>Sur toute la période</span>${sujets.map((s) => `<button type="button" class="sujet" data-act="open" data-id="${s.id}"><i class="tfdot"></i>${h(s.t)}</button>`).join("")}</div>` : ""}
       ${!items.length ? empty(filtered) : r.vue === "grille" ? grille(p, items, r) : liste(p, items)}

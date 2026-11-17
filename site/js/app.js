@@ -71,7 +71,7 @@
     KP.autosize(document);
     /* la fiche qui s'ouvre prend le focus ; celle qui se ferme le rend à sa ligne */
     if (fNow && fNow !== fWas) $("fiche").focus({ preventScroll: true });
-    else if (!fNow && fWas && (inFiche || !act || act === document.body)) { const x = main.querySelector(`.row[data-id="${fWas}"] .open, .g-i[data-id="${fWas}"]`); if (x) x.focus({ preventScroll: true }); }
+    else if (!fNow && fWas && (inFiche || !act || act === document.body)) { const x = main.querySelector(`.row[data-id="${fWas}"] .open, .g-i[data-id="${fWas}"]`); if (x) x.focus({ preventScroll: true, focusVisible: !KP.phone() }); }
     else if (fid && $(fid)) { $(fid).focus({ preventScroll: true }); try { if (sel != null) $(fid).setSelectionRange(sel, sel); } catch (e) {} }
     else if (frow) { const x = main.querySelector(`.row[data-id="${frow}"] .open`); if (x) x.focus({ preventScroll: true }); }
     document.title = ({ accueil: "Accueil", plan: "Le plan", reunion: "Réunion", reglages: "Réglages" })[KP.route.screen] + " · Plan de com KEDGE";
@@ -104,13 +104,13 @@
 
   Object.assign(KP.acts, {
     open: (a) => KP.go({ fiche: a.dataset.id }),
-    "close-fiche": () => { const id = KP.route.fiche; KP.go({ fiche: "" }); const x = $("main").querySelector(`.row[data-id="${id}"] .open, .g-i[data-id="${id}"]`); if (x) x.focus({ preventScroll: true }); },
+    "close-fiche": () => { const id = KP.route.fiche; KP.go({ fiche: "" }); const x = $("main").querySelector(`.row[data-id="${id}"] .open, .g-i[data-id="${id}"]`); if (x) x.focus({ preventScroll: true, focusVisible: !KP.phone() }); },
     new: (a) => KP.nouveau({ date: a.dataset.date, svc: a.dataset.svc, tf: a.dataset.tf, kind: a.dataset.kind }),
     search: () => KP.palette(),
     print: () => window.print(),
     "row-st": (a, e) => {
       e.stopPropagation(); const it = store.get(a.dataset.id);
-      KP.menu(a, KP.STATUTS.map((s) => ({ v: s.k, nom: s.nom })), (v) => KP.setStatus(it.id, v), { selected: [it.st], right: true, title: "État" });
+      KP.menu(a, KP.STATUTS.map((s) => ({ v: s.k, nom: s.nom, pill: s.k })), (v) => KP.setStatus(it.id, v), { selected: [it.st], right: true, title: "État" });
     },
     notifs: (a) => {
       const draw = () => { const list = KP.notifs().slice(0, 12);

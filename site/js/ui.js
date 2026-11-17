@@ -53,7 +53,7 @@
   KP.menu = (anchor, items, onPick, opt = {}) => {
     const sel = new Set(opt.selected || []);
     const draw = () => (opt.title ? `<h4>${KP.h(opt.title)}</h4>` : "") + items.map((it) => it === "-" ? "<hr>" :
-      `<button type="button" class="pop-i${it.danger ? " danger" : ""}" role="menuitem" data-v="${KP.h(it.v)}">${it.icon ? KP.ic(it.icon) : ""}<span>${KP.h(it.nom)}${it.info ? `<small>${KP.h(it.info)}</small>` : ""}</span>${sel.has(it.v) ? `<span class="r">${KP.ic("check")}</span>` : it.hint ? `<span class="r">${KP.h(it.hint)}</span>` : ""}</button>`).join("");
+      `<button type="button" class="pop-i${it.danger ? " danger" : ""}" role="menuitem" data-v="${KP.h(it.v)}">${it.icon ? KP.ic(it.icon) : ""}<span>${it.pill ? `<span class="pill ${it.pill}">${it.pill === "diffuse" ? KP.ic("check") : ""}${KP.h(it.nom)}</span>` : KP.h(it.nom)}${it.info ? `<small>${KP.h(it.info)}</small>` : ""}</span>${sel.has(it.v) ? `<span class="r">${KP.ic("check")}</span>` : it.hint ? `<span class="r">${KP.h(it.hint)}</span>` : ""}</button>`).join("");
     const p = KP.pop(anchor, draw(), opt);
     p.el.addEventListener("click", (e) => {
       const b = e.target.closest("[data-v]"); if (!b) return;

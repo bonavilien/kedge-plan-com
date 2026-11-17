@@ -115,7 +115,7 @@ a { color: inherit; }
 .rows { background: var(--card); border-radius: var(--r3); overflow: hidden; }
 .row { display: grid; grid-template-columns: 96px minmax(0, 1fr) 132px 190px 124px; align-items: center; gap: 12px; width: 100%; min-height: 44px; padding: 6px 12px; border-top: 1px solid var(--sep); position: relative; }
 .row:first-child { border-top: 0; }
-.row:hover, .row.sel { background: var(--hover); }
+.row:hover { background: var(--hover); }
 .row:focus-visible { outline-offset: -2px; }
 .row .d { color: var(--text2); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .row .d b { color: var(--text); font-weight: 600; }
@@ -567,8 +567,7 @@ textarea::placeholder, input::placeholder { color: var(--text2); opacity: 1; }
 .today-line::before { order: 2; }
 .today-line + .row { border-top-color: transparent; }
 /* plus de liseré de 3 px : l'élément actif du menu et la ligne ouverte tiennent par leur fond et le gras */
-.nav a.on, .row.sel { box-shadow: none; }
-.row.sel { background: var(--fill); }
+.nav a.on { box-shadow: none; }
 .nav a.on svg { color: var(--yellow); }
 /* le titre passe avant « pour <temps fort> » quand la place manque */
 .row .t .open { flex: 0 1 auto; }
@@ -609,7 +608,6 @@ button.pill:hover { box-shadow: 0 0 0 2px var(--sep); filter: brightness(1.04); 
 .row .msg { display: flex; gap: 4px; overflow: hidden; }
 .tag { font-style: normal; display: inline-flex; align-items: center; height: 22px; padding: 0 8px; border-radius: 11px; background: var(--fill); color: var(--text); font-size: 12px; font-weight: 550; white-space: nowrap; }
 .tag.tf { background: var(--yellow); color: var(--anthracite-deep); font-weight: 700; }
-.row.sel { background: var(--hover); }
 .today-line { padding: 0 16px; }
 
 /* accueil, réunion : les mêmes tableaux */
@@ -647,3 +645,48 @@ button.pill:hover { box-shadow: 0 0 0 2px var(--sep); filter: brightness(1.04); 
 /* les titres de section de l'accueil, comme ceux des groupes */
 .block > h2 { font: 700 19px/1.2 var(--serif); color: var(--text); text-transform: none; letter-spacing: 0; }
 .block > h2 .link { font-family: var(--sans); font-weight: 600; }
+
+/* 2.1, relecture : la ligne ouverte a son propre fond, distinct du survol */
+:root { --sel: #FFF3C7; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --sel: #3A3421; } }
+:root[data-theme="dark"] { --sel: #3A3421; }
+.row.sel, .row.sel:hover { background: var(--sel); }
+.row.sel .tt { font-weight: 650; }
+
+/* la semaine en cours : son en-tête passe en jaune */
+.wk.now .wk-h { background: var(--yellow); color: var(--anthracite-deep); padding-bottom: 12px; }
+.wk.now .wk-h b { color: var(--anthracite-deep); }
+.wk.now .wk-h .cnt { background: var(--anthracite-deep); color: #FFFFFF; }
+.wk.now .colh { padding-top: 9px; }
+
+/* la fiche : le type est une étiquette, comme dans la liste */
+.f-top .kind { text-transform: none; letter-spacing: 0; font-weight: 400; }
+.f-top .kind .tag { height: 24px; font-size: 12.5px; }
+
+/* le menu d'état montre les cases elles-mêmes */
+.pop-i .pill { min-width: 112px; pointer-events: none; }
+
+/* barre d'outils : filtres, affichage et impression restent ensemble */
+.bar .tools { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-left: auto; }
+html.fiche-open .bar .sp, .bar .sp { flex: 1 1 0; }
+@media (max-width: 1100px) { .bar .sp { display: none; } .bar .tools { margin-left: 0; } }
+
+/* téléphone : le service sous le titre, la barre défile avec la page */
+@media (max-width: 767px) {
+  .bar { position: static; }
+  .bar .tools { flex: 1 1 100%; gap: 6px; }
+  .bar .tools .seg.icons { margin-left: auto; }
+  .row .t small { display: none; }
+  .row .d { grid-row: 1 / span 2; align-self: center; }
+  .row .t { grid-column: 2; grid-row: 1; }
+  .row .st { grid-column: 3; grid-row: 1 / span 2; align-self: center; }
+  .row .svc { display: block; grid-column: 2; grid-row: 2; font-size: 12.5px; font-weight: 500; color: var(--text2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 1px; }
+  .row .svc .tag { height: 18px; font-size: 11px; padding: 0 6px; }
+  .wk-h { flex-wrap: wrap; }
+}
+.row:hover .tag:not(.tf), .row.sel .tag:not(.tf) { background: var(--card); }
+/* écran moyen : le titre passe avant « pour … » */
+@media (max-width: 1100px) and (min-width: 768px) { .row .t small { display: none; } }
+/* les titres de section en casse normale, comme le type de la fiche */
+.f-sec h3, .pop h4 { text-transform: none; letter-spacing: 0; font-weight: 650; color: var(--text); font-size: 13.5px; }
+html.fiche-open .bar .tools { margin-left: 0; }

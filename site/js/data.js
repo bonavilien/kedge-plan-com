@@ -100,8 +100,8 @@
     const forum = tf("Forum entreprises", d(-24), { fin: d(-23), m: ["filieres"], lieu: "Campus de Bordeaux", st: "diffuse" });
     ac("Carrousel : les recruteurs présents", d(-25), "rs", ["filieres"], "diffuse", { tf: forum });
     ac("Reportage vidéo du forum", d(-20), "video", ["filieres"], "prevu", { tf: forum });
-    ac("Portrait d'un alumni entrepreneur", d(-9), "rs", ["alumni"], "prevu");
-    ac("Tribune du directeur du programme", d(-6), "rp", ["continuum"], "prevu");
+    ac("Portrait d'un alumni entrepreneur", d(-9), "rs", ["alumni"], "diffuse");
+    ac("Tribune du directeur du programme", d(-6), "rp", ["continuum"], "diffuse");
     ac("Interview croisée, double diplôme Berkeley", d(-3), "video", ["international"], "prevu");
     ac("Brève : accord avec l'université de Séoul", d(-12), "rp", ["international"], "diffuse");
 
