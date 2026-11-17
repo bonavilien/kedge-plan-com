@@ -58,7 +58,7 @@
     if (store.prefs().version !== KP.VERSION.n) { store.prefs().version = KP.VERSION.n; store.prefs().versionVue = Date.now(); }
     const t = store.prefs().theme; if (t === "light" || t === "dark") document.documentElement.dataset.theme = t; else delete document.documentElement.dataset.theme;
     const main = $("main"), top = main.scrollTop, act = document.activeElement, fid = act && act.id, sel = act && act.selectionStart;
-    const frow = act && act.classList && act.classList.contains("row") ? act.dataset.id : "";
+    const frow = act && act.classList && act.classList.contains("open") && act.closest(".row") ? act.dataset.id : "";
     const f0 = $("fiche"), fWas = f0.hidden ? "" : f0.dataset.id, inFiche = act && f0.contains(act);
     renderSide();
     main.innerHTML = KP.views[KP.route.screen]();
@@ -71,9 +71,9 @@
     KP.autosize(document);
     /* la fiche qui s'ouvre prend le focus ; celle qui se ferme le rend à sa ligne */
     if (fNow && fNow !== fWas) $("fiche").focus({ preventScroll: true });
-    else if (!fNow && fWas && (inFiche || !act || act === document.body)) { const x = main.querySelector(`.row[data-id="${fWas}"], .g-i[data-id="${fWas}"]`); if (x) x.focus({ preventScroll: true }); }
+    else if (!fNow && fWas && (inFiche || !act || act === document.body)) { const x = main.querySelector(`.row[data-id="${fWas}"] .open, .g-i[data-id="${fWas}"]`); if (x) x.focus({ preventScroll: true }); }
     else if (fid && $(fid)) { $(fid).focus({ preventScroll: true }); try { if (sel != null) $(fid).setSelectionRange(sel, sel); } catch (e) {} }
-    else if (frow) { const x = main.querySelector(`.row[data-id="${frow}"]`); if (x) x.focus({ preventScroll: true }); }
+    else if (frow) { const x = main.querySelector(`.row[data-id="${frow}"] .open`); if (x) x.focus({ preventScroll: true }); }
     document.title = ({ accueil: "Accueil", plan: "Le plan", reunion: "Réunion", reglages: "Réglages" })[KP.route.screen] + " · Plan de com KEDGE";
   }
   try { if (window.self !== window.top) document.documentElement.classList.add("embedded"); } catch (e) { document.documentElement.classList.add("embedded"); }
@@ -94,10 +94,9 @@
     if (typing(t) || e.ctrlKey || e.metaKey || e.altKey) return;
     if (e.key.toLowerCase() === "n" && store.canCreate()) { e.preventDefault(); KP.nouveau(); return; }
     if (e.key === "/") { e.preventDefault(); KP.palette(); return; }
-    if (t.classList && t.classList.contains("row") && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); t.click(); return; }
     if (e.key === "ArrowDown" || e.key === "ArrowUp") {
       if (t.closest && t.closest(".pop, .fiche")) return;
-      const rows = [...$("main").querySelectorAll(".row")]; if (!rows.length) return;
+      const rows = [...$("main").querySelectorAll(".row .open")]; if (!rows.length) return;
       e.preventDefault(); const i = rows.indexOf(t);
       rows[Math.max(0, Math.min(rows.length - 1, i < 0 ? 0 : i + (e.key === "ArrowDown" ? 1 : -1)))].focus();
     }
@@ -105,7 +104,7 @@
 
   Object.assign(KP.acts, {
     open: (a) => KP.go({ fiche: a.dataset.id }),
-    "close-fiche": () => { const id = KP.route.fiche; KP.go({ fiche: "" }); const x = $("main").querySelector(`.row[data-id="${id}"], .g-i[data-id="${id}"]`); if (x) x.focus({ preventScroll: true }); },
+    "close-fiche": () => { const id = KP.route.fiche; KP.go({ fiche: "" }); const x = $("main").querySelector(`.row[data-id="${id}"] .open, .g-i[data-id="${id}"]`); if (x) x.focus({ preventScroll: true }); },
     new: (a) => KP.nouveau({ date: a.dataset.date, svc: a.dataset.svc, tf: a.dataset.tf, kind: a.dataset.kind }),
     search: () => KP.palette(),
     print: () => window.print(),
