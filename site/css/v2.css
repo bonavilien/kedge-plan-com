@@ -331,7 +331,7 @@ dialog.cmdk { margin-top: 12vh; width: min(600px, calc(100vw - 32px)); overflow:
 .pill.annule { color: var(--red); border: 1px solid currentColor; }
 .ct { display: flex; align-items: center; gap: 8px; padding: 6px 0; }
 .ct > span { flex: 1; min-width: 0; }
-.sel { user-select: all; font-size: 13.5px; color: var(--text2); overflow-wrap: anywhere; }
+.copy { user-select: all; font-size: 13.5px; color: var(--text2); overflow-wrap: anywhere; }
 .pop-h { display: flex; align-items: baseline; }
 .pop-h .link { margin-left: auto; text-transform: none; letter-spacing: 0; font-size: 13px; }
 .pop-n { display: flex; align-items: center; gap: 2px; }
@@ -504,3 +504,41 @@ html.offline body::before { content: "Hors connexion : tes modifications partiro
 dialog.dlg { max-height: calc(100dvh - 32px); overflow: auto; }
 .cmdk-x { display: none; }
 @media (max-width: 767px) { .cmdk .q kbd { display: none; } .cmdk-x { display: inline-grid; } .toasts { left: 16px !important; right: 16px; transform: none !important; } }
+
+/* ---------- 2.0.3 : passe design (impeccable audit + critique) ---------- */
+/* focus visible sur le menu anthracite, en clair comme en sombre */
+.side, .topbar { --focus: var(--yellow); }
+.fiche:focus { outline: none; }
+/* gris un cran plus foncés : onglets inactifs, pied du menu, raccourcis (contraste AA) */
+:root:not([data-theme="dark"]) { --text2: #5C5E63; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --text2: #A4A6AB; } }
+:root[data-theme="dark"] { --text2: #A4A6AB; }
+.new kbd { opacity: .8; }
+.side-foot kbd, .side-foot .ver, .who small { opacity: 1; }
+.cmdk .q kbd { color: var(--text2); }
+/* une ligne diffusée de la grille reste lisible : plus d'opacité, le texte passe en gris */
+.g-i.diffuse { opacity: 1; color: var(--text2); }
+.g-i.diffuse b { color: var(--text2); }
+/* « Supprimer » lisible en sombre */
+.btn.danger-bg { color: var(--card); }
+/* la ligne ouverte garde son texte : un fond, pas de grisé */
+.row.sel .tt { color: var(--text); }
+/* service et message : deux niveaux différents */
+.row .svc { color: var(--text); font-size: 13.5px; }
+.row .msg { color: var(--text2); font-size: 12.5px; }
+textarea::placeholder, input::placeholder { color: var(--text2); opacity: 1; }
+/* la recherche sur téléphone redevient plein écran */
+@media (max-width: 767px) { dialog.dlg.cmdk { max-height: 100dvh; height: 100dvh; } }
+/* fiche à côté du plan, à partir de 1200 px : le plan se resserre, la colonne message se masque */
+@media (min-width: 1200px) {
+  html.fiche-open .shell { padding-right: var(--fiche); }
+  html.fiche-open .fiche { box-shadow: none; animation: none; }
+  html.fiche-open .wk .row { grid-template-columns: 96px minmax(0, 1fr) 120px 124px; }
+  html.fiche-open .ag .row { grid-template-columns: 96px minmax(0, 1fr) 120px 124px 34px; }
+  html.fiche-open .wk .row .msg, html.fiche-open .ag .row .msg { display: none; }
+}
+/* téléphone : les titres sur deux lignes, les boutons du bas des fenêtres toujours visibles */
+@media (max-width: 767px) {
+  .row .t span.tt { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+  .dlg .foot { position: sticky; bottom: 0; background: var(--card); padding-bottom: calc(8px + env(safe-area-inset-bottom)); margin-bottom: -20px; z-index: 2; }
+}

@@ -74,7 +74,7 @@
   function contacts() {
     return `<section class="set"><h2>Contacts<button type="button" class="btn quiet small" data-act="set-add" data-k="contacts">${ic("plus")}Nouveau contact</button></h2>
       <p class="muted" style="margin-top:-6px">Le carnet commun. Un contact s'ajoute à une fiche depuis sa section Contacts.</p>
-      <div class="tbl t-ct">${store.contacts().map((c) => `<div class="tr"><span><b>${h(c.nom)}</b><br><small class="muted">${h(c.role)}</small></span><span class="sel">${h(c.mail)}${c.mail && c.tel ? "<br>" : ""}${h(c.tel)}</span><span>${KP.ib("edit", "Modifier", "set-edit-ct", `data-id="${c.id}"`)}${KP.ib("trash", "Retirer", "set-rm", `data-k="contacts" data-id="${c.id}"`)}</span></div>`).join("") || `<p class="muted">Aucun contact pour l'instant.</p>`}</div></section>`;
+      <div class="tbl t-ct">${store.contacts().map((c) => `<div class="tr"><span><b>${h(c.nom)}</b><br><small class="muted">${h(c.role)}</small></span><span class="copy">${h(c.mail)}${c.mail && c.tel ? "<br>" : ""}${h(c.tel)}</span><span>${KP.ib("edit", "Modifier", "set-edit-ct", `data-id="${c.id}"`)}${KP.ib("trash", "Retirer", "set-rm", `data-k="contacts" data-id="${c.id}"`)}</span></div>`).join("") || `<p class="muted">Aucun contact pour l'instant.</p>`}</div></section>`;
   }
 
   document.addEventListener("change", (e) => {

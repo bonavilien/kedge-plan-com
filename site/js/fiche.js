@@ -17,7 +17,7 @@
     const flag = (x) => x.annule ? `<p class="flag late">${ic("close")}<span><b>Annulé</b>${x.annule.txt ? " · " + h(x.annule.txt) : ""} <small class="muted">${h(KP.nomDe(x.annule.qui))}, ${h(KP.fmt.quand(x.annule.quand))}</small></span></p>`
       : x.report ? `<p class="flag">${ic("shift")}<span><b>Reporté</b>, c'était ${h(x.report.de)}${x.report.txt ? " · " + h(x.report.txt) : ""} <small class="muted">${h(KP.nomDe(x.report.qui))}, ${h(KP.fmt.quand(x.report.quand))}</small></span></p>` : "";
     const cts = (x) => (x.contacts || []).map((id) => store.contact(id)).filter(Boolean);
-    const ct = (c, rm) => `<div class="ct"><span><b>${h(c.nom)}</b>${c.role ? ` <small class="muted">${h(c.role)}</small>` : ""}<br><span class="sel">${h([c.mail, c.tel].filter(Boolean).join(" · "))}</span></span>${rm ? `<button type="button" class="ib" data-act="rm-ct" data-id="${c.id}" data-tip="Retirer" aria-label="Retirer ${h(c.nom)}">${ic("close")}</button>` : ""}</div>`;
+    const ct = (c, rm) => `<div class="ct"><span><b>${h(c.nom)}</b>${c.role ? ` <small class="muted">${h(c.role)}</small>` : ""}<br><span class="copy">${h([c.mail, c.tel].filter(Boolean).join(" · "))}</span></span>${rm ? `<button type="button" class="ib" data-act="rm-ct" data-id="${c.id}" data-tip="Retirer" aria-label="Retirer ${h(c.nom)}">${ic("close")}</button>` : ""}</div>`;
     const rel = store.relais(it.id), all = store.reqsOf(it.id), reqs = all.filter((r) => r.de !== r.a), memos = all.filter((r) => r.de === r.a && r.de === KP.me().k && !r.fait), acts = store.journalOf(it.id);
     const rows = [];
     if (it.variant === "sujet") rows.push(["Période", `<span class="val">${h(KP.PERIODS.find((p) => p.k === it.per).nom)}, ${h(KP.PERIODS.find((p) => p.k === it.per).lib)}</span>`]);

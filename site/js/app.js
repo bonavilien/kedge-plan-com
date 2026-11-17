@@ -59,12 +59,20 @@
     const t = store.prefs().theme; if (t === "light" || t === "dark") document.documentElement.dataset.theme = t; else delete document.documentElement.dataset.theme;
     const main = $("main"), top = main.scrollTop, act = document.activeElement, fid = act && act.id, sel = act && act.selectionStart;
     const frow = act && act.classList && act.classList.contains("row") ? act.dataset.id : "";
+    const f0 = $("fiche"), fWas = f0.hidden ? "" : f0.dataset.id, inFiche = act && f0.contains(act);
     renderSide();
     main.innerHTML = KP.views[KP.route.screen]();
     main.scrollTop = top;
     KP.renderFiche();
+    /* sur un grand écran, la fiche s'ouvre à côté du plan au lieu de le recouvrir */
+    const fNow = $("fiche").hidden ? "" : $("fiche").dataset.id;
+    /* la grille garde toute la largeur : la fiche passe par-dessus, comme avant */
+    document.documentElement.classList.toggle("fiche-open", !!fNow && !(KP.route.screen === "plan" && KP.route.vue === "grille"));
     KP.autosize(document);
-    if (fid && $(fid)) { $(fid).focus({ preventScroll: true }); try { if (sel != null) $(fid).setSelectionRange(sel, sel); } catch (e) {} }
+    /* la fiche qui s'ouvre prend le focus ; celle qui se ferme le rend à sa ligne */
+    if (fNow && fNow !== fWas) $("fiche").focus({ preventScroll: true });
+    else if (!fNow && fWas && (inFiche || !act || act === document.body)) { const x = main.querySelector(`.row[data-id="${fWas}"], .g-i[data-id="${fWas}"]`); if (x) x.focus({ preventScroll: true }); }
+    else if (fid && $(fid)) { $(fid).focus({ preventScroll: true }); try { if (sel != null) $(fid).setSelectionRange(sel, sel); } catch (e) {} }
     else if (frow) { const x = main.querySelector(`.row[data-id="${frow}"]`); if (x) x.focus({ preventScroll: true }); }
     document.title = ({ accueil: "Accueil", plan: "Le plan", reunion: "Réunion", reglages: "Réglages" })[KP.route.screen] + " · Plan de com KEDGE";
   }
