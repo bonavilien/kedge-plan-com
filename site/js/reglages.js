@@ -16,21 +16,21 @@
   };
 
   function profil() {
-    const u = KP.me(), admin = u.role === "pilote", th = store.prefs().theme || "auto", on = store.prefs().notif || {};
+    const u = KP.me(), admin = u.role === "pilote", ro = u.role === "lecteur" ? "readonly" : "", th = store.prefs().theme || "auto", on = store.prefs().notif || {};
     const chk = (k, t) => `<button type="button" class="check" data-act="set-notif" data-k="${k}" aria-pressed="${on[k] !== false}"><span class="box">${ic("check")}</span>${t}</button>`;
     return `<section class="set"><h2>Mes infos</h2>
-        <div class="two">${field("Prénom", `<input class="input" id="me-nom" data-set="me:nom" value="${h(u.nom)}" autocomplete="off">`)}${field("Fonction", `<input class="input" id="me-fonction" data-set="me:fonction" value="${h(u.fonction)}" autocomplete="off">`)}</div>
+        <div class="two">${field("Prénom", `<input class="input" id="me-nom" data-set="me:nom" value="${h(u.nom)}" maxlength="40" autocomplete="off" ${ro}>`)}${field("Fonction", `<input class="input" id="me-fonction" data-set="me:fonction" value="${h(u.fonction)}" maxlength="80" autocomplete="off" ${ro}>`)}</div>
         <div class="two">${field("Service", admin ? svcSel("me-svc", u.svc, 'data-set="me:svc"') : `<span class="ro">${h((KP.service(u.svc) || { nom: "Aucun" }).nom)}</span>`)}${field("Droits", `<span class="ro">${ROLES.find((r) => r[0] === u.role)[1]} <small class="muted">${ROLES.find((r) => r[0] === u.role)[2]}</small></span>`)}</div>
         ${admin ? "" : `<p class="muted">Ton service et tes droits sont réglés par Julien ou Estelle.</p>`}
       </section>
       <section class="set"><h2>Apparence</h2>
         <div class="seg" role="group" aria-label="Apparence">${[["auto", "Comme l'appareil"], ["light", "Clair"], ["dark", "Sombre"]].map(([k, n]) => `<button type="button" data-act="set-theme" data-k="${k}" class="${th === k ? "on" : ""}" aria-pressed="${th === k}">${n}</button>`).join("")}</div>
       </section>
-      <section class="set"><h2>Me prévenir</h2>
-        <div class="checks">${chk("demandes", "Quand on me demande des éléments, ou qu'on me répond")}${chk("changements", "Quand un temps fort que je relaie change, est reporté ou annulé")}${chk("creations", u.role === "pilote" ? "À chaque nouvelle action ou nouveau temps fort" : "Quand un temps fort est créé")}</div>
+      ${ro ? "" : `<section class="set"><h2>Me prévenir</h2>
+        <div class="checks">${chk("demandes", "Quand on me demande des éléments, ou qu'on me répond")}${chk("changements", "Quand un temps fort que je relaie change, est reporté ou annulé")}${chk("creations", "À chaque nouvelle action ou nouveau temps fort")}</div>
         ${store.remote() && KP.remote.push.can() ? `<p class="muted push-row">${KP.remote.push.blocked() ? "Les notifications sont bloquées pour ce site dans les réglages du navigateur." : KP.remote.push.on ? "Cet appareil reçoit les notifications." : "Cet appareil ne reçoit pas encore les notifications."}
           ${KP.remote.push.blocked() ? "" : `<button type="button" class="btn quiet small" data-act="push-toggle">${KP.remote.push.on ? "Ne plus recevoir ici" : "Recevoir sur cet appareil"}</button>`}</p>` : ""}
-      </section>`;
+      </section>`}`;
   }
 
   function apropos() {

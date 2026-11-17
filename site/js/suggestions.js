@@ -49,19 +49,19 @@
 
     // 4. une demande que j'ai envoyée attend
     store.reqs().filter((r) => r.de === u.k && r.a !== u.k && !r.fait && r.pour < T && store.get(r.item)).forEach((r) => push({ key: "req:" + r.id, type: "relance", icon: "chat", text: `${KP.dest(r.a)} n'a pas encore répondu pour « ${store.get(r.item).t} ».`, why: `Tu attendais ${KP.ASK[r.quoi] || "des éléments"} pour ${KP.fmt.relatif(r.pour)}.`,
-      actions: [{ nom: "Relancer", run: () => { store.update(r.item, {}, `a relancé ${KP.dest(r.a)}`); KP.skipSuggestion({ key: "req:" + r.id, type: "_" }); KP.toast(`${KP.dest(r.a)} est relancé`); } }, { nom: "Ouvrir", run: open(r.item) }], skip: "Plus tard" }));
+      actions: [{ nom: "Relancer", run: () => { store.relance(r.id); KP.skipSuggestion({ key: "req:" + r.id, type: "_" }); } }, { nom: "Ouvrir", run: open(r.item) }], skip: "Plus tard" }));
 
     if (pilote) {
       const p = KP.periodOf(T), inP = items.filter((it) => it.kind === "action" && it.date >= p.du && it.date <= p.au);
       // 5. un message sans aucune action sur la période
-      KP.CLES.filter((m) => !inP.some((it) => it.m.includes(m.k))).slice(0, 1).forEach((m) => push({ key: `msg:${p.k}:${m.k}`, type: "message", icon: "megaphone", text: `Le message « ${m.nom} » n'a aucune action sur ${p.nom}.`, why: "Les quatre autres en ont au moins une.",
+      KP.CLES.filter((m) => !inP.some((it) => it.m.includes(m.k))).slice(0, 1).forEach((m) => push({ key: `msg:${p.k}:${m.k}`, type: "message", icon: "megaphone", text: `Le message « ${m.nom} » n'a aucune action sur ${p.nom}.`, why: (() => { const n = KP.CLES.filter((x) => x.k !== m.k && inP.some((it) => it.m.includes(x.k))).length; return n === KP.CLES.length - 1 ? "Les quatre autres en ont au moins une." : n ? `${n} autre${n > 1 ? "s" : ""} en ${n > 1 ? "ont" : "a"} au moins une.` : "Aucun message n'en a encore."; })(),
         actions: [{ nom: "Ajouter une action", run: () => KP.nouveau() }, { nom: "Voir le bilan", run: () => KP.go({ screen: "reunion", tab: "bilan", fiche: "" }) }], skip: "Pas cette fois" }));
       // 6. un temps fort passé garde un relais non diffusé
       items.filter((it) => it.kind === "tf" && KP.endOf(it) < T && KP.diff(T, it.date) <= 45 && store.relais(it.id).some((r) => r.st !== "diffuse")).slice(0, 1).forEach((it) => { const n = store.relais(it.id).filter((r) => r.st !== "diffuse").length;
         if (passed.length < 3) push({ key: "tfp:" + it.id, type: "tfpasse", icon: "flag", text: `${it.t} est passé, ${n} relais ${n > 1 ? "restent" : "reste"} à diffuser.`, why: `C'était ${KP.fmt.relatif(it.date)}.`, actions: [{ nom: "Voir", run: open(it.id) }], skip: "Plus tard" }); });
       // 7. la période se termine, la suivante est vide
       const i = KP.PERIODS.indexOf(p), nx = KP.PERIODS[i + 1], left = KP.diff(p.au, T);
-      if (nx && left <= 30 && items.filter((it) => it.date >= nx.du && it.date <= nx.au).length < 3) push({ key: "per:" + nx.k, type: "periode", icon: "calendar", text: `${p.nom} se termine dans ${left} jours et ${nx.nom} est presque vide.`, why: "Moins de trois lignes y sont prévues.", actions: [{ nom: `Ouvrir ${nx.nom}`, run: () => KP.go({ screen: "plan", per: nx.k, fiche: "" }) }], skip: "Plus tard" });
+      if (nx && left <= 30 && items.filter((it) => it.date >= nx.du && it.date <= nx.au).length < 3) push({ key: "per:" + nx.k, type: "periode", icon: "calendar", text: `${p.nom} se termine ${left <= 0 ? "aujourd'hui" : left === 1 ? "demain" : `dans ${left} jours`} et ${nx.nom} est presque vide.`, why: "Moins de trois lignes y sont prévues.", actions: [{ nom: `Ouvrir ${nx.nom}`, run: () => KP.go({ screen: "plan", per: nx.k, fiche: "" }) }], skip: "Plus tard" });
     }
 
     const x = sg();

@@ -7,8 +7,9 @@
   KP.views.accueil = () => {
     const u = KP.me(), T = KP.TODAY, pilote = u.role === "pilote", reader = u.role === "lecteur";
     const inbox = KP.inbox(), todo = KP.ui.allTodo ? inbox : inbox.slice(0, 3);
-    const end = KP.addDays(T, 7);
-    const week = store.items().filter((it) => !it.annule && it.variant !== "sujet" && !it.flou && it.date >= T && it.date <= end && (pilote || reader || it.kind === "tf" || it.svc === u.svc)).sort((a, b) => a.date.localeCompare(b.date));
+    const end = KP.addDays(T, 6);
+    /* un temps fort de plusieurs jours déjà commencé compte aussi : il est en cours */
+    const week = store.items().filter((it) => !it.annule && it.variant !== "sujet" && !it.flou && (it.fin || it.date) >= T && it.date <= end && (pilote || reader || it.kind === "tf" || it.svc === u.svc)).sort((a, b) => a.date.localeCompare(b.date));
     const mineWk = week.filter((it) => it.kind === "action").length;
     const sugg = KP.suggestions(); shown = sugg.slice(0, 3);
     const pins = (store.prefs().pins || []).map((id) => store.get(id)).filter(Boolean);

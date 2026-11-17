@@ -80,7 +80,8 @@
     const box = document.getElementById("toasts"); box.innerHTML = "";
     const t = document.createElement("div"); t.className = "toast"; t.innerHTML = `<span>${KP.h(text)}</span>` + (undo ? `<button type="button">Annuler</button>` : "");
     box.append(t);
-    const kill = setTimeout(() => t.remove(), undo ? 5000 : 2600);
+    /* le message « nouvelle version » revient après chaque message bref, tant qu'on n'a pas mis à jour */
+    const kill = setTimeout(() => { t.remove(); if (KP.maj) KP.maj(); }, undo ? 5000 : 2600);
     if (undo) t.querySelector("button").addEventListener("click", () => { clearTimeout(kill); t.remove(); undo(); KP.toast("Annulé"); });
   };
 

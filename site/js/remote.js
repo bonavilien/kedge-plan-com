@@ -30,7 +30,7 @@
   const int = (s) => { const m = /\d+/.exec(String(s == null ? "" : s)); return m ? Math.min(999, Math.max(1, +m[0])) : null; };
   const ms = (ts) => (ts ? new Date(ts).getTime() : 0);
 
-  let user = null, shadow = null, partnerK = {}, perN = [], blocks = {}, queue = Promise.resolve(), pending = 0, reloading = false;
+  let user = null, shadow = null, partnerK = {}, perN = [], blocks = {}, queue = Promise.resolve(), pending = 0, reloading = false, dirty = false, gen = 0;
   const pseudo = { chef: { k: "chef", nom: "les chefs de projet", court: "Chefs de projet" }, offre: { k: "offre", nom: "la Resp. offre", court: "Resp. offre" },
     marketing: { k: "marketing", nom: "la Dir. marketing et recrutement", court: "Dir. marketing" }, programme: { k: "programme", nom: "la Direction du Programme", court: "Dir. Programme" } };
 
@@ -39,9 +39,11 @@
     const all = (t, order) => run(sb.from(t).select("*").order(order));
     const [per, svc, prt, prof, items, links, reqs, blk, ans, meta, journal, lieux, contacts, ic] = await Promise.all([
       all("periods", "du"), all("services", "ordre"), all("partners", "nom"), all("profiles", "nom"), all("items", "date"), all("links", "at"), all("reqs", "at"), all("blocks", "at"),
-      run(sb.from("answers").select("key,val").eq("user_id", user.id)), all("meta", "k"), soft(sb.from("journal").select("*").order("id"), []),
+      run(sb.from("answers").select("key,val").eq("user_id", user.id)), all("meta", "k"), soft(sb.from("journal").select("*").order("id", { ascending: false }).limit(3000), []),
       soft(sb.from("lieux").select("*").order("nom"), []), soft(sb.from("contacts").select("*").order("nom"), []), soft(sb.from("item_contacts").select("*"), []),
     ]);
+    /* sans session valable, la base renvoie des listes vides sans erreur : on ne remplace pas le plan par du vide */
+    if (!prof.some((p) => p.id === user.id)) { const e = new Error("session expirée"); e.session = true; throw e; }
     perN = per.map((p) => p.n);
     const perK = (n) => { const i = perN.indexOf(n); return i >= 0 && KP.PERIODS[i] ? KP.PERIODS[i].k : ""; };
     partnerK = Object.fromEntries(prt.map((p) => [p.nom, p.k]));
@@ -82,7 +84,7 @@
       reqs: reqs.filter((r) => r.st !== "annulee").map((r) => ({ id: r.id, item: r.item, de: r.asker || "", a: r.dest === "moi" || r.dest === "programme" ? r.asker || "" : r.dest,
         quoi: KP.ELEMENTS.includes(r.type) ? r.type : "Autre", txt: r.quoi || (KP.ELEMENTS.includes(r.type) ? "" : r.type), pour: r.pour, fait: r.st === "recue", rep: r.reponse || "", quand: ms(r.at) })),
       journal: journal.map((j) => ({ id: "j" + j.id, item: j.item, qui: j.author || "", quand: ms(j.at), txt: jtxt(j) })),
-      lastMeeting: (m.last_meeting || KP.TODAY).slice(0, 10),
+      lastMeeting: m.last_meeting || KP.TODAY,
     };
     return data;
   }
@@ -153,13 +155,14 @@
     const ops = [], byId = (l) => Object.fromEntries(l.map((x) => [x.id, x]));
     /* carnets d'abord : une fiche peut citer un contact ou un média créé à l'instant */
     db.partners.filter((n) => !shadow.partners.includes(n)).forEach((n) => ops.push(() => partnerFor(n)));
-    db.lieux.filter((n) => !shadow.lieux.includes(n)).forEach((n) => ops.push(() => run(sb.from("lieux").insert({ nom: n }))));
+    /* le carnet des lieux est tenu par les pilotes : pour un service, le lieu va sur la fiche sans entrer au carnet */
+    db.lieux.filter((n) => !shadow.lieux.includes(n)).forEach((n) => ops.push(() => run(sb.from("lieux").insert({ nom: n })).catch(() => {})));
     shadow.lieux.filter((n) => !db.lieux.includes(n)).forEach((n) => ops.push(() => run(sb.from("lieux").delete().eq("nom", n))));
     const c0 = byId(shadow.contacts), c1 = byId(db.contacts);
     db.contacts.forEach((c) => { if (!c0[c.id]) ops.push(() => run(sb.from("contacts").insert({ id: c.id, nom: c.nom, role: c.role || "", mail: c.mail || "", tel: c.tel || "" }))); else if (!same(c, c0[c.id])) ops.push(() => run(sb.from("contacts").update({ nom: c.nom, role: c.role || "", mail: c.mail || "", tel: c.tel || "" }).eq("id", c.id))); });
     shadow.contacts.forEach((c) => { if (!c1[c.id]) ops.push(() => run(sb.from("contacts").delete().eq("id", c.id))); });
     /* fiches : les temps forts avant leurs relais */
-    const i0 = byId(shadow.items), i1 = byId(db.items);
+    const i0 = byId(shadow.items), i1 = byId(db.items), gone = new Set(shadow.items.filter((s) => !i1[s.id]).map((s) => s.id));
     [...db.items].sort((a, b) => (a.tf ? 1 : 0) - (b.tf ? 1 : 0)).forEach((it) => {
       const old = i0[it.id];
       if (!old) return ops.push(async () => {
@@ -169,7 +172,8 @@
         (it.docs || []).forEach((d) => delete d.id); /* une copie reprend les documents : ce sont de nouveaux liens */
         await side(it, null);
       });
-      const keys = FIELDS.filter((k) => !same(it[k], old[k]));
+      /* le temps fort supprimé : la base détache elle-même ses relais, inutile (et parfois interdit) de les modifier */
+      const keys = FIELDS.filter((k) => !same(it[k], old[k]) && !(k === "tf" && !it.tf && gone.has(old.tf)));
       const sides = !same(it.docs, old.docs) || !same(it.contacts, old.contacts) || !!it.reunion !== !!old.reunion;
       if (keys.length) ops.push(async () => { await partnerFor(it.variant === "partenariat" ? it.partner : ""); await changed(sb.from("items").update(cols(it, keys)).eq("id", it.id)); });
       if (sides) ops.push(() => side(it, old));
@@ -181,9 +185,12 @@
     db.reqs.forEach((r) => {
       const old = r0[r.id];
       if (!old) return ops.push(() => run(sb.from("reqs").insert({ id: r.id, item: r.item, dest: r.a === user.id ? "moi" : r.a, type: r.quoi || "Autre", quoi: r.txt || "", pour: r.pour })));
-      if (r.fait && !old.fait) ops.push(() => run(sb.from("reqs").update({ st: "recue", reponse: r.rep || "" }).eq("id", r.id)));
+      if (r.fait && !old.fait) ops.push(() => changed(sb.from("reqs").update({ st: "recue", reponse: r.rep || "" }).eq("id", r.id)));
       else if (!r.fait && old.fait) ops.push(async () => { throw new Error("une demande reçue reste reçue"); });
+      else if (!r.fait && (r.txt !== old.txt || r.pour !== old.pour)) ops.push(() => changed(sb.from("reqs").update({ quoi: r.txt || "", pour: r.pour }).eq("id", r.id)));
     });
+    /* une demande retirée (ou un rappel effacé) : la base la garde, marquée « annulée » ; celles d'une fiche supprimée partent avec elle */
+    shadow.reqs.forEach((r) => { if (!db.reqs.some((x) => x.id === r.id) && !gone.has(r.item) && !r.fait) ops.push(() => changed(sb.from("reqs").update({ st: "annulee" }).eq("id", r.id))); });
     /* équipe, services, médias */
     const p0 = Object.fromEntries(shadow.people.map((p) => [p.k, p]));
     db.people.forEach((p) => { const o = p0[p.k]; if (o && !same(p, o)) ops.push(() => run(sb.from("profiles").update({ nom: p.nom, fonction: p.fonction, ...(p.role !== o.role || p.svc !== o.svc ? { chef: p.role === "pilote", visiteur: p.role === "lecteur", svc: p.svc || null } : {}) }).eq("id", p.k))); });
@@ -201,36 +208,57 @@
     return ops;
   }
 
+  /* pendant un rechargement, une modification n'est jamais jetée : elle part dès que le rechargement finit */
   function sync(db) {
-    if (!shadow || reloading) return;
+    if (!shadow) return;
+    if (reloading) { dirty = true; return; }
     let ops; try { ops = plan(db); } catch (e) { return fail(e); }
-    shadow = snapshot(db);
+    const before = shadow; shadow = snapshot(db);
     if (!ops.length) return;
-    pending++; badge();
-    queue = queue.then(async () => { for (const op of ops) await op(); }).then(() => { pending--; badge(); if (!pending) fixDocs(); }, (e) => { pending = 0; badge(); fail(e); });
+    const g = gen; pending++; badge();
+    queue = queue.then(async () => { for (const op of ops) { if (g !== gen) return; await op(); } })
+      .then(() => { pending = Math.max(0, pending - 1); badge(); if (!pending) fixDocs(); },
+        (e) => { pending = Math.max(0, pending - 1); badge(); if (g !== gen) return; gen++; if (!navigator.onLine || /fetch|network/i.test((e && e.message) || "")) { shadow = before; offline(); } else fail(e); });
   }
   /* la base refuse : on le dit, et on revient à ce qu'elle contient vraiment */
   function fail(e) {
     console.error(e);
-    queue = Promise.resolve();
-    KP.toast("Non enregistré : " + (e && e.message ? e.message : "la base ne répond pas"));
+    KP.toast("Non enregistré : " + frErr(e));
     reload();
   }
+  /* hors connexion : la modification reste à l'écran et repart au retour du réseau */
+  function offline() {
+    document.documentElement.classList.add("offline");
+    KP.toast("Pas de réseau : ta modification partira au retour de la connexion");
+  }
+  window.addEventListener("online", () => { if (!document.documentElement.classList.contains("offline")) return; document.documentElement.classList.remove("offline"); sync(store._db()); });
+  const frErr = (e) => { const m = (e && e.message) || ""; return /row-level security|permission denied/i.test(m) ? "tu n'as pas le droit de faire ce changement" : m || "la base ne répond pas"; };
   const snapshot = (db) => clone({ items: db.items, reqs: db.reqs, people: db.people, services: db.services, partners: db.partners, lieux: db.lieux, contacts: db.contacts, prefs: { [user.id]: db.prefs[user.id] || {} }, lastMeeting: db.lastMeeting });
   /* les documents ajoutés ont reçu leur identifiant de la base : la copie de référence le prend aussi */
   function fixDocs() { const cur = Object.fromEntries(store._db().items.map((i) => [i.id, i])); shadow.items.forEach((s) => { const i = cur[s.id]; if (i && i.docs && s.docs && i.docs.length === s.docs.length) s.docs = clone(i.docs); }); }
   function badge() { document.documentElement.classList.toggle("saving", pending > 0); }
 
   async function reload() {
-    if (reloading) return; reloading = true;
-    try { const data = await load(); shadow = snapshot(data); store._replace(data); }
-    catch (e) { console.error(e); KP.toast("Impossible de relire la base, pas de réseau ?"); }
+    if (reloading) return; reloading = true; dirty = false;
+    try {
+      const data = await load();
+      /* modifié pendant la lecture : on envoie d'abord, on relira ensuite */
+      if (dirty) { reloading = false; dirty = false; sync(store._db()); later(); return; }
+      shadow = snapshot(data); store._replace(data);
+    }
+    catch (e) { console.error(e); if (e.session) { reloading = false; return loginScreen("Ta session a expiré, reconnecte-toi."); } KP.toast("Impossible de relire la base, pas de réseau ?"); }
     reloading = false;
+    if (dirty) { dirty = false; sync(store._db()); }
   }
+  let later = () => {};
   /* temps réel : un changement fait par quelqu'un d'autre recharge, sauf pendant qu'on enregistre */
+  let watching = false;
   function watch() {
+    if (watching) return; watching = true;
     let t = 0;
-    const kick = () => { clearTimeout(t); t = setTimeout(() => (pending ? kick() : reload()), 600); };
+    const kick = () => { clearTimeout(t); t = setTimeout(() => (pending > 0 ? kick() : reload()), 600); };
+    later = kick;
+    try { sb.auth.onAuthStateChange((ev) => { if (ev === "SIGNED_OUT") loginScreen("Ta session a expiré, reconnecte-toi."); }); } catch (e) {}
     try { sb.channel("kplan").on("postgres_changes", { event: "*", schema: "public" }, kick).subscribe(); } catch (e) {}
     document.addEventListener("visibilitychange", () => { if (!document.hidden) kick(); });
   }
@@ -261,7 +289,7 @@
   async function start() {
     const data = await load();
     shadow = snapshot(data);
-    store._attach({ sync, uuid, pseudo }, data);
+    store._attach({ sync, uuid, pseudo, relance: (id) => run(sb.rpc("relancer", { p_req: id })).then(() => true, (e) => { KP.toast("Relance non envoyée : " + frErr(e)); return false; }) }, data);
     /* mêmes droits que la base : un service modifie les fiches de son service, un pilote tout */
     store.canEdit = (it) => { const u = KP.me(); return u.role === "pilote" || (u.role === "service" && !!it && it.variant !== "partenariat" && it.svc === u.svc); };
     const el = document.getElementById("login"); if (el) el.remove();
@@ -291,7 +319,8 @@
   KP.remote = {
     push,
     get email() { return user ? user.email || "" : ""; },
-    signOut: async () => { try { await sb.auth.signOut(); } catch (e) {} location.reload(); },
+    /* l'appareil ne reçoit plus les notifications de ce compte : le suivant sur ce navigateur ne les verra pas */
+    signOut: async () => { try { await push.disable(); } catch (e) {} try { await sb.auth.signOut(); } catch (e) {} location.reload(); },
     reload,
   };
 

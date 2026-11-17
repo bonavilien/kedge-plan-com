@@ -4,7 +4,11 @@
   KP.ui = KP.ui || { past: false, gx: null, gper: "" };
 
   const TYPES = [{ v: "tf", nom: "Temps forts" }, { v: "action", nom: "Actions" }, { v: "classement", nom: "Classements" }, { v: "partenariat", nom: "Partenariats payants" }];
-  const inPeriod = (it, p) => it.variant === "sujet" ? (it.pers ? it.pers.includes(p.k) : it.per === p.k) : it.date <= p.au && (it.flou ? it.date : it.fin || it.date) >= p.du;
+  /* ce qui tombe avant la première période ou après la dernière va dans la période du bord : rien ne disparaît */
+  const inPeriod = (it, p) => it.variant === "sujet" ? (it.pers ? it.pers.includes(p.k) : it.per === p.k)
+    : (it.date <= p.au || p === KP.PERIODS[KP.PERIODS.length - 1]) && ((it.flou ? it.date : it.fin || it.date) >= p.du || p === KP.PERIODS[0]);
+  /* un filtre inconnu dans l'adresse (vieux lien, service supprimé) est ignoré plutôt que de casser l'écran */
+  const clean = (r) => ({ ...r, svc: r.svc && KP.service(r.svc) ? r.svc : "", msg: r.msg && KP.message(r.msg) ? r.msg : "", type: TYPES.some((t) => t.v === r.type) ? r.type : "" });
   const match = (it, r) =>
     (!r.svc || it.kind === "tf" || (it.svc === r.svc && it.variant !== "partenariat")) &&
     (!r.msg || it.m.includes(r.msg)) &&
@@ -15,7 +19,7 @@
   const chip = (k, label, val) => `<button type="button" class="chip${val ? " set" : ""}" data-act="filter" data-k="${k}" aria-haspopup="menu">${h(val || label)}${ic("chevD")}</button>`;
 
   KP.views.plan = () => {
-    const r = KP.route, p = KP.PERIODS.find((x) => x.k === r.per), now = KP.periodOf(KP.TODAY).k;
+    const r = clean(KP.route), p = KP.PERIODS.find((x) => x.k === r.per), now = KP.periodOf(KP.TODAY).k;
     const items = KP.planItems(p, r);
     const sujets = store.items().filter((i) => i.variant === "sujet" && inPeriod(i, p) && (!r.msg || i.m.includes(r.msg)) && (!r.type || r.type === "tf"));
     const filtered = r.svc || r.msg || r.type;
@@ -45,7 +49,8 @@
      pour ce dont on connaît le mois mais pas encore le jour, placé juste avant la première semaine du mois. */
   function blocs(p, items, allWeeks) {
     const T = KP.TODAY, thisWk = KP.monday(T), out = [];
-    const wkOf = (it) => KP.monday(it.date < p.du ? p.du : it.date);
+    /* un temps fort de plusieurs jours commencé la semaine dernière et pas fini : il est de cette semaine */
+    const wkOf = (it) => { const d = it.date < p.du ? p.du : it.date; return !it.flou && it.fin && it.fin >= T && KP.monday(d) < thisWk && thisWk <= p.au ? thisWk : KP.monday(d); };
     const keys = new Set(items.filter((i) => !i.flou).map(wkOf));
     if (allWeeks) for (let k = KP.monday(p.du); k <= p.au; k = KP.addDays(k, 7)) keys.add(k);
     [...keys].sort().forEach((k) => { const a = KP.parse(k), e = KP.addDays(k, 6), b = KP.parse(e);

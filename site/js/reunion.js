@@ -5,10 +5,10 @@
   KP.views.reunion = () => {
     const r = KP.route, pilote = KP.me().role === "pilote";
     return `<div class="page">
-      <div class="head"><h1>Réunion</h1><span class="sub">Dernière réunion ${h(KP.fmt.relatif(store.lastMeeting()))}</span></div>
+      <div class="head"><h1>Réunion</h1><span class="sub">Dernière réunion ${h(KP.fmt.relatif(KP.iso(new Date(lastMs()))))}</span></div>
       <div class="bar">
         <div class="seg" role="group" aria-label="Vue"><button type="button" data-act="tab" data-k="ordre" class="${r.tab === "ordre" ? "on" : ""}" aria-pressed="${r.tab === "ordre"}">Ordre du jour</button><button type="button" data-act="tab" data-k="bilan" class="${r.tab === "bilan" ? "on" : ""}" aria-pressed="${r.tab === "bilan"}">Bilan</button></div>
-        ${r.tab === "bilan" ? `<div class="seg" role="group" aria-label="Période">${KP.PERIODS.map((x) => `<button type="button" data-act="bper" data-k="${x.k}" class="${x.k === r.per ? "on" : ""}" aria-pressed="${x.k === r.per}">${h(x.nom)}</button>`).join("")}</div>` : ""}
+        ${r.tab === "bilan" ? `<div class="seg pers" role="group" aria-label="Période">${KP.PERIODS.map((x) => `<button type="button" data-act="bper" data-k="${x.k}" class="${x.k === r.per ? "on" : ""}" aria-pressed="${x.k === r.per}">${h(x.nom)}</button>`).join("")}</div>` : ""}
         <span class="sp"></span>
         ${r.tab === "ordre" && pilote ? `<button type="button" class="btn quiet small" data-act="close-meeting">${ic("check")}Clore la réunion</button>` : ""}
         <button type="button" class="ib tip-l" data-act="print" data-tip="Imprimer" aria-label="Imprimer">${ic("print")}</button>
@@ -17,14 +17,16 @@
     </div>`;
   };
 
+  /* la dernière réunion : une date (anciennes données) ou un instant précis */
+  const lastMs = () => { const v = store.lastMeeting() || KP.TODAY; return v.length > 10 ? Date.parse(v) : KP.parse(v).getTime(); };
   function ordre() {
-    const T = KP.TODAY, last = KP.parse(store.lastMeeting()).getTime(), all = store.items(), items = all.filter((i) => !i.annule);
+    const T = KP.TODAY, last = lastMs(), all = store.items(), items = all.filter((i) => !i.annule);
     const moved = all.filter((i) => (i.annule && i.annule.quand > last) || (!i.annule && i.report && i.report.quand > last)).sort((a, b) => a.date.localeCompare(b.date));
     const flagged = items.filter((i) => i.reunion).sort((a, b) => a.date.localeCompare(b.date));
     const lateReq = store.reqs().filter((q) => !q.fait && q.de !== q.a && q.pour < T && store.get(q.item));
     const conf = items.filter((i) => i.st === "confirmer" && !i.flou && i.date >= T && KP.diff(i.date, T) <= 15 && !i.reunion).sort((a, b) => a.date.localeCompare(b.date));
-    const fresh = [...new Set(store.journal().filter((j) => j.quand > last && /^a créé/.test(j.txt)).map((j) => j.item))].map((id) => store.get(id)).filter((i) => i && !i.reunion && !conf.includes(i)).sort((a, b) => a.date.localeCompare(b.date));
-    const vu = (it) => KP.me().role === "lecteur" ? "<span></span>" : `<button type="button" class="ib tip-l" data-act="vu" data-id="${it.id}" data-tip="Vu en réunion" aria-label="Vu en réunion">${ic("check")}</button>`;
+    const fresh = [...new Set(store.journal().filter((j) => j.quand > last && /^a créé/.test(j.txt)).map((j) => j.item))].map((id) => store.get(id)).filter((i) => i && !i.annule && !i.reunion && !conf.includes(i)).sort((a, b) => a.date.localeCompare(b.date));
+    const vu = (it) => !store.canEdit(it) ? "<span></span>" : `<button type="button" class="ib tip-l" data-act="vu" data-id="${it.id}" data-tip="Vu en réunion" aria-label="Vu en réunion">${ic("check")}</button>`;
     const sec = (t, sub, html) => html ? `<h2>${t}<small>${sub}</small></h2><div class="rows">${html}</div>` : "";
     const out =
       sec("À voir ensemble", `${flagged.length} point${flagged.length > 1 ? "s" : ""}`, flagged.map((it) => KP.row(it, { end: vu(it) })).join("")) +

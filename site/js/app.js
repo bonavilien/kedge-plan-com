@@ -107,7 +107,7 @@
     },
     notifs: (a) => {
       const draw = () => { const list = KP.notifs().slice(0, 12);
-        return `<h4 class="pop-h">Notifications${list.length ? `<button type="button" class="link soft" data-clear="all">Tout effacer</button>` : ""}</h4>` + (list.length ? list.map((j) => { const it = store.get(j.item); return `<div class="pop-n"><button type="button" class="pop-i" data-id="${j.item}"><span><b>${h(KP.person(j.qui).nom)}</b> ${h(j.txt)}<small>${h(it ? it.t : "")} · ${h(KP.fmt.quand(j.quand))}</small></span></button><button type="button" class="ib" data-clear="${j.id}" aria-label="Effacer cette notification">${ic("close")}</button></div>`; }).join("") : `<p class="txt">Rien de nouveau.</p>`); };
+        return `<h4 class="pop-h">Notifications${list.length ? `<button type="button" class="link soft" data-clear="all">Tout effacer</button>` : ""}</h4>` + (list.length ? list.map((j) => { const it = store.get(j.item); return `<div class="pop-n"><button type="button" class="pop-i" data-id="${j.item}"><span><b>${h(KP.nomDe(j.qui))}</b> ${h(j.txt)}<small>${h(it ? it.t : "")} · ${h(KP.fmt.quand(j.quand))}</small></span></button><button type="button" class="ib" data-clear="${j.id}" aria-label="Effacer cette notification">${ic("close")}</button></div>`; }).join("") : `<p class="txt">Rien de nouveau.</p>`); };
       const p = KP.pop(a, draw(), { side: !!a.closest(".side"), right: true, cls: "pop-notifs" });
       p.el.addEventListener("click", (e) => {
         const x = e.target.closest("[data-clear]");
@@ -148,9 +148,14 @@
     if (!store.canCreate()) return;
     KP.closePop();
     const u = KP.me();
-    const s = { kind: pre.kind === "tf" ? "tf" : "action", variant: "", t: "", date: pre.date || KP.TODAY, flou: false, fin: "", partner: "", svc: pre.svc || u.svc || "rp", m: [], tf: pre.tf || "", per: KP.route.screen === "plan" ? KP.route.per : curPer() };
+    /* un filtre actif sur le plan pré-remplit le service et le message : la nouvelle fiche reste visible */
+    const fl = KP.route.screen === "plan" ? KP.route : {};
+    const s = { kind: pre.kind === "tf" ? "tf" : "action", variant: "", t: "", date: pre.date || KP.TODAY, flou: false, fin: "", partner: "", svc: pre.svc || (fl.svc && KP.service(fl.svc) ? fl.svc : "") || u.svc || (KP.SERVICES[0] || {}).k || "", m: fl.msg && KP.message(fl.msg) ? [fl.msg] : [], tf: pre.tf || "", per: KP.route.screen === "plan" ? KP.route.per : curPer() };
     if (s.tf) { const par = store.get(s.tf); if (par) s.m = [...par.m]; }
-    const tfs = store.items().filter((i) => i.kind === "tf" && i.variant !== "sujet" && KP.endOf(i) >= KP.addDays(KP.TODAY, -14)).sort((a, b) => a.date.localeCompare(b.date));
+    /* tous les temps forts, passés compris : on relaie souvent après l'événement */
+    const tfs = store.items().filter((i) => i.kind === "tf" && (!i.annule || i.id === s.tf)).sort((a, b) => a.date.localeCompare(b.date));
+    const tfAvenir = tfs.filter((x) => KP.endOf(x) >= KP.TODAY), tfPasses = tfs.filter((x) => KP.endOf(x) < KP.TODAY).reverse();
+    const tfOpt = (x) => `<option value="${x.id}" ${x.id === s.tf ? "selected" : ""}>${h(x.t)}, ${h(KP.dateShort(x))}</option>`;
     /* les temps forts proches de la date choisie : on les propose en un clic plutôt que de faire chercher dans une liste */
     const near = () => s.flou ? [] : tfs.filter((x) => !x.flou && KP.diff(x.date, s.date) <= 21 && KP.diff(s.date, KP.endOf(x)) <= 10).sort((a, b) => Math.abs(KP.diff(a.date, s.date)) - Math.abs(KP.diff(b.date, s.date))).slice(0, 2);
     const form = () => `<form method="dialog" novalidate>
@@ -164,13 +169,13 @@
         ${s.kind === "action" && s.variant === "partenariat"
           ? `<label class="field"><span>Média partenaire</span><select class="input" name="partner"><option value="">À choisir</option>${store.partners().map((x) => `<option ${x === s.partner ? "selected" : ""}>${h(x)}</option>`).join("")}</select></label>`
           : s.kind === "action"
-          ? `<label class="field"><span>Service</span><select class="input" name="svc" ${u.role === "service" ? "disabled" : ""}>${KP.SERVICES.map((x) => `<option value="${x.k}" ${x.k === s.svc ? "selected" : ""}>${x.nom}</option>`).join("")}</select></label>`
-          : `<label class="field"><span>Forme</span><select class="input" name="variant"><option value="">Un jour ou quelques jours</option><option value="sujet" ${s.variant === "sujet" ? "selected" : ""}>Sujet sur toute la période</option><option value="classement" ${s.variant === "classement" ? "selected" : ""}>Classement</option></select></label>`}
+          ? `<label class="field"><span>Service</span><select class="input" name="svc" ${u.role === "service" ? "disabled" : ""}>${KP.SERVICES.map((x) => `<option value="${h(x.k)}" ${x.k === s.svc ? "selected" : ""}>${h(x.nom)}</option>`).join("")}</select></label>`
+          : `<label class="field"><span>Forme</span><select class="input" name="variant"><option value="">Un jour ou quelques jours</option><option value="sujet" ${s.variant === "sujet" ? "selected" : ""}>Sujet sur toute la période</option>${u.role === "pilote" ? `<option value="classement" ${s.variant === "classement" ? "selected" : ""}>Classement</option>` : ""}</select></label>`}
       </div>
       ${s.kind === "tf" && s.variant !== "sujet" && !s.flou ? `<div class="field"><span>Jusqu'au, si ça dure plusieurs jours</span><button type="button" class="input" data-pick-fin>${ic("calendar")}${s.fin ? h(KP.fmt.long(s.fin)) : '<span class="muted">Un seul jour</span>'}</button></div>` : ""}
       <div class="field"><span>Messages</span><div class="picks">${KP.MESSAGES.map((m) => `<button type="button" class="pick" data-m="${m.k}"${m.hors ? ' data-hors' : ""} aria-pressed="${s.m.includes(m.k)}" title="${h(m.info)}">${m.nom}</button>`).join("")}</div></div>
       ${s.kind === "action" && !s.tf && near().length ? `<div class="field"><span>C'est pour un temps fort ?</span><div class="picks">${near().map((x) => `<button type="button" class="pick" data-tf="${x.id}"><i class="tfdot"></i> ${h(x.t)} · ${h(KP.dateShort(x))}</button>`).join("")}<button type="button" class="pick" data-tf-other>Un autre</button><button type="button" class="pick" aria-pressed="true" disabled>Non</button></div></div>` : ""}
-      ${s.kind === "action" && (s.tf || s.other || !near().length) ? `<label class="field"><span>Pour un temps fort</span><select class="input" name="tf"><option value="">Aucun</option>${tfs.map((x) => `<option value="${x.id}" ${x.id === s.tf ? "selected" : ""}>${h(x.t)}, ${KP.dateShort(x)}</option>`).join("")}</select></label>` : ""}
+      ${s.kind === "action" && (s.tf || s.other || !near().length) ? `<label class="field"><span>Pour un temps fort</span><select class="input" name="tf"><option value="">Aucun</option>${tfAvenir.length ? `<optgroup label="À venir">${tfAvenir.map(tfOpt).join("")}</optgroup>` : ""}${tfPasses.length ? `<optgroup label="Déjà passés">${tfPasses.map(tfOpt).join("")}</optgroup>` : ""}</select></label>` : ""}
       ${s.kind === "action" && u.role === "pilote" ? `<button type="button" class="check" data-pay aria-pressed="${s.variant === "partenariat"}"><span class="box">${ic("check")}</span>Partenariat média payant</button>` : ""}
       <div class="foot"><span class="hint">Ctrl + Entrée pour créer</span><button type="button" class="btn quiet" data-close>Annuler</button><button class="btn primary" type="submit">Créer</button></div>
     </form>`;
@@ -197,7 +202,7 @@
       const it = store.add(o);
       const per = KP.periodOf(it.date).k;
       KP.go(KP.route.screen === "plan" ? { per: it.variant === "sujet" ? s.per : per, fiche: it.id } : { fiche: it.id });
-      KP.toast(it.kind === "tf" ? "Temps fort créé" : "Action créée", () => { store.remove(it.id); KP.go({ fiche: "" }); });
+      KP.toast(it.kind === "tf" ? "Temps fort créé" : "Action créée", () => { store.unadd(it.id); KP.go({ fiche: "" }); });
     });
   };
 
@@ -216,7 +221,7 @@
       { nom: "Réglages", icon: "gear", go: () => KP.go({ screen: "reglages", set: "profil", fiche: "" }) },
       ...KP.PERIODS.map((p) => ({ nom: `Période ${p.nom}`, icon: "calendar", go: () => KP.go({ screen: "plan", per: p.k, fiche: "" }) })),
     ];
-    const d = KP.dialog(`<div class="q">${ic("search")}<input type="text" placeholder="Chercher une action, un temps fort, un écran…" aria-label="Rechercher" autocomplete="off"><kbd>Échap</kbd></div><div class="res" role="listbox"></div>`, { cls: "cmdk" });
+    const d = KP.dialog(`<div class="q">${ic("search")}<input type="text" placeholder="Chercher une action, un temps fort, un écran…" aria-label="Rechercher" autocomplete="off"><kbd>Échap</kbd><button type="button" class="ib cmdk-x" data-close aria-label="Fermer la recherche">${ic("close")}</button></div><div class="res" role="listbox"></div>`, { cls: "cmdk" });
     const inp = d.querySelector("input"), res = d.querySelector(".res");
     let list = [], cur = 0;
     const draw = () => {
@@ -248,7 +253,7 @@
     try {
       const r = await fetch("version.json?t=" + Date.now(), { cache: "no-store" }); if (!r.ok) throw 0;
       const v = (await r.json()).version;
-      if (v && v !== KP.VERSION.n) { if (latest !== v || manual) { latest = v; const box = $("toasts"); box.innerHTML = `<div class="toast"><span>La version ${h(KP.versionLabel(v))} est en ligne.</span><button type="button" data-act="reload">Mettre à jour</button></div>`; } }
+      if (v && v !== KP.VERSION.n) { if (latest !== v || manual) { latest = v; KP.maj = () => { const box = $("toasts"); if (!box.querySelector(".toast")) box.innerHTML = `<div class="toast"><span>La version ${h(KP.versionLabel(v))} est en ligne.</span><button type="button" data-act="reload">Mettre à jour</button></div>`; }; $("toasts").innerHTML = ""; KP.maj(); } }
       else if (manual) KP.toast("Tu as la dernière version");
     } catch (e) { if (manual) KP.toast("Impossible de vérifier, pas de réseau ?"); }
   };

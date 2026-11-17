@@ -174,6 +174,12 @@
 
   const me = () => db.people.find((p) => p.k === db.moi) || db.people[0];
   const person = (k) => db.people.find((p) => p.k === k);
+  /* un compte supprimé, une ligne écrite sans connexion, une fiche annulée sous la V1 : on ne plante pas pour un nom inconnu */
+  const nomDe = (k) => (person(k) || { nom: "Quelqu'un" }).nom;
+  const byId = (id) => db.items.find((i) => i.id === id);
+  /* ce qu'un geste touche, champ par champ : l'annuler ne remet que ces champs, sur la fiche telle qu'elle est maintenant */
+  const keepOf = (list, keys) => list.map((x) => ({ id: x.id, v: Object.fromEntries(keys.map((k) => [k, x[k] === undefined ? undefined : JSON.parse(JSON.stringify(x[k]))])) }));
+  const putBack = (saved) => saved.forEach((s) => { const x = byId(s.id); if (x) Object.entries(s.v).forEach(([k, v]) => { if (v === undefined) delete x[k]; else x[k] = v; }); });
   const service = (k) => db.services.find((s) => s.k === k) || (remote && remote.pseudo[k]) || undefined;
   const message = (k) => MESSAGES.find((m) => m.k === k);
   const nid = (p) => remote ? remote.uuid() : p + (++db.seq);
@@ -203,22 +209,29 @@
       const it = store.get(id); if (!it) return () => {};
       const before = {}; Object.keys(patch).forEach((k) => (before[k] = it[k]));
       Object.assign(it, patch); if (txt) log(id, txt); emit();
-      return () => { Object.assign(it, before); log(id, "a annulé une modification"); emit(); };
+      return () => { const x = byId(id); if (!x) return; Object.assign(x, before); log(id, "a annulé une modification"); emit(); };
     },
+    /* branché, une suppression est définitive (la base efface aussi ses demandes et son historique) : pas d'« Annuler » */
     remove(id) {
-      const snap = JSON.stringify({ items: db.items, reqs: db.reqs });
+      const it = byId(id); if (!it) return null;
+      const saved = JSON.parse(JSON.stringify(it)), rel = db.items.filter((i) => i.tf === id).map((i) => i.id), reqs = db.reqs.filter((r) => r.item === id);
       db.items = db.items.filter((i) => i.id !== id);
       db.items.forEach((i) => { if (i.tf === id) i.tf = ""; });
       db.reqs = db.reqs.filter((r) => r.item !== id); emit();
-      return () => { Object.assign(db, JSON.parse(snap)); emit(); };
+      if (remote) return null;
+      return () => { if (byId(id)) return; db.items.push(saved); rel.forEach((r) => { const x = byId(r); if (x && !x.tf) x.tf = id; }); db.reqs.push(...reqs); emit(); };
     },
+    /* annuler une création : la fiche n'a encore ni demande ni relais */
+    unadd(id) { db.items = db.items.filter((i) => i.id !== id); emit(); },
     duplicate(id) {
       const it = store.get(id); if (!it) return null;
-      return store.add({ ...JSON.parse(JSON.stringify(it)), id: undefined, t: it.t + " (copie)", st: "confirmer", reunion: false, by: db.moi, annule: undefined, report: undefined });
+      const { id: _id, annule, report, ...copie } = JSON.parse(JSON.stringify(it));
+      copie.docs = (copie.docs || []).map((d) => ({ t: d.t, url: d.url })); /* de nouveaux liens, pas ceux de l'original */
+      return store.add({ ...copie, t: it.t + " (copie)", st: "confirmer", reunion: false, by: db.moi });
     },
     /* annuler garde la ligne dans le plan, barrée, avec son motif : les services rattachés savent pourquoi */
-    cancel(id, txt) { const it = store.get(id); it.annule = { txt: txt || "", qui: db.moi, quand: Date.now() }; it.reunion = false; log(id, "a annulé" + (txt ? ` : ${txt}` : "")); emit(); return () => { delete it.annule; emit(); }; },
-    restore(id) { const it = store.get(id), b = it.annule; delete it.annule; log(id, "a rétabli"); emit(); return () => { it.annule = b; emit(); }; },
+    cancel(id, txt) { const it = store.get(id), r0 = !!it.reunion; it.annule = { txt: txt || "", qui: db.moi, quand: Date.now() }; it.reunion = false; log(id, "a annulé" + (txt ? ` : ${txt}` : "")); emit(); return () => { const x = byId(id); if (!x) return; delete x.annule; x.reunion = r0; emit(); }; },
+    restore(id) { const it = store.get(id), b = it.annule; delete it.annule; log(id, "a rétabli"); emit(); return () => { const x = byId(id); if (!x) return; x.annule = b; emit(); }; },
     /* carnets : lieux, contacts, médias */
     lieux: () => db.lieux,
     addLieu(n) { if (n && !db.lieux.includes(n)) { db.lieux.push(n); db.lieux.sort((a, b) => a.localeCompare(b)); } },
@@ -242,27 +255,39 @@
     addPartner(n) { if (n && !db.partners.includes(n)) { db.partners.push(n); db.partners.sort((a, b) => a.localeCompare(b)); } },
     /* fixe la date : un jour précis, ou tout un mois (flou) en attendant. Les relais suivent quand on passe d'un jour à un autre. */
     setDate(id, date, flou, motif) {
-      const it = store.get(id), snap = JSON.stringify(db.items), n = diff(date, it.date);
+      const it = store.get(id), n = diff(date, it.date);
+      /* les relais suivent, sauf ceux déjà diffusés et ceux qu'on n'a pas le droit de modifier */
+      const suit = it.kind === "tf" ? store.relais(id).filter((r) => !r.flou && r.st !== "diffuse" && !r.annule && store.canEdit(r)) : [];
+      const saved = keepOf([it, ...suit], ["date", "fin", "flou", "report"]);
       if (motif != null) it.report = { de: it.flou ? `courant ${fmt.mois(it.date)}` : fmt.moyen(it.date), txt: motif, qui: db.moi, quand: Date.now() };
-      if (!flou && !it.flou) { if (it.fin) it.fin = addDays(it.fin, n); if (it.kind === "tf") store.relais(id).forEach((r) => { if (!r.flou) { r.date = addDays(r.date, n); if (r.fin) r.fin = addDays(r.fin, n); } }); }
+      if (!flou && !it.flou) { if (it.fin) it.fin = addDays(it.fin, n); suit.forEach((r) => { r.date = addDays(r.date, n); if (r.fin) r.fin = addDays(r.fin, n); }); }
       else it.fin = "";
       it.date = date; it.flou = !!flou;
       log(id, (motif != null ? `a reporté ${flou ? "à courant " + fmt.mois(date) : "au " + fmt.moyen(date)}` : flou ? `a placé courant ${fmt.mois(date)}, date à préciser` : `a fixé la date au ${fmt.moyen(date)}`) + (motif ? ` : ${motif}` : "")); emit();
-      return () => { db.items = JSON.parse(snap); emit(); };
+      return () => { putBack(saved); emit(); };
     },
     /* décale un temps fort et, si demandé, ses relais du même nombre de jours */
     shift(id, date, avecRelais) {
       const it = store.get(id); const n = diff(date, it.date);
-      const snap = JSON.stringify(db.items);
+      const suit = avecRelais ? store.relais(id).filter((r) => !r.flou && r.st !== "diffuse" && !r.annule && store.canEdit(r)) : [];
+      const saved = keepOf([it, ...suit], ["date", "fin"]);
       if (it.fin) it.fin = addDays(it.fin, n);
       it.date = date;
-      if (avecRelais) store.relais(id).forEach((r) => { r.date = addDays(r.date, n); if (r.fin) r.fin = addDays(r.fin, n); });
+      suit.forEach((r) => { r.date = addDays(r.date, n); if (r.fin) r.fin = addDays(r.fin, n); });
       log(id, `a déplacé au ${fmt.moyen(date)}`); emit();
-      return () => { db.items = JSON.parse(snap); emit(); };
+      return () => { putBack(saved); emit(); };
     },
-    ask(o) { const r = { id: nid("r"), de: db.moi, fait: false, rep: "", quand: Date.now(), ...o }; db.reqs.push(r); log(o.item, o.a === db.moi ? "s'est noté un rappel" : `a demandé ${ASK[o.quoi] || "des éléments"} à ${(person(o.a) || service(o.a) || { nom: "" }).nom}`); emit(); return r; },
-    answer(id, rep) { const r = db.reqs.find((x) => x.id === id); if (!r) return () => {}; r.fait = true; r.rep = rep || ""; log(r.item, "a répondu à une demande"); emit(); return () => { r.fait = false; r.rep = ""; emit(); }; },
-    meetingDone() { const b = db.lastMeeting; db.lastMeeting = TODAY; const flagged = db.items.filter((i) => i.reunion); flagged.forEach((i) => (i.reunion = false)); emit(); return () => { db.lastMeeting = b; flagged.forEach((i) => (i.reunion = true)); emit(); }; },
+    ask(o) { const r = { id: nid("r"), de: db.moi, fait: false, rep: "", quand: Date.now(), ...o }; db.reqs.push(r); if (o.a !== db.moi) log(o.item, `a demandé ${ASK[o.quoi] || "des éléments"} à ${(person(o.a) || service(o.a) || { nom: "" }).nom}`); emit(); return r; },
+    /* un rappel pour moi ou une demande qu'on a faite : on change le texte ou la date, ou on la retire */
+    editReq(id, patch) { const r = db.reqs.find((x) => x.id === id); if (!r || r.fait) return; Object.assign(r, patch); emit(); },
+    /* relancer : la personne reçoit une notification (branché), et la fiche le garde dans son activité */
+    relance(id) { const r = db.reqs.find((x) => x.id === id); if (!r) return; const nom = (person(r.a) || service(r.a) || { nom: "" }).nom, ok = () => KP.toast && KP.toast(`Relance envoyée à ${nom}`);
+      if (remote && remote.relance) return remote.relance(id).then((sent) => sent && ok());
+      log(r.item, `a relancé ${nom}`); emit(); ok(); },
+    dropReq(id) { const r = db.reqs.find((x) => x.id === id); if (!r) return; db.reqs = db.reqs.filter((x) => x !== r); if (r.a !== r.de) log(r.item, "a retiré une demande"); emit(); },
+    answer(id, rep) { const r = db.reqs.find((x) => x.id === id); if (!r) return () => {}; r.fait = true; r.rep = rep || ""; if (r.a !== r.de) log(r.item, "a répondu à une demande"); emit(); if (remote) return null; return () => { r.fait = false; r.rep = ""; emit(); }; },
+    /* l'heure compte : ce qui a été créé ou annulé le matin de la réunion ne revient pas à l'ordre du jour */
+    meetingDone() { const b = db.lastMeeting; db.lastMeeting = new Date().toISOString(); const flagged = db.items.filter((i) => i.reunion).map((i) => i.id); flagged.forEach((id) => (byId(id).reunion = false)); emit(); return () => { db.lastMeeting = b; flagged.forEach((id) => { const x = byId(id); if (x) x.reunion = true; }); emit(); }; },
     /* préférences par compte : épingles, thème, suggestions écartées */
     prefs,
     setPref(k, v) { prefs()[k] = v; emit(); },
@@ -279,5 +304,5 @@
 
   Object.defineProperty(KP, "PEOPLE", { get: () => db.people });
   Object.defineProperty(KP, "SERVICES", { get: () => db.services });
-  Object.assign(KP, { TODAY, PERIODS, MESSAGES, CLES: MESSAGES.filter((m) => !m.hors), STATUTS, ELEMENTS, ASK, MOIS, endOf, monthEnd, fmt, iso, parse, addDays, diff, monday, periodOf, me, person, service, message, store });
+  Object.assign(KP, { TODAY, PERIODS, MESSAGES, CLES: MESSAGES.filter((m) => !m.hors), STATUTS, ELEMENTS, ASK, MOIS, endOf, monthEnd, fmt, iso, parse, addDays, diff, monday, periodOf, me, person, nomDe, service, message, store });
 })();

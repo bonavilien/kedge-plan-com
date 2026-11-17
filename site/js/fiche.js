@@ -8,14 +8,14 @@
 
   KP.renderFiche = () => {
     const el = $("fiche"), it = KP.route.fiche && store.get(KP.route.fiche);
-    if (!it) { el.hidden = true; el.innerHTML = ""; return; }
+    if (!it) { el.hidden = true; el.innerHTML = ""; if (KP.route.fiche && !KP.hold) { setTimeout(() => { KP.toast("Cette fiche n'existe plus"); KP.go({ fiche: "" }, true); }, 0); } return; }
     const body = el.querySelector(".f-body"), top = body && el.dataset.id === it.id ? body.scrollTop : 0;
     const can = store.canEdit(it), u = KP.me(), reader = u.role === "lecteur";
     const tf = it.kind === "tf", pinned = store.pinned(it.id), par = it.tf && store.get(it.tf);
     const v = (act, txt, none) => can ? `<button type="button" class="val${none ? " none" : ""}" data-act="${act}">${txt}</button>` : `<span class="val${none ? " none" : ""}">${none ? "—" : txt}</span>`;
     const inp = (f, val, ph) => can ? `<input class="val" id="f-${f}" data-f="${f}" value="${h(val || "")}" placeholder="${h(ph)}" autocomplete="off">` : `<span class="val${val ? "" : " none"}">${h(val || "—")}</span>`;
-    const flag = (x) => x.annule ? `<p class="flag late">${ic("close")}<span><b>Annulé</b>${x.annule.txt ? " · " + h(x.annule.txt) : ""} <small class="muted">${h(KP.person(x.annule.qui).nom)}, ${h(KP.fmt.quand(x.annule.quand))}</small></span></p>`
-      : x.report ? `<p class="flag">${ic("shift")}<span><b>Reporté</b>, c'était ${h(x.report.de)}${x.report.txt ? " · " + h(x.report.txt) : ""} <small class="muted">${h(KP.person(x.report.qui).nom)}, ${h(KP.fmt.quand(x.report.quand))}</small></span></p>` : "";
+    const flag = (x) => x.annule ? `<p class="flag late">${ic("close")}<span><b>Annulé</b>${x.annule.txt ? " · " + h(x.annule.txt) : ""} <small class="muted">${h(KP.nomDe(x.annule.qui))}, ${h(KP.fmt.quand(x.annule.quand))}</small></span></p>`
+      : x.report ? `<p class="flag">${ic("shift")}<span><b>Reporté</b>, c'était ${h(x.report.de)}${x.report.txt ? " · " + h(x.report.txt) : ""} <small class="muted">${h(KP.nomDe(x.report.qui))}, ${h(KP.fmt.quand(x.report.quand))}</small></span></p>` : "";
     const cts = (x) => (x.contacts || []).map((id) => store.contact(id)).filter(Boolean);
     const ct = (c, rm) => `<div class="ct"><span><b>${h(c.nom)}</b>${c.role ? ` <small class="muted">${h(c.role)}</small>` : ""}<br><span class="sel">${h([c.mail, c.tel].filter(Boolean).join(" · "))}</span></span>${rm ? `<button type="button" class="ib" data-act="rm-ct" data-id="${c.id}" data-tip="Retirer" aria-label="Retirer ${h(c.nom)}">${ic("close")}</button>` : ""}</div>`;
     const rel = store.relais(it.id), all = store.reqsOf(it.id), reqs = all.filter((r) => r.de !== r.a), memos = all.filter((r) => r.de === r.a && r.de === KP.me().k && !r.fait), acts = store.journalOf(it.id);
@@ -26,7 +26,7 @@
       if (tf && !it.flou && (can || it.fin)) rows.push(["Jusqu'au", v("f-fin", it.fin ? h(KP.fmt.long(it.fin)) : "Un seul jour", !it.fin)]);
     }
     if (it.variant === "partenariat") rows.push(["Média", v("f-partner", h(it.partner) || "Choisir le média", !it.partner)]);
-    else if (!tf) rows.push(["Service", v("f-svc", h((KP.service(it.svc) || {}).nom || ""))]);
+    else if (!tf) rows.push(["Service", u.role === "pilote" ? v("f-svc", h((KP.service(it.svc) || {}).nom || "")) : `<span class="val">${h((KP.service(it.svc) || {}).nom || "—")}</span>`]);
     rows.push(["Messages", v("f-msg", h(KP.msgNames(it)) || "Choisir", !it.m.length)]);
     if (!tf) rows.push(["Temps fort", v("f-tf", par ? `<i class="tfdot"></i>${h(par.t)}` : "Aucun", !par) + (par ? `<button type="button" class="ib" data-act="open" data-id="${par.id}" data-tip="Ouvrir le temps fort" aria-label="Ouvrir le temps fort">${ic("chevR")}</button>` : "")]);
     if (tf && it.variant !== "sujet") rows.push(["Lieu", can ? `<input class="val" id="f-lieu" data-f="lieu" list="dl-lieux" value="${h(it.lieu || "")}" placeholder="Choisir ou écrire un lieu" autocomplete="off"><datalist id="dl-lieux">${store.lieux().map((l) => `<option value="${h(l)}"></option>`).join("")}</datalist>` : `<span class="val${it.lieu ? "" : " none"}">${h(it.lieu || "—")}</span>`]);
@@ -37,7 +37,7 @@
       const late = !r.fait && r.pour < KP.TODAY;
       return `<div class="req"><div class="meta">${r.de === r.a ? "Rappel pour moi" : `${h(KP.dest(r.de))} demande à ${h(KP.dest(r.a))}`} · <span class="${late ? "late" : ""}">${h(KP.due(r))}</span></div>
         <p>${r.de === r.a && r.txt ? `<b>${h(r.txt)}</b>` : `<b>${h(r.quoi)}</b>${r.txt ? " · " + h(r.txt) : ""}`}</p>
-        ${r.fait ? `<div class="rep">${ic("check")} ${h(r.rep || "Reçu")}</div>` : r.de === u.k && r.a === u.k ? `<button type="button" class="link" data-act="memo-fait" data-id="${r.id}">C'est fait</button>` : r.de === u.k ? `<button type="button" class="link soft" data-act="relance" data-id="${r.id}">Relancer</button>` : (mine(r) || u.role === "pilote") && !reader ? `<button type="button" class="link" data-act="answer" data-id="${r.id}">Répondre</button>` : ""}</div>`;
+        ${r.fait ? `<div class="rep">${ic("check")} ${h(r.rep || "Reçu")}</div>` : r.de === u.k && r.a === u.k ? `<div class="req-do"><button type="button" class="link" data-act="memo-fait" data-id="${r.id}">C'est fait</button><span class="sp"></span>${KP.ib("edit", "Modifier le rappel", "memo", `data-id="${r.id}"`)}${KP.ib("trash", "Effacer le rappel", "req-drop", `data-id="${r.id}"`)}</div>` : r.de === u.k ? `<div class="req-do"><button type="button" class="link soft" data-act="relance" data-id="${r.id}">Relancer</button><span class="sp"></span>${KP.ib("edit", "Changer la date", "req-date", `data-id="${r.id}"`)}${KP.ib("trash", "Retirer la demande", "req-drop", `data-id="${r.id}"`)}</div>` : (mine(r) || u.role === "pilote") && !reader ? `<button type="button" class="link" data-act="answer" data-id="${r.id}">Répondre</button>` : ""}</div>`;
     };
     const showAct = KP.ui.allAct === it.id ? acts : acts.slice(0, 3);
 
@@ -76,7 +76,7 @@
           ${cts(it).map((c) => ct(c, can)).join("") || `<p class="muted">Qui appeler, côté programme ou côté presse.</p>`}</section>` : ""}
         ${it.note || can ? `<section class="f-sec"><h3>Note</h3><textarea class="note" id="f-note" data-f="note" data-auto placeholder="Ce qu'il faut savoir" ${can ? "" : "readonly"}>${h(it.note)}</textarea></section>` : ""}
         ${acts.length ? `<section class="f-sec"><h3>Activité${acts.length > 3 && KP.ui.allAct !== it.id ? `<button type="button" class="link" data-act="all-act">Tout voir</button>` : ""}</h3>
-          ${showAct.map((j) => `<p class="act"><b>${h(KP.person(j.qui).nom)}</b> ${h(j.txt)} · ${h(KP.fmt.quand(j.quand))}</p>`).join("")}</section>` : ""}
+          ${showAct.map((j) => `<p class="act"><b>${h(KP.nomDe(j.qui))}</b> ${h(j.txt)} · ${h(KP.fmt.quand(j.quand))}</p>`).join("")}</section>` : ""}
       </div>`;
     el.querySelector(".f-body").scrollTop = top;
   };
@@ -120,7 +120,7 @@
     }, { selected: [it.partner], title: "Média partenaire" }); },
     "f-fin": (a) => { const it = cur(); KP.datepick(a, it.fin || it.date, (d) => { if (d && d < it.date) return KP.toast("La fin vient après le début"); KP.toast(d ? "Fin enregistrée" : "Fin retirée", store.update(it.id, { fin: d })); }, { clear: !!it.fin }); },
     "f-svc": (a) => { const it = cur(); KP.menu(a, KP.SERVICES.map((s) => ({ v: s.k, nom: s.nom })), (v) => v !== it.svc && KP.toast("Service changé", store.update(it.id, { svc: v }, `a confié l'action à ${KP.service(v).nom}`)), { selected: [it.svc] }); },
-    "f-msg": (a) => { const it = cur(); KP.menu(a, KP.MESSAGES.map((m) => ({ v: m.k, nom: m.nom, info: m.info })), (m) => store.update(it.id, { m: KP.MESSAGES.map((x) => x.k).filter((k) => m.includes(k)) }), { selected: it.m, multi: true }); },
+    "f-msg": (a) => { const it = cur(); KP.menu(a, KP.MESSAGES.map((m) => ({ v: m.k, nom: m.nom, info: m.info })), (m) => { const next = KP.MESSAGES.map((x) => x.k).filter((k) => m.includes(k)); if (next.join() !== it.m.join()) KP.toast("Messages enregistrés", store.update(it.id, { m: next })); }, { selected: it.m, multi: true }); },
     "f-tf": (a) => { const it = cur(); const tfs = store.items().filter((i) => i.kind === "tf").sort((x, y) => x.date.localeCompare(y.date)); KP.menu(a, [{ v: "", nom: "Aucun" }, "-", ...tfs.map((x) => ({ v: x.id, nom: x.t, info: KP.dateLong(x) }))], (v) => v !== it.tf && KP.toast(v ? "Rattachée au temps fort" : "Détachée", store.update(it.id, { tf: v })), { selected: [it.tf] }); },
     "f-st": (a) => KP.setStatus(KP.route.fiche, a.dataset.k),
     "f-reunion": () => { const it = cur(); store.update(it.id, { reunion: !it.reunion }, it.reunion ? "" : "a mis à l'ordre du jour"); KP.toast(it.reunion ? "À l'ordre du jour de la prochaine réunion" : "Retiré de l'ordre du jour"); },
@@ -130,10 +130,14 @@
     "f-more": (a) => {
       const it = cur();
       KP.menu(a, [{ v: "dup", nom: "Dupliquer", icon: "copy" }, it.annule ? { v: "res", nom: "Rétablir", icon: "undo" } : { v: "ann", nom: it.kind === "tf" ? "Annuler ce temps fort" : "Annuler cette action", icon: "close" }, "-", { v: "del", nom: "Supprimer", icon: "trash", danger: true }], (v) => {
-        if (v === "dup") { const n = store.duplicate(it.id); KP.go({ fiche: n.id }); KP.toast("Copie créée", () => { store.remove(n.id); KP.go({ fiche: it.id }); }); }
+        if (v === "dup") { const n = store.duplicate(it.id); KP.go({ fiche: n.id }); KP.toast("Copie créée", () => { store.unadd(n.id); KP.go({ fiche: it.id }); }); }
         if (v === "ann") KP.motif(it.kind === "tf" ? "Annuler ce temps fort" : "Annuler cette action", `« ${it.t} » reste dans le plan, barré, avec le motif.`, "Annuler", (m) => KP.toast(`« ${it.t} » est annulé`, store.cancel(it.id, m)));
         if (v === "res") KP.toast("Rétabli", store.restore(it.id));
-        if (v === "del") { const undo = store.remove(it.id); KP.go({ fiche: "" }); KP.toast(`« ${it.t} » supprimé`, undo); }
+        if (v === "del") { const go = () => { const undo = store.remove(it.id); KP.go({ fiche: "" }); KP.toast(`« ${it.t} » supprimé`, undo); };
+          /* branché, une suppression ne s'annule pas : on demande avant */
+          if (!store.remote()) return go();
+          const d = KP.dialog(`<form method="dialog"><h2>Supprimer « ${h(it.t)} » ?</h2><p class="muted">Ses demandes, ses liens et son historique partent aussi. Pour garder une trace, annule-la plutôt.</p><div class="foot"><button type="button" class="btn quiet" data-close>Garder</button><button class="btn primary danger-bg">Supprimer</button></div></form>`);
+          d.querySelector("form").addEventListener("submit", go); }
       }, { right: true });
     },
     "rm-ct": (a) => { const it = cur(); KP.toast("Contact retiré de la fiche", store.update(it.id, { contacts: (it.contacts || []).filter((c) => c !== a.dataset.id) })); },
@@ -149,13 +153,14 @@
         <label class="field"><span>Nom</span><input class="input" name="t" placeholder="Programme de la journée" required autocomplete="off"></label>
         <label class="field"><span>Adresse SharePoint</span><input class="input" name="url" type="url" placeholder="https://…" required autocomplete="off"></label>
         <div class="foot"><button type="button" class="btn quiet" data-close>Annuler</button><button class="btn primary">Ajouter</button></div></form>`);
-      d.querySelector("form").addEventListener("submit", () => { const f = new FormData(d.querySelector("form")); KP.toast("Lien ajouté", store.update(it.id, { docs: [...it.docs, { t: f.get("t").trim(), url: f.get("url").trim() }] }, "a ajouté un document")); });
+      d.querySelector("form").addEventListener("submit", (e) => { const f = new FormData(d.querySelector("form")); if (!/^https:\/\//i.test(f.get("url").trim())) { e.preventDefault(); const u2 = d.querySelector("[name=url]"); u2.value = ""; u2.placeholder = "Une adresse qui commence par https://"; u2.focus(); return; } KP.toast("Lien ajouté", store.update(it.id, { docs: [...it.docs, { t: f.get("t").trim(), url: f.get("url").trim() }] }, "a ajouté un document")); });
     },
     ask: (a) => {
       const it = store.get(a.dataset.id || KP.route.fiche), u = KP.me();
-      const s = { a: u.role === "pilote" ? it.svc || (store.relais(it.id)[0] || {}).svc || "rp" : "julien", quoi: KP.ELEMENTS[0], pour: [KP.addDays(it.date, -7), KP.addDays(KP.TODAY, 1)].sort().pop() };
+      const pil = KP.PEOPLE.find((x) => x.role === "pilote" && x.k !== u.k) || {};
+      const s = { a: u.role === "pilote" ? it.svc || (store.relais(it.id)[0] || {}).svc || "rp" : pil.k, quoi: KP.ELEMENTS[0], pour: [KP.addDays(it.date, -7), KP.addDays(KP.TODAY, 1)].sort().pop() };
       const d = KP.dialog(`<form method="dialog"><h2>Demander des éléments</h2><p class="muted" style="margin-top:-8px">Pour « ${h(it.t)} »</p>
-        <label class="field"><span>À qui</span><select class="input" name="a"><optgroup label="Un service">${KP.SERVICES.filter((x) => x.k !== u.svc).map((x) => `<option value="${x.k}" ${x.k === s.a ? "selected" : ""}>${x.nom}</option>`).join("")}</optgroup><optgroup label="Une personne">${KP.PEOPLE.filter((x) => x.k !== u.k && x.role !== "lecteur").map((x) => `<option value="${x.k}" ${x.k === s.a ? "selected" : ""}>${x.nom}, ${x.fonction.toLowerCase()}</option>`).join("")}</optgroup></select></label>
+        <label class="field"><span>À qui</span><select class="input" name="a"><optgroup label="Un service">${KP.SERVICES.filter((x) => x.k !== u.svc).map((x) => `<option value="${h(x.k)}" ${x.k === s.a ? "selected" : ""}>${h(x.nom)}</option>`).join("")}</optgroup><optgroup label="Une personne">${KP.PEOPLE.filter((x) => x.k !== u.k && x.role !== "lecteur").map((x) => `<option value="${h(x.k)}" ${x.k === s.a ? "selected" : ""}>${h(x.nom)}${x.fonction ? ", " + h(x.fonction.toLowerCase()) : ""}</option>`).join("")}</optgroup></select></label>
         <div class="field"><span>Quoi</span><div class="picks">${KP.ELEMENTS.map((x, i) => `<button type="button" class="pick" data-q="${h(x)}" aria-pressed="${i === 0}">${h(x)}</button>`).join("")}</div></div>
         <label class="field"><span>Précision</span><textarea class="input" name="txt" placeholder="Ce dont tu as besoin, en une phrase"></textarea></label>
         <div class="field"><span>Pour le</span><button type="button" class="input" data-pick>${ic("calendar")}<span>${h(KP.fmt.long(s.pour))}</span></button></div>
@@ -175,15 +180,19 @@
       d.querySelector("form").addEventListener("submit", () => KP.toast(`Réponse envoyée à ${KP.dest(r.de)}`, store.answer(r.id, new FormData(d.querySelector("form")).get("rep").trim())));
     },
     "memo-fait": (a) => { store.answer(a.dataset.id, "Fait"); KP.toast("Rappel fait"); },
-    memo: () => {
-      const it = cur(), s = { pour: [KP.addDays(it.date, -7), KP.addDays(KP.TODAY, 1)].sort().pop() };
+    /* noter un rappel pour moi, ou modifier le sien (texte et date) */
+    memo: (a) => {
+      const it = cur(), old = a && a.dataset.id && store.reqs().find((x) => x.id === a.dataset.id);
+      const s = { pour: old ? old.pour : [KP.addDays(it.date, -7), KP.addDays(KP.TODAY, 1)].sort().pop() };
       const d = KP.dialog(`<form method="dialog"><h2>Rappel pour moi</h2>
-        <input class="input" name="txt" placeholder="Me rappeler de…" aria-label="Me rappeler de" maxlength="200" required autocomplete="off">
-        <div class="foot"><button type="button" class="input" data-pick style="width:auto;margin-right:auto">${ic("calendar")}<span>${h(KP.fmt.court(s.pour))}</span></button><button type="button" class="btn quiet" data-close>Annuler</button><button class="btn primary">Noter</button></div></form>`);
+        <input class="input" name="txt" placeholder="Me rappeler de…" aria-label="Me rappeler de" maxlength="200" required autocomplete="off" value="${h(old ? old.txt : "")}">
+        <div class="foot"><button type="button" class="input" data-pick style="width:auto;margin-right:auto">${ic("calendar")}<span>${h(KP.fmt.court(s.pour))}</span></button><button type="button" class="btn quiet" data-close>Annuler</button><button class="btn primary">${old ? "Enregistrer" : "Noter"}</button></div></form>`);
       d.querySelector("[name=txt]").focus();
       d.addEventListener("click", (e) => { const pk = e.target.closest("[data-pick]"); if (pk) KP.datepick(pk, s.pour, (v) => { if (v) { s.pour = v; pk.querySelector("span:last-child").textContent = KP.fmt.court(v); } }); });
-      d.querySelector("form").addEventListener("submit", () => { const txt = new FormData(d.querySelector("form")).get("txt").trim(); if (txt) { store.ask({ item: it.id, a: KP.me().k, quoi: "Autre", txt, pour: s.pour }); KP.toast("Rappel noté"); } });
+      d.querySelector("form").addEventListener("submit", () => { const txt = new FormData(d.querySelector("form")).get("txt").trim(); if (!txt) return; if (old) { store.editReq(old.id, { txt, pour: s.pour }); KP.toast("Rappel modifié"); } else { store.ask({ item: it.id, a: KP.me().k, quoi: "Autre", txt, pour: s.pour }); KP.toast("Rappel noté"); } });
     },
-    relance: (a) => { const r = store.reqs().find((x) => x.id === a.dataset.id); store.update(r.item, {}, `a relancé ${KP.dest(r.a)}`); KP.toast(`${KP.dest(r.a)} est relancé`); },
+    "req-date": (a) => { const r = store.reqs().find((x) => x.id === a.dataset.id); if (r) KP.datepick(a, r.pour, (v) => { if (v && v !== r.pour) { store.editReq(r.id, { pour: v }); KP.toast(`Pour le ${KP.fmt.moyen(v)}`); } }); },
+    "req-drop": (a) => { const r = store.reqs().find((x) => x.id === a.dataset.id); if (!r) return; store.dropReq(r.id); KP.toast(r.a === r.de ? "Rappel effacé" : `Demande à ${KP.dest(r.a)} retirée`); },
+    relance: (a) => { const r = store.reqs().find((x) => x.id === a.dataset.id); if (r) store.relance(r.id); },
   });
 })();
