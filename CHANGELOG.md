@@ -4,7 +4,7 @@ Généré depuis `site/js/version.js` par `node scripts/version.mjs`. Ne pas mod
 
 ## 2.0.1 · 2026-11-17
 
-- Le mémo pour soi revient : dans Demander des éléments, choisir « Moi (mémo) ». Personne n'est prévenu, on le coche « C'est fait »
+- Le mémo pour soi revient, à part des demandes : bouton « Rappel pour moi » sur la fiche. Une phrase et une date, toi seul le vois, tu le coches « C'est fait »
 
 ## 2.0 · 2026-11-17
 
