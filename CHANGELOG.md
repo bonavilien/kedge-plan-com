@@ -2,6 +2,12 @@
 
 Généré depuis `site/js/version.js` par `node scripts/version.mjs`. Ne pas modifier à la main.
 
+## 2.0 · 2026-11-17
+
+- La V2 remplace la V1 : nouvel écran d'accueil, le plan en liste ou en grille, la fiche à côté, trois états, l'étiquette Recrutement
+- Elle a sa propre base, copie de celle de la V1. La V1 reste archivée avec son ancienne base
+- Notifications sur téléphone : à réactiver par chacun dans Réglages, Mon profil
+
 ## 2.0 bêta 14 · 2026-11-17
 
 - Un partenariat payant n'a pas de service : le média partenaire prend sa place, dans la fiche, la liste, la grille (sa propre colonne) et la fenêtre Nouveau
