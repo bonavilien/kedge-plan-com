@@ -145,7 +145,7 @@
     return `<div class="row ${it.kind === "tf" ? "tf" : ""}${it.annule ? " off" : ""}${KP.route && KP.route.fiche === it.id ? " sel" : ""}" data-act="open" data-id="${it.id}">
       <span class="d">${opt.date || KP.dateCell(it)}</span>
       <span class="t">${it.kind === "tf" ? '<i class="tfdot"></i>' : ""}<button type="button" class="open" data-act="open" data-id="${it.id}"><span class="tt">${KP.h(it.t)}</span></button>${it.variant === "classement" && it.rang ? `<span class="rang">${KP.h(it.rang)}</span>` : ""}${!it.annule && KP.recent(it.report) ? `<span class="badge">Reporté</span>` : ""}${it.variant === "partenariat" ? `<span class="badge">Payant</span>` : ""}${opt.sub ? `<small>${KP.h(opt.sub)}</small>` : par ? `<small>pour ${KP.h(par.t)}</small>` : it.variant === "classement" && it.cible ? `<small>objectif ${KP.h(it.cible)}</small>` : ""}</span>
-      ${opt.slim ? "" : `<span class="svc">${KP.h(svc)}</span><span class="msg">${KP.h(KP.msgNames(it))}</span>`}
+      ${opt.slim ? "" : `<span class="svc">${it.kind === "tf" ? '<i class="tag tf">Temps fort</i>' : KP.h(svc)}</span><span class="msg">${it.m.map((k) => (KP.message(k) || {}).nom).filter(Boolean).map((n) => `<i class="tag">${KP.h(n)}</i>`).join("")}</span>`}
       ${opt.mid != null ? opt.mid : ""}
       <span class="st">${KP.pill(it, KP.store.canEdit(it))}</span>${opt.end || ""}
     </div>`;

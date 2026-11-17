@@ -2,6 +2,12 @@
 
 Généré depuis `site/js/version.js` par `node scripts/version.mjs`. Ne pas modifier à la main.
 
+## 2.1 · 2026-11-17
+
+- Nouveau design : chaque semaine est un tableau avec ses colonnes, l'état est une case de couleur qu'on clique pour le changer
+- Prévu en anthracite, Diffusé en vert, À confirmer en pointillés, partout dans l'appli
+- Les messages en étiquettes, les temps forts repérés en jaune
+
 ## 2.0.3 · 2026-11-17
 
 - Sur ordinateur, la fiche s'ouvre à côté du plan au lieu de le cacher

@@ -34,6 +34,7 @@ Built for this team's own calendar: the 5 recruitment periods are the navigation
 - Little text, airy, simple ("plus c'est simple, plus c'est clair"). Each information level styled differently; action priority order: date, titre, service, message, état.
 - Visual codes over words, but no code that needs a legend (no message numbers).
 - Banned: cards with a coloured side stripe or border, running-track or sport metaphor, lists of what is missing visible to every service. « Grille » is called « Calendrier ».
+- Standing preference (Julien, 2026-11-17): the category standard, played straight, at the finish level of Asana, Monday and Trello (more colour and visual states, airier rows), inside the KEDGE palette.
 - Rejected 2026-11-17: a mockup with a top bar, a period frieze, yellow-tinted temps fort blocks and service avatars.
 
 ## Evidence on Hand

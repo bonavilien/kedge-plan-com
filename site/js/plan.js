@@ -16,7 +16,7 @@
   const order = (a, b) => a.date.localeCompare(b.date) || (a.kind === b.kind ? a.t.localeCompare(b.t) : a.kind === "tf" ? -1 : 1);
   KP.planItems = (p, r) => store.items().filter((i) => i.variant !== "sujet" && inPeriod(i, p) && match(i, r)).sort(order);
 
-  const chip = (k, label, val) => `<button type="button" class="chip${val ? " set" : ""}" data-act="filter" data-k="${k}" aria-haspopup="menu">${h(val || label)}${ic("chevD")}</button>`;
+  const chip = (k, label, val) => `<button type="button" class="chip${val ? " picked" : ""}" data-act="filter" data-k="${k}" aria-haspopup="menu">${h(val || label)}${ic("chevD")}</button>`;
 
   KP.views.plan = () => {
     const r = clean(KP.route), p = KP.PERIODS.find((x) => x.k === r.per), now = KP.periodOf(KP.TODAY).k;
@@ -71,7 +71,7 @@
   function liste(p, items) {
     const all = blocs(p, items), past = all.filter((b) => b.past), rest = all.filter((b) => !b.past);
     const fold = past.length && rest.length && !KP.ui.past;
-    const bloc = (b) => `<section class="wk"><div class="wk-h"><b>${h(b.label)}</b>${b.tbc ? `<small>${h(b.range)}</small>` : ""}</div><div class="rows">${b.now ? nowRows(b.items) : b.items.map((it) => KP.row(it)).join("")}</div></section>`;
+    const bloc = (b) => `<section class="wk${b.now ? " now" : ""}"><div class="wk-h"><b>${h(b.label)}</b><small>${h(b.range)}</small><span class="cnt">${b.items.length}</span></div><div class="colh" aria-hidden="true"><span>Date</span><span>Action</span><span>Service</span><span>Message</span><span>État</span></div><div class="rows">${b.now ? nowRows(b.items) : b.items.map((it) => KP.row(it)).join("")}</div></section>`;
     return (past.length && rest.length ? foldBtn(past, fold) : "") + (fold ? "" : past.map(bloc).join("")) + rest.map(bloc).join("");
   }
 
