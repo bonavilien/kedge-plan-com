@@ -45,11 +45,11 @@
     el.innerHTML = `
       <div class="f-top">
         <span class="kind">${tf ? '<i class="tfdot"></i>' : ""}${h(KP.kindName(it))}</span>
-        ${reader ? "" : `<button type="button" class="ib${pinned ? " on" : ""}" data-act="f-pin" aria-pressed="${pinned}" data-tip="${pinned ? "Retirer de mon accueil" : "Épingler sur mon accueil"}" aria-label="${pinned ? "Retirer de mon accueil" : "Épingler sur mon accueil"}">${ic("bookmark")}</button>`}
-        ${reader || it.annule ? "" : KP.ib("clock", "Rappel pour moi", "memo")}
-        ${reader || it.annule || tf ? "" : KP.ib("megaphone", "Prévenir un service", "prevenir")}
-        ${KP.ib("link", "Copier le lien", "f-link")}
-        ${can ? KP.ib("kebab", "Plus", "f-more", 'aria-haspopup="menu"') : ""}
+        ${reader ? "" : `<button type="button" class="ib f-x${pinned ? " on" : ""}" data-act="f-pin" aria-pressed="${pinned}" data-tip="${pinned ? "Retirer de mon accueil" : "Épingler sur mon accueil"}" aria-label="${pinned ? "Retirer de mon accueil" : "Épingler sur mon accueil"}">${ic("bookmark")}</button>`}
+        ${reader || it.annule ? "" : KP.ib("clock", "Rappel pour moi", "memo", 'data-x="1"')}
+        ${reader || it.annule || tf ? "" : KP.ib("megaphone", "Prévenir un service", "prevenir", 'data-x="1"')}
+        ${KP.ib("link", "Copier le lien", "f-link", 'data-x="1"')}
+        ${KP.ib("kebab", "Plus", "f-more", `aria-haspopup="menu"${can ? "" : ' data-phone="1"'}`)}
         <button type="button" class="ib tip-l" data-act="close-fiche" data-tip="Fermer (Échap)" aria-label="Fermer">${ic("close")}</button>
       </div>
       <div class="f-body">
@@ -129,8 +129,12 @@
     "f-link": async () => { try { await navigator.clipboard.writeText(location.href); KP.toast("Lien copié"); } catch (e) { KP.toast("Le lien est dans la barre d'adresse"); } },
     "all-act": () => { KP.ui.allAct = KP.route.fiche; KP.render(); },
     "f-more": (a) => {
-      const it = cur();
-      KP.menu(a, [{ v: "dup", nom: "Dupliquer", icon: "copy" }, it.annule ? { v: "res", nom: "Rétablir", icon: "undo" } : { v: "ann", nom: it.kind === "tf" ? "Annuler ce temps fort" : "Annuler cette action", icon: "close" }, "-", { v: "del", nom: "Supprimer", icon: "trash", danger: true }], (v) => {
+      const it = cur(), can = store.canEdit(it);
+      /* sur téléphone, les icônes de la barre passent ici, avec leur nom */
+      const x = matchMedia("(max-width: 767px)").matches ? [...$("fiche").querySelectorAll(".f-top .f-x, .f-top [data-x]")].map((b) => ({ v: "x:" + b.dataset.act, nom: b.getAttribute("aria-label"), icon: b.dataset.act === "f-pin" ? "bookmark" : b.dataset.act === "memo" ? "clock" : b.dataset.act === "prevenir" ? "megaphone" : "link" })) : [];
+      const own = can ? [{ v: "dup", nom: "Dupliquer", icon: "copy" }, it.annule ? { v: "res", nom: "Rétablir", icon: "undo" } : { v: "ann", nom: it.kind === "tf" ? "Annuler ce temps fort" : "Annuler cette action", icon: "close" }, "-", { v: "del", nom: "Supprimer", icon: "trash", danger: true }] : [];
+      KP.menu(a, [...x, ...(x.length && own.length ? ["-"] : []), ...own], (v) => {
+        if (v.startsWith("x:")) { setTimeout(() => KP.acts[v.slice(2)](a), 0); return; }
         if (v === "dup") { const n = store.duplicate(it.id); KP.go({ fiche: n.id }); KP.toast("Copie créée", () => { store.unadd(n.id); KP.go({ fiche: it.id }); }); }
         if (v === "ann") KP.motif(it.kind === "tf" ? "Annuler ce temps fort" : "Annuler cette action", `« ${it.t} » reste dans le plan, barré, avec le motif.`, "Annuler", (m) => KP.toast(`« ${it.t} » est annulé`, store.cancel(it.id, m)));
         if (v === "res") KP.toast("Rétabli", store.restore(it.id));

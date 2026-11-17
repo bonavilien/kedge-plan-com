@@ -2,6 +2,13 @@
 
 Généré depuis `site/js/version.js` par `node scripts/version.mjs`. Ne pas modifier à la main.
 
+## 2.0.3 · 2026-11-17
+
+- Sur ordinateur, la fiche s'ouvre à côté du plan au lieu de le cacher
+- Un trait jaune « Aujourd'hui » dans la liste de la semaine
+- Sur téléphone : titres sur deux lignes, bouton Créer toujours visible, les icônes de la fiche dans « Plus » avec leur nom
+- Textes plus lisibles, contour visible au clavier, prénoms entiers dans la grille
+
 ## 2.0.2 · 2026-11-17
 
 - Rappel pour moi : le crayon pour changer le texte ou la date, la corbeille pour l'effacer

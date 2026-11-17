@@ -555,3 +555,23 @@ textarea::placeholder, input::placeholder { color: var(--text2); opacity: 1; }
   .f-meta .seg { display: flex; }
   .f-meta .seg button { flex: 1; padding: 0 6px; }
 }
+/* fiche sur téléphone : épingler, rappel, prévenir et lien passent dans « Plus », avec leur nom */
+.f-top [data-phone] { display: none; }
+@media (max-width: 767px) {
+  .f-top .f-x, .f-top [data-x] { display: none; }
+  .f-top [data-phone] { display: inline-flex; }
+}
+/* en-têtes de la grille : le service, puis les prénoms en dessous, en entier */
+.g-h { flex-direction: column; align-items: flex-start; gap: 2px; }
+.g-h small { white-space: normal; overflow: visible; line-height: 1.3; }
+.today-line span { font-size: 11.5px; font-weight: 700; letter-spacing: .02em; color: var(--anthracite-deep, #1E1F22); background: var(--yellow); border-radius: 999px; padding: 2px 8px; transform: translateY(-1px); }
+.today-line::before { order: 2; }
+.today-line + .row { border-top-color: transparent; }
+/* plus de liseré de 3 px : l'élément actif du menu et la ligne ouverte tiennent par leur fond et le gras */
+.nav a.on, .row.sel { box-shadow: none; }
+.row.sel { background: var(--fill); }
+.nav a.on svg { color: var(--yellow); }
+/* le titre passe avant « pour <temps fort> » quand la place manque */
+.row .t .open { flex: 0 1 auto; }
+.row .t small { flex: 0 1 auto; max-width: 38%; }
+html.fiche-open .rows .row .t small { display: none; }

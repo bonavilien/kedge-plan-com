@@ -62,13 +62,16 @@
       label: `Courant ${KP.fmt.mois(m)}`, range: "date à préciser", items: items.filter((i) => i.flou && i.date === m) }));
     return out.sort((x, y) => x.ord.localeCompare(y.ord));
   }
-  const foldBtn = (past, fold) => { const n = past.reduce((s, b) => s + b.items.length, 0), w = past.filter((b) => !b.tbc).length;
+  /* cette semaine : un trait jaune « aujourd'hui » entre ce qui est passé et ce qui vient */
+  const nowRows = (its) => { const i = its.findIndex((it) => (it.fin || it.date) >= KP.TODAY), at = i < 0 ? its.length : i, line = `<div class="today-line" aria-hidden="true"><span>Aujourd'hui</span></div>`;
+    return its.slice(0, at).map((it) => KP.row(it)).join("") + (at > 0 ? line : "") + its.slice(at).map((it) => KP.row(it)).join(""); };
+  const foldBtn = (past, fold) => { const n = past.reduce((s, b) => s + b.items.length, 0), w = past.filter((b) => !b.tbc && b.items.length).length; /* la grille montre aussi les semaines vides : on ne compte que celles qui ont des lignes, comme la liste */
     return `<button type="button" class="fold" data-act="past" aria-expanded="${!fold}">${ic(fold ? "chevR" : "chevD")}${w} semaine${w > 1 ? "s" : ""} passée${w > 1 ? "s" : ""}, ${n} ligne${n > 1 ? "s" : ""}</button>`; };
 
   function liste(p, items) {
     const all = blocs(p, items), past = all.filter((b) => b.past), rest = all.filter((b) => !b.past);
     const fold = past.length && rest.length && !KP.ui.past;
-    const bloc = (b) => `<section class="wk"><div class="wk-h"><b>${h(b.label)}</b>${b.tbc ? `<small>${h(b.range)}</small>` : ""}</div><div class="rows">${b.items.map((it) => KP.row(it)).join("")}</div></section>`;
+    const bloc = (b) => `<section class="wk"><div class="wk-h"><b>${h(b.label)}</b>${b.tbc ? `<small>${h(b.range)}</small>` : ""}</div><div class="rows">${b.now ? nowRows(b.items) : b.items.map((it) => KP.row(it)).join("")}</div></section>`;
     return (past.length && rest.length ? foldBtn(past, fold) : "") + (fold ? "" : past.map(bloc).join("")) + rest.map(bloc).join("");
   }
 

@@ -237,7 +237,7 @@
       const cs = cmds.filter((c) => !q || KP.norm(c.nom).includes(q)).slice(0, q ? 6 : 7);
       list = [...its.map((i) => ({ it: i })), ...cs]; cur = Math.min(cur, Math.max(0, list.length - 1));
       let n = 0;
-      res.innerHTML = (its.length ? `<h4>${q ? "Dans le plan" : "Proche d'aujourd'hui"}</h4>` + its.map((i) => `<button type="button" class="pop-i${n === cur ? " cur" : ""}" data-n="${n++}">${i.kind === "tf" ? '<i class="tfdot"></i>' : ic("megaphone")}<span>${h(i.t)}<small>${h(KP.kindName(i))} · ${h(KP.dateLong(i))}</small></span></button>`).join("") : "") +
+      res.innerHTML = (its.length ? `<h4>${q ? "Dans le plan" : "Proche d'aujourd'hui"}</h4>` + its.map((i) => `<button type="button" class="pop-i${n === cur ? " cur" : ""}" data-n="${n++}">${i.kind === "tf" ? '<i class="tfdot"></i>' : ic("doc")}<span>${h(i.t)}<small>${h(KP.kindName(i))} · ${h(KP.dateLong(i))}</small></span></button>`).join("") : "") +
         (cs.length ? `<h4>Aller à</h4>` + cs.map((c) => `<button type="button" class="pop-i${n === cur ? " cur" : ""}" data-n="${n++}">${ic(c.icon)}<span>${h(c.nom)}</span></button>`).join("") : "") +
         (!list.length ? `<p class="txt" style="padding:18px 12px">Rien ne correspond à « ${h(inp.value)} ».</p>` : "");
       const c = res.querySelector(".cur"); if (c) c.scrollIntoView({ block: "nearest" });
