@@ -746,3 +746,34 @@ html.fiche-open .bar .tools { margin-left: 0; }
 @container (max-width: 860px) { html:root .home-cols { grid-template-columns: minmax(0, 1fr); gap: 0; } html:root .home-side { position: static; } html:root .pins { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); } }
 @container (max-width: 720px) { html:root .row.row .tfdot { display: none; } }
 @container (max-width: 720px) { html:root .ag .row.row .t { flex-wrap: wrap; row-gap: 0; } html:root .ag .row.row .t small { display: block; flex-basis: 100%; max-width: none; } }
+
+/* 2.1, corrections de la critique et de l'audit impeccable */
+/* Prévu : anthracite partout, y compris dans le calendrier ; en sombre, une case calme bordée */
+:root { --st-prevu-line: transparent; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --st-prevu: #3A3C41; --st-prevu-ink: #F2F2EE; --st-prevu-line: #55575C; } }
+:root[data-theme="dark"] { --st-prevu: #3A3C41; --st-prevu-ink: #F2F2EE; --st-prevu-line: #55575C; }
+.pill.prevu { box-shadow: inset 0 0 0 1px var(--st-prevu-line); }
+.g-i.prevu:not(.tf) { background: var(--st-prevu); color: var(--st-prevu-ink); box-shadow: inset 0 0 0 1px var(--st-prevu-line); }
+.g-i.prevu:not(.tf) b, .g-i.prevu:not(.tf) small { color: inherit; }
+/* contrastes : jours hors du mois, date d'un temps fort à confirmer */
+.cal-g button.out { opacity: 1; color: var(--text2); }
+.g-i.tf.confirmer b { color: var(--text); }
+/* bilan : les barres prennent les couleurs des cases d'état */
+.stack .s-d { background: var(--ok-ink); }
+.stack .s-p { background: var(--st-prevu); opacity: 1; box-shadow: inset 0 0 0 1px var(--st-prevu-line); }
+.stack .s-c { background: var(--st-conf); box-shadow: inset 0 0 0 1px var(--text2); }
+/* la fiche : « À confirmer » choisi ressemble à sa case */
+.f-meta .seg button.on[data-k="confirmer"] { background: var(--st-conf); box-shadow: none; outline: 1.5px dashed var(--text2); outline-offset: -1.5px; }
+/* réunion : les mêmes en-têtes de colonnes que le plan ; le contexte (qui attend quoi, le motif) reste sous le titre */
+.ag-h { grid-template-columns: 96px minmax(0, 1fr) 132px 150px 124px 34px; }
+@media (max-width: 1100px) and (min-width: 768px) { .ag-h { grid-template-columns: 84px minmax(0, 1fr) 120px 124px 34px; } }
+@media (min-width: 1200px) { html.fiche-open .ag-h { grid-template-columns: 96px minmax(0, 1fr) 120px 124px 34px; } html.fiche-open .ag-h span:nth-child(4) { display: none; } }
+@media (max-width: 767px) { .ag-h { display: none; } }
+html:root .ag .row .t { flex-wrap: wrap; row-gap: 0; }
+html:root .ag .row .t small { display: block; flex-basis: 100%; max-width: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* téléphone : une date au mois s'écrit « courant / nov. » */
+@media (max-width: 767px) {
+  .row .tbc .wide { display: block; }
+  .row .d .tbc { display: block; font-size: 12px; line-height: 1.25; white-space: normal; }
+  .dlg .foot .hint { display: none; }
+}

@@ -27,7 +27,8 @@
     const conf = items.filter((i) => i.st === "confirmer" && !i.flou && i.date >= T && KP.diff(i.date, T) <= 15 && !i.reunion).sort((a, b) => a.date.localeCompare(b.date));
     const fresh = [...new Set(store.journal().filter((j) => j.quand > last && /^a créé/.test(j.txt)).map((j) => j.item))].map((id) => store.get(id)).filter((i) => i && !i.annule && !i.reunion && !conf.includes(i)).sort((a, b) => a.date.localeCompare(b.date));
     const vu = (it) => !store.canEdit(it) ? "<span></span>" : `<button type="button" class="ib tip-l" data-act="vu" data-id="${it.id}" data-tip="Vu en réunion" aria-label="Vu en réunion">${ic("check")}</button>`;
-    const sec = (t, sub, html) => html ? `<h2>${t}<small>${sub}</small></h2><div class="rows">${html}</div>` : "";
+    const colh = `<div class="colh ag-h" aria-hidden="true"><span>Date</span><span>Action</span><span>Service</span><span>Message</span><span>État</span><span></span></div>`;
+    const sec = (t, sub, html) => html ? `<h2>${t}<small>${sub}</small></h2><div class="rows">${colh}${html}</div>` : "";
     const out =
       sec("À voir ensemble", `${flagged.length} point${flagged.length > 1 ? "s" : ""}`, flagged.map((it) => KP.row(it, { end: vu(it) })).join("")) +
       sec("Reportés ou annulés", `${moved.length}`, moved.map((it) => KP.row(it, { end: "<span></span>", sub: (it.annule || it.report).txt || (it.annule ? "sans motif" : `c'était ${it.report.de}`) })).join("")) +
@@ -50,7 +51,6 @@
     const late = acts.filter((i) => KP.endOf(i) < T && i.st !== "diffuse").sort((a, b) => a.date.localeCompare(b.date));
     const cls = store.items().filter((i) => i.variant === "classement" && i.date >= p.du && i.date <= p.au);
     return `<div class="bilan">${rows}</div>
-      <div class="legend"><span><i style="background:var(--text)"></i>Diffusé</span><span><i style="background:var(--text2);opacity:.55"></i>Prévu</span><span><i style="background:repeating-linear-gradient(135deg,var(--text2) 0 2px,transparent 2px 5px)"></i>À confirmer</span></div>
       <div class="ag">
       ${late.length ? `<h2>Passé, pas encore diffusé<small>${late.length}</small></h2><div class="rows">${late.map((it) => KP.row(it, { end: "<span></span>" })).join("")}</div>` : ""}
       ${cls.length ? `<h2>Classements<small>${cls.length}</small></h2><div class="rows">${cls.map((it) => KP.row(it, { end: "<span></span>" })).join("")}</div>` : ""}

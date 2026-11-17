@@ -4,6 +4,7 @@ Généré depuis `site/js/version.js` par `node scripts/version.mjs`. Ne pas mod
 
 ## 2.1 · 2026-11-17
 
+- Corrections impeccable : Prévu en anthracite aussi dans le calendrier et plus calme en sombre, Bilan aux couleurs des états, en-têtes de colonnes en Réunion, clavier et lecteurs d'écran (fiche, menus, recherche)
 - La fiche glisse à côté du contenu sur tous les écrans ; dans le calendrier, par-dessus quand la place manque
 - Accueil en pleine largeur : tes épinglés dans une colonne à droite, les compteurs par message retirés
 - Nouveau design : chaque semaine est un tableau avec ses colonnes, l'état est une case de couleur qu'on clique pour le changer

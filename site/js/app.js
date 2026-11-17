@@ -71,6 +71,7 @@
     const calFits = () => { const g = main.querySelector(".grille"); if (!g) return true; const lanes = g.querySelectorAll(".g-h").length - 1;
       const room = Math.min(1180, window.innerWidth - ($("side").offsetWidth || 0) - 460) - 72; return 128 + lanes * 150 <= room; };
     document.documentElement.classList.toggle("fiche-open", !!fNow && !(KP.route.screen === "plan" && KP.route.vue === "grille" && !calFits()));
+    syncModal();
     KP.autosize(document);
     /* la fiche qui s'ouvre prend le focus ; celle qui se ferme le rend à sa ligne */
     if (fNow && fNow !== fWas) $("fiche").focus({ preventScroll: true });
@@ -81,6 +82,16 @@
   }
   try { if (window.self !== window.top) document.documentElement.classList.add("embedded"); } catch (e) { document.documentElement.classList.add("embedded"); }
   KP.render = render;
+  /* la fiche posée par-dessus (petit écran, calendrier serré) est une vraie fenêtre : Tab ne passe plus derrière */
+  function syncModal() {
+    const f = $("fiche"), open = !f.hidden, over = open && (window.innerWidth < 1200 || !document.documentElement.classList.contains("fiche-open"));
+    $("shell").inert = over;
+    if (over) { f.setAttribute("role", "dialog"); f.setAttribute("aria-modal", "true"); f.setAttribute("aria-labelledby", "f-h"); }
+    else { f.removeAttribute("role"); f.removeAttribute("aria-modal"); f.removeAttribute("aria-labelledby"); }
+  }
+  window.addEventListener("resize", () => { if (!$("fiche").hidden) syncModal(); });
+  /* un clic à côté de la fiche posée par-dessus la ferme (le plan derrière est inerte) */
+  document.addEventListener("click", (e) => { if ($("shell").inert && (e.target === document.body || e.target === document.documentElement)) KP.acts["close-fiche"](); });
   store.on(render);
 
   /* ---------- clics : un seul écouteur, des actions nommées ---------- */
@@ -113,12 +124,12 @@
     print: () => window.print(),
     "row-st": (a, e) => {
       e.stopPropagation(); const it = store.get(a.dataset.id);
-      KP.menu(a, KP.STATUTS.map((s) => ({ v: s.k, nom: s.nom, pill: s.k })), (v) => KP.setStatus(it.id, v), { selected: [it.st], right: true, title: "État" });
+      KP.menu(a, KP.STATUTS.map((s) => ({ v: s.k, nom: s.nom, pill: s.k })), (v) => { KP.setStatus(it.id, v); /* le focus revient sur la case d'état de la même ligne */ requestAnimationFrame(() => { const x = $("main").querySelector(`.row[data-id="${it.id}"] [data-act="row-st"]`); if (x) x.focus({ preventScroll: true }); }); }, { selected: [it.st], right: true, title: "État" });
     },
     notifs: (a) => {
       const draw = () => { const list = KP.notifs().slice(0, 12);
         return `<h4 class="pop-h">Notifications${list.length ? `<button type="button" class="link soft" data-clear="all">Tout effacer</button>` : ""}</h4>` + (list.length ? list.map((j) => { const it = store.get(j.item); return `<div class="pop-n"><button type="button" class="pop-i" data-id="${j.item}"><span><b>${h(KP.nomDe(j.qui))}</b> ${h(j.txt)}<small>${h(it ? it.t : "")} · ${h(KP.fmt.quand(j.quand))}</small></span></button><button type="button" class="ib" data-clear="${j.id}" aria-label="Effacer cette notification">${ic("close")}</button></div>`; }).join("") : `<p class="txt">Rien de nouveau.</p>`); };
-      const p = KP.pop(a, draw(), { side: !!a.closest(".side"), right: true, cls: "pop-notifs" });
+      const p = KP.pop(a, draw(), { side: !!a.closest(".side"), right: true, cls: "pop-notifs", role: "dialog", label: "Notifications" });
       p.el.addEventListener("click", (e) => {
         const x = e.target.closest("[data-clear]");
         if (x) { const pr = store.prefs(); if (x.dataset.clear === "all") pr.nall = Date.now(); else pr.nx = [...(pr.nx || []), x.dataset.clear]; store.setPref("vu", Date.now()); p.el.innerHTML = draw(); return; }
@@ -184,7 +195,7 @@
       </div>
       ${s.kind === "tf" && s.variant !== "sujet" && !s.flou ? `<div class="field"><span>Jusqu'au, si ça dure plusieurs jours</span><button type="button" class="input" data-pick-fin>${ic("calendar")}${s.fin ? h(KP.fmt.long(s.fin)) : '<span class="muted">Un seul jour</span>'}</button></div>` : ""}
       <div class="field"><span>Messages</span><div class="picks">${KP.MESSAGES.map((m) => `<button type="button" class="pick" data-m="${m.k}"${m.hors ? ' data-hors' : ""} aria-pressed="${s.m.includes(m.k)}" title="${h(m.info)}">${m.nom}</button>`).join("")}</div></div>
-      ${s.kind === "action" && !s.tf && near().length ? `<div class="field"><span>C'est pour un temps fort ?</span><div class="picks">${near().map((x) => `<button type="button" class="pick" data-tf="${x.id}"><i class="tfdot"></i> ${h(x.t)} · ${h(KP.dateShort(x))}</button>`).join("")}<button type="button" class="pick" data-tf-other>Un autre</button><button type="button" class="pick" aria-pressed="true" disabled>Non</button></div></div>` : ""}
+      ${s.kind === "action" && !s.tf && near().length ? `<div class="field"><span>C'est pour un temps fort ?</span><div class="picks"><button type="button" class="pick" aria-pressed="true" disabled>Non</button>${near().map((x) => `<button type="button" class="pick" data-tf="${x.id}"><i class="tfdot"></i> ${h(x.t)} · ${h(KP.dateShort(x))}</button>`).join("")}<button type="button" class="pick" data-tf-other>Un autre</button></div></div>` : ""}
       ${s.kind === "action" && (s.tf || s.other || !near().length) ? `<label class="field"><span>Pour un temps fort</span><select class="input" name="tf"><option value="">Aucun</option>${tfAvenir.length ? `<optgroup label="À venir">${tfAvenir.map(tfOpt).join("")}</optgroup>` : ""}${tfPasses.length ? `<optgroup label="Déjà passés">${tfPasses.map(tfOpt).join("")}</optgroup>` : ""}</select></label>` : ""}
       ${s.kind === "action" && u.role === "pilote" ? `<button type="button" class="check" data-pay aria-pressed="${s.variant === "partenariat"}"><span class="box">${ic("check")}</span>Partenariat média payant</button>` : ""}
       <div class="foot"><span class="hint">Ctrl + Entrée pour créer</span><button type="button" class="btn quiet" data-close>Annuler</button><button class="btn primary" type="submit">Créer</button></div>
@@ -224,14 +235,15 @@
       ...(store.canCreate() ? [{ nom: "Nouvelle action", icon: "plus", go: () => KP.nouveau() }, { nom: "Nouveau temps fort", icon: "plus", go: () => KP.nouveau({ kind: "tf" }) }] : []),
       { nom: "Accueil", icon: "home", go: () => KP.go({ screen: "accueil", fiche: "" }) },
       { nom: "Le plan, en liste", icon: "list", go: () => KP.go({ screen: "plan", vue: "liste", fiche: "" }) },
-      { nom: "Le plan, en grille", icon: "grid", go: () => KP.go({ screen: "plan", vue: "grille", fiche: "" }) },
+      { nom: "Le plan, en calendrier", icon: "grid", go: () => KP.go({ screen: "plan", vue: "grille", fiche: "" }) },
       { nom: "Réunion, ordre du jour", icon: "meet", go: () => KP.go({ screen: "reunion", tab: "ordre", fiche: "" }) },
       { nom: "Réunion, bilan", icon: "meet", go: () => KP.go({ screen: "reunion", tab: "bilan", fiche: "" }) },
       { nom: "Nouveautés et version", icon: "info", go: () => KP.go({ screen: "reglages", set: "apropos", fiche: "" }) },
       { nom: "Réglages", icon: "gear", go: () => KP.go({ screen: "reglages", set: "profil", fiche: "" }) },
       ...KP.PERIODS.map((p) => ({ nom: `Période ${p.nom}`, icon: "calendar", go: () => KP.go({ screen: "plan", per: p.k, fiche: "" }) })),
     ];
-    const d = KP.dialog(`<div class="q">${ic("search")}<input type="text" placeholder="Chercher une action, un temps fort, un écran…" aria-label="Rechercher" autocomplete="off"><kbd>Échap</kbd><button type="button" class="ib cmdk-x" data-close aria-label="Fermer la recherche">${ic("close")}</button></div><div class="res" role="listbox"></div>`, { cls: "cmdk" });
+    const d = KP.dialog(`<div class="q">${ic("search")}<input type="text" placeholder="Chercher une action, un temps fort, un écran…" aria-label="Rechercher" autocomplete="off" role="combobox" aria-expanded="true" aria-controls="cmdk-res" aria-autocomplete="list"><kbd>Échap</kbd><button type="button" class="ib cmdk-x" data-close aria-label="Fermer la recherche">${ic("close")}</button></div><div class="res" role="listbox" id="cmdk-res" aria-label="Résultats"></div>`, { cls: "cmdk" });
+    d.setAttribute("aria-label", "Recherche");
     const inp = d.querySelector("input"), res = d.querySelector(".res");
     let list = [], cur = 0;
     const draw = () => {
@@ -240,10 +252,11 @@
       const cs = cmds.filter((c) => !q || KP.norm(c.nom).includes(q)).slice(0, q ? 6 : 7);
       list = [...its.map((i) => ({ it: i })), ...cs]; cur = Math.min(cur, Math.max(0, list.length - 1));
       let n = 0;
-      res.innerHTML = (its.length ? `<h4>${q ? "Dans le plan" : "Proche d'aujourd'hui"}</h4>` + its.map((i) => `<button type="button" class="pop-i${n === cur ? " cur" : ""}" data-n="${n++}">${i.kind === "tf" ? '<i class="tfdot"></i>' : ic("doc")}<span>${h(i.t)}<small>${h(KP.kindName(i))} · ${h(KP.dateLong(i))}</small></span></button>`).join("") : "") +
-        (cs.length ? `<h4>Aller à</h4>` + cs.map((c) => `<button type="button" class="pop-i${n === cur ? " cur" : ""}" data-n="${n++}">${ic(c.icon)}<span>${h(c.nom)}</span></button>`).join("") : "") +
+      res.innerHTML = (its.length ? `<h4 aria-hidden="true">${q ? "Dans le plan" : "Proche d'aujourd'hui"}</h4>` + its.map((i) => `<button type="button" class="pop-i${n === cur ? " cur" : ""}" role="option" id="cmdk-o${n}" aria-selected="${n === cur}" tabindex="-1" data-n="${n++}">${i.kind === "tf" ? '<i class="tfdot"></i>' : ic("doc")}<span>${h(i.t)}<small>${h(KP.kindName(i))} · ${h(KP.dateLong(i))}</small></span></button>`).join("") : "") +
+        (cs.length ? `<h4 aria-hidden="true">Aller à</h4>` + cs.map((c) => `<button type="button" class="pop-i${n === cur ? " cur" : ""}" role="option" id="cmdk-o${n}" aria-selected="${n === cur}" tabindex="-1" data-n="${n++}">${ic(c.icon)}<span>${h(c.nom)}</span></button>`).join("") : "") +
         (!list.length ? `<p class="txt" style="padding:18px 12px">Rien ne correspond à « ${h(inp.value)} ».</p>` : "");
       const c = res.querySelector(".cur"); if (c) c.scrollIntoView({ block: "nearest" });
+      if (c) inp.setAttribute("aria-activedescendant", c.id); else inp.removeAttribute("aria-activedescendant");
     };
     const run = (i) => { const x = list[i]; if (!x) return; d.close(); if (x.it) KP.go({ screen: "plan", per: x.it.variant === "sujet" ? x.it.per : KP.periodOf(x.it.date).k, svc: "", msg: "", type: "", fiche: x.it.id }); else x.go(); };
     inp.addEventListener("input", () => { cur = 0; draw(); });

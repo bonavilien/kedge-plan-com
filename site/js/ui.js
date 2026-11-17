@@ -19,7 +19,7 @@
   KP.pop = (anchor, html, opt = {}) => {
     KP.closePop();
     const scrim = document.createElement("div"); scrim.className = "scrim";
-    const el = document.createElement("div"); el.className = "pop " + (opt.cls || ""); el.setAttribute("role", "menu"); el.innerHTML = html;
+    const el = document.createElement("div"); el.className = "pop " + (opt.cls || ""); el.setAttribute("role", opt.role || "menu"); if (opt.label) el.setAttribute("aria-label", opt.label); if (opt.role === "dialog") el.setAttribute("aria-modal", "false"); el.innerHTML = html;
     (anchor.closest("dialog") || layer()).append(scrim, el);
     const place = () => {
       if (KP.phone()) return;
@@ -35,6 +35,8 @@
     const out = (e) => { if (!el.contains(e.target) && e.target !== anchor && !anchor.contains(e.target)) close(); };
     const key = (e) => {
       if (e.key === "Escape") { e.stopPropagation(); e.preventDefault(); close(); anchor.focus(); }
+      /* Tab sort du menu : il se ferme au lieu de rester ouvert derrière */
+      if (e.key === "Tab" && (opt.role || "menu") === "menu") { close(); anchor.focus(); }
       if (e.key === "ArrowDown" || e.key === "ArrowUp") {
         const b = [...el.querySelectorAll("button:not([disabled])")]; if (!b.length) return;
         e.preventDefault(); const i = b.indexOf(document.activeElement);
@@ -52,9 +54,10 @@
   /* menu de choix : items = [{v, nom, info, icon, danger}] ou "—" pour un trait ; multi garde le menu ouvert */
   KP.menu = (anchor, items, onPick, opt = {}) => {
     const sel = new Set(opt.selected || []);
-    const draw = () => (opt.title ? `<h4>${KP.h(opt.title)}</h4>` : "") + items.map((it) => it === "-" ? "<hr>" :
-      `<button type="button" class="pop-i${it.danger ? " danger" : ""}" role="menuitem" data-v="${KP.h(it.v)}">${it.icon ? KP.ic(it.icon) : ""}<span>${it.pill ? `<span class="pill ${it.pill}">${it.pill === "diffuse" ? KP.ic("check") : ""}${KP.h(it.nom)}</span>` : KP.h(it.nom)}${it.info ? `<small>${KP.h(it.info)}</small>` : ""}</span>${sel.has(it.v) ? `<span class="r">${KP.ic("check")}</span>` : it.hint ? `<span class="r">${KP.h(it.hint)}</span>` : ""}</button>`).join("");
-    const p = KP.pop(anchor, draw(), opt);
+    const radio = !!opt.selected;
+    const draw = () => (opt.title ? `<h4 aria-hidden="true">${KP.h(opt.title)}</h4>` : "") + items.map((it) => it === "-" ? '<hr role="separator">' :
+      `<button type="button" class="pop-i${it.danger ? " danger" : ""}" role="${radio ? (opt.multi ? "menuitemcheckbox" : "menuitemradio") : "menuitem"}"${radio ? ` aria-checked="${sel.has(it.v)}"` : ""} data-v="${KP.h(it.v)}">${it.icon ? KP.ic(it.icon) : ""}<span>${it.pill ? `<span class="pill ${it.pill}">${it.pill === "diffuse" ? KP.ic("check") : ""}${KP.h(it.nom)}</span>` : KP.h(it.nom)}${it.info ? `<small>${KP.h(it.info)}</small>` : ""}</span>${sel.has(it.v) ? `<span class="r">${KP.ic("check")}</span>` : it.hint ? `<span class="r">${KP.h(it.hint)}</span>` : ""}</button>`).join("");
+    const p = KP.pop(anchor, draw(), { label: opt.title, ...opt });
     p.el.addEventListener("click", (e) => {
       const b = e.target.closest("[data-v]"); if (!b) return;
       const v = b.dataset.v;
@@ -101,7 +104,7 @@
         ${opt.month ? `<button type="button" class="cal-m" data-d="${y}-${String(m + 1).padStart(2, "0")}">${KP.ic("calendar")}<span>Courant ${KP.MOIS[m]}<small>Je n'ai pas encore la date précise</small></span></button>` : ""}
         <div class="cal-f"><button type="button" class="link soft" data-d="${KP.TODAY}">Aujourd'hui</button>${opt.clear ? `<button type="button" class="link soft" data-d="">Retirer</button>` : ""}</div></div>`;
     };
-    const p = KP.pop(anchor, draw(), { ...opt, cls: "pop-cal" });
+    const p = KP.pop(anchor, draw(), { ...opt, cls: "pop-cal", role: "dialog", label: opt.label || "Choisir une date" });
     p.el.addEventListener("click", (e) => {
       const m = e.target.closest("[data-m]"); if (m) { cur.setMonth(cur.getMonth() + +m.dataset.m); p.el.innerHTML = draw(); p.place(); return; }
       const d = e.target.closest("[data-d]"); if (d) { p.close(); onPick(d.dataset.d); }
@@ -144,7 +147,7 @@
     const svc = it.kind === "tf" ? "" : it.variant === "partenariat" ? it.partner || "Média à choisir" : (KP.service(it.svc) || {}).nom || "";
     return `<div class="row ${it.kind === "tf" ? "tf" : ""}${it.annule ? " off" : ""}${KP.route && KP.route.fiche === it.id ? " sel" : ""}" data-act="open" data-id="${it.id}">
       <span class="d">${opt.date || KP.dateCell(it)}</span>
-      <span class="t">${it.kind === "tf" ? '<i class="tfdot"></i>' : ""}<button type="button" class="open" data-act="open" data-id="${it.id}"><span class="tt">${KP.h(it.t)}</span></button>${it.variant === "classement" && it.rang ? `<span class="rang">${KP.h(it.rang)}</span>` : ""}${!it.annule && KP.recent(it.report) ? `<span class="badge">Reporté</span>` : ""}${it.variant === "partenariat" ? `<span class="badge">Payant</span>` : ""}${opt.sub ? `<small>${KP.h(opt.sub)}</small>` : par ? `<small>pour ${KP.h(par.t)}</small>` : it.variant === "classement" && it.cible ? `<small>objectif ${KP.h(it.cible)}</small>` : ""}</span>
+      <span class="t">${it.kind === "tf" && opt.slim ? '<i class="tfdot"></i>' : ""}<button type="button" class="open" data-act="open" data-id="${it.id}"><span class="tt">${KP.h(it.t)}</span></button>${it.variant === "classement" && it.rang ? `<span class="rang">${KP.h(it.rang)}</span>` : ""}${!it.annule && KP.recent(it.report) ? `<span class="badge">Reporté</span>` : ""}${it.variant === "partenariat" ? `<span class="badge">Payant</span>` : ""}${opt.sub ? `<small>${KP.h(opt.sub)}</small>` : par ? `<small>pour ${KP.h(par.t)}</small>` : it.variant === "classement" && it.cible ? `<small>objectif ${KP.h(it.cible)}</small>` : ""}</span>
       ${opt.slim ? "" : `<span class="svc">${it.kind === "tf" ? '<i class="tag tf">Temps fort</i>' : KP.h(svc)}</span><span class="msg">${it.m.map((k) => (KP.message(k) || {}).nom).filter(Boolean).map((n) => `<i class="tag">${KP.h(n)}</i>`).join("")}</span>`}
       ${opt.mid != null ? opt.mid : ""}
       <span class="st">${KP.pill(it, KP.store.canEdit(it))}</span>${opt.end || ""}
