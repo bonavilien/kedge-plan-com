@@ -74,7 +74,7 @@
       if (q.op === "delete") { const gone = t === "items" ? hit.filter((r) => r.st === "retire") : hit; db[t] = tbl.filter((r) => !gone.includes(r)); if (t === "items") { const ids = gone.map((g) => g.id); ["links", "reqs", "blocks", "item_contacts"].forEach((k) => (db[k] = db[k].filter((x) => !ids.includes(x.item)))); db.items.forEach((x) => { if (ids.includes(x.tf)) x.tf = null; }); } return { data: q.ret ? gone.map((r) => ({ id: r.id })) : null, error: null }; }
     };
     const api = {
-      select: () => { if (q.op !== "select") q.ret = true; return api; }, order: (k) => { q.sort = k; return api; }, eq: (k, v) => { q.filters.push([k, v]); return api; },
+      select: () => { if (q.op !== "select") q.ret = true; return api; }, order: (k) => { q.sort = k; return api; }, limit: () => api, eq: (k, v) => { q.filters.push([k, v]); return api; },
       single: () => { q.one = true; return api; },
       insert: (r) => { q.op = "insert"; q.rows = Array.isArray(r) ? r : [r]; return api; }, upsert: (r) => { q.op = "upsert"; q.rows = Array.isArray(r) ? r : [r]; return api; },
       update: (p) => { q.op = "update"; q.patch = p; return api; }, delete: () => { q.op = "delete"; return api; },

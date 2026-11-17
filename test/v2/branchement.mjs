@@ -82,7 +82,7 @@ ok((await row(p, "items", I(2))).st === "planifie" && (await row(p, "items", I(2
 await p.evaluate((id) => KP.store.update(id, { reunion: true }), I(4)); await settle(p);
 ok(await p.evaluate((id) => window.__fake.db.blocks.some((x) => x.item === id && !x.leve && x.why === "à trancher en réunion"), I(4)), "« à voir en réunion » crée le sujet à trancher");
 await p.evaluate(() => KP.store.meetingDone()); await settle(p);
-ok(await p.evaluate(() => window.__fake.db.blocks.every((x) => x.leve)) && (await p.evaluate(() => window.__fake.db.meta[0].v)) === await p.evaluate(() => KP.TODAY), "réunion terminée : sujets levés, date notée");
+ok(await p.evaluate(() => window.__fake.db.blocks.every((x) => x.leve)) && Math.abs(Date.now() - Date.parse(await p.evaluate(() => window.__fake.db.meta[0].v))) < 60000, "réunion terminée : sujets levés, heure notée");
 
 await p.evaluate((id) => { const i = KP.store.get(id); KP.store.update(id, { docs: [...i.docs, { t: "Plan du campus", url: "https://example.sharepoint.com/plan" }] }); }, I(1)); await settle(p);
 ok(await p.evaluate(() => window.__fake.db.links.length) === 2 && !!(await it(p, I(1))).docs[1].id, "document ajouté, son identifiant revient de la base");

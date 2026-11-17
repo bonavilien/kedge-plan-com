@@ -2,6 +2,13 @@
 
 Généré depuis `site/js/version.js` par `node scripts/version.mjs`. Ne pas modifier à la main.
 
+## 2.0.2 · 2026-11-17
+
+- Rappel pour moi : le crayon pour changer le texte ou la date, la corbeille pour l'effacer
+- Une action se rattache aussi à un temps fort déjà passé
+- Une demande se retire, se redate et se relance pour de vrai
+- Plus de modification perdue, « Annuler » ne touche que ton geste, « Dupliquer » réparé
+
 ## 2.0.1 · 2026-11-17
 
 - Rappel pour moi : l'horloge en haut de la fiche. Une phrase et une date, toi seul le vois, tu le coches quand c'est fait. Ouvert à tous les comptes
