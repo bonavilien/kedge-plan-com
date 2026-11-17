@@ -2,6 +2,10 @@
 
 Généré depuis `site/js/version.js` par `node scripts/version.mjs`. Ne pas modifier à la main.
 
+## 2.0.1 · 2026-11-17
+
+- Le mémo pour soi revient : dans Demander des éléments, choisir « Moi (mémo) ». Personne n'est prévenu, on le coche « C'est fait »
+
 ## 2.0 · 2026-11-17
 
 - La V2 remplace la V1 : nouvel écran d'accueil, le plan en liste ou en grille, la fiche à côté, trois états, l'étiquette Recrutement

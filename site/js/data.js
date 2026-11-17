@@ -260,7 +260,7 @@
       log(id, `a déplacé au ${fmt.moyen(date)}`); emit();
       return () => { db.items = JSON.parse(snap); emit(); };
     },
-    ask(o) { const r = { id: nid("r"), de: db.moi, fait: false, rep: "", quand: Date.now(), ...o }; db.reqs.push(r); log(o.item, `a demandé ${ASK[o.quoi] || "des éléments"} à ${(person(o.a) || service(o.a) || { nom: "" }).nom}`); emit(); return r; },
+    ask(o) { const r = { id: nid("r"), de: db.moi, fait: false, rep: "", quand: Date.now(), ...o }; db.reqs.push(r); log(o.item, o.a === db.moi ? "s'est noté un mémo" : `a demandé ${ASK[o.quoi] || "des éléments"} à ${(person(o.a) || service(o.a) || { nom: "" }).nom}`); emit(); return r; },
     answer(id, rep) { const r = db.reqs.find((x) => x.id === id); if (!r) return () => {}; r.fait = true; r.rep = rep || ""; log(r.item, "a répondu à une demande"); emit(); return () => { r.fait = false; r.rep = ""; emit(); }; },
     meetingDone() { const b = db.lastMeeting; db.lastMeeting = TODAY; const flagged = db.items.filter((i) => i.reunion); flagged.forEach((i) => (i.reunion = false)); emit(); return () => { db.lastMeeting = b; flagged.forEach((i) => (i.reunion = true)); emit(); }; },
     /* préférences par compte : épingles, thème, suggestions écartées */

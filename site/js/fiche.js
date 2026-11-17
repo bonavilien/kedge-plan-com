@@ -35,9 +35,9 @@
 
     const req = (r) => {
       const late = !r.fait && r.pour < KP.TODAY;
-      return `<div class="req"><div class="meta">${h(KP.dest(r.de))} demande à ${h(KP.dest(r.a))} · <span class="${late ? "late" : ""}">${h(KP.due(r))}</span></div>
+      return `<div class="req"><div class="meta">${r.de === r.a ? `Mémo de ${h(KP.dest(r.de))}` : `${h(KP.dest(r.de))} demande à ${h(KP.dest(r.a))}`} · <span class="${late ? "late" : ""}">${h(KP.due(r))}</span></div>
         <p><b>${h(r.quoi)}</b>${r.txt ? " · " + h(r.txt) : ""}</p>
-        ${r.fait ? `<div class="rep">${ic("check")} ${h(r.rep || "Reçu")}</div>` : r.de === u.k ? `<button type="button" class="link soft" data-act="relance" data-id="${r.id}">Relancer</button>` : (mine(r) || u.role === "pilote") && !reader ? `<button type="button" class="link" data-act="answer" data-id="${r.id}">Répondre</button>` : ""}</div>`;
+        ${r.fait ? `<div class="rep">${ic("check")} ${h(r.rep || "Reçu")}</div>` : r.de === u.k && r.a === u.k ? `<button type="button" class="link" data-act="memo-fait" data-id="${r.id}">C'est fait</button>` : r.de === u.k ? `<button type="button" class="link soft" data-act="relance" data-id="${r.id}">Relancer</button>` : (mine(r) || u.role === "pilote") && !reader ? `<button type="button" class="link" data-act="answer" data-id="${r.id}">Répondre</button>` : ""}</div>`;
     };
     const showAct = KP.ui.allAct === it.id ? acts : acts.slice(0, 3);
 
@@ -153,16 +153,17 @@
       const it = store.get(a.dataset.id || KP.route.fiche), u = KP.me();
       const s = { a: u.role === "pilote" ? it.svc || (store.relais(it.id)[0] || {}).svc || "rp" : "julien", quoi: KP.ELEMENTS[0], pour: [KP.addDays(it.date, -7), KP.addDays(KP.TODAY, 1)].sort().pop() };
       const d = KP.dialog(`<form method="dialog"><h2>Demander des éléments</h2><p class="muted" style="margin-top:-8px">Pour « ${h(it.t)} »</p>
-        <label class="field"><span>À qui</span><select class="input" name="a"><optgroup label="Un service">${KP.SERVICES.filter((x) => x.k !== u.svc).map((x) => `<option value="${x.k}" ${x.k === s.a ? "selected" : ""}>${x.nom}</option>`).join("")}</optgroup><optgroup label="Une personne">${KP.PEOPLE.filter((x) => x.k !== u.k && x.role !== "lecteur").map((x) => `<option value="${x.k}" ${x.k === s.a ? "selected" : ""}>${x.nom}, ${x.fonction.toLowerCase()}</option>`).join("")}</optgroup></select></label>
+        <label class="field"><span>À qui</span><select class="input" name="a">${u.role === "pilote" ? `<option value="${u.k}">Moi (mémo)</option>` : ""}<optgroup label="Un service">${KP.SERVICES.filter((x) => x.k !== u.svc).map((x) => `<option value="${x.k}" ${x.k === s.a ? "selected" : ""}>${x.nom}</option>`).join("")}</optgroup><optgroup label="Une personne">${KP.PEOPLE.filter((x) => x.k !== u.k && x.role !== "lecteur").map((x) => `<option value="${x.k}" ${x.k === s.a ? "selected" : ""}>${x.nom}, ${x.fonction.toLowerCase()}</option>`).join("")}</optgroup></select></label>
         <div class="field"><span>Quoi</span><div class="picks">${KP.ELEMENTS.map((x, i) => `<button type="button" class="pick" data-q="${h(x)}" aria-pressed="${i === 0}">${h(x)}</button>`).join("")}</div></div>
         <label class="field"><span>Précision</span><textarea class="input" name="txt" placeholder="Ce dont tu as besoin, en une phrase"></textarea></label>
         <div class="field"><span>Pour le</span><button type="button" class="input" data-pick>${ic("calendar")}<span>${h(KP.fmt.long(s.pour))}</span></button></div>
-        <div class="foot"><span class="hint">La personne est prévenue.</span><button type="button" class="btn quiet" data-close>Annuler</button><button class="btn primary">Envoyer</button></div></form>`);
+        <div class="foot"><span class="hint" data-hint>La personne est prévenue.</span><button type="button" class="btn quiet" data-close>Annuler</button><button class="btn primary">Envoyer</button></div></form>`);
       d.addEventListener("click", (e) => {
         const q = e.target.closest("[data-q]"); if (q) { s.quoi = q.dataset.q; d.querySelectorAll("[data-q]").forEach((b) => b.setAttribute("aria-pressed", b === q)); }
         const pk = e.target.closest("[data-pick]"); if (pk) KP.datepick(pk, s.pour, (v) => { if (v) { s.pour = v; pk.querySelector("span:last-child").textContent = KP.fmt.long(v); } });
       });
-      d.querySelector("form").addEventListener("submit", () => { const f = new FormData(d.querySelector("form")); const r = store.ask({ item: it.id, a: f.get("a"), quoi: s.quoi, txt: f.get("txt").trim(), pour: s.pour }); KP.toast(`Demande envoyée à ${KP.dest(r.a)}`); });
+      d.addEventListener("change", (e) => { if (e.target.name === "a") d.querySelector("[data-hint]").textContent = e.target.value === u.k ? "Un mémo pour toi : personne n'est prévenu." : "La personne est prévenue."; });
+      d.querySelector("form").addEventListener("submit", () => { const f = new FormData(d.querySelector("form")); const r = store.ask({ item: it.id, a: f.get("a"), quoi: s.quoi, txt: f.get("txt").trim(), pour: s.pour }); KP.toast(r.a === u.k ? "Mémo noté" : `Demande envoyée à ${KP.dest(r.a)}`); });
     },
     answer: (a) => {
       const r = store.reqs().find((x) => x.id === a.dataset.id), it = store.get(r.item);
@@ -172,6 +173,7 @@
       d.querySelector("textarea").focus();
       d.querySelector("form").addEventListener("submit", () => KP.toast(`Réponse envoyée à ${KP.dest(r.de)}`, store.answer(r.id, new FormData(d.querySelector("form")).get("rep").trim())));
     },
+    "memo-fait": (a) => { store.answer(a.dataset.id, "Fait"); KP.toast("Mémo fait"); },
     relance: (a) => { const r = store.reqs().find((x) => x.id === a.dataset.id); store.update(r.item, {}, `a relancé ${KP.dest(r.a)}`); KP.toast(`${KP.dest(r.a)} est relancé`); },
   });
 })();

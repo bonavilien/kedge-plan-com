@@ -48,7 +48,7 @@
         actions: [{ nom: "Ajouter une action", run: () => KP.nouveau({ tf: it.id, date: KP.addDays(it.date, -3) < T ? T : KP.addDays(it.date, -3) }) }, { nom: "Voir le temps fort", run: open(it.id) }], skip: "Pas cette fois" }));
 
     // 4. une demande que j'ai envoyée attend
-    store.reqs().filter((r) => r.de === u.k && !r.fait && r.pour < T && store.get(r.item)).forEach((r) => push({ key: "req:" + r.id, type: "relance", icon: "chat", text: `${KP.dest(r.a)} n'a pas encore répondu pour « ${store.get(r.item).t} ».`, why: `Tu attendais ${KP.ASK[r.quoi] || "des éléments"} pour ${KP.fmt.relatif(r.pour)}.`,
+    store.reqs().filter((r) => r.de === u.k && r.a !== u.k && !r.fait && r.pour < T && store.get(r.item)).forEach((r) => push({ key: "req:" + r.id, type: "relance", icon: "chat", text: `${KP.dest(r.a)} n'a pas encore répondu pour « ${store.get(r.item).t} ».`, why: `Tu attendais ${KP.ASK[r.quoi] || "des éléments"} pour ${KP.fmt.relatif(r.pour)}.`,
       actions: [{ nom: "Relancer", run: () => { store.update(r.item, {}, `a relancé ${KP.dest(r.a)}`); KP.skipSuggestion({ key: "req:" + r.id, type: "_" }); KP.toast(`${KP.dest(r.a)} est relancé`); } }, { nom: "Ouvrir", run: open(r.item) }], skip: "Plus tard" }));
 
     if (pilote) {
