@@ -2,6 +2,12 @@
 
 Généré depuis `site/js/version.js` par `node scripts/version.mjs`. Ne pas modifier à la main.
 
+## 2.2 · 2026-11-19
+
+- L'appli se copie pour une autre équipe, qui la met à jour d'un clic : Réglages, Version, « Mettre à jour »
+- Périodes et messages se règlent dans Réglages
+- Nom et logo de chaque copie, réglés sans toucher au code
+
 ## 2.1 · 2026-11-17
 
 - Corrections impeccable : Prévu en anthracite aussi dans le calendrier et plus calme en sombre, Bilan aux couleurs des états, en-têtes de colonnes en Réunion, clavier et lecteurs d'écran (fiche, menus, recherche)

@@ -8,6 +8,8 @@ window.KPLAN_CONFIG = {
   vapidPublicKey: "BJUnpTxEcDGPsVqUrQxCxFi4KTWn6a9-EhJxGRQSC3TrDr7wC-PpFL0AJlQrLPBU7eOqD8aoZciwZjcxvf0qmf4",
   // compte visiteur (lecture seule) : l'écran de connexion propose « Entrer en visiteur » et ne demande que le mot de passe
   visiteur: "visiteur@kedgebs.com",
+  // nom et logo (blanc, posé sur le menu anthracite). Une copie les règle par les variables GitHub KPLAN_NOM et KPLAN_LOGO
+  marque: { nom: "KEDGE", logo: "assets/kedge-logo-blanc.png" },
   // écran d'accueil
   titre: "Plan de com 2026-2027",
   sigem: { annee: 2026, kedge: 10, cible: 7, devant: [{ r: 9, nom: "GEM" }, { r: 8, nom: "Audencia" }, { r: 7, nom: "NEOMA" }] },

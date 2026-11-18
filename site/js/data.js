@@ -80,6 +80,20 @@
   const monthEnd = (s) => { const d = parse(s); return iso(new Date(d.getFullYear(), d.getMonth() + 1, 0)); };
   /* dernier jour possible d'une ligne : la fin du mois quand la date reste à préciser */
   const endOf = (it) => it.flou ? monthEnd(it.date) : it.fin || it.date;
+  /* libellé court d'une période, tiré de ses dates : « sept. – oct. », « juin – mi-juil. » */
+  const libOf = (du, au) => {
+    const a = parse(du), z = parse(au), last = (d) => new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+    const m1 = (a.getDate() > 10 ? "mi-" : "") + MOIS_C[a.getMonth()], m2 = (z.getDate() < last(z) - 5 ? "mi-" : "") + MOIS_C[z.getMonth()];
+    return m1 === m2 ? m1 : `${m1} – ${m2}`;
+  };
+  /* clé stable d'un nom : « Considérer » → « considerer » */
+  const slug = (s) => String(s || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "p";
+  /* les référentiels réglés dans la base (périodes, noms des messages) remplacent ceux de la démonstration, sur place :
+     tout le code qui lit KP.PERIODS ou KP.MESSAGES voit la nouvelle liste */
+  const setRefs = (periods, messages) => {
+    if (periods && periods.length) PERIODS.splice(0, PERIODS.length, ...periods);
+    (messages || []).forEach((m, i) => { const x = MESSAGES.filter((y) => !y.hors)[i]; if (x) Object.assign(x, { nom: m.nom, info: m.info }); });
+  };
   const periodOf = (date) => PERIODS.find((p) => date >= p.du && date <= p.au) || (date < PERIODS[0].du ? PERIODS[0] : PERIODS[PERIODS.length - 1]);
 
   const store0 = (id, items) => items.find((i) => i.id === id);
@@ -252,6 +266,17 @@
     serviceUsed: (k) => db.items.filter((i) => i.svc === k).length + db.people.filter((p) => p.svc === k).length,
     removeService(k) { const b = db.services; db.services = b.filter((s) => s.k !== k); emit(); return () => { db.services = b; emit(); }; },
     partners: () => db.partners,
+    /* périodes et messages : réglés par les pilotes dans Réglages */
+    savePeriod(k, patch) { const p = PERIODS.find((x) => x.k === k); if (!p) return; Object.assign(p, patch); if (patch.du || patch.au) { p.lib = libOf(p.du, p.au); PERIODS.sort((a, b) => a.du.localeCompare(b.du)); } emit(); },
+    addPeriod() {
+      const z = PERIODS[PERIODS.length - 1], du = z ? addDays(z.au, 1) : TODAY, au = addDays(monthEnd(addDays(monthEnd(du), 1)), 0);
+      let k = "periode", i = 1; while (PERIODS.some((x) => x.k === k)) k = "periode-" + (++i);
+      const p = { k, n: Math.max(0, ...PERIODS.map((x) => x.n || 0)) + 1, nom: "Nouvelle période", du, au, lib: libOf(du, au) };
+      PERIODS.push(p); emit(); return p;
+    },
+    periodUsed: (k) => db.items.filter((i) => i.variant === "sujet" && (i.pers || [i.per]).includes(k)).length,
+    removePeriod(k) { const i = PERIODS.findIndex((x) => x.k === k); if (i < 0 || PERIODS.length < 2) return null; const [p] = PERIODS.splice(i, 1); emit(); return () => { PERIODS.splice(i, 0, p); emit(); }; },
+    saveMessage(k, patch) { const m = MESSAGES.find((x) => x.k === k); if (!m) return; Object.assign(m, patch); emit(); },
     addPartner(n) { if (n && !db.partners.includes(n)) { db.partners.push(n); db.partners.sort((a, b) => a.localeCompare(b)); } },
     /* fixe la date : un jour précis, ou tout un mois (flou) en attendant. Les relais suivent quand on passe d'un jour à un autre. */
     setDate(id, date, flou, motif) {
@@ -307,5 +332,5 @@
 
   Object.defineProperty(KP, "PEOPLE", { get: () => db.people });
   Object.defineProperty(KP, "SERVICES", { get: () => db.services });
-  Object.assign(KP, { TODAY, PERIODS, MESSAGES, CLES: MESSAGES.filter((m) => !m.hors), STATUTS, ELEMENTS, ASK, MOIS, endOf, monthEnd, fmt, iso, parse, addDays, diff, monday, periodOf, me, person, nomDe, service, message, store });
+  Object.assign(KP, { TODAY, PERIODS, MESSAGES, CLES: MESSAGES.filter((m) => !m.hors), STATUTS, ELEMENTS, ASK, MOIS, libOf, slug, setRefs, endOf, monthEnd, fmt, iso, parse, addDays, diff, monday, periodOf, me, person, nomDe, service, message, store });
 })();

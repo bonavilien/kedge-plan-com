@@ -8,7 +8,9 @@
   const item = (o) => ({ flou: "", per: [], cc: [], m: [], st: "planifie", tf: null, partner: null, lieu: "", note: "", fin: null, rang: null, cible: null, author: U(1), at: new Date().toISOString(), updated_at: new Date().toISOString(),
     report_de: "", report_motif: "", report_par: null, report_at: null, annule_motif: "", annule_par: null, annule_at: null, ...o });
   const db = {
-    periods: [{ n: 1, du: "2026-09-01" }, { n: 2, du: "2026-11-01" }, { n: 3, du: "2027-01-01" }, { n: 4, du: "2027-04-01" }, { n: 5, du: "2027-06-01" }],
+    periods: [{ n: 1, nom: "Installer", du: "2026-09-01", au: "2026-10-31", lib: "" }, { n: 2, nom: "Considérer", du: "2026-11-01", au: "2026-12-31", lib: "" }, { n: 3, nom: "Préférer", du: "2027-01-01", au: "2027-03-31", lib: "" },
+      { n: 4, nom: "Convertir", du: "2027-04-01", au: "2027-05-31", lib: "" }, { n: 5, nom: "Décider", du: "2027-06-01", au: "2027-07-15", lib: "" }],
+    messages: [{ n: 1, nom: "Filières", info: "Finance, Supply, Sales" }, { n: 2, nom: "Alumni", info: "Le réseau alumni" }, { n: 3, nom: "International", info: "Top universités" }, { n: 4, nom: "Continuum", info: "Le continuum prépa" }, { n: 5, nom: "Réputation", info: "Classements" }],
     services: [{ k: "rp", nom: "Relations presse", court: "RP", ordre: 1 }, { k: "rs", nom: "Réseaux sociaux", court: "RS", ordre: 2 }, { k: "video", nom: "Production vidéo", court: "Vidéo", ordre: 3 }, { k: "content", nom: "Content", court: "Content", ordre: 4 }],
     partners: [{ k: "challenges", nom: "Challenges" }],
     profiles: [

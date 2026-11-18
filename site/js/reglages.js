@@ -2,7 +2,7 @@
 (() => {
   const KP = window.KP, { h, ic, store } = KP;
   const ROLES = [["pilote", "Pilote", "modifie tout, administre"], ["service", "Service", "modifie ses actions"], ["lecteur", "Lecture seule", "consulte"]];
-  const TABS = [["profil", "Mon profil"], ["equipe", "Équipe"], ["services", "Services"], ["medias", "Médias"], ["lieux", "Lieux"], ["contacts", "Contacts"], ["apropos", "Version"]];
+  const TABS = [["profil", "Mon profil"], ["equipe", "Équipe"], ["services", "Services"], ["periodes", "Périodes"], ["messages", "Messages"], ["medias", "Médias"], ["lieux", "Lieux"], ["contacts", "Contacts"], ["apropos", "Version"]];
   const svcSel = (id, v, attr = "") => `<select class="input" id="${id}" ${attr}><option value="">Aucun</option>${KP.SERVICES.map((s) => `<option value="${s.k}" ${s.k === v ? "selected" : ""}>${h(s.nom)}</option>`).join("")}</select>`;
   const field = (label, html) => `<label class="field"><span>${label}</span>${html}</label>`;
 
@@ -11,7 +11,7 @@
     return `<div class="page narrow wide-set">
       <div class="head"><h1>Réglages</h1></div>
       <div class="bar"><div class="seg" role="group" aria-label="Réglages">${TABS.filter(([k]) => admin || k === "profil" || k === "apropos").map(([k, n]) => `<button type="button" data-act="set-tab" data-k="${k}" class="${k === tab ? "on" : ""}" aria-pressed="${k === tab}">${n}</button>`).join("")}</div></div>
-      ${({ apropos, profil, equipe, services, medias: () => liste("partners", "Médias partenaires", "Proposés quand une action est un partenariat payant.", "Nom du média"), lieux: () => liste("lieux", "Lieux", "Proposés dans le champ Lieu d'un temps fort.", "Nom du lieu"), contacts })[tab]()}
+      ${({ apropos, profil, equipe, services, periodes, messages, medias: () => liste("partners", "Médias partenaires", "Proposés quand une action est un partenariat payant.", "Nom du média"), lieux: () => liste("lieux", "Lieux", "Proposés dans le champ Lieu d'un temps fort.", "Nom du lieu"), contacts })[tab]()}
     </div>`;
   };
 
@@ -21,7 +21,7 @@
     return `<section class="set"><h2>Mes infos</h2>
         <div class="two">${field("Prénom", `<input class="input" id="me-nom" data-set="me:nom" value="${h(u.nom)}" maxlength="40" autocomplete="off" ${ro}>`)}${field("Fonction", `<input class="input" id="me-fonction" data-set="me:fonction" value="${h(u.fonction)}" maxlength="80" autocomplete="off" ${ro}>`)}</div>
         <div class="two">${field("Service", admin ? svcSel("me-svc", u.svc, 'data-set="me:svc"') : `<span class="ro">${h((KP.service(u.svc) || { nom: "Aucun" }).nom)}</span>`)}${field("Droits", `<span class="ro">${ROLES.find((r) => r[0] === u.role)[1]} <small class="muted">${ROLES.find((r) => r[0] === u.role)[2]}</small></span>`)}</div>
-        ${admin ? "" : `<p class="muted">Ton service et tes droits sont réglés par Julien ou Estelle.</p>`}
+        ${admin ? "" : `<p class="muted">Ton service et tes droits sont réglés par un pilote${(() => { const p = KP.PEOPLE.filter((x) => x.role === "pilote").map((x) => x.nom); return p.length ? ` (${h(p.join(", "))})` : ""; })()}.</p>`}
       </section>
       <section class="set"><h2>Apparence</h2>
         <div class="seg" role="group" aria-label="Apparence">${[["auto", "Comme l'appareil"], ["light", "Clair"], ["dark", "Sombre"]].map(([k, n]) => `<button type="button" data-act="set-theme" data-k="${k}" class="${th === k ? "on" : ""}" aria-pressed="${th === k}">${n}</button>`).join("")}</div>
@@ -33,9 +33,61 @@
       </section>`}`;
   }
 
+  /* ---------- mise à jour en un clic : une copie suit le dépôt d'origine (pilotes seulement) ----------
+     Le bouton appelle la fonction « mise-a-jour » du Supabase de la copie : la base d'abord, puis le code,
+     puis on attend que GitHub Pages ait publié la nouvelle version, et l'appli se recharge. */
+  const GUIDE = "https://github.com/bonavilien/kedge-plan-com/blob/main/DEPLOYER.md";
+  const STEPS = [["Base", "data"], ["Code", "code"], ["En ligne", "online"]];
+  const M = { st: "", etat: null, step: 0, msg: "" };
+  const majOn = () => store.remote() && !!(window.KPLAN_CONFIG || {}).copie && KP.me().role === "pilote" && KP.remote && KP.remote.maj;
+  async function majEtat() {
+    M.st = "charge"; M.msg = "";
+    try { M.etat = await KP.remote.maj("etat"); M.st = M.etat.origine ? "origine" : M.etat.aJour ? "ajour" : "dispo"; }
+    catch (e) { M.st = e.code === "absente" ? "absente" : "erreur"; M.msg = e.message; }
+    if (KP.route.screen === "reglages") KP.render();
+  }
+  async function majGo() {
+    const cible = M.etat && M.etat.version ? M.etat.version.amont : "";
+    M.st = "cours"; M.step = 0; M.msg = ""; KP.render();
+    try {
+      await KP.remote.maj("base"); M.step = 1; KP.render();
+      const c = await KP.remote.maj("code"); M.step = 2; KP.render();
+      /* GitHub Pages publie en une à trois minutes : on attend que le site serve la nouvelle version */
+      const want = cible || c.version, t0 = Date.now();
+      while (want && want !== KP.VERSION.n && Date.now() - t0 < 10 * 60 * 1000) {
+        try { const r = await fetch("version.json?t=" + Date.now(), { cache: "no-store" }); if (r.ok && (await r.json()).version === want) break; } catch (e) {}
+        await new Promise((ok) => setTimeout(ok, 5000));
+      }
+      M.step = 3; M.st = "fini"; KP.render();
+      setTimeout(() => KP.acts.reload(), 1500);
+    } catch (e) { M.st = "erreur"; M.msg = e.message; KP.render(); }
+  }
+  function majCard() {
+    if (!majOn()) return "";
+    if (!M.st) setTimeout(majEtat, 0);
+    const e = M.etat || {}, v = e.version || {}, lab = (n) => h(KP.versionLabel(n || KP.VERSION.n));
+    const steps = () => `<ol class="maj-steps" aria-label="Avancement">${STEPS.map(([n], i) => `<li class="${i < M.step ? "done" : i === M.step && M.st === "cours" ? "now" : ""}"><span class="dot">${i < M.step ? ic("check") : i + 1}</span>${n}</li>`).join("")}</ol>`;
+    const notes = (e.nouveautes || []).flatMap((x) => x.notes).slice(0, 6);
+    const body = {
+      charge: () => `<div class="maj-v"><span class="vn">${lab()}</span><span class="spin" aria-label="Vérification"></span></div>`,
+      ajour: () => `<div class="maj-v"><span class="ok-dot">${ic("check")}</span><span class="vn">${lab()}</span><b class="maj-tag">À jour</b></div>`,
+      dispo: () => `<div class="maj-v"><span class="vn old">${lab(v.ici)}</span><span class="arrow" aria-hidden="true">→</span><span class="vn">${lab(v.amont)}</span></div>
+        ${notes.length ? `<ul class="maj-notes">${notes.map((n) => `<li>${h(n)}</li>`).join("")}</ul>` : ""}
+        <button type="button" class="btn primary" data-act="maj-go">Mettre à jour</button>
+        ${e.base && e.base.length ? `<small class="muted maj-hint">+ ${e.base.length} mise${e.base.length > 1 ? "s" : ""} à jour de la base</small>` : ""}`,
+      cours: () => `<div class="maj-v"><span class="vn old">${lab(v.ici)}</span><span class="arrow" aria-hidden="true">→</span><span class="vn">${lab(v.amont)}</span></div>${steps()}`,
+      fini: () => `<div class="maj-v"><span class="ok-dot">${ic("check")}</span><span class="vn">${lab(v.amont)}</span><b class="maj-tag">Rechargement…</b></div>${steps()}`,
+      erreur: () => `${M.step ? steps() : ""}<p class="maj-err" role="alert">${h(M.msg)}</p><button type="button" class="btn quiet" data-act="maj-retry">Réessayer</button>`,
+      absente: () => `<p class="muted">Le bouton n'est pas encore installé.</p><a class="btn quiet" href="${GUIDE}#6-le-bouton-mettre-à-jour" target="_blank" rel="noopener">${ic("external")}Le guide, étape 6</a>`,
+      origine: () => `<div class="maj-v"><span class="ok-dot">${ic("check")}</span><span class="vn">${lab()}</span><b class="maj-tag">Version d'origine</b></div>`,
+    }[M.st] || (() => "");
+    return `<section class="set maj maj-${M.st}" aria-live="polite"><h2>Mise à jour</h2>${body()}
+      ${e.fonctionAmont > e.fonction && M.st !== "absente" ? `<p class="muted maj-hint">${ic("info")}Le bouton lui-même a une nouvelle version : <a href="${GUIDE}#6-le-bouton-mettre-à-jour" target="_blank" rel="noopener">recolle-le</a>.</p>` : ""}</section>`;
+  }
+
   function apropos() {
     const v = KP.VERSION, d = (s) => KP.fmt.moyen(s) + " " + s.slice(0, 4);
-    return `<section class="set"><h2>Plan de com KEDGE</h2>
+    return `${majCard()}<section class="set"><h2>${h(KP.marque.titre)}</h2>
         <p class="vbig">Version ${h(KP.versionLabel(v.n))} <small class="muted">du ${h(d(v.date))} · ${h(v.n)}</small></p>
         ${KP.embedded ? `<p class="muted">Aperçu de démonstration : les données restent dans ce navigateur.</p>` : `<p class="muted">Sur téléphone, l'appli s'installe depuis le menu du navigateur : « Ajouter à l'écran d'accueil ».</p>`}
       </section>
@@ -64,6 +116,22 @@
       <p class="muted">Chaque service a sa colonne dans la grille. On rattache une personne à un service depuis l'onglet Équipe.</p></section>`;
   }
 
+  function periodes() {
+    const one = KP.PERIODS.length < 2;
+    return `<section class="set"><h2>Périodes<button type="button" class="btn quiet small" data-act="set-add" data-k="periods">${ic("plus")}Ajouter une période</button></h2>
+      <div class="tbl t-per"><div class="th"><span>Nom</span><span>Du</span><span>Au</span><span></span></div>
+      ${KP.PERIODS.map((p) => `<div class="tr"><input class="input" id="pe-${p.k}-nom" data-set="periods:${p.k}:nom" value="${h(p.nom)}" aria-label="Nom" maxlength="40" autocomplete="off">
+        <input class="input" type="date" id="pe-${p.k}-du" data-set="periods:${p.k}:du" value="${p.du}" aria-label="Premier jour"><input class="input" type="date" id="pe-${p.k}-au" data-set="periods:${p.k}:au" value="${p.au}" aria-label="Dernier jour">
+        ${one ? "<span></span>" : KP.ib("trash", "Retirer", "set-rm", `data-k="periods" data-id="${p.k}"`)}</div>`).join("")}</div>
+      <p class="muted">Le plan se lit par période. Elles se suivent sans se chevaucher.</p></section>`;
+  }
+
+  function messages() {
+    return `<section class="set"><h2>Les ${KP.CLES.length} messages</h2>
+      <div class="tbl t-msg"><div class="th"><span>Nom</span><span>Ce qu'il couvre</span></div>
+      ${KP.CLES.map((m) => `<div class="tr"><input class="input" id="me-${m.k}-nom" data-set="messages:${m.k}:nom" value="${h(m.nom)}" aria-label="Nom" maxlength="30" autocomplete="off"><input class="input" id="me-${m.k}-info" data-set="messages:${m.k}:info" value="${h(m.info)}" aria-label="Ce qu'il couvre" maxlength="160" autocomplete="off"></div>`).join("")}</div></section>`;
+  }
+
   function liste(k, titre, aide, ph) {
     const list = k === "partners" ? store.partners() : store.lieux();
     return `<section class="set"><h2>${titre}</h2><p class="muted" style="margin-top:-6px">${aide}</p>
@@ -85,6 +153,15 @@
       else if ((f === "nom") && !v) return KP.render();
       else if (k === "people") { if (id === KP.me().k && f === "role" && v !== "pilote" && !KP.PEOPLE.some((p) => p.k !== id && p.role === "pilote")) { KP.toast("Il faut garder au moins un pilote"); return KP.render(); } store.savePerson(id, { [f]: v }); }
       else if (k === "services") store.saveService(id, { [f]: v });
+      else if (k === "messages") store.saveMessage(id, { [f]: v });
+      else if (k === "periods") {
+        const p = KP.PERIODS.find((x) => x.k === id); if (!p) return;
+        const next = { ...p, [f]: v };
+        if (f !== "nom" && (!v || next.du > next.au)) { KP.toast("Le dernier jour vient après le premier"); return KP.render(); }
+        const hit = f !== "nom" && KP.PERIODS.find((x) => x.k !== id && x.du <= next.au && x.au >= next.du);
+        if (hit) { KP.toast(`Chevauche la période « ${hit.nom} »`); return KP.render(); }
+        store.savePeriod(id, { [f]: v });
+      }
       KP.toast("Enregistré");
     }, 0);
   });
@@ -95,6 +172,8 @@
   });
 
   Object.assign(KP.acts, {
+    "maj-go": () => { if (M.st === "dispo") majGo(); },
+    "maj-retry": () => { M.step = 0; M.etat = null; majEtat(); },
     "push-toggle": async () => { const p = KP.remote.push; try { if (p.on) { await p.disable(); KP.toast("Cet appareil ne reçoit plus les notifications"); } else { await p.enable(); KP.toast("Notifications activées sur cet appareil"); } } catch (e) { KP.toast(e.message || "Impossible d'activer les notifications"); } KP.render(); },
     "set-tab": (a) => KP.go({ set: a.dataset.k }),
     "set-theme": (a) => store.setPref("theme", a.dataset.k),
@@ -103,12 +182,13 @@
     "set-add": (a) => {
       const k = a.dataset.k;
       if (k === "contacts") return KP.contactForm(null, () => KP.toast("Contact ajouté au carnet"));
-      const n = k === "people" ? store.addPerson() : store.addService();
-      const i = document.getElementById(`${k === "people" ? "p" : "s"}-${n.k}-nom`); if (i) { i.focus(); i.select(); }
+      const n = k === "people" ? store.addPerson() : k === "periods" ? store.addPeriod() : store.addService();
+      const i = document.getElementById(`${k === "people" ? "p" : k === "periods" ? "pe" : "s"}-${n.k}-nom`); if (i) { i.focus(); i.select(); }
     },
     "set-rm": (a) => {
       const k = a.dataset.k, id = a.dataset.id;
       if (k === "people") { if (store.remote()) return KP.toast("Un compte se retire dans Supabase. Ici, passe la personne en lecture seule."); if (store.personUsed(id)) return KP.toast("Cette personne a déjà agi dans le plan. Passe-la en lecture seule."); return KP.toast("Personne retirée", store.removePerson(id)); }
+      if (k === "periods") { const n = store.periodUsed(id); if (n) return KP.toast(`${n} sujet${n > 1 ? "s couvrent" : " couvre"} cette période. Change-les d'abord.`); return KP.toast("Période retirée", store.removePeriod(id)); }
       if (k === "services") { const n = store.serviceUsed(id); if (n) return KP.toast(`Ce service est utilisé ${n} fois (actions, personnes). Vide-le d'abord.`); return KP.toast("Service retiré", store.removeService(id)); }
       KP.toast("Retiré", store.listRemove(k, id));
     },

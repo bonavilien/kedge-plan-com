@@ -30,22 +30,29 @@
   const int = (s) => { const m = /\d+/.exec(String(s == null ? "" : s)); return m ? Math.min(999, Math.max(1, +m[0])) : null; };
   const ms = (ts) => (ts ? new Date(ts).getTime() : 0);
 
-  let user = null, shadow = null, partnerK = {}, perN = [], blocks = {}, queue = Promise.resolve(), pending = 0, reloading = false, dirty = false, gen = 0;
+  let user = null, shadow = null, partnerK = {}, perKeys = {}, blocks = {}, queue = Promise.resolve(), pending = 0, reloading = false, dirty = false, gen = 0;
   const pseudo = { chef: { k: "chef", nom: "les chefs de projet", court: "Chefs de projet" }, offre: { k: "offre", nom: "la Resp. offre", court: "Resp. offre" },
     marketing: { k: "marketing", nom: "la Dir. marketing et recrutement", court: "Dir. marketing" }, programme: { k: "programme", nom: "la Direction du Programme", court: "Dir. Programme" } };
 
   /* ---------- lecture : tout, d'un coup (l'équipe est petite) ---------- */
   async function load() {
     const all = (t, order) => run(sb.from(t).select("*").order(order));
-    const [per, svc, prt, prof, items, links, reqs, blk, ans, meta, journal, lieux, contacts, ic] = await Promise.all([
+    const [per, svc, prt, prof, items, links, reqs, blk, ans, meta, journal, lieux, contacts, ic, msgs] = await Promise.all([
       all("periods", "du"), all("services", "ordre"), all("partners", "nom"), all("profiles", "nom"), all("items", "date"), all("links", "at"), all("reqs", "at"), all("blocks", "at"),
       run(sb.from("answers").select("key,val").eq("user_id", user.id)), all("meta", "k"), soft(sb.from("journal").select("*").order("id", { ascending: false }).limit(3000), []),
       soft(sb.from("lieux").select("*").order("nom"), []), soft(sb.from("contacts").select("*").order("nom"), []), soft(sb.from("item_contacts").select("*"), []),
+      soft(sb.from("messages").select("*").order("n"), []),
     ]);
     /* sans session valable, la base renvoie des listes vides sans erreur : on ne remplace pas le plan par du vide */
     if (!prof.some((p) => p.id === user.id)) { const e = new Error("session expirée"); e.session = true; throw e; }
-    perN = per.map((p) => p.n);
-    const perK = (n) => { const i = perN.indexOf(n); return i >= 0 && KP.PERIODS[i] ? KP.PERIODS[i].k : ""; };
+    /* périodes et messages de cette équipe, réglés dans Réglages : une clé par période, stable pendant la session */
+    const used = new Set();
+    const periods = per.map((p) => {
+      let k = perKeys[p.n]; if (!k || used.has(k)) { k = KP.slug(p.nom); while (used.has(k)) k += "-" + p.n; perKeys[p.n] = k; }
+      used.add(k); return { k, n: p.n, nom: p.nom, du: p.du, au: p.au, lib: KP.libOf(p.du, p.au) };
+    });
+    KP.setRefs(periods, msgs.filter((x) => x.n >= 1 && x.n <= 5));
+    const perK = (n) => perKeys[n] || "";
     partnerK = Object.fromEntries(prt.map((p) => [p.nom, p.k]));
     const partnerNom = Object.fromEntries(prt.map((p) => [p.k, p.nom]));
     const docs = {}, cts = {};
@@ -117,7 +124,7 @@
     if (has("t")) o.t = it.t;
     if (has("date") || has("flou") || has("per") || has("pers") || has("variant")) {
       const pers = sujet ? (it.pers && it.pers.length ? it.pers : [it.per]).filter(Boolean) : [];
-      o.per = pers.map((k) => perN[KP.PERIODS.findIndex((p) => p.k === k)]).filter((n) => n != null);
+      o.per = pers.map((k) => (KP.PERIODS.find((p) => p.k === k) || {}).n).filter((n) => n != null);
       o.date = sujet && pers.length ? KP.PERIODS.find((p) => p.k === pers[0]).du : it.date;
       o.flou = sujet ? "" : flouTxt(it);
       o.fin = sujet || it.flou || !it.fin || it.fin <= o.date || it.kind !== "tf" || it.variant === "classement" ? null : it.fin;
@@ -162,6 +169,12 @@
     const c0 = byId(shadow.contacts), c1 = byId(db.contacts);
     db.contacts.forEach((c) => { if (!c0[c.id]) ops.push(() => run(sb.from("contacts").insert({ id: c.id, nom: c.nom, role: c.role || "", mail: c.mail || "", tel: c.tel || "" }))); else if (!same(c, c0[c.id])) ops.push(() => run(sb.from("contacts").update({ nom: c.nom, role: c.role || "", mail: c.mail || "", tel: c.tel || "" }).eq("id", c.id))); });
     shadow.contacts.forEach((c) => { if (!c1[c.id]) ops.push(() => run(sb.from("contacts").delete().eq("id", c.id))); });
+    /* périodes (avant les fiches : un sujet peut citer une période créée à l'instant) et noms des messages */
+    const pr0 = Object.fromEntries(shadow.periods.map((p) => [p.n, p])), pr1 = Object.fromEntries(KP.PERIODS.map((p) => [p.n, p]));
+    const prow = (p) => ({ nom: p.nom, du: p.du, au: p.au, lib: p.lib });
+    KP.PERIODS.forEach((p) => { const o = pr0[p.n]; if (!o) ops.push(() => run(sb.from("periods").insert({ n: p.n, ...prow(p) }))); else if (!same(prow(p), prow(o))) ops.push(() => changed(sb.from("periods").update(prow(p)).eq("n", p.n))); });
+    shadow.periods.forEach((p) => { if (!pr1[p.n]) ops.push(() => run(sb.from("periods").delete().eq("n", p.n))); });
+    KP.CLES.forEach((m, i) => { const o = shadow.messages[i]; if (o && (o.nom !== m.nom || o.info !== m.info)) ops.push(() => changed(sb.from("messages").update({ nom: m.nom, info: m.info }).eq("n", i + 1))); });
     /* fiches : les temps forts avant leurs relais */
     const i0 = byId(shadow.items), i1 = byId(db.items), gone = new Set(shadow.items.filter((s) => !i1[s.id]).map((s) => s.id));
     [...db.items].sort((a, b) => (a.tf ? 1 : 0) - (b.tf ? 1 : 0)).forEach((it) => {
@@ -234,7 +247,7 @@
   }
   window.addEventListener("online", () => { if (!document.documentElement.classList.contains("offline")) return; document.documentElement.classList.remove("offline"); sync(store._db()); });
   const frErr = (e) => { const m = (e && e.message) || ""; return /row-level security|permission denied/i.test(m) ? "tu n'as pas le droit de faire ce changement" : m || "la base ne répond pas"; };
-  const snapshot = (db) => clone({ items: db.items, reqs: db.reqs, people: db.people, services: db.services, partners: db.partners, lieux: db.lieux, contacts: db.contacts, prefs: { [user.id]: db.prefs[user.id] || {} }, lastMeeting: db.lastMeeting });
+  const snapshot = (db) => clone({ periods: KP.PERIODS, messages: KP.CLES.map((m) => ({ nom: m.nom, info: m.info })), items: db.items, reqs: db.reqs, people: db.people, services: db.services, partners: db.partners, lieux: db.lieux, contacts: db.contacts, prefs: { [user.id]: db.prefs[user.id] || {} }, lastMeeting: db.lastMeeting });
   /* les documents ajoutés ont reçu leur identifiant de la base : la copie de référence le prend aussi */
   function fixDocs() { const cur = Object.fromEntries(store._db().items.map((i) => [i.id, i])); shadow.items.forEach((s) => { const i = cur[s.id]; if (i && i.docs && s.docs && i.docs.length === s.docs.length) s.docs = clone(i.docs); }); }
   function badge() { document.documentElement.classList.toggle("saving", pending > 0); }
@@ -269,8 +282,8 @@
     let el = document.getElementById("login");
     if (!el) { el = document.createElement("div"); el.id = "login"; el.className = "login"; document.body.appendChild(el); }
     el.innerHTML = `<form class="login-card" autocomplete="on">
-        <img src="assets/kedge-logo-blanc.png" alt="KEDGE" class="login-logo">
-        <h1>Plan de com</h1>
+        ${KP.logo ? KP.logo("login-logo") : ""}
+        <h1>Plan de com${KP.marque && KP.marque.nom && !KP.marque.logo ? ` <small>${h(KP.marque.nom)}</small>` : ""}</h1>
         <label class="field"><span>Adresse</span><input class="input" type="email" name="email" autocomplete="username" required autofocus></label>
         <label class="field"><span>Mot de passe</span><input class="input" type="password" name="password" autocomplete="current-password" required></label>
         <p class="login-err" role="alert">${h(msg || "")}</p>
@@ -296,6 +309,7 @@
     const el = document.getElementById("login"); if (el) el.remove();
     KP.hold = false;
     if (!location.hash) history.replaceState(null, "", "#/accueil");
+    if (KP.parseRoute) KP.route = KP.parseRoute(); /* les périodes de la base remplacent celles de la démonstration */
     KP.render();
     watch();
     push.check().then((on) => { if (on) KP.render(); });
@@ -317,7 +331,21 @@
   };
   if (navigator.serviceWorker) navigator.serviceWorker.addEventListener("message", (e) => { if (e.data && e.data.type === "open" && e.data.url) { const h2 = new URL(e.data.url).hash; if (h2) location.hash = h2; } });
 
+  /* ---------- mise à jour en un clic (copie seulement) : la fonction « mise-a-jour » du Supabase de cette copie ---------- */
+  async function maj(action) {
+    const { data } = await sb.auth.getSession();
+    const tok = data.session ? data.session.access_token : "";
+    let r;
+    try { r = await fetch(C.supabaseUrl + "/functions/v1/mise-a-jour", { method: "POST", headers: { "content-type": "application/json", apikey: C.supabaseKey, authorization: "Bearer " + tok }, body: JSON.stringify({ action }) }); }
+    catch (e) { const x = new Error("La fonction de mise à jour ne répond pas : pas de réseau, ou pas encore installée."); x.code = "absente"; throw x; }
+    let o = {}; try { o = await r.json(); } catch (e) {}
+    if (r.status === 404 && !o.erreur) { const x = new Error("Le bouton n'est pas encore installé dans Supabase."); x.code = "absente"; throw x; }
+    if (!r.ok) { const x = new Error(o.message || "La mise à jour a échoué (" + r.status + ")."); x.code = o.erreur || "panne"; throw x; }
+    return o;
+  }
+
   KP.remote = {
+    maj,
     push,
     get email() { return user ? user.email || "" : ""; },
     /* l'appareil ne reçoit plus les notifications de ce compte : le suivant sur ce navigateur ne les verra pas */

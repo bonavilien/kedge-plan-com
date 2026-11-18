@@ -13,10 +13,11 @@
     const seg = path.split("/").filter(Boolean), p = new URLSearchParams(q);
     const r = { screen: ["accueil", "plan", "reunion", "reglages"].includes(seg[0]) ? seg[0] : "accueil", per: curPer(), tab: "ordre", vue: p.get("vue") === "grille" ? "grille" : "liste", svc: p.get("svc") || "", msg: p.get("msg") || "", type: p.get("type") || "", fiche: p.get("fiche") || "" };
     if (r.screen === "plan" && KP.PERIODS.some((x) => x.k === seg[1])) r.per = seg[1];
-    r.set = r.screen === "reglages" && ["equipe", "services", "medias", "lieux", "contacts", "apropos"].includes(seg[1]) ? seg[1] : "profil";
+    r.set = r.screen === "reglages" && ["equipe", "services", "periodes", "messages", "medias", "lieux", "contacts", "apropos"].includes(seg[1]) ? seg[1] : "profil";
     if (r.screen === "reunion") { r.tab = seg[1] === "bilan" ? "bilan" : "ordre"; if (KP.PERIODS.some((x) => x.k === p.get("per"))) r.per = p.get("per"); }
     return r;
   };
+  KP.parseRoute = parseHash;
   const toHash = (r) => {
     const p = new URLSearchParams();
     if (r.screen === "plan") { if (r.vue === "grille") p.set("vue", "grille"); ["svc", "msg", "type"].forEach((k) => r[k] && p.set(k, r[k])); }
@@ -35,13 +36,18 @@
   };
   window.addEventListener("hashchange", () => { const before = KP.route; KP.route = parseHash(); render(); if (before.screen !== KP.route.screen) $("main").scrollTop = 0; });
 
+  /* ---------- nom et logo de cette copie (config.js) ---------- */
+  const M = (window.KPLAN_CONFIG && window.KPLAN_CONFIG.marque) || {};
+  KP.marque = { nom: M.nom || "", logo: M.logo || "", titre: "Plan de com" + (M.nom ? " " + M.nom : "") };
+  KP.logo = (cls) => KP.marque.logo ? `<img src="${h(KP.marque.logo)}" alt="${h(KP.marque.nom)}"${cls ? ` class="${cls}"` : ""}>` : "";
+
   /* ---------- rendu ---------- */
   const SCREENS = [["accueil", "Accueil", "home"], ["plan", "Le plan", "calendar"], ["reunion", "Réunion", "meet"]];
   function renderSide() {
     const u = KP.me(), n = KP.inbox().length, r = KP.route;
     const news = KP.notifs().some((j) => j.quand > (store.prefs().vu || 0));
     $("side").innerHTML = `
-      <a class="brand" href="#/accueil" aria-label="Plan de com KEDGE, accueil"><img src="assets/kedge-logo-blanc.png" alt="KEDGE"><span>Plan de com</span></a>
+      <a class="brand${KP.marque.logo ? "" : " nologo"}" href="#/accueil" aria-label="${h(KP.marque.titre)}, accueil">${KP.logo()}<span>Plan de com</span>${!KP.marque.logo && KP.marque.nom ? `<small>${h(KP.marque.nom)}</small>` : ""}</a>
       ${store.canCreate() ? `<button class="new" type="button" data-act="new">${ic("plus")}Nouveau<kbd>N</kbd></button>` : ""}
       <div class="nav">${SCREENS.map(([k, nom, i]) => `<a href="${KP.href({ screen: k })}" class="${r.screen === k ? "on" : ""}" ${r.screen === k ? 'aria-current="page"' : ""}>${ic(i)}${nom}${k === "accueil" && n ? `<span class="n" aria-label="${n} à traiter">${n}</span>` : ""}</a>`).join("")}</div>
       <div class="side-foot">
@@ -78,7 +84,7 @@
     else if (!fNow && fWas && (inFiche || !act || act === document.body)) { const x = main.querySelector(`.row[data-id="${fWas}"] .open, .g-i[data-id="${fWas}"]`); if (x) x.focus({ preventScroll: true, focusVisible: !KP.phone() }); }
     else if (fid && $(fid)) { $(fid).focus({ preventScroll: true }); try { if (sel != null) $(fid).setSelectionRange(sel, sel); } catch (e) {} }
     else if (frow) { const x = main.querySelector(`.row[data-id="${frow}"] .open`); if (x) x.focus({ preventScroll: true }); }
-    document.title = ({ accueil: "Accueil", plan: "Le plan", reunion: "Réunion", reglages: "Réglages" })[KP.route.screen] + " · Plan de com KEDGE";
+    document.title = ({ accueil: "Accueil", plan: "Le plan", reunion: "Réunion", reglages: "Réglages" })[KP.route.screen] + " · " + KP.marque.titre;
   }
   try { if (window.self !== window.top) document.documentElement.classList.add("embedded"); } catch (e) { document.documentElement.classList.add("embedded"); }
   KP.render = render;
