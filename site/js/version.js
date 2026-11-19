@@ -5,6 +5,7 @@
    (il met à jour version.json, sw.js et CHANGELOG.md, et vérifie que tout concorde). */
 window.KP = window.KP || {};
 window.KP.VERSIONS = [
+  { n: "2.3.1", date: "2026-11-19", notes: ["« Copier le lien » d'une fiche copie aussi son titre, sa date et son service : collé dans Teams ou Outlook, le titre devient le lien"] },
   { n: "2.3.0", date: "2026-11-19", notes: ["À l'ouverture, le 7 de l'icône s'ouvre comme une fenêtre sur l'appli (une fois par session, jamais si l'appareil demande moins d'animations)", "Nouvel écran de connexion sur fond foncé : « Bonjour Prénom » au retour avec ton adresse déjà remplie, un œil pour voir le mot de passe", "Une petite pique sous « Bonjour », sur la connexion et sur l'accueil, différente à chaque ouverture, et quelques phrases piquantes là où on ne les attend pas"] },
   { n: "2.2.2", date: "2026-11-19", notes: ["Les copies pour d'autres équipes gardent toujours le logo Road to 7th"] },
   { n: "2.2.1", date: "2026-11-19", notes: ["Écran de connexion : le 7, sa route et l'étoile redessinés en courbes propres, aux bords nets et aux pointes fines"] },

@@ -127,7 +127,22 @@
     "f-st": (a) => KP.setStatus(KP.route.fiche, a.dataset.k),
     "f-reunion": () => { const it = cur(); store.update(it.id, { reunion: !it.reunion }, it.reunion ? "" : "a mis à l'ordre du jour"); KP.toast(it.reunion ? "À l'ordre du jour de la prochaine réunion" : "Retiré de l'ordre du jour"); },
     "f-pin": () => { const id = KP.route.fiche, was = store.pinned(id); store.togglePin(id); KP.toast(was ? "Retiré de ton accueil" : "Épinglé sur ton accueil"); },
-    "f-link": async () => { try { await navigator.clipboard.writeText(location.href); KP.toast("Lien copié"); } catch (e) { KP.toast("Le lien est dans la barre d'adresse"); } },
+    /* le lien seul ne dit rien dans Teams (son aperçu ne voit que la page de connexion) :
+       on copie le titre cliquable avec la date et le service, en riche pour Teams et Outlook, en texte pour le reste */
+    "f-link": async () => {
+      const it = cur(), url = location.href;
+      const quand = it.variant === "sujet" ? (KP.PERIODS.find((p) => p.k === it.per) || {}).nom : it.fin && !it.flou ? KP.fmt.plage(it.date, it.fin) : KP.dateShort(it);
+      const qui = it.kind === "tf" ? "Temps fort" : it.variant === "partenariat" ? it.partner : (KP.service(it.svc) || {}).court;
+      const bout = [quand, qui, it.annule ? "annulé" : ""].filter(Boolean).join(" · ");
+      const texte = `${it.t}${bout ? " · " + bout : ""}\n${url}`, riche = `<a href="${h(url)}"><b>${h(it.t)}</b></a>${bout ? " · " + h(bout) : ""}`;
+      try {
+        if (window.ClipboardItem && navigator.clipboard.write) await navigator.clipboard.write([new ClipboardItem({ "text/html": new Blob([riche], { type: "text/html" }), "text/plain": new Blob([texte], { type: "text/plain" }) })]);
+        else await navigator.clipboard.writeText(texte);
+        KP.toast("Lien copié, avec le titre et la date");
+      } catch (e) {
+        try { await navigator.clipboard.writeText(texte); KP.toast("Lien copié, avec le titre et la date"); } catch (e2) { KP.toast("Le lien est dans la barre d'adresse"); }
+      }
+    },
     "all-act": () => { KP.ui.allAct = KP.route.fiche; KP.render(); },
     "f-more": (a) => {
       const it = cur(), can = store.canEdit(it);

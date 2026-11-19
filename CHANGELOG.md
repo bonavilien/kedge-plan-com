@@ -2,6 +2,10 @@
 
 Généré depuis `site/js/version.js` par `node scripts/version.mjs`. Ne pas modifier à la main.
 
+## 2.3.1 · 2026-11-19
+
+- « Copier le lien » d'une fiche copie aussi son titre, sa date et son service : collé dans Teams ou Outlook, le titre devient le lien
+
 ## 2.3 · 2026-11-19
 
 - À l'ouverture, le 7 de l'icône s'ouvre comme une fenêtre sur l'appli (une fois par session, jamais si l'appareil demande moins d'animations)
