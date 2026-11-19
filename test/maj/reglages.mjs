@@ -88,8 +88,9 @@ await p.evaluate(() => KP.store.saveProjet({ couleur: "bleu-caraibes" })); await
 ok(await p.evaluate(() => getComputedStyle(document.querySelector(".side")).backgroundColor) === "rgb(29, 37, 87)", "corporate Bleu Caraïbes : le menu prend son foncé");
 await shot(p, "plan-bleu-caraibes", "body");
 await p.evaluate(() => KP.store.saveProjet({ couleur: "jaune-or", sousTitre: "Programme Grande École" })); await settle(p);
-await p.evaluate(() => KP.go({ set: "apropos" })); await p.waitForTimeout(200);
+await p.evaluate(() => KP.go({ screen: "reglages", set: "apropos" })); await p.waitForSelector(".set .vbig");
 ok(await p.locator(".maj").count() === 0, "dépôt d'origine (pas une copie) : pas de bouton de mise à jour");
+ok((await p.locator(".set.tuto a").getAttribute("href")).endsWith("/tutoriel.html"), "pilote : lien vers le tutoriel pour une autre équipe");
 ok(!p.errs.length, "aucune erreur : " + p.errs.join(" | "));
 await p.context().close();
 
@@ -138,7 +139,7 @@ await p.context().close();
 // fonction pas installée
 p = await open({ copie: true }, "pilote@example.com", async () => [404, { code: "NOT_FOUND", message: "Requested function was not found" }]);
 await p.evaluate(() => KP.go({ screen: "reglages", set: "apropos" })); await p.waitForSelector(".maj-absente");
-ok((await p.locator(".maj a").getAttribute("href")).includes("DEPLOYER.md"), "bouton pas installé : lien vers le guide");
+ok((await p.locator(".maj a").getAttribute("href")).endsWith("tutoriel.html#etape-6"), "bouton pas installé : lien vers le tutoriel, étape 6");
 await p.context().close();
 
 // écran de connexion : le 7 de l'icône en fond animé, plus de logo dans le formulaire
@@ -183,6 +184,7 @@ await p.context().close();
 p = await open({ copie: true }, "presse@example.com", async () => [200, etat()]);
 await p.evaluate(() => KP.go({ screen: "reglages", set: "apropos" })); await p.waitForTimeout(300);
 ok(await p.locator(".maj").count() === 0 && p.fnCalls.length === 0, "un service : pas de bouton, aucun appel");
+ok(await p.locator(".set.tuto").count() === 0, "un service : pas de lien vers le tutoriel");
 await p.context().close();
 
 await b.close();

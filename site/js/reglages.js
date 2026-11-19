@@ -40,7 +40,8 @@
   /* ---------- mise à jour en un clic : une copie suit le dépôt d'origine (pilotes seulement) ----------
      Le bouton appelle la fonction « mise-a-jour » du Supabase de la copie : la base d'abord, puis le code,
      puis on attend que GitHub Pages ait publié la nouvelle version, et l'appli se recharge. */
-  const GUIDE = "https://github.com/bonavilien/kedge-plan-com/blob/main/DEPLOYER.md";
+  /* le tutoriel d'installation, page du dépôt d'origine (le même pour toutes les copies) */
+  const TUTO = "https://bonavilien.github.io/kedge-plan-com/tutoriel.html";
   const STEPS = [["Base", "data"], ["Code", "code"], ["En ligne", "online"]];
   const M = { st: "", etat: null, step: 0, msg: "" };
   const majOn = () => store.remote() && !!(window.KPLAN_CONFIG || {}).copie && KP.me().role === "pilote" && KP.remote && KP.remote.maj;
@@ -82,11 +83,11 @@
       cours: () => `<div class="maj-v"><span class="vn old">${lab(v.ici)}</span><span class="arrow" aria-hidden="true">→</span><span class="vn">${lab(v.amont)}</span></div>${steps()}`,
       fini: () => `<div class="maj-v"><span class="ok-dot">${ic("check")}</span><span class="vn">${lab(v.amont)}</span><b class="maj-tag">Rechargement…</b></div>${steps()}`,
       erreur: () => `${M.step ? steps() : ""}<p class="maj-err" role="alert">${h(M.msg)}</p><button type="button" class="btn quiet" data-act="maj-retry">Réessayer</button>`,
-      absente: () => `<p class="muted">Le bouton n'est pas encore installé.</p><a class="btn quiet" href="${GUIDE}#6-le-bouton-mettre-à-jour" target="_blank" rel="noopener">${ic("external")}Le guide, étape 6</a>`,
+      absente: () => `<p class="muted">Le bouton n'est pas encore installé.</p><a class="btn quiet" href="${TUTO}#etape-6" target="_blank" rel="noopener">${ic("external")}Le tutoriel, étape 6</a>`,
       origine: () => `<div class="maj-v"><span class="ok-dot">${ic("check")}</span><span class="vn">${lab()}</span><b class="maj-tag">Version d'origine</b></div>`,
     }[M.st] || (() => "");
     return `<section class="set maj maj-${M.st}" aria-live="polite"><h2>Mise à jour</h2>${body()}
-      ${e.fonctionAmont > e.fonction && M.st !== "absente" ? `<p class="muted maj-hint">${ic("info")}Le bouton lui-même a une nouvelle version : <a href="${GUIDE}#6-le-bouton-mettre-à-jour" target="_blank" rel="noopener">recolle-le</a>.</p>` : ""}</section>`;
+      ${e.fonctionAmont > e.fonction && M.st !== "absente" ? `<p class="muted maj-hint">${ic("info")}Le bouton lui-même a une nouvelle version : <a href="${TUTO}#etape-6" target="_blank" rel="noopener">recolle-le</a>.</p>` : ""}</section>`;
   }
 
   function apropos() {
@@ -95,6 +96,7 @@
         <p class="vbig">Version ${h(KP.versionLabel(v.n))} <small class="muted">du ${h(d(v.date))} · ${h(v.n)}</small></p>
         ${KP.embedded ? `<p class="muted">Aperçu de démonstration : les données restent dans ce navigateur.</p>` : `<p class="muted">Sur téléphone, l'appli s'installe depuis le menu du navigateur : « Ajouter à l'écran d'accueil ».</p>`}
       </section>
+      ${KP.me().role === "pilote" ? `<section class="set tuto"><h2>Pour une autre équipe</h2><p class="muted">Elle installe sa propre appli, avec ses propres données, en 20 minutes et sans coder.</p><a class="btn quiet" href="${TUTO}" target="_blank" rel="noopener">${ic("external")}Le tutoriel</a></section>` : ""}
       <section class="set"><h2>Nouveautés</h2>
         ${KP.VERSIONS.map((x) => `<div class="rel"><b>${h(KP.versionLabel(x.n))}</b><small class="muted">${h(d(x.date))}</small><ul>${x.notes.map((n) => `<li>${h(n)}</li>`).join("")}</ul></div>`).join("")}
       </section>`;

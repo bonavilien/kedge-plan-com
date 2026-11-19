@@ -4,7 +4,7 @@
 
 ## Des copies pour d'autres équipes
 
-D'autres équipes peuvent installer leur propre appli : **[DEPLOYER.md](DEPLOYER.md)** (environ 20 minutes, sans coder). Chaque copie est un fork de ce dépôt, avec sa base Supabase, et se met à jour d'un clic (Réglages, Version, « Mettre à jour » : la fonction `supabase/functions/mise-a-jour` applique les scripts de base qui lui manquent, puis fait un « Sync fork »).
+D'autres équipes peuvent installer leur propre appli : **[le tutoriel illustré](https://bonavilien.github.io/kedge-plan-com/tutoriel.html)** (environ 20 minutes, sans coder), ou sa version texte [DEPLOYER.md](DEPLOYER.md). La page est `site/tutoriel.html` (autonome, sans autre fichier que la police) : la garder d'accord avec DEPLOYER.md, et la vérifier avec `node test/maj/tutoriel.mjs`. Chaque copie est un fork de ce dépôt, avec sa base Supabase, et se met à jour d'un clic (Réglages, Version, « Mettre à jour » : la fonction `supabase/functions/mise-a-jour` applique les scripts de base qui lui manquent, puis fait un « Sync fork »).
 
 Pour que les copies suivent sans casser, ici :
 - **un changement de base = un nouveau fichier numéroté** dans `supabase/migrations` (`0028_…sql`). Ne jamais modifier un fichier déjà publié : les copies l'ont déjà appliqué. Il doit marcher sur une base qui contient des données ;

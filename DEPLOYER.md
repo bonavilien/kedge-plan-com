@@ -1,5 +1,7 @@
 # Installer l'appli pour ton équipe
 
+> **La version illustrée, étape par étape : [le tutoriel](https://bonavilien.github.io/kedge-plan-com/tutoriel.html).** Les valeurs à copier s'y remplissent avec le nom de ta copie.
+
 Environ 20 minutes, sans rien coder. Il te faut un compte **GitHub** et un compte **Supabase** (gratuits tous les deux).
 À la fin, ton équipe a sa propre appli, avec ses propres données, et tu la mets à jour d'un clic quand une nouvelle version sort.
 
