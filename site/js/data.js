@@ -274,6 +274,9 @@
     serviceUsed: (k) => db.items.filter((i) => i.svc === k).length + db.people.filter((p) => p.svc === k).length,
     removeService(k) { const b = db.services; db.services = b.filter((s) => s.k !== k); emit(); return () => { db.services = b; emit(); }; },
     partners: () => db.partners,
+    /* le projet : son sous-titre (« Programme Grande École ») et sa couleur du brand book */
+    projet: () => (db.projet = db.projet || { couleur: "jaune-or", sousTitre: remote ? "" : "Programme Grande École" }),
+    saveProjet(patch) { Object.assign(store.projet(), patch); emit(); },
     /* périodes et messages : réglés par les pilotes dans Réglages */
     savePeriod(k, patch) { const p = PERIODS.find((x) => x.k === k); if (!p) return; Object.assign(p, patch); if (patch.du || patch.au) { p.lib = libOf(p.du, p.au); PERIODS.sort((a, b) => a.du.localeCompare(b.du)); } emit(); },
     addPeriod() {

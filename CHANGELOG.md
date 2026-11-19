@@ -4,6 +4,8 @@ Généré depuis `site/js/version.js` par `node scripts/version.mjs`. Ne pas mod
 
 ## 2.2 · 2026-11-19
 
+- Chaque projet a son sous-titre à côté du nom (« Programme Grande École », « Executive Education ») et sa couleur, prise dans le brand book : Réglages, Projet
+- Réglages rangés en 5 onglets : Mon profil, Projet, Équipe, Carnets, Version
 - L'appli se copie pour une autre équipe, qui la met à jour d'un clic : Réglages, Version, « Mettre à jour »
 - Périodes et messages (de 1 à 9, plus une étiquette à part) se règlent dans Réglages
 - Nom et logo de chaque copie, réglés sans toucher au code

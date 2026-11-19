@@ -2,7 +2,8 @@
 (() => {
   const KP = window.KP, { h, ic, store } = KP;
   const ROLES = [["pilote", "Pilote", "modifie tout, administre"], ["service", "Service", "modifie ses actions"], ["lecteur", "Lecture seule", "consulte"]];
-  const TABS = [["profil", "Mon profil"], ["equipe", "Équipe"], ["services", "Services"], ["periodes", "Périodes"], ["messages", "Messages"], ["medias", "Médias"], ["lieux", "Lieux"], ["contacts", "Contacts"], ["apropos", "Version"]];
+  /* cinq onglets : moi, le projet (ce qui le distingue : nom, couleur, périodes, messages), les gens, les carnets, la version */
+  const TABS = [["profil", "Mon profil"], ["projet", "Projet"], ["equipe", "Équipe"], ["carnets", "Carnets"], ["apropos", "Version"]];
   const svcSel = (id, v, attr = "") => `<select class="input" id="${id}" ${attr}><option value="">Aucun</option>${KP.SERVICES.map((s) => `<option value="${s.k}" ${s.k === v ? "selected" : ""}>${h(s.nom)}</option>`).join("")}</select>`;
   const field = (label, html) => `<label class="field"><span>${label}</span>${html}</label>`;
 
@@ -11,7 +12,10 @@
     return `<div class="page narrow wide-set">
       <div class="head"><h1>Réglages</h1></div>
       <div class="bar"><div class="seg" role="group" aria-label="Réglages">${TABS.filter(([k]) => admin || k === "profil" || k === "apropos").map(([k, n]) => `<button type="button" data-act="set-tab" data-k="${k}" class="${k === tab ? "on" : ""}" aria-pressed="${k === tab}">${n}</button>`).join("")}</div></div>
-      ${({ apropos, profil, equipe, services, periodes, messages, medias: () => liste("partners", "Médias partenaires", "Proposés quand une action est un partenariat payant.", "Nom du média"), lieux: () => liste("lieux", "Lieux", "Proposés dans le champ Lieu d'un temps fort.", "Nom du lieu"), contacts })[tab]()}
+      ${({ apropos, profil,
+        projet: () => identite() + periodes() + messages(),
+        equipe: () => equipe() + services(),
+        carnets: () => liste("partners", "Médias partenaires", "Proposés quand une action est un partenariat payant.", "Nom du média") + liste("lieux", "Lieux", "Proposés dans le champ Lieu d'un temps fort.", "Nom du lieu") + contacts() })[tab]()}
     </div>`;
   };
 
@@ -97,7 +101,7 @@
   }
 
   function equipe() {
-    return `<section class="set"><h2>Équipe${store.remote() ? "" : `<button type="button" class="btn quiet small" data-act="set-add" data-k="people">${ic("plus")}Ajouter une personne</button>`}</h2>
+    return `<section class="set"><h2>Personnes${store.remote() ? "" : `<button type="button" class="btn quiet small" data-act="set-add" data-k="people">${ic("plus")}Ajouter une personne</button>`}</h2>
       ${store.remote() ? `<p class="muted">Un compte se crée dans Supabase (Authentication, Add user). Il apparaît ensuite ici pour régler son rôle et son service.</p>` : ""}
       <div class="tbl t-people"><div class="th"><span>Prénom</span><span>Fonction</span><span>Droits</span><span>Service</span><span>Version</span><span></span></div>
       ${KP.PEOPLE.map((p) => `<div class="tr"><input class="input" id="p-${p.k}-nom" data-set="people:${p.k}:nom" value="${h(p.nom)}" aria-label="Prénom" autocomplete="off"><input class="input" id="p-${p.k}-fonction" data-set="people:${p.k}:fonction" value="${h(p.fonction)}" aria-label="Fonction" autocomplete="off">
@@ -113,7 +117,18 @@
       <div class="tbl t-svc"><div class="th"><span>Nom</span><span>Nom court</span><span>Représenté par</span><span></span></div>
       ${KP.SERVICES.map((s) => `<div class="tr"><input class="input" id="s-${s.k}-nom" data-set="services:${s.k}:nom" value="${h(s.nom)}" aria-label="Nom" autocomplete="off"><input class="input" id="s-${s.k}-court" data-set="services:${s.k}:court" value="${h(s.court)}" aria-label="Nom court" autocomplete="off">
         <span class="muted">${h(KP.PEOPLE.filter((p) => p.svc === s.k).map((p) => p.nom).join(", ") || "Personne pour l'instant")}</span>${KP.ib("trash", "Retirer", "set-rm", `data-k="services" data-id="${s.k}"`)}</div>`).join("")}</div>
-      <p class="muted">Chaque service a sa colonne dans la grille. On rattache une personne à un service depuis l'onglet Équipe.</p></section>`;
+      <p class="muted">Chaque service a sa colonne dans la grille. On rattache une personne à un service juste au-dessus.</p></section>`;
+  }
+
+  /* le projet : un sous-titre et une couleur du brand book, qui distinguent cette appli des autres copies */
+  function identite() {
+    const pj = store.projet(), cur = KP.couleur.get(pj.couleur);
+    const sw = (c) => `<button type="button" class="sw${c.fonce ? " duo" : ""}" data-act="set-couleur" data-k="${c.k}" style="--c:${c.hex};--d:${c.fonce || c.hex};--i:${KP.couleur.encre(c.hex)}" aria-pressed="${c.k === cur.k}" aria-label="${h(c.nom)}" data-tip="${h(c.nom)}">${c.k === cur.k ? ic("check") : ""}</button>`;
+    const groupe = (g, n) => `<div class="sw-g"><span class="sw-l">${n}</span><div class="sws">${KP.COULEURS.filter((c) => c.gamme === g).map(sw).join("")}</div></div>`;
+    return `<section class="set"><h2>Le projet</h2>
+      ${field("Sous-titre", `<input class="input" id="pj-st" data-set="projet:sousTitre" value="${h(pj.sousTitre || "")}" maxlength="40" placeholder="Programme Grande École" autocomplete="off">`)}
+      <div class="field"><span>Couleur</span>${groupe("corporate", "Corporate")}${groupe("vive", "Programmes, expertises, campus")}
+        <p class="sw-now"><i style="--c:${cur.hex};--d:${cur.fonce || cur.hex}" class="${cur.fonce ? "duo" : ""}"></i><b>${h(cur.nom)}</b><span class="muted">${h(cur.pour)}</span></p></div></section>`;
   }
 
   function periodes() {
@@ -152,6 +167,7 @@
     const d = e.target.dataset && e.target.dataset.set; if (!d) return;
     const [k, id, f] = d.split(":"), v = e.target.value.trim();
     setTimeout(() => {
+      if (k === "projet") { store.saveProjet({ [id]: v }); return KP.toast("Enregistré"); }
       if (k === "me") { if (id === "nom" && !v) return KP.render(); store.savePerson(KP.me().k, { [id]: v }); }
       else if ((f === "nom") && !v) return KP.render();
       else if (k === "people") { if (id === KP.me().k && f === "role" && v !== "pilote" && !KP.PEOPLE.some((p) => p.k !== id && p.role === "pilote")) { KP.toast("Il faut garder au moins un pilote"); return KP.render(); } store.savePerson(id, { [f]: v }); }
@@ -179,6 +195,7 @@
     "maj-retry": () => { M.step = 0; M.etat = null; majEtat(); },
     "push-toggle": async () => { const p = KP.remote.push; try { if (p.on) { await p.disable(); KP.toast("Cet appareil ne reçoit plus les notifications"); } else { await p.enable(); KP.toast("Notifications activées sur cet appareil"); } } catch (e) { KP.toast(e.message || "Impossible d'activer les notifications"); } KP.render(); },
     "set-tab": (a) => KP.go({ set: a.dataset.k }),
+    "set-couleur": (a) => { store.saveProjet({ couleur: a.dataset.k }); },
     "set-theme": (a) => store.setPref("theme", a.dataset.k),
     "set-notif": (a) => { const on = { ...(store.prefs().notif || {}) }; on[a.dataset.k] = on[a.dataset.k] === false; store.setPref("notif", on); },
     "set-edit-ct": (a) => KP.contactForm(store.contact(a.dataset.id), () => KP.toast("Contact enregistré")),

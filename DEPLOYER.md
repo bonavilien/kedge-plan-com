@@ -7,7 +7,7 @@ Environ 20 minutes, sans rien coder. Il te faut un compte **GitHub** et un compt
 |---|---|
 | **Le code** | Ta copie du dépôt, sur GitHub. Publiée gratuitement par GitHub Pages. |
 | **Tes données** | Ta base Supabase. Personne d'autre n'y a accès. |
-| **Tes réglages** (adresse de ta base, nom, logo) | Les « variables » de ta copie sur GitHub, jamais dans le code. |
+| **Tes réglages** (adresse de ta base, nom, logo) | Les « variables » de ta copie sur GitHub, jamais dans le code. Le sous-titre et la couleur se règlent dans l'appli. |
 
 ---
 
@@ -62,10 +62,9 @@ Ton site est en ligne à l'adresse `https://ton-compte.github.io/plan-de-com/`.
 3. **Authentication**, **Users**, **Add user**, **Create new user** : ton adresse, un mot de passe, coche **Auto Confirm User**.
    **Le tout premier compte devient pilote** : il peut tout régler.
 4. Ouvre ton site et connecte-toi. Dans **Réglages** :
-   - **Périodes** : les périodes de ton année (elles se suivent sans se chevaucher) ;
-   - **Messages** : tes messages clés (de 1 à 9) et une étiquette à part qui ne compte pas dans le bilan (« Recrutement » chez KEDGE) ;
-   - **Services** : les services qui diffusent ;
-   - **Équipe** : le rôle et le service de chacun.
+   - **Projet** : le sous-titre affiché à côté du nom (exemple : « Executive Education ») et la couleur du projet, prise dans le brand book ; puis les périodes de ton année (elles se suivent sans se chevaucher) et tes messages clés (de 1 à 9), avec une étiquette à part qui ne compte pas dans le bilan (« Recrutement » chez KEDGE) ;
+   - **Équipe** : le rôle et le service de chacun, et la liste des services qui diffusent ;
+   - **Carnets** : médias, lieux et contacts.
 5. Pour chaque collègue : **Add user** dans Supabase comme à l'étape 3, puis règle son rôle dans **Réglages**, **Équipe**.
 
 ## 6. Le bouton Mettre à jour

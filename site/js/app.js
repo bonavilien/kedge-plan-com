@@ -13,7 +13,10 @@
     const seg = path.split("/").filter(Boolean), p = new URLSearchParams(q);
     const r = { screen: ["accueil", "plan", "reunion", "reglages"].includes(seg[0]) ? seg[0] : "accueil", per: curPer(), tab: "ordre", vue: p.get("vue") === "grille" ? "grille" : "liste", svc: p.get("svc") || "", msg: p.get("msg") || "", type: p.get("type") || "", fiche: p.get("fiche") || "" };
     if (r.screen === "plan" && KP.PERIODS.some((x) => x.k === seg[1])) r.per = seg[1];
-    r.set = r.screen === "reglages" && ["equipe", "services", "periodes", "messages", "medias", "lieux", "contacts", "apropos"].includes(seg[1]) ? seg[1] : "profil";
+    /* les anciennes adresses d'onglets mènent au nouvel onglet qui les regroupe */
+    const ALIAS = { services: "equipe", periodes: "projet", messages: "projet", medias: "carnets", lieux: "carnets", contacts: "carnets" };
+    const st = ALIAS[seg[1]] || seg[1];
+    r.set = r.screen === "reglages" && ["projet", "equipe", "carnets", "apropos"].includes(st) ? st : "profil";
     if (r.screen === "reunion") { r.tab = seg[1] === "bilan" ? "bilan" : "ordre"; if (KP.PERIODS.some((x) => x.k === p.get("per"))) r.per = p.get("per"); }
     return r;
   };
@@ -48,8 +51,10 @@
   function renderSide() {
     const u = KP.me(), n = KP.inbox().length, r = KP.route;
     const news = KP.notifs().some((j) => j.quand > (store.prefs().vu || 0));
+    /* sous-titre : le projet (« Programme Grande École »), sinon l'organisation quand il n'y a pas de logo */
+    const st = store.projet().sousTitre || (!KP.marque.logo ? KP.marque.nom : "");
     $("side").innerHTML = `
-      <a class="brand${KP.marque.logo ? "" : " nologo"}${KP.marque.carre ? " carre" : ""}" href="#/accueil" aria-label="${h(KP.marque.titre)}, accueil">${KP.logo()}<span>${h(KP.marque.app)}</span>${!KP.marque.logo && KP.marque.nom ? `<small>${h(KP.marque.nom)}</small>` : ""}</a>
+      <a class="brand${KP.marque.logo ? "" : " nologo"}${KP.marque.carre ? " carre" : ""}" href="#/accueil" aria-label="${h(KP.marque.titre)}${st ? " " + h(st) : ""}, accueil">${KP.logo()}<span class="bt"><b>${h(KP.marque.app)}</b>${st ? `<small>${h(st)}</small>` : ""}</span></a>
       ${store.canCreate() ? `<button class="new" type="button" data-act="new">${ic("plus")}Nouveau<kbd>N</kbd></button>` : ""}
       <div class="nav">${SCREENS.map(([k, nom, i]) => `<a href="${KP.href({ screen: k })}" class="${r.screen === k ? "on" : ""}" ${r.screen === k ? 'aria-current="page"' : ""}>${ic(i)}${nom}${k === "accueil" && n ? `<span class="n" aria-label="${n} à traiter">${n}</span>` : ""}</a>`).join("")}</div>
       <div class="side-foot">
@@ -58,11 +63,14 @@
         <button type="button" data-act="profile" data-side="1"><span class="avatar">${h((u.nom || "?")[0])}</span><span class="who">${h(u.nom)}<small>${h(u.fonction)}</small></span></button>
         <a class="ver" href="#/reglages/apropos" data-tip="Voir les nouveautés">Version ${h(KP.versionLabel(KP.VERSION.n))}</a>
       </div>`;
-    $("topbar").innerHTML = `<b>${KP.marque.carre ? KP.logo() : ""}${h(KP.marque.app)}</b>${KP.ib("search", "Rechercher", "search")}${KP.ib("bell", "Notifications", "notifs")}<button class="ib" type="button" data-act="profile" aria-label="Profil"><span class="avatar">${h((u.nom || "?")[0])}</span></button>`;
+    $("topbar").innerHTML = `<b>${KP.marque.carre ? KP.logo() : ""}<span class="bt"><span>${h(KP.marque.app)}</span>${st ? `<small>${h(st)}</small>` : ""}</span></b>${KP.ib("search", "Rechercher", "search")}${KP.ib("bell", "Notifications", "notifs")}<button class="ib" type="button" data-act="profile" aria-label="Profil"><span class="avatar">${h((u.nom || "?")[0])}</span></button>`;
     $("tabbar").innerHTML = SCREENS.map(([k, nom, i]) => `<a href="${KP.href({ screen: k })}" class="${r.screen === k ? "on" : ""}">${ic(i)}${nom}</a>`).join("") + (store.canCreate() ? `<button class="plus" type="button" data-act="new" aria-label="Nouveau">${ic("plus")}</button>` : "<span></span>");
   }
   function render() {
     if (KP.hold) return; /* branché sur la base : rien ne s'affiche avant la connexion */
+    /* la couleur du projet, gardée aussi pour l'écran de connexion de cet appareil */
+    const pj = store.projet(), pk = (pj.couleur || "") + "|" + (pj.sousTitre || "");
+    if (pk !== lastPj) { lastPj = pk; KP.couleur.appliquer(pj.couleur); KP.couleur.retenir(pj); }
     if (store.prefs().version !== KP.VERSION.n) { store.prefs().version = KP.VERSION.n; store.prefs().versionVue = Date.now(); }
     const t = store.prefs().theme; if (t === "light" || t === "dark") document.documentElement.dataset.theme = t; else delete document.documentElement.dataset.theme;
     const main = $("main"), top = main.scrollTop, act = document.activeElement, fid = act && act.id, sel = act && act.selectionStart;
@@ -89,6 +97,7 @@
     document.title = ({ accueil: "Accueil", plan: "Le plan", reunion: "Réunion", reglages: "Réglages" })[KP.route.screen] + " · " + KP.marque.titre;
   }
   try { if (window.self !== window.top) document.documentElement.classList.add("embedded"); } catch (e) { document.documentElement.classList.add("embedded"); }
+  let lastPj = "";
   KP.render = render;
   /* la fiche posée par-dessus (petit écran, calendrier serré) est une vraie fenêtre : Tab ne passe plus derrière */
   function syncModal() {

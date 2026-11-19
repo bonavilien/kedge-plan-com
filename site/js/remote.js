@@ -92,6 +92,7 @@
         quoi: KP.ELEMENTS.includes(r.type) ? r.type : "Autre", txt: r.quoi || (KP.ELEMENTS.includes(r.type) ? "" : r.type), pour: r.pour, fait: r.st === "recue", rep: r.reponse || "", quand: ms(r.at) })),
       journal: journal.map((j) => ({ id: "j" + j.id, item: j.item, qui: j.author || "", quand: ms(j.at), txt: jtxt(j) })),
       lastMeeting: m.last_meeting || KP.TODAY,
+      projet: { couleur: m.couleur || "", sousTitre: m.sous_titre || "" },
     };
     return data;
   }
@@ -218,6 +219,9 @@
     shadow.partners.filter((n) => !db.partners.includes(n)).forEach((n) => ops.push(async () => { await run(sb.from("partners").delete().eq("nom", n)); delete partnerK[n]; }));
     /* réunion, préférences, version */
     if (db.lastMeeting !== shadow.lastMeeting) ops.push(() => run(sb.from("meta").upsert({ k: "last_meeting", v: db.lastMeeting })));
+    const pj = db.projet || {}, pj0 = shadow.projet || {};
+    if ((pj.couleur || "") !== (pj0.couleur || "")) ops.push(() => run(sb.from("meta").upsert({ k: "couleur", v: pj.couleur || "" })));
+    if ((pj.sousTitre || "") !== (pj0.sousTitre || "")) ops.push(() => run(sb.from("meta").upsert({ k: "sous_titre", v: pj.sousTitre || "" })));
     const a = db.prefs[user.id] || {}, b = shadow.prefs[user.id] || {};
     const perso = (p) => { const { notif, version, versionVue, ...rest } = p; return rest; };
     if (!same(perso(a), perso(b))) ops.push(() => run(sb.from("answers").upsert({ key: "v2", val: JSON.stringify(perso(a)) }, { onConflict: "user_id,key" })));
@@ -251,7 +255,7 @@
   }
   window.addEventListener("online", () => { if (!document.documentElement.classList.contains("offline")) return; document.documentElement.classList.remove("offline"); sync(store._db()); });
   const frErr = (e) => { const m = (e && e.message) || ""; return /row-level security|permission denied/i.test(m) ? "tu n'as pas le droit de faire ce changement" : m || "la base ne répond pas"; };
-  const snapshot = (db) => clone({ periods: KP.PERIODS, messages: KP.MESSAGES.map((m) => ({ n: m.n, nom: m.nom, info: m.info })), items: db.items, reqs: db.reqs, people: db.people, services: db.services, partners: db.partners, lieux: db.lieux, contacts: db.contacts, prefs: { [user.id]: db.prefs[user.id] || {} }, lastMeeting: db.lastMeeting });
+  const snapshot = (db) => clone({ periods: KP.PERIODS, messages: KP.MESSAGES.map((m) => ({ n: m.n, nom: m.nom, info: m.info })), items: db.items, reqs: db.reqs, people: db.people, services: db.services, partners: db.partners, lieux: db.lieux, contacts: db.contacts, prefs: { [user.id]: db.prefs[user.id] || {} }, lastMeeting: db.lastMeeting, projet: db.projet || {} });
   /* les documents ajoutés ont reçu leur identifiant de la base : la copie de référence le prend aussi */
   function fixDocs() { const cur = Object.fromEntries(store._db().items.map((i) => [i.id, i])); shadow.items.forEach((s) => { const i = cur[s.id]; if (i && i.docs && s.docs && i.docs.length === s.docs.length) s.docs = clone(i.docs); }); }
   function badge() { document.documentElement.classList.toggle("saving", pending > 0); }
@@ -287,7 +291,7 @@
     if (!el) { el = document.createElement("div"); el.id = "login"; el.className = "login"; document.body.appendChild(el); }
     el.innerHTML = `<form class="login-card" autocomplete="on">
         ${KP.logo ? KP.logo("login-logo") : ""}
-        <h1>${h((KP.marque && KP.marque.app) || "Plan de com")}${KP.marque && KP.marque.nom && !KP.marque.logo ? ` <small>${h(KP.marque.nom)}</small>` : ""}</h1>
+        <h1>${h((KP.marque && KP.marque.app) || "Plan de com")}${(() => { const st = (KP.couleur && KP.couleur.memo().sousTitre) || (KP.marque && !KP.marque.logo ? KP.marque.nom : ""); return st ? ` <small>${h(st)}</small>` : ""; })()}</h1>
         <label class="field"><span>Adresse</span><input class="input" type="email" name="email" autocomplete="username" required autofocus></label>
         <label class="field"><span>Mot de passe</span><input class="input" type="password" name="password" autocomplete="current-password" required></label>
         <p class="login-err" role="alert">${h(msg || "")}</p>
