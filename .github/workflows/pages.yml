@@ -30,7 +30,6 @@ jobs:
           KPLAN_SUPABASE_KEY: ${{ vars.KPLAN_SUPABASE_KEY }}
           KPLAN_APP: ${{ vars.KPLAN_APP }}
           KPLAN_NOM: ${{ vars.KPLAN_NOM }}
-          KPLAN_LOGO: ${{ vars.KPLAN_LOGO }}
           KPLAN_VISITEUR: ${{ vars.KPLAN_VISITEUR }}
           KPLAN_VAPID: ${{ vars.KPLAN_VAPID }}
       - uses: actions/configure-pages@v5

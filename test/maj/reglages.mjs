@@ -88,7 +88,7 @@ await p.evaluate(() => KP.store.saveProjet({ couleur: "bleu-caraibes" })); await
 ok(await p.evaluate(() => getComputedStyle(document.querySelector(".side")).backgroundColor) === "rgb(29, 37, 87)", "corporate Bleu Caraïbes : le menu prend son foncé");
 await shot(p, "plan-bleu-caraibes", "body");
 await p.evaluate(() => KP.store.saveProjet({ couleur: "jaune-or", sousTitre: "Programme Grande École" })); await settle(p);
-await p.evaluate(() => KP.go({ set: "apropos" })); await p.waitForTimeout(200);
+await p.evaluate(() => KP.go({ screen: "reglages", set: "apropos" })); await p.waitForSelector(".set .vbig");
 ok(await p.locator(".maj").count() === 0, "dépôt d'origine (pas une copie) : pas de bouton de mise à jour");
 ok(!p.errs.length, "aucune erreur : " + p.errs.join(" | "));
 await p.context().close();

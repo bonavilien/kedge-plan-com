@@ -1,5 +1,7 @@
 # Installer l'appli pour ton équipe
 
+> **La version illustrée, étape par étape : [le tutoriel](https://bonavilien.github.io/kedge-plan-com/tutoriel.html).** Les valeurs à copier s'y remplissent avec le nom de ta copie.
+
 Environ 20 minutes, sans rien coder. Il te faut un compte **GitHub** et un compte **Supabase** (gratuits tous les deux).
 À la fin, ton équipe a sa propre appli, avec ses propres données, et tu la mets à jour d'un clic quand une nouvelle version sort.
 
@@ -7,7 +9,7 @@ Environ 20 minutes, sans rien coder. Il te faut un compte **GitHub** et un compt
 |---|---|
 | **Le code** | Ta copie du dépôt, sur GitHub. Publiée gratuitement par GitHub Pages. |
 | **Tes données** | Ta base Supabase. Personne d'autre n'y a accès. |
-| **Tes réglages** (adresse de ta base, nom, logo) | Les « variables » de ta copie sur GitHub, jamais dans le code. Le sous-titre et la couleur se règlent dans l'appli. |
+| **Tes réglages** (adresse de ta base, nom) | Les « variables » de ta copie sur GitHub, jamais dans le code. Le sous-titre et la couleur se règlent dans l'appli. |
 
 ---
 
@@ -44,7 +46,6 @@ Ta copie s'appelle maintenant `ton-compte/plan-de-com`. **Ne modifie jamais ses 
    | `KPLAN_SUPABASE_KEY` | la clé publishable | obligatoire |
    | `KPLAN_APP` | le nom de l'appli (« Plan de com » si vide) | facultatif |
    | `KPLAN_NOM` | le nom de ton équipe ou de ton organisation | facultatif |
-   | `KPLAN_LOGO` | l'adresse d'un logo **blanc** (PNG ou SVG), posé sur le menu foncé | facultatif |
    | `KPLAN_VISITEUR` | l'adresse d'un compte partagé en lecture seule | facultatif |
 
 3. Onglet **Actions** de ta copie : clique sur **I understand my workflows, go ahead and enable them**.
@@ -53,7 +54,7 @@ Ta copie s'appelle maintenant `ton-compte/plan-de-com`. **Ne modifie jamais ses 
 
 Ton site est en ligne à l'adresse `https://ton-compte.github.io/plan-de-com/`.
 
-> Tu changes une variable plus tard (nom, logo) ? Relance **Actions**, **Publier le site**, **Run workflow**.
+> Tu changes une variable plus tard (le nom) ? Relance **Actions**, **Publier le site**, **Run workflow**.
 
 ## 5. Créer les comptes
 

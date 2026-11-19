@@ -6,9 +6,9 @@
 //   KPLAN_SUPABASE_KEY   clé publique          sb_publishable_… ou anon            (obligatoire)
 //   KPLAN_APP            nom de l'appli        « Plan de com » par défaut          (facultatif)
 //   KPLAN_NOM            nom de l'organisation « Ville de Lyon »                   (facultatif)
-//   KPLAN_LOGO           adresse d'un logo blanc, PNG ou SVG                       (facultatif)
 //   KPLAN_VISITEUR       adresse du compte visiteur                                (facultatif)
 //   KPLAN_VAPID          clé publique des notifications sur téléphone              (facultatif)
+// Le logo reste toujours celui de Road to 7th (icône et symbole du dépôt d'origine).
 // Sans KPLAN_SUPABASE_URL, rien n'est touché : c'est le dépôt d'origine, avec son site/config.js.
 // Usage : node scripts/config-copie.mjs [dossier du site]   (les valeurs viennent de l'environnement)
 import fs from "fs";
@@ -34,15 +34,15 @@ if (/^sb_secret_|service_role/i.test(key) || (/^eyJ/.test(key) && /service_role/
   process.exit(1);
 }
 
-const nom = env("KPLAN_NOM"), logo = env("KPLAN_LOGO"), app = env("KPLAN_APP");
+const nom = env("KPLAN_NOM"), app = env("KPLAN_APP");
 const cfg = {
   brancher: true,
   supabaseUrl: url,
   supabaseKey: key,
   vapidPublicKey: env("KPLAN_VAPID"),
   visiteur: env("KPLAN_VISITEUR"),
-  /* sans logo à elle, la copie garde l'icône de l'appli : son fond prend la couleur du projet dans l'onglet du navigateur */
-  marque: { app, nom, logo, symbole: logo ? "" : "assets/road-to-7th-symbole.png" },
+  /* le logo est toujours celui de Road to 7th ; le fond de l'icône prend la couleur du projet */
+  marque: { app, nom, logo: "assets/road-to-7th.png", carre: true, symbole: "assets/road-to-7th-symbole.png" },
   /* une copie : Réglages > Version propose « Mettre à jour » aux pilotes */
   copie: true,
 };
@@ -54,4 +54,4 @@ const mf = path.join(dir, "manifest.webmanifest");
 const m = JSON.parse(fs.readFileSync(mf, "utf8")); m.name = titre; m.short_name = app || "Plan de com"; fs.writeFileSync(mf, JSON.stringify(m, null, 2) + "\n");
 const ix = path.join(dir, "index.html");
 fs.writeFileSync(ix, fs.readFileSync(ix, "utf8").replace(/<title>[^<]*<\/title>/, `<title>${titre.replace(/[<&]/g, "")}</title>`));
-console.log(`Copie réglée : ${url}${nom ? `, « ${nom} »` : ""}${logo ? ", logo personnalisé" : ""}.`);
+console.log(`Copie réglée : ${url}${nom ? `, « ${nom} »` : ""}.`);

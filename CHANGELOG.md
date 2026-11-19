@@ -2,6 +2,10 @@
 
 Généré depuis `site/js/version.js` par `node scripts/version.mjs`. Ne pas modifier à la main.
 
+## 2.2.2 · 2026-11-19
+
+- Les copies pour d'autres équipes gardent toujours le logo Road to 7th
+
 ## 2.2.1 · 2026-11-19
 
 - Écran de connexion : le 7, sa route et l'étoile redessinés en courbes propres, aux bords nets et aux pointes fines
