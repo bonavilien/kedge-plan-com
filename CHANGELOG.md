@@ -2,6 +2,10 @@
 
 Généré depuis `site/js/version.js` par `node scripts/version.mjs`. Ne pas modifier à la main.
 
+## 2.2.1 · 2026-11-19
+
+- Écran de connexion : le 7, sa route et l'étoile redessinés en courbes propres, aux bords nets et aux pointes fines
+
 ## 2.2 · 2026-11-19
 
 - Chaque projet a son sous-titre à côté du nom (« Programme Grande École », « Executive Education ») et sa couleur, prise dans le brand book : Réglages, Projet
