@@ -49,27 +49,30 @@ function outils() {
 function monde() {
   const o = outils();
   const db = {
-    outils: {}, exports: [],
+    outils: {}, conf: null, exports: [],
     fiches: {
       a1: { id: "a1", kind: "action", t: "Post LinkedIn JPO", date: "2026-12-05", flou: "", svc: "rs", m: ["1"], st: "planifie", partner: null, lieu: "", note: "Avec la vidéo", service: "Réseaux sociaux", messages: ["Attractivité"], tf: "Journée portes ouvertes", docs: [{ nom: "Brief", url: "https://kedge.sharepoint.com/brief" }] },
       a2: { id: "a2", kind: "action", t: "Communiqué", date: "2026-12-10", flou: "", svc: "rp", m: [], st: "confirmer", partner: null, lieu: "", note: "", service: "Relations presse", messages: [], tf: "", docs: [] },
     },
   };
-  const comptes = { pilote: { id: "u1", chef: true, svc: "", visiteur: false }, rs: { id: "u2", chef: false, svc: "rs", visiteur: false }, rp: { id: "u3", chef: false, svc: "rp", visiteur: false }, visiteur: { id: "u4", chef: false, svc: "", visiteur: true } };
+  const comptes = { julien: { id: "u1", chef: true, svc: "", visiteur: false }, stephane: { id: "u2", chef: false, svc: "rs", visiteur: false }, louise: { id: "u3", chef: false, svc: "rp", visiteur: false }, visiteur: { id: "u4", chef: false, svc: "", visiteur: true } };
+  const K = (u, k) => u + ":" + k;
   const handler = createHandler({
     env: (k) => ({ SUPABASE_URL: "https://ref.supabase.co" }[k] || ""),
     fetch: o.fetch,
     secret: () => "secret-1",
     qui: async (jwt) => comptes[jwt] || null,
     db: {
-      reglages: async () => Object.values(db.outils),
-      reglage: async (k) => db.outils[k] || null,
-      relier: async (r) => { db.outils[r.outil] = r; },
-      delier: async (k) => { delete db.outils[k]; db.exports = db.exports.filter((e) => e.outil !== k); },
+      reglages: async (u) => Object.values(db.outils).filter((r) => r.user_id === u),
+      reglage: async (u, k) => db.outils[K(u, k)] || null,
+      relier: async (r) => { db.outils[K(r.user_id, r.outil)] = r; },
+      delier: async (u, k) => { delete db.outils[K(u, k)]; db.exports = db.exports.filter((e) => !(e.user_id === u && e.outil === k)); },
+      conf: async () => db.conf,
+      ecrireConf: async (c) => { db.conf = c; },
       fiche: async (id) => db.fiches[id] ? structuredClone(db.fiches[id]) : null,
       exports: async (item) => db.exports.filter((e) => e.item === item),
-      noter: async (e) => { db.exports = [...db.exports.filter((x) => !(x.item === e.item && x.outil === e.outil)), { ...e }]; },
-      oublier: async (item, k) => { db.exports = db.exports.filter((e) => !(e.item === item && e.outil === k)); },
+      noter: async (e) => { db.exports = [...db.exports.filter((x) => !(x.item === e.item && x.user_id === e.user_id && x.outil === e.outil)), { ...e }]; },
+      oublier: async (item, u, k) => { db.exports = db.exports.filter((e) => !(e.item === item && e.user_id === u && e.outil === k)); },
     },
   });
   const appel = async (corps, qui, secret) => {
@@ -94,105 +97,92 @@ check(description(w0.db.fiches.a1, { site: "", app: "" }, true).includes("**Serv
 {
   const w = monde();
   check((await w.appel({ action: "etat" })).status === 401, "sans compte : refusé");
-  check((await w.appel({ action: "lister", outil: "asana", jeton: "pat-ok" }, "rs")).status === 403, "un service ne relie pas");
-  const l = await w.appel({ action: "lister", outil: "asana", jeton: "pat-ok" }, "pilote");
-  check(l.status === 200 && l.o.choix.length === 2 && l.o.choix[0].nom === "KEDGE · Plan de com", "projets Asana proposés");
-  const faux = await w.appel({ action: "lister", outil: "asana", jeton: "pat-faux" }, "pilote");
+  check((await w.appel({ action: "lister", outil: "asana", jeton: "pat-ok" }, "visiteur")).status === 403, "lecture seule : pas d'outil");
+  const l = await w.appel({ action: "lister", outil: "asana", jeton: "pat-ok" }, "stephane");
+  check(l.status === 200 && l.o.choix.length === 2 && l.o.choix[0].nom === "KEDGE · Plan de com", "un service liste ses projets Asana");
+  const faux = await w.appel({ action: "lister", outil: "asana", jeton: "pat-faux" }, "stephane");
   check(faux.status === 502 && faux.o.erreur === "jeton" && /Asana refuse la clé/.test(faux.o.message), "clé Asana fausse : message clair");
-  check((await w.appel({ action: "lister", outil: "trello", jeton: "k" }, "pilote")).o.erreur === "jeton", "Trello : il faut clé et jeton");
-  const tl = await w.appel({ action: "lister", outil: "trello", jeton: "k:tok" }, "pilote");
+  check((await w.appel({ action: "lister", outil: "trello", jeton: "k" }, "louise")).o.erreur === "jeton", "Trello : il faut clé et jeton");
+  const tl = await w.appel({ action: "lister", outil: "trello", jeton: "k:tok" }, "louise");
   check(tl.o.choix.map((x) => x.nom).join("|") === "Com · À faire|Com · Fait", "listes Trello proposées");
-  check((await w.appel({ action: "relier", outil: "asana", jeton: "pat-ok", cible: "zz" }, "pilote")).o.erreur === "cible", "destination inconnue refusée");
+  check((await w.appel({ action: "relier", outil: "asana", jeton: "pat-ok", cible: "zz" }, "stephane")).o.erreur === "cible", "destination inconnue refusée");
 }
 
-/* relier, envoyer, synchroniser, supprimer : Asana */
+/* chacun son outil : Stéphane sur Asana, Louise sur Trello */
 {
   const w = monde();
-  const r = await w.appel({ action: "relier", outil: "asana", jeton: "pat-ok", cible: "p1", site: "https://site.io/app/", app: "Road to 7th" }, "pilote");
-  check(r.status === 200 && r.o.cible_nom === "KEDGE · Plan de com", "Asana relié");
-  const reg = w.db.outils.asana;
-  check(reg.jeton === "pat-ok" && reg.secret === "secret-1" && reg.adresse === "https://ref.supabase.co/functions/v1/export" && reg.par === "u1", "clé, secret et adresse rangés");
-  const etat = await w.appel({ action: "etat" }, "rs");
-  check(JSON.stringify(etat.o.outils) === JSON.stringify([{ outil: "asana", cible_nom: "KEDGE · Plan de com" }]) && !JSON.stringify(etat.o).includes("pat-ok"), "l'état ne montre jamais la clé");
-  /* garder la clé en changeant de projet : jeton vide */
-  await w.appel({ action: "relier", outil: "asana", jeton: "", cible: "p2" }, "pilote");
-  check(w.db.outils.asana.jeton === "pat-ok" && w.db.outils.asana.cible === "p2" && w.db.outils.asana.secret === "secret-1", "changer de projet sans recoller la clé");
-  await w.appel({ action: "relier", outil: "asana", jeton: "", cible: "p1", site: "https://site.io/app/", app: "Road to 7th" }, "pilote");
+  const r = await w.appel({ action: "relier", outil: "asana", jeton: "pat-ok", cible: "p1", site: "https://site.io/app/", app: "Road to 7th" }, "stephane");
+  check(r.status === 200 && r.o.cible_nom === "KEDGE · Plan de com", "Stéphane relie son Asana");
+  const reg = w.db.outils["u2:asana"];
+  check(reg && reg.jeton === "pat-ok" && reg.user_id === "u2", "sa clé est rangée à son nom");
+  check(w.db.conf && w.db.conf.secret === "secret-1" && w.db.conf.adresse === "https://ref.supabase.co/functions/v1/export", "premier relié : lien base-fonction installé");
+  await w.appel({ action: "relier", outil: "trello", jeton: "k:tok", cible: "l1", site: "https://site.io/app/", app: "Road to 7th" }, "louise");
+  check(Object.keys(w.db.outils).sort().join() === "u2:asana,u3:trello", "Louise relie son Trello, à côté");
+  const eS = await w.appel({ action: "etat" }, "stephane"), eL = await w.appel({ action: "etat" }, "louise"), eJ = await w.appel({ action: "etat" }, "julien");
+  check(eS.o.outils.map((x) => x.outil).join() === "asana" && eL.o.outils.map((x) => x.outil).join() === "trello" && eJ.o.outils.length === 0, "chacun ne voit que son outil");
+  check(!JSON.stringify(eS.o).includes("pat-ok"), "l'état ne montre jamais la clé");
+  await w.appel({ action: "relier", outil: "asana", jeton: "", cible: "p2" }, "stephane");
+  check(w.db.outils["u2:asana"].jeton === "pat-ok" && w.db.outils["u2:asana"].cible === "p2", "changer de projet sans recoller la clé");
+  await w.appel({ action: "relier", outil: "asana", jeton: "", cible: "p1", site: "https://site.io/app/", app: "Road to 7th" }, "stephane");
+  check((await w.appel({ action: "envoyer", outil: "asana", item: "a1" }, "julien")).o.erreur === "outil", "sans outil relié : envoyer refusé, avec le chemin");
 
-  check((await w.appel({ action: "envoyer", outil: "asana", item: "a1" }, "rp")).status === 403, "un autre service ne peut pas envoyer la fiche");
-  check((await w.appel({ action: "envoyer", outil: "asana", item: "a1" }, "visiteur")).status === 403, "un visiteur non plus");
-  const e = await w.appel({ action: "envoyer", outil: "asana", item: "a1" }, "rs");
-  check(e.status === 200 && e.o.ext_id === "t1" && e.o.url === "https://app.asana.com/0/p1/t1", "tâche créée par le service de la fiche");
-  const t = w.o.taches.t1;
+  /* les deux envoient la même fiche, chacun chez soi */
+  const e = await w.appel({ action: "envoyer", outil: "asana", item: "a1" }, "stephane");
+  check(e.status === 200 && e.o.url.startsWith("https://app.asana.com/0/p1/") && e.o.user_id === "u2", "Stéphane : tâche dans son Asana");
+  const t = w.o.taches[e.o.ext_id];
   check(t.name === "Post LinkedIn JPO" && t.due_on === "2026-12-05" && t.completed === false && t.projects[0] === "p1" && t.notes.includes("#item=a1"), "tâche : titre, échéance, projet, lien");
-  check(w.db.exports.length === 1 && w.db.exports[0].ext_id === "t1", "export noté dans la base");
+  const eT = await w.appel({ action: "envoyer", outil: "trello", item: "a1" }, "louise");
+  const c = w.o.cartes[eT.o.ext_id];
+  check(c && c.idList === "l1" && c.desc.includes("**Service** : Réseaux sociaux"), "Louise : la même fiche, carte dans son Trello (fiche d'un autre service : c'est son outil)");
+  check(w.db.exports.length === 2, "deux envois notés");
+  check((await w.appel({ action: "envoyer", outil: "trello", item: "a1" }, "stephane")).o.erreur === "outil", "Stéphane n'utilise pas le Trello de Louise");
 
-  /* la base prévient : mauvais secret, puis le bon */
+  /* la base prévient : chaque copie est réécrite */
   check((await w.appel({ item: "a1" }, null, "faux")).status === 401, "secret faux refusé");
   w.db.fiches.a1.t = "Post LinkedIn JPO, version courte"; w.db.fiches.a1.date = "2026-12-06"; w.db.fiches.a1.st = "diffuse";
   const s = await w.appel({ item: "a1" }, null, "secret-1");
-  check(s.o.fait.join() === "asana" && w.o.taches.t1.name === "Post LinkedIn JPO, version courte" && w.o.taches.t1.due_on === "2026-12-06" && w.o.taches.t1.completed === true && w.o.taches.t1.notes.includes("État : Diffusé"), "fiche modifiée : tâche réécrite, cochée quand diffusée");
+  check(s.o.fait.sort().join() === "asana,trello", "fiche modifiée : les deux copies réécrites");
+  check(t.name === "Post LinkedIn JPO, version courte" && t.due_on === "2026-12-06" && t.completed === true && t.notes.includes("État : Diffusé"), "Asana : renommée, déplacée, cochée");
+  check(c.name === "Post LinkedIn JPO, version courte" && c.due.startsWith("2026-12-06") && c.dueComplete === true, "Trello : pareil");
   w.db.fiches.a1.st = "retire"; w.db.fiches.a1.annule_motif = "Budget";
   await w.appel({ item: "a1" }, null, "secret-1");
-  check(w.o.taches.t1.name.startsWith("Annulé · ") && w.o.taches.t1.notes.startsWith("Annulé : Budget"), "annulée : marquée dans Asana");
+  check(t.name.startsWith("Annulé · ") && t.notes.startsWith("Annulé : Budget") && c.closed === true, "annulée : marquée dans Asana, archivée dans Trello");
+  w.db.fiches.a1.st = "planifie";
+  await w.appel({ item: "a1" }, null, "secret-1");
+  check(c.closed === false && c.dueComplete === false && t.completed === false, "rétablie : ressortie");
   check((await w.appel({ item: "a2" }, null, "secret-1")).o.fait.length === 0, "fiche jamais envoyée : rien");
 
-  /* envoyer deux fois ne crée pas de doublon */
   const nAvant = Object.keys(w.o.taches).length;
-  await w.appel({ action: "envoyer", outil: "asana", item: "a1" }, "pilote");
+  await w.appel({ action: "envoyer", outil: "asana", item: "a1" }, "stephane");
   check(Object.keys(w.o.taches).length === nAvant, "renvoyer met à jour, sans doublon");
 
-  /* tâche effacée dans Asana : la fiche n'est plus suivie, et on peut la renvoyer */
-  delete w.o.taches.t1;
+  /* tâche effacée dans Asana : plus suivie chez Stéphane, Louise continue */
+  delete w.o.taches[e.o.ext_id];
   await w.appel({ item: "a1" }, null, "secret-1");
-  check(w.db.exports.length === 0, "tâche effacée dans Asana : plus suivie");
-  const e2 = await w.appel({ action: "envoyer", outil: "asana", item: "a1" }, "pilote");
-  check(e2.o.ext_id === "t2", "renvoyée : nouvelle tâche");
+  check(w.db.exports.length === 1 && w.db.exports[0].user_id === "u3", "tâche effacée dans Asana : plus suivie chez lui seulement");
+  const e2 = await w.appel({ action: "envoyer", outil: "asana", item: "a1" }, "stephane");
+  check(!!w.o.taches[e2.o.ext_id], "renvoyée : nouvelle tâche");
 
-  /* panne d'Asana : notée sur la ligne */
-  w.db.outils.asana.jeton = "pat-expire";
+  /* clé expirée chez l'un : l'erreur reste sur sa ligne, l'autre passe */
+  w.db.outils["u2:asana"].jeton = "pat-expire";
   await w.appel({ item: "a1" }, null, "secret-1");
-  check(/Asana refuse la clé/.test(w.db.exports[0].erreur), "clé expirée : l'erreur est notée sur la fiche");
-  w.db.outils.asana.jeton = "pat-ok";
+  const lS = w.db.exports.find((x) => x.user_id === "u2"), lL = w.db.exports.find((x) => x.user_id === "u3");
+  check(/Asana refuse la clé/.test(lS.erreur) && lL.erreur === "", "clé expirée : erreur notée chez lui, Louise à jour");
+  w.db.outils["u2:asana"].jeton = "pat-ok";
   await w.appel({ item: "a1" }, null, "secret-1");
-  check(w.db.exports[0].erreur === "", "erreur effacée au passage suivant");
+  check(w.db.exports.every((x) => x.erreur === ""), "erreur effacée au passage suivant");
 
-  /* suppression */
-  await w.appel({ supprimer: [{ outil: "asana", ext_id: "t2" }] }, null, "secret-1");
-  check(!w.o.taches.t2, "fiche supprimée : tâche à la corbeille d'Asana");
+  /* suppression : chez chacun */
+  await w.appel({ supprimer: [{ user_id: "u2", outil: "asana", ext_id: e2.o.ext_id }, { user_id: "u3", outil: "trello", ext_id: eT.o.ext_id }] }, null, "secret-1");
+  check(!w.o.taches[e2.o.ext_id] && c.closed === true, "fiche supprimée : corbeille Asana, archives Trello");
 
-  /* arrêter, délier */
-  await w.appel({ action: "envoyer", outil: "asana", item: "a2" }, "pilote");
-  check((await w.appel({ action: "arreter", outil: "asana", item: "a2" }, "rs")).status === 403, "arrêter : mêmes droits que modifier");
-  await w.appel({ action: "arreter", outil: "asana", item: "a2" }, "rp");
-  check(!w.db.exports.some((x) => x.item === "a2"), "arrêter : plus suivie");
-  await w.appel({ action: "delier", outil: "asana" }, "pilote");
-  check(!w.db.outils.asana, "délié");
-  check((await w.appel({ action: "envoyer", outil: "asana", item: "a1" }, "pilote")).o.erreur === "outil", "pas relié : envoyer refusé");
-}
-
-/* Trello */
-{
-  const w = monde();
-  await w.appel({ action: "relier", outil: "trello", jeton: "k:tok", cible: "l1", site: "https://site.io/app", app: "Road to 7th" }, "pilote");
-  check(w.db.outils.trello.cible_nom === "Com · À faire", "Trello relié");
-  const e = await w.appel({ action: "envoyer", outil: "trello", item: "a2" }, "pilote");
-  const c = w.o.cartes[e.o.ext_id];
-  check(e.o.url.startsWith("https://trello.com/c/") && c.idList === "l1" && c.name === "Communiqué" && c.due.startsWith("2026-12-10") && c.desc.includes("**Service** : Relations presse"), "carte créée dans la liste");
-  w.db.fiches.a2.st = "diffuse";
-  await w.appel({ item: "a2" }, null, "secret-1");
-  check(c.dueComplete === true && c.closed === false, "diffusée : échéance cochée");
-  w.db.fiches.a2.st = "retire";
-  await w.appel({ item: "a2" }, null, "secret-1");
-  check(c.closed === true, "annulée : carte archivée");
-  w.db.fiches.a2.st = "planifie";
-  await w.appel({ item: "a2" }, null, "secret-1");
-  check(c.closed === false && c.dueComplete === false, "rétablie : carte ressortie");
-  await w.appel({ supprimer: [{ outil: "trello", ext_id: e.o.ext_id }] }, null, "secret-1");
-  check(c.closed === true, "supprimée : carte archivée");
-  /* les deux outils reliés partagent le même secret */
-  await w.appel({ action: "relier", outil: "asana", jeton: "pat-ok", cible: "p1" }, "pilote");
-  check(w.db.outils.asana.secret === w.db.outils.trello.secret, "un seul secret pour les deux");
+  /* arrêter, délier : chacun pour soi */
+  await w.appel({ action: "envoyer", outil: "asana", item: "a2" }, "stephane");
+  await w.appel({ action: "envoyer", outil: "trello", item: "a2" }, "louise");
+  await w.appel({ action: "arreter", outil: "asana", item: "a2" }, "stephane");
+  check(w.db.exports.filter((x) => x.item === "a2").map((x) => x.user_id).join() === "u3", "arrêter : seulement chez soi");
+  await w.appel({ action: "delier", outil: "trello" }, "louise");
+  check(!w.db.outils["u3:trello"] && w.db.outils["u2:asana"] && !w.db.exports.some((x) => x.user_id === "u3"), "délier : seulement son outil");
 }
 
 console.log(`fonction export : ${ok} vérifications passées`);

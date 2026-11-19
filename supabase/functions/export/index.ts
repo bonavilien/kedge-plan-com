@@ -1,16 +1,18 @@
-// Envoie une fiche dans Asana ou dans Trello, puis l'y garde à jour.
+// Envoie une fiche dans l'Asana ou le Trello de la personne qui clique, puis l'y garde à jour.
 // Elle tourne dans Supabase, jamais dans le navigateur : les clés Asana et Trello restent ici et dans la base.
 //   Depuis l'appli (compte connecté) :
-//     « lister »   un pilote donne sa clé : la fonction répond les projets Asana ou les listes Trello où envoyer
-//     « relier »   un pilote choisit la destination : clé et destination sont rangées dans la base (table outils)
-//     « delier »   un pilote retire l'outil (les tâches déjà envoyées restent dans l'outil, elles ne bougent plus)
-//     « envoyer »  quelqu'un qui peut modifier la fiche la crée dans l'outil
-//     « arreter »  quelqu'un qui peut modifier la fiche arrête de la synchroniser (la tâche reste dans l'outil)
+//   Chacun son outil : chaque personne (sauf lecture seule) relie son Asana ou son Trello, ses fiches y arrivent.
+//     « lister »   la personne donne sa clé : la fonction répond ses projets Asana ou ses listes Trello
+//     « relier »   elle choisit la destination : clé et destination sont rangées dans la base (table outils)
+//     « delier »   elle retire son outil (ses tâches déjà envoyées y restent, elles ne bougent plus)
+//     « envoyer »  elle crée la fiche dans son outil (n'importe quelle fiche : c'est son outil à elle)
+//     « arreter »  elle arrête de la synchroniser chez elle (la tâche reste dans l'outil)
 //   Depuis la base (déclencheurs de 0029_export_asana_trello.sql, avec le secret partagé) :
 //     { item }       la fiche a changé : la tâche ou la carte est réécrite
+//     { item }       (suite) chaque personne qui l'a envoyée voit sa tâche ou sa carte réécrite
 //     { supprimer }  la fiche a été supprimée : tâche à la corbeille d'Asana, carte aux archives de Trello
 //
-// Aucun secret à ranger dans Supabase : tout se règle dans l'appli (Réglages, Projet).
+// Aucun secret à ranger dans Supabase : chacun se règle dans l'appli (Réglages, Mon profil).
 // Fournis par Supabase sans rien faire : SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY.
 // À l'installation, désactiver « Verify JWT » : la fonction vérifie elle-même qui l'appelle.
 //
@@ -20,8 +22,9 @@ export const FONCTION = 1;
 
 type Outil = "asana" | "trello";
 type Qui = { id: string; chef: boolean; svc: string; visiteur: boolean };
-type Reglage = { outil: Outil; jeton: string; cible: string; cible_nom: string; site: string; app: string; adresse: string; secret: string };
-type Export = { item: string; outil: Outil; ext_id: string; url: string; erreur?: string };
+type Reglage = { user_id: string; outil: Outil; jeton: string; cible: string; cible_nom: string; site: string; app: string };
+type Conf = { adresse: string; secret: string };
+type Export = { item: string; user_id: string; outil: Outil; ext_id: string; url: string; erreur?: string };
 type Fiche = {
   id: string; kind: string; t: string; date: string; flou: string | boolean; svc: string; m: string[]; st: string; partner: string | null;
   lieu: string; note: string; annule_motif?: string; fin?: string | null;
@@ -32,14 +35,16 @@ type Deps = {
   fetch: typeof fetch;
   qui: (jwt: string) => Promise<Qui | null>;
   db: {
-    reglages: () => Promise<Reglage[]>;
-    reglage: (o: Outil) => Promise<Reglage | null>;
-    relier: (r: Reglage & { par: string }) => Promise<void>;
-    delier: (o: Outil) => Promise<void>;
+    reglages: (user: string) => Promise<Reglage[]>;
+    reglage: (user: string, o: Outil) => Promise<Reglage | null>;
+    relier: (r: Reglage) => Promise<void>;
+    delier: (user: string, o: Outil) => Promise<void>;
+    conf: () => Promise<Conf | null>;
+    ecrireConf: (c: Conf) => Promise<void>;
     fiche: (id: string) => Promise<Fiche | null>;
     exports: (item: string) => Promise<Export[]>;
     noter: (e: Export) => Promise<void>;
-    oublier: (item: string, o: Outil) => Promise<void>;
+    oublier: (item: string, user: string, o: Outil) => Promise<void>;
   };
   secret: () => string;
 };
@@ -151,18 +156,17 @@ export function createHandler(d: Deps) {
     const f = await d.db.fiche(item), liste = await d.db.exports(item), fait: string[] = [];
     if (!f) return { fait };
     for (const e of liste) {
-      const r = await d.db.reglage(e.outil);
+      const r = await d.db.reglage(e.user_id, e.outil);
       if (!r) continue;
       try {
         const w = await ecrire(r, f, e);
-        if (!w) { await d.db.oublier(item, e.outil); continue; }
-        await d.db.noter({ item, outil: e.outil, ext_id: w.ext_id, url: w.url, erreur: "" }); fait.push(e.outil);
+        if (!w) { await d.db.oublier(item, e.user_id, e.outil); continue; }
+        await d.db.noter({ item, user_id: e.user_id, outil: e.outil, ext_id: w.ext_id, url: w.url, erreur: "" }); fait.push(e.outil);
       } catch (x) { await d.db.noter({ ...e, erreur: (x as Error).message.slice(0, 300) }); }
     }
     return { fait };
   }
 
-  const peutModifier = (q: Qui, f: Fiche) => !q.visiteur && (q.chef || (!!q.svc && q.svc === f.svc && !f.partner && f.kind !== "classement"));
   const outilDe = (o: unknown): Outil => { if (o === "asana" || o === "trello") return o; throw new Refus("outil", "Outil inconnu."); };
 
   return async (req: Request): Promise<Response> => {
@@ -173,48 +177,43 @@ export function createHandler(d: Deps) {
       /* ---- la base ---- */
       const s = req.headers.get("x-export-secret");
       if (s) {
-        const regs = await d.db.reglages();
-        if (!regs.some((r) => r.secret && r.secret === s)) return json({ erreur: "secret", message: "non" }, 401);
+        const c = await d.db.conf();
+        if (!c || !c.secret || c.secret !== s) return json({ erreur: "secret", message: "non" }, 401);
         if (corps.item) return json(await synchroniser(String(corps.item)));
         if (Array.isArray(corps.supprimer)) {
-          for (const x of corps.supprimer) { const r = regs.find((y) => y.outil === x.outil); if (r) await retirer(r, String(x.ext_id)).catch(() => {}); }
+          for (const x of corps.supprimer) { const r = await d.db.reglage(String(x.user_id), outilDe(x.outil)); if (r) await retirer(r, String(x.ext_id)).catch(() => {}); }
           return json({ ok: true });
         }
         return json({ erreur: "action", message: "rien à faire" }, 400);
       }
-      /* ---- l'appli ---- */
+      /* ---- l'appli : chacun ne touche qu'à son outil ---- */
       const jwt = (req.headers.get("authorization") || "").replace(/^Bearer\s+/i, "");
       const q = jwt ? await d.qui(jwt) : null;
       if (!q) return json({ erreur: "connexion", message: "Connecte-toi d'abord." }, 401);
+      if (q.visiteur) return json({ erreur: "droits", message: "En lecture seule, pas d'envoi vers Asana ou Trello." }, 403);
       const action = corps.action;
-      if (action === "etat") return json({ fonction: FONCTION, outils: (await d.db.reglages()).map((r) => ({ outil: r.outil, cible_nom: r.cible_nom })) });
+      if (action === "etat") return json({ fonction: FONCTION, outils: (await d.db.reglages(q.id)).map((r) => ({ outil: r.outil, cible_nom: r.cible_nom })) });
       if (action === "lister" || action === "relier" || action === "delier") {
-        if (!q.chef) return json({ erreur: "pilote", message: "Seul un pilote relie Asana ou Trello." }, 403);
-        const outil = outilDe(corps.outil), ancien = await d.db.reglage(outil);
-        if (action === "delier") { await d.db.delier(outil); return json({ ok: true }); }
+        const outil = outilDe(corps.outil), ancien = await d.db.reglage(q.id, outil);
+        if (action === "delier") { await d.db.delier(q.id, outil); return json({ ok: true }); }
         const jeton = String(corps.jeton || "").trim() || (ancien ? ancien.jeton : "");
         if (action === "lister") return json({ choix: await lister(outil, jeton) });
         const choix = await lister(outil, jeton), c = choix.find((x) => x.id === corps.cible);
         if (!c) throw new Refus("cible", `Cette destination n'existe plus dans ${NOMS[outil]}.`);
-        const autre = (await d.db.reglages()).find((r) => r.secret);
-        await d.db.relier({
-          outil, jeton, cible: c.id, cible_nom: c.nom, par: q.id,
-          site: String(corps.site || "").slice(0, 300), app: String(corps.app || "").slice(0, 60),
-          adresse: d.env("SUPABASE_URL").replace(/\/+$/, "") + "/functions/v1/export",
-          secret: (ancien && ancien.secret) || (autre && autre.secret) || d.secret(),
-        });
+        /* la première personne qui relie un outil installe le lien entre la base et la fonction */
+        if (!(await d.db.conf())) await d.db.ecrireConf({ adresse: d.env("SUPABASE_URL").replace(/\/+$/, "") + "/functions/v1/export", secret: d.secret() });
+        await d.db.relier({ user_id: q.id, outil, jeton, cible: c.id, cible_nom: c.nom, site: String(corps.site || "").slice(0, 300), app: String(corps.app || "").slice(0, 60) });
         return json({ outil, cible_nom: c.nom });
       }
       if (action === "envoyer" || action === "arreter") {
         const outil = outilDe(corps.outil), f = await d.db.fiche(String(corps.item || ""));
         if (!f) throw new Refus("fiche", "Cette fiche n'existe plus.", 404);
-        if (!peutModifier(q, f)) return json({ erreur: "droits", message: "Tu ne peux pas modifier cette fiche." }, 403);
-        if (action === "arreter") { await d.db.oublier(f.id, outil); return json({ ok: true }); }
-        const r = await d.db.reglage(outil);
-        if (!r) throw new Refus("outil", `${NOMS[outil]} n'est pas relié : Réglages, Projet.`);
-        const deja = (await d.db.exports(f.id)).find((e) => e.outil === outil) || null;
+        if (action === "arreter") { await d.db.oublier(f.id, q.id, outil); return json({ ok: true }); }
+        const r = await d.db.reglage(q.id, outil);
+        if (!r) throw new Refus("outil", `Ton ${NOMS[outil]} n'est pas relié : Réglages, Mon profil.`);
+        const deja = (await d.db.exports(f.id)).find((e) => e.outil === outil && e.user_id === q.id) || null;
         const w = (await ecrire(r, f, deja)) || (await ecrire(r, f, null));
-        const e: Export = { item: f.id, outil, ext_id: w!.ext_id, url: w!.url, erreur: "" };
+        const e: Export = { item: f.id, user_id: q.id, outil, ext_id: w!.ext_id, url: w!.url, erreur: "" };
         await d.db.noter(e);
         return json(e);
       }
@@ -246,10 +245,12 @@ if (D && D.serve && !D.env.get("KPLAN_TEST")) {
       return p ? { id: data.user.id, chef: !!p.chef, svc: p.svc || "", visiteur: !!p.visiteur } : null;
     },
     db: {
-      reglages: async () => ok(await sb.from("outils").select("*")) as Reglage[],
-      reglage: async (o) => ok(await sb.from("outils").select("*").eq("outil", o).maybeSingle()) as Reglage | null,
+      reglages: async (u) => ok(await sb.from("outils").select("*").eq("user_id", u)) as Reglage[],
+      reglage: async (u, o) => ok(await sb.from("outils").select("*").eq("user_id", u).eq("outil", o).maybeSingle()) as Reglage | null,
       relier: async (r) => { ok(await sb.from("outils").upsert({ ...r, maj: new Date().toISOString() })); },
-      delier: async (o) => { ok(await sb.from("exports").delete().eq("outil", o)); ok(await sb.from("outils").delete().eq("outil", o)); },
+      delier: async (u, o) => { ok(await sb.from("exports").delete().eq("user_id", u).eq("outil", o)); ok(await sb.from("outils").delete().eq("user_id", u).eq("outil", o)); },
+      conf: async () => ok(await sb.from("export_conf").select("adresse,secret").maybeSingle()) as Conf | null,
+      ecrireConf: async (c) => { ok(await sb.from("export_conf").upsert({ id: true, ...c })); },
       fiche: async (id) => {
         const it: any = ok(await sb.from("items").select("*").eq("id", id).maybeSingle());
         if (!it) return null;
@@ -272,7 +273,7 @@ if (D && D.serve && !D.env.get("KPLAN_TEST")) {
       },
       exports: async (item) => ok(await sb.from("exports").select("*").eq("item", item)) as Export[],
       noter: async (e) => { ok(await sb.from("exports").upsert({ ...e, maj: new Date().toISOString() })); },
-      oublier: async (item, o) => { ok(await sb.from("exports").delete().eq("item", item).eq("outil", o)); },
+      oublier: async (item, u, o) => { ok(await sb.from("exports").delete().eq("item", item).eq("user_id", u).eq("outil", o)); },
     },
   }));
 }

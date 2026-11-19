@@ -13,7 +13,7 @@
       <div class="head"><h1>Réglages</h1></div>
       <div class="bar"><div class="seg" role="group" aria-label="Réglages">${TABS.filter(([k]) => admin || k === "profil" || k === "apropos").map(([k, n]) => `<button type="button" data-act="set-tab" data-k="${k}" class="${k === tab ? "on" : ""}" aria-pressed="${k === tab}">${n}</button>`).join("")}</div></div>
       ${({ apropos, profil,
-        projet: () => identite() + periodes() + messages() + (KP.outils ? KP.outils.reglages() : ""),
+        projet: () => identite() + periodes() + messages(),
         equipe: () => equipe() + services(),
         carnets: () => liste("partners", "Médias partenaires", "Proposés quand une action est un partenariat payant.", "Nom du média") + liste("lieux", "Lieux", "Proposés dans le champ Lieu d'un temps fort.", "Nom du lieu") + contacts() })[tab]()}
     </div>`;
@@ -34,7 +34,7 @@
         <div class="checks">${chk("demandes", "Quand on me demande des éléments, ou qu'on me répond")}${chk("changements", "Quand un temps fort que je relaie change, est reporté ou annulé")}${chk("creations", "À chaque nouvelle action ou nouveau temps fort")}</div>
         ${store.remote() && KP.remote.push.can() ? `<p class="muted push-row">${KP.remote.push.blocked() ? "Ton navigateur bloque mes notifications (voir ses réglages). Je ne le prends pas mal." : KP.remote.push.on ? "Cet appareil reçoit les notifications." : "Cet appareil ne reçoit pas encore les notifications."}
           ${KP.remote.push.blocked() ? "" : `<button type="button" class="btn quiet small" data-act="push-toggle">${KP.remote.push.on ? "Ne plus recevoir ici" : "Recevoir sur cet appareil"}</button>`}</p>` : ""}
-      </section>`}`;
+      </section>`}${KP.outils ? KP.outils.reglages() : ""}`;
   }
 
   /* ---------- mise à jour en un clic : une copie suit le dépôt d'origine (pilotes seulement) ----------

@@ -102,12 +102,12 @@ Ton site est en ligne à l'adresse `https://ton-compte.github.io/plan-de-com/`.
 
 ## 7. Asana et Trello (facultatif)
 
-Pour envoyer une action dans Asana ou dans Trello d'un clic, et l'y garder à jour toute seule.
+Pour que chacun envoie une action dans son Asana ou son Trello d'un clic, et l'y garde à jour toute seule.
 
 1. Ouvre [`supabase/functions/export/index.ts`](https://github.com/bonavilien/kedge-plan-com/blob/main/supabase/functions/export/index.ts) et copie-le (**Copy raw file**).
 2. Dans Supabase : **Edge Functions**, **Deploy a new function**, **Via Editor**. Nom : `export` (exactement). Colle, **Deploy function**.
 3. Dans **Details**, désactive **Verify JWT** et enregistre.
-4. Dans ton appli : **Réglages**, **Projet**, **Asana et Trello**, **Relier**. Colle ta clé (le lien sous le champ mène à la page où la créer), choisis le projet ou la liste où arrivent les fiches.
+4. Ensuite, chacun dans l'appli : **Réglages**, **Mon profil**, **Mon Asana, mon Trello**, **Relier**. Colle ta clé (le lien sous le champ mène à la page où la créer), choisis le projet ou la liste où arrivent tes fiches.
 
 Aucun secret à ranger dans Supabase : la clé se colle dans l'appli, et seule la fonction peut la relire.
 

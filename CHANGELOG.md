@@ -4,9 +4,9 @@ Généré depuis `site/js/version.js` par `node scripts/version.mjs`. Ne pas mod
 
 ## 2.4 · 2026-11-19
 
-- Un bouton sur la fiche envoie l'action dans Asana ou dans Trello : titre, date, service, messages, état, note, documents et un lien pour revenir à la fiche
+- Un bouton sur la fiche envoie l'action dans ton Asana ou ton Trello : titre, date, service, messages, état, note, documents et un lien pour revenir à la fiche
 - Ensuite, chaque changement de la fiche suit tout seul : diffusée, la tâche est cochée ; annulée, elle est marquée « Annulé » ; supprimée, elle part à la corbeille d'Asana ou aux archives de Trello
-- Un pilote relie Asana ou Trello dans Réglages, Projet
+- Chacun relie son propre Asana ou Trello dans Réglages, Mon profil ; une même action peut vivre chez plusieurs personnes, chacune tenue à jour
 
 ## 2.3 · 2026-11-19
 

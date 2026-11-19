@@ -1,4 +1,4 @@
-// Asana et Trello dans l'appli : relier dans Réglages, bouton de la fiche, droits (base et fonction simulées).
+// Asana et Trello dans l'appli : chacun relie le sien dans Mon profil, bouton de la fiche (base et fonction simulées).
 // Usage : (cd site && python3 -m http.server 8812) puis node test/maj/export-ui.mjs [dossier des captures]
 import { createRequire } from "node:module";
 const { chromium } = createRequire(import.meta.url)("playwright");
@@ -49,9 +49,9 @@ const btn = '#fiche [data-act="f-export"]';
 let p = await open("pilote@example.com");
 await fiche(p, I(3));
 ok(await p.locator(btn).count() === 0, "rien de relié : pas de bouton sur la fiche");
-await p.evaluate(() => KP.go({ screen: "reglages", set: "projet", fiche: "" }));
+await p.evaluate(() => KP.go({ screen: "reglages", set: "profil", fiche: "" }));
 await p.waitForSelector(".t-outils");
-ok(await p.locator(".t-outils .tr").count() === 2 && await p.locator('.t-outils [data-act="outil-relier"]').count() === 2, "Réglages, Projet : Asana et Trello, à relier");
+ok(await p.locator(".t-outils .tr").count() === 2 && await p.locator('.t-outils [data-act="outil-relier"]').count() === 2, "Réglages, Mon profil : Asana et Trello, à relier");
 await p.locator(".t-outils").scrollIntoViewIfNeeded();
 await shot(p, "1-reglages-vide", ".t-outils >> xpath=..");
 await p.click('.t-outils [data-act="outil-relier"][data-k="asana"]');
@@ -96,30 +96,33 @@ await p.click(btn);
 ok((await p.locator(".pop").innerText()).includes("Envoyer dans Trello"), "deux outils : on choisit");
 await shot(p, "8-deux-outils-sombre", "body");
 
-// ---------- droits ----------
-const lignes = [{ item: I(3), outil: "asana", url: "https://app.asana.com/0/p1/t1", erreur: "" }];
-p = await open("presse@example.com", { actifs: [{ outil: "asana", cible_nom: "KEDGE · Plan" }], lignes });
+// ---------- chacun son outil ----------
+const U = (n) => "a0000000-0000-0000-0000-00000000000" + n;
+const lignes = [{ item: I(3), user_id: U(2), outil: "asana", url: "https://app.asana.com/0/p1/t1", erreur: "" }, { item: I(2), user_id: U(3), outil: "asana", url: "https://app.asana.com/0/p1/t9", erreur: "" }];
+p = await open("presse@example.com", { actifs: [{ outil: "asana", cible_nom: "Aurélie · Presse" }], lignes });
+await p.evaluate(() => KP.go({ screen: "reglages", set: "profil" })); await p.waitForSelector(".t-outils");
+ok((await p.locator(".t-outils").innerText()).includes("Aurélie · Presse"), "un service relie son propre outil dans Mon profil");
+await fiche(p, I(6)); /* fiche RS : Aurélie est aux RP */
+ok(await p.locator(btn).count() === 1, "on peut envoyer n'importe quelle fiche dans son outil");
+await fiche(p, I(3));
+ok(await p.locator(btn + ".lie").count() === 1, "mes envois : bouton vert");
 await fiche(p, I(2));
-ok(await p.locator(btn).count() === 1, "service : bouton sur une fiche de son service");
-await fiche(p, I(4)); /* RP, diffusée */
-await fiche(p, I(3)); /* RS, envoyée */
-await p.click(btn);
-const m2 = await p.locator(".pop").innerText();
-ok(m2.includes("Ouvrir dans Asana") && !m2.includes("Ne plus synchroniser"), "fiche d'un autre service déjà envoyée : ouvrir seulement");
-await p.keyboard.press("Escape");
-await fiche(p, I(6));
-ok(await p.locator(btn).count() === 0, "fiche d'un autre service jamais envoyée : pas de bouton");
+ok(await p.locator(btn + ".lie").count() === 0, "l'envoi d'un autre ne compte pas pour moi");
+await p.click(btn); await p.waitForTimeout(150);
+ok(p.calls.some((c) => c.action === "envoyer" && c.item === I(2)), "je l'envoie chez moi aussi");
 p = await open("lecteur@example.com", { actifs: [{ outil: "asana", cible_nom: "KEDGE · Plan" }], lignes });
 await fiche(p, I(3));
 ok(await p.locator(btn).count() === 0, "lecture seule : pas de bouton");
-p = await open("pilote@example.com", { actifs: [{ outil: "asana", cible_nom: "KEDGE · Plan" }], lignes: [{ ...lignes[0], erreur: "Asana refuse la clé" }] });
+await p.evaluate(() => KP.go({ screen: "reglages", set: "profil" })); await p.waitForTimeout(100);
+ok(await p.locator(".t-outils").count() === 0, "lecture seule : pas de réglage");
+p = await open("pilote@example.com", { actifs: [{ outil: "asana", cible_nom: "KEDGE · Plan" }], lignes: [{ item: I(3), user_id: U(1), outil: "asana", url: "x", erreur: "Asana refuse la clé" }] });
 await fiche(p, I(3));
 ok(await p.locator(btn + ".err").count() === 1 && (await p.locator(btn).getAttribute("data-tip")).includes("pas à jour"), "erreur de synchro : bouton rouge");
 
 // ---------- base sans 0029, fonction absente ----------
 p = await open("pilote@example.com", { fn: null });
 await p.evaluate(() => { delete window.__fakeRpc.outils_actifs; KP.outils.charge(); });
-await p.evaluate(() => KP.go({ screen: "reglages", set: "projet" })); await p.waitForTimeout(100);
+await p.evaluate(() => KP.go({ screen: "reglages", set: "profil" })); await p.waitForTimeout(100);
 ok((await p.locator(".t-outils >> xpath=..").innerText()).includes("0029"), "sans le script 0029 : on le dit");
 await p.click('.t-outils [data-act="outil-relier"][data-k="trello"]');
 await p.fill("dialog [name=key]", "a".repeat(32));
