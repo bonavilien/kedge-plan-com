@@ -320,7 +320,7 @@
       log(id, `a déplacé au ${fmt.moyen(date)}`); emit();
       return () => { putBack(saved); emit(); };
     },
-    ask(o) { const r = { id: nid("r"), de: db.moi, fait: false, rep: "", quand: Date.now(), ...o }; db.reqs.push(r); if (o.a !== db.moi) log(o.item, `a demandé ${ASK[o.quoi] || "des éléments"} à ${(person(o.a) || service(o.a) || { nom: "" }).nom}`); emit(); return r; },
+    ask(o) { const r = { id: nid("r"), de: db.moi, fait: false, rep: "", quand: Date.now(), ...o }; db.reqs.push(r); if (o.a !== db.moi) log(o.item, o.pour ? `a demandé ${ASK[o.quoi] || "des éléments"} à ${(person(o.a) || service(o.a) || { nom: "" }).nom}` : `a écrit pour info à ${(person(o.a) || service(o.a) || { nom: "" }).nom}`); emit(); return r; },
     /* un rappel pour moi ou une demande qu'on a faite : on change le texte ou la date, ou on la retire */
     editReq(id, patch) { const r = db.reqs.find((x) => x.id === id); if (!r || r.fait) return; Object.assign(r, patch); emit(); },
     /* relancer : la personne reçoit une notification (branché), et la fiche le garde dans son activité */

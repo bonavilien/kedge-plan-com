@@ -2,6 +2,13 @@
 
 Généré depuis `site/js/version.js` par `node scripts/version.mjs`. Ne pas modifier à la main.
 
+## 2.5 · 2026-11-19
+
+- Sur la fiche, « Demander des éléments » devient une seule ligne : « @Estelle les visuels pour vendredi dans 2 semaines ». L'appli reconnaît la personne et la date, et les surligne pendant que tu écris
+- Sans date, le message part pour info : une notification, sans rappel ni réponse attendue
+- La veille de l'échéance, la personne reçoit un rappel
+- « Rappelle-moi lundi… » note un rappel pour toi, « on décale au 4 décembre » propose de déplacer l'action, « c'est envoyé » répond à la demande, un lien SharePoint se range dans les documents, et #action mène à sa fiche
+
 ## 2.4 · 2026-11-19
 
 - Un bouton sur la fiche envoie l'action dans ton Asana ou ton Trello : titre, date, service, messages, état, note, documents et un lien pour revenir à la fiche

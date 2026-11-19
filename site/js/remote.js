@@ -89,7 +89,7 @@
         return it;
       }),
       reqs: reqs.filter((r) => r.st !== "annulee").map((r) => ({ id: r.id, item: r.item, de: r.asker || "", a: r.dest === "moi" || r.dest === "programme" ? r.asker || "" : r.dest,
-        quoi: KP.ELEMENTS.includes(r.type) ? r.type : "Autre", txt: r.quoi || (KP.ELEMENTS.includes(r.type) ? "" : r.type), pour: r.pour, fait: r.st === "recue", rep: r.reponse || "", quand: ms(r.at) })),
+        quoi: KP.ELEMENTS.includes(r.type) || r.type === "Info" ? r.type : "Autre", txt: r.quoi || (KP.ELEMENTS.includes(r.type) ? "" : r.type), pour: r.pour || "", fait: r.st === "recue", rep: r.reponse || "", quand: ms(r.at) })),
       journal: journal.map((j) => ({ id: "j" + j.id, item: j.item, qui: j.author || "", quand: ms(j.at), txt: jtxt(j) })),
       lastMeeting: m.last_meeting || KP.TODAY,
       projet: { couleur: m.couleur || "", sousTitre: m.sous_titre || "" },
@@ -203,10 +203,10 @@
     const r0 = byId(shadow.reqs);
     db.reqs.forEach((r) => {
       const old = r0[r.id];
-      if (!old) return ops.push(() => run(sb.from("reqs").insert({ id: r.id, item: r.item, dest: r.a === user.id ? "moi" : r.a, type: r.quoi || "Autre", quoi: r.txt || "", pour: r.pour })));
+      if (!old) return ops.push(() => run(sb.from("reqs").insert({ id: r.id, item: r.item, dest: r.a === user.id ? "moi" : r.a, type: r.quoi || (r.pour ? "Autre" : "Info"), quoi: r.txt || "", pour: r.pour || null })));
       if (r.fait && !old.fait) ops.push(() => changed(sb.from("reqs").update({ st: "recue", reponse: r.rep || "" }).eq("id", r.id)));
       else if (!r.fait && old.fait) ops.push(async () => { throw new Error("une demande reçue reste reçue"); });
-      else if (!r.fait && (r.txt !== old.txt || r.pour !== old.pour)) ops.push(() => changed(sb.from("reqs").update({ quoi: r.txt || "", pour: r.pour }).eq("id", r.id)));
+      else if (!r.fait && (r.txt !== old.txt || r.pour !== old.pour)) ops.push(() => changed(sb.from("reqs").update({ quoi: r.txt || "", pour: r.pour || null }).eq("id", r.id)));
     });
     /* une demande retirée (ou un rappel effacé) : la base la garde, marquée « annulée » ; celles d'une fiche supprimée partent avec elle */
     shadow.reqs.forEach((r) => { if (!db.reqs.some((x) => x.id === r.id) && !gone.has(r.item) && !r.fait) ops.push(() => changed(sb.from("reqs").update({ st: "annulee" }).eq("id", r.id))); });

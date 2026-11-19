@@ -135,7 +135,7 @@
     const inner = (it.st === "diffuse" ? KP.ic("check") : "") + KP.h(s.nom);
     return editable ? `<button type="button" class="pill ${s.k}" data-act="row-st" data-id="${it.id}" aria-label="État : ${KP.h(s.nom)}. Changer">${inner}</button>` : `<span class="pill ${s.k}">${inner}</span>`;
   };
-  KP.due = (r) => !r.fait && r.pour < KP.TODAY ? `attendu ${KP.fmt.relatif(r.pour)}` : `pour ${KP.fmt.relatif(r.pour)}`;
+  KP.due = (r) => !r.pour ? "pour info" : !r.fait && r.pour < KP.TODAY ? `attendu ${KP.fmt.relatif(r.pour)}` : `pour ${KP.fmt.relatif(r.pour)}`;
   KP.kindName = (it) => it.variant === "sujet" ? "Sujet de la période" : it.variant === "classement" ? "Classement" : it.kind === "tf" ? "Temps fort" : it.variant === "partenariat" ? "Partenariat payant" : "Action";
   KP.msgNames = (it) => it.m.map((k) => (KP.message(k) || {}).nom).filter(Boolean).join(", ");
   KP.dateLong = (it) => it.flou ? `courant ${KP.fmt.mois(it.date)}` : KP.fmt.plage(it.date, it.fin);

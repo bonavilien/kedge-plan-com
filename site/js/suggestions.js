@@ -7,7 +7,7 @@
   const mine = (r) => { const u = KP.me(); return r.a === u.k || (!!u.svc && r.a === u.svc) || (r.a === "chef" && u.role === "pilote"); };
 
   /* demandes qui m'attendent, la plus pressée d'abord */
-  KP.inbox = () => KP.me().role === "lecteur" ? [] : store.reqs().filter((r) => !r.fait && mine(r) && store.get(r.item)).sort((a, b) => a.pour.localeCompare(b.pour));
+  KP.inbox = () => KP.me().role === "lecteur" ? [] : store.reqs().filter((r) => !r.fait && r.pour && mine(r) && store.get(r.item)).sort((a, b) => a.pour.localeCompare(b.pour));
 
   const sg = () => { const p = store.prefs(); p.sg = p.sg || { snooze: {}, n: {} }; return p.sg; };
   KP.skipSuggestion = (s) => { const x = sg(); x.snooze[s.key] = KP.addDays(KP.TODAY, 3); x.n[s.type] = (x.n[s.type] || 0) + 1; store.setPref("sg", x); };
@@ -48,7 +48,7 @@
         actions: [{ nom: "Ajouter une action", run: () => KP.nouveau({ tf: it.id, date: KP.addDays(it.date, -3) < T ? T : KP.addDays(it.date, -3) }) }, { nom: "Voir le temps fort", run: open(it.id) }], skip: "Pas cette fois" }));
 
     // 4. une demande que j'ai envoyée attend
-    store.reqs().filter((r) => r.de === u.k && r.a !== u.k && !r.fait && r.pour < T && store.get(r.item)).forEach((r) => push({ key: "req:" + r.id, type: "relance", icon: "chat", text: `${KP.dest(r.a)} n'a pas encore répondu pour « ${store.get(r.item).t} ».`, why: `Tu attendais ${KP.ASK[r.quoi] || "des éléments"} pour ${KP.fmt.relatif(r.pour)}.`,
+    store.reqs().filter((r) => r.de === u.k && r.a !== u.k && !r.fait && r.pour && r.pour < T && store.get(r.item)).forEach((r) => push({ key: "req:" + r.id, type: "relance", icon: "chat", text: `${KP.dest(r.a)} n'a pas encore répondu pour « ${store.get(r.item).t} ».`, why: `Tu attendais ${KP.ASK[r.quoi] || "des éléments"} pour ${KP.fmt.relatif(r.pour)}.`,
       actions: [{ nom: "Relancer", run: () => { store.relance(r.id); KP.skipSuggestion({ key: "req:" + r.id, type: "_" }); } }, { nom: "Ouvrir", run: open(r.item) }], skip: "Plus tard" }));
 
     if (pilote) {
