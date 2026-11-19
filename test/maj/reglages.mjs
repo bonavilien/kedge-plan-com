@@ -146,6 +146,7 @@ await p.context().close();
   const ctx = await b.newContext({ viewport: { width: 1440, height: 900 }, serviceWorkers: "block" }); const q = await ctx.newPage(); const errs = []; q.on("pageerror", (e) => errs.push(e.message));
   await q.route("**/vendor/supabase-*.js", (r) => r.fulfill({ contentType: "text/javascript", body: fake }));
   await q.route("**/config.js", (r) => r.fulfill({ contentType: "text/javascript", body: `window.KPLAN_CONFIG = ${JSON.stringify({ brancher: true, supabaseUrl: "https://faux.supabase.co", supabaseKey: "faux", marque: { app: "Road to 7th", nom: "KEDGE", logo: "assets/road-to-7th.png", carre: true, symbole: "assets/road-to-7th-symbole.png" } })};` }));
+  await q.addInitScript(() => sessionStorage.setItem("kplan-ouvert", "1")); /* sans l'ouverture du 7 (test/maj/ouverture.mjs) */
   await q.goto(base); await q.waitForSelector(".login-fond svg .lf-etoile");
   ok(await q.locator(".login-card img").count() === 0 && await q.locator(".login-fond svg .lf-route").count() === 1 && await q.locator(".login-fond svg .lf-contour").count() === 1 && !errs.length, "connexion : le 7 en fond (route, étoile, contour), plus de logo dans le formulaire");
   await q.waitForTimeout(1000);
