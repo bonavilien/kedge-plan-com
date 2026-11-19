@@ -127,9 +127,12 @@
   }
 
   function messages() {
-    return `<section class="set"><h2>Les ${KP.CLES.length} messages</h2>
-      <div class="tbl t-msg"><div class="th"><span>Nom</span><span>Ce qu'il couvre</span></div>
-      ${KP.CLES.map((m) => `<div class="tr"><input class="input" id="me-${m.k}-nom" data-set="messages:${m.k}:nom" value="${h(m.nom)}" aria-label="Nom" maxlength="30" autocomplete="off"><input class="input" id="me-${m.k}-info" data-set="messages:${m.k}:info" value="${h(m.info)}" aria-label="Ce qu'il couvre" maxlength="160" autocomplete="off"></div>`).join("")}</div></section>`;
+    const c = KP.CLES, hors = KP.MESSAGES.find((m) => m.hors);
+    const line = (m, rm) => `<div class="tr"><input class="input" id="me-${m.k}-nom" data-set="messages:${m.k}:nom" value="${h(m.nom)}" aria-label="Nom" maxlength="30" autocomplete="off"><input class="input" id="me-${m.k}-info" data-set="messages:${m.k}:info" value="${h(m.info)}" aria-label="Ce qu'il couvre" maxlength="160" autocomplete="off">${rm ? KP.ib("trash", "Retirer", "set-rm", `data-k="messages" data-id="${m.k}"`) : "<span></span>"}</div>`;
+    return `<section class="set"><h2>${c.length} message${c.length > 1 ? "s" : ""} clé${c.length > 1 ? "s" : ""}${c.length < 9 ? `<button type="button" class="btn quiet small" data-act="set-add" data-k="messages">${ic("plus")}Ajouter un message</button>` : ""}</h2>
+      <div class="tbl t-msg"><div class="th"><span>Nom</span><span>Ce qu'il couvre</span><span></span></div>${c.map((m) => line(m, c.length > 1)).join("")}</div></section>
+      <section class="set"><h2>Hors messages</h2><p class="muted" style="margin-top:-6px">Une étiquette à part, qui ne compte pas dans le bilan par message.</p>
+      <div class="tbl t-msg">${line(hors, false)}</div></section>`;
   }
 
   function liste(k, titre, aide, ph) {
@@ -182,12 +185,14 @@
     "set-add": (a) => {
       const k = a.dataset.k;
       if (k === "contacts") return KP.contactForm(null, () => KP.toast("Contact ajouté au carnet"));
-      const n = k === "people" ? store.addPerson() : k === "periods" ? store.addPeriod() : store.addService();
-      const i = document.getElementById(`${k === "people" ? "p" : k === "periods" ? "pe" : "s"}-${n.k}-nom`); if (i) { i.focus(); i.select(); }
+      const n = k === "people" ? store.addPerson() : k === "periods" ? store.addPeriod() : k === "messages" ? store.addMessage() : store.addService();
+      if (!n) return;
+      const i = document.getElementById(`${k === "people" ? "p" : k === "periods" ? "pe" : k === "messages" ? "me" : "s"}-${n.k}-nom`); if (i) { i.focus(); i.select(); }
     },
     "set-rm": (a) => {
       const k = a.dataset.k, id = a.dataset.id;
       if (k === "people") { if (store.remote()) return KP.toast("Un compte se retire dans Supabase. Ici, passe la personne en lecture seule."); if (store.personUsed(id)) return KP.toast("Cette personne a déjà agi dans le plan. Passe-la en lecture seule."); return KP.toast("Personne retirée", store.removePerson(id)); }
+      if (k === "messages") { const n = store.messageUsed(id); if (n) return KP.toast(`${n} fiche${n > 1 ? "s citent" : " cite"} ce message. Retire-le d'abord de ${n > 1 ? "ces fiches" : "cette fiche"}.`); return KP.toast("Message retiré", store.removeMessage(id)); }
       if (k === "periods") { const n = store.periodUsed(id); if (n) return KP.toast(`${n} sujet${n > 1 ? "s couvrent" : " couvre"} cette période. Change-les d'abord.`); return KP.toast("Période retirée", store.removePeriod(id)); }
       if (k === "services") { const n = store.serviceUsed(id); if (n) return KP.toast(`Ce service est utilisé ${n} fois (actions, personnes). Vide-le d'abord.`); return KP.toast("Service retiré", store.removeService(id)); }
       KP.toast("Retiré", store.listRemove(k, id));

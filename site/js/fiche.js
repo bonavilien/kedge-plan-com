@@ -98,7 +98,7 @@
   KP.contactForm = (c, done) => {
     const d = KP.dialog(`<form method="dialog"><h2>${c ? "Modifier le contact" : "Nouveau contact"}</h2>
       <label class="field"><span>Nom</span><input class="input" name="nom" value="${h(c ? c.nom : "")}" required autocomplete="off"></label>
-      <label class="field"><span>Rôle ou organisme</span><input class="input" name="role" value="${h(c ? c.role : "")}" placeholder="Direction du Programme, journaliste…" autocomplete="off"></label>
+      <label class="field"><span>Rôle ou organisme</span><input class="input" name="role" value="${h(c ? c.role : "")}" placeholder="Direction, service, journaliste…" autocomplete="off"></label>
       <div class="two"><label class="field"><span>E-mail</span><input class="input" name="mail" type="email" value="${h(c ? c.mail : "")}" autocomplete="off"></label><label class="field"><span>Téléphone</span><input class="input" name="tel" value="${h(c ? c.tel : "")}" autocomplete="off"></label></div>
       <div class="foot"><button type="button" class="btn quiet" data-close>Annuler</button><button class="btn primary">Enregistrer</button></div></form>`);
     d.querySelector("input").focus();

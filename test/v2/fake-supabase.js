@@ -10,7 +10,7 @@
   const db = {
     periods: [{ n: 1, nom: "Installer", du: "2026-09-01", au: "2026-10-31", lib: "" }, { n: 2, nom: "Considérer", du: "2026-11-01", au: "2026-12-31", lib: "" }, { n: 3, nom: "Préférer", du: "2027-01-01", au: "2027-03-31", lib: "" },
       { n: 4, nom: "Convertir", du: "2027-04-01", au: "2027-05-31", lib: "" }, { n: 5, nom: "Décider", du: "2027-06-01", au: "2027-07-15", lib: "" }],
-    messages: [{ n: 1, nom: "Filières", info: "Finance, Supply, Sales" }, { n: 2, nom: "Alumni", info: "Le réseau alumni" }, { n: 3, nom: "International", info: "Top universités" }, { n: 4, nom: "Continuum", info: "Le continuum prépa" }, { n: 5, nom: "Réputation", info: "Classements" }],
+    messages: [{ n: 1, nom: "Filières", info: "Finance, Supply, Sales" }, { n: 2, nom: "Alumni", info: "Le réseau alumni" }, { n: 3, nom: "International", info: "Top universités" }, { n: 4, nom: "Continuum", info: "Le continuum prépa" }, { n: 5, nom: "Réputation", info: "Classements" }, { n: 0, nom: "Recrutement", info: "JPO" }],
     services: [{ k: "rp", nom: "Relations presse", court: "RP", ordre: 1 }, { k: "rs", nom: "Réseaux sociaux", court: "RS", ordre: 2 }, { k: "video", nom: "Production vidéo", court: "Vidéo", ordre: 3 }, { k: "content", nom: "Content", court: "Content", ordre: 4 }],
     partners: [{ k: "challenges", nom: "Challenges" }],
     profiles: [
@@ -44,7 +44,7 @@
   let session = null;
   try { session = JSON.parse(sessionStorage.getItem("fake-session") || "null"); } catch (e) {}
   const F = (window.__fake = { db, calls: [], failNext: null });
-  const PK = { answers: ["user_id", "key"], meta: ["k"] };
+  const PK = { answers: ["user_id", "key"], meta: ["k"], messages: ["n"] };
   const uid = () => (session ? session.user.id : null);
   const DEF = { items: (r) => item({ author: uid(), ...r }), links: (r) => ({ id: crypto.randomUUID(), author: uid(), at: new Date().toISOString(), ...r }), reqs: (r) => ({ asker: uid(), st: "ouverte", reponse: "", at: new Date().toISOString(), ...r }),
     blocks: (r) => ({ author: uid(), leve: false, at: new Date().toISOString(), ...r }), answers: (r) => ({ user_id: uid(), ...r }), partners: (r) => ({ k: r.nom.toLowerCase().replace(/[^a-z0-9]+/g, "-"), ...r }),

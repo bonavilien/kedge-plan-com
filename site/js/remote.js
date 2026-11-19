@@ -21,9 +21,9 @@
   const h = (s) => String(s == null ? "" : s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
   const uuid = () => (crypto.randomUUID ? crypto.randomUUID() : "10000000-1000-4000-8000-100000000000".replace(/[018]/g, (c) => (+c ^ (crypto.getRandomValues(new Uint8Array(1))[0] & (15 >> (+c / 4)))).toString(16)));
   const TRANCHER = "à trancher en réunion";
-  const MSG = ["filieres", "alumni", "international", "continuum", "reputation"];
-  const mIn = (x) => (x === "REC" || x === "INC" ? "recrutement" : MSG[+x - 1]);
-  const mOut = (k) => (k === "recrutement" ? "REC" : String(MSG.indexOf(k) + 1));
+  /* messages : '1' à '9' dans la base, une clé par message dans l'appli ; 'REC' = l'étiquette hors messages */
+  const mIn = (x) => (x === "REC" || x === "INC" ? "recrutement" : +x > 0 ? KP.msgKey(+x) : "");
+  const mOut = (k) => { const m = KP.MESSAGES.find((x) => x.k === k); return !m ? "0" : m.hors ? "REC" : String(m.n); };
   const stIn = { idee: "confirmer", confirmer: "confirmer", planifie: "prevu", production: "prevu", diffuse: "diffuse", retire: "confirmer" };
   const stOut = { confirmer: "confirmer", prevu: "planifie", diffuse: "diffuse" };
   const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
@@ -51,7 +51,7 @@
       let k = perKeys[p.n]; if (!k || used.has(k)) { k = KP.slug(p.nom); while (used.has(k)) k += "-" + p.n; perKeys[p.n] = k; }
       used.add(k); return { k, n: p.n, nom: p.nom, du: p.du, au: p.au, lib: KP.libOf(p.du, p.au) };
     });
-    KP.setRefs(periods, msgs.filter((x) => x.n >= 1 && x.n <= 5));
+    KP.setRefs(periods, msgs.filter((x) => x.n >= 0 && x.n <= 9));
     const perK = (n) => perKeys[n] || "";
     partnerK = Object.fromEntries(prt.map((p) => [p.nom, p.k]));
     const partnerNom = Object.fromEntries(prt.map((p) => [p.k, p.nom]));
@@ -174,7 +174,11 @@
     const prow = (p) => ({ nom: p.nom, du: p.du, au: p.au, lib: p.lib });
     KP.PERIODS.forEach((p) => { const o = pr0[p.n]; if (!o) ops.push(() => run(sb.from("periods").insert({ n: p.n, ...prow(p) }))); else if (!same(prow(p), prow(o))) ops.push(() => changed(sb.from("periods").update(prow(p)).eq("n", p.n))); });
     shadow.periods.forEach((p) => { if (!pr1[p.n]) ops.push(() => run(sb.from("periods").delete().eq("n", p.n))); });
-    KP.CLES.forEach((m, i) => { const o = shadow.messages[i]; if (o && (o.nom !== m.nom || o.info !== m.info)) ops.push(() => changed(sb.from("messages").update({ nom: m.nom, info: m.info }).eq("n", i + 1))); });
+    const ms0 = Object.fromEntries(shadow.messages.map((m) => [m.n, m])), ms1 = Object.fromEntries(KP.MESSAGES.map((m) => [m.n, m]));
+    KP.MESSAGES.forEach((m) => { const o = ms0[m.n], row = { nom: m.nom, info: m.info || "" };
+      if (!o) ops.push(() => run(sb.from("messages").upsert({ n: m.n, ...row })));
+      else if (o.nom !== m.nom || o.info !== m.info) ops.push(() => run(sb.from("messages").upsert({ n: m.n, ...row }))); });
+    shadow.messages.forEach((m) => { if (!ms1[m.n]) ops.push(() => run(sb.from("messages").delete().eq("n", m.n))); });
     /* fiches : les temps forts avant leurs relais */
     const i0 = byId(shadow.items), i1 = byId(db.items), gone = new Set(shadow.items.filter((s) => !i1[s.id]).map((s) => s.id));
     [...db.items].sort((a, b) => (a.tf ? 1 : 0) - (b.tf ? 1 : 0)).forEach((it) => {
@@ -247,7 +251,7 @@
   }
   window.addEventListener("online", () => { if (!document.documentElement.classList.contains("offline")) return; document.documentElement.classList.remove("offline"); sync(store._db()); });
   const frErr = (e) => { const m = (e && e.message) || ""; return /row-level security|permission denied/i.test(m) ? "tu n'as pas le droit de faire ce changement" : m || "la base ne répond pas"; };
-  const snapshot = (db) => clone({ periods: KP.PERIODS, messages: KP.CLES.map((m) => ({ nom: m.nom, info: m.info })), items: db.items, reqs: db.reqs, people: db.people, services: db.services, partners: db.partners, lieux: db.lieux, contacts: db.contacts, prefs: { [user.id]: db.prefs[user.id] || {} }, lastMeeting: db.lastMeeting });
+  const snapshot = (db) => clone({ periods: KP.PERIODS, messages: KP.MESSAGES.map((m) => ({ n: m.n, nom: m.nom, info: m.info })), items: db.items, reqs: db.reqs, people: db.people, services: db.services, partners: db.partners, lieux: db.lieux, contacts: db.contacts, prefs: { [user.id]: db.prefs[user.id] || {} }, lastMeeting: db.lastMeeting });
   /* les documents ajoutés ont reçu leur identifiant de la base : la copie de référence le prend aussi */
   function fixDocs() { const cur = Object.fromEntries(store._db().items.map((i) => [i.id, i])); shadow.items.forEach((s) => { const i = cur[s.id]; if (i && i.docs && s.docs && i.docs.length === s.docs.length) s.docs = clone(i.docs); }); }
   function badge() { document.documentElement.classList.toggle("saving", pending > 0); }

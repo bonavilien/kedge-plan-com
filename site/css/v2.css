@@ -358,7 +358,7 @@ dialog.cmdk { margin-top: 12vh; width: min(600px, calc(100vw - 32px)); overflow:
 .t-people .th, .t-people .tr { grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr) 130px 160px 34px; }
 .t-svc .th, .t-svc .tr { grid-template-columns: minmax(0, 1.3fr) 130px minmax(0, 1fr) 34px; }
 .t-per .th, .t-per .tr { grid-template-columns: minmax(0, 1fr) 160px 160px 34px; }
-.t-msg .th, .t-msg .tr { grid-template-columns: minmax(0, 1fr) minmax(0, 2.2fr); }
+.t-msg .th, .t-msg .tr { grid-template-columns: minmax(0, 1fr) minmax(0, 2.2fr) 34px; }
 .t-one .tr { grid-template-columns: minmax(0, 1fr) 34px; }
 .t-ct .tr { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 70px; }
 .add-line { display: flex; gap: 8px; }
@@ -430,7 +430,7 @@ dialog.cmdk { margin-top: 12vh; width: min(600px, calc(100vw - 32px)); overflow:
   .t-svc .tr { grid-template-columns: 1fr 1fr; padding: 12px 0; }
   .t-per .tr { grid-template-columns: 1fr 1fr 34px; padding: 12px 0; }
   .t-per .tr > :first-child, .t-msg .tr > :first-child { grid-column: 1 / -1; }
-  .t-msg .tr { grid-template-columns: 1fr; padding: 12px 0; }
+  .t-msg .tr { grid-template-columns: 1fr 34px; padding: 12px 0; }
   .t-ct .tr { grid-template-columns: 1fr; }
   .pop-notifs { max-width: none; }
   .counters { grid-template-columns: repeat(2, 1fr); }

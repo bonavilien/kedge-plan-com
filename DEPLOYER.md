@@ -63,7 +63,7 @@ Ton site est en ligne à l'adresse `https://ton-compte.github.io/plan-de-com/`.
    **Le tout premier compte devient pilote** : il peut tout régler.
 4. Ouvre ton site et connecte-toi. Dans **Réglages** :
    - **Périodes** : les périodes de ton année (elles se suivent sans se chevaucher) ;
-   - **Messages** : tes messages clés ;
+   - **Messages** : tes messages clés (de 1 à 9) et une étiquette à part qui ne compte pas dans le bilan (« Recrutement » chez KEDGE) ;
    - **Services** : les services qui diffusent ;
    - **Équipe** : le rôle et le service de chacun.
 5. Pour chaque collègue : **Add user** dans Supabase comme à l'étape 3, puis règle son rôle dans **Réglages**, **Équipe**.

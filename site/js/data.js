@@ -46,13 +46,13 @@
     { k: "decider", nom: "Décider", du: "2027-06-01", au: "2027-07-15", lib: "juin – mi-juil." },
   ];
   const MESSAGES = [
-    { k: "filieres", nom: "Filières", info: "Finance, Supply, Sales, employabilité, excellence académique" },
-    { k: "alumni", nom: "Alumni", info: "Le réseau alumni" },
-    { k: "international", nom: "International", info: "Top universités, stages et expérience à l'international" },
-    { k: "continuum", nom: "Continuum", info: "Le continuum prépa (PGE), géopolitique" },
-    { k: "reputation", nom: "Réputation", info: "Classements" },
+    { k: "filieres", n: 1, nom: "Filières", info: "Finance, Supply, Sales, employabilité, excellence académique" },
+    { k: "alumni", n: 2, nom: "Alumni", info: "Le réseau alumni" },
+    { k: "international", n: 3, nom: "International", info: "Top universités, stages et expérience à l'international" },
+    { k: "continuum", n: 4, nom: "Continuum", info: "Le continuum prépa (PGE), géopolitique" },
+    { k: "reputation", n: 5, nom: "Réputation", info: "Classements" },
     /* hors des 5 messages : les rendez-vous avec les candidats, à couvrir quand même */
-    { k: "recrutement", nom: "Recrutement", info: "JPO, admissibles : à couvrir, hors des 5 messages", hors: true },
+    { k: "recrutement", n: 0, nom: "Recrutement", info: "JPO, admissibles : à couvrir, hors des 5 messages", hors: true },
   ];
   const SERVICES0 = [
     { k: "rp", nom: "Relations presse", court: "RP" },
@@ -88,11 +88,19 @@
   };
   /* clé stable d'un nom : « Considérer » → « considerer » */
   const slug = (s) => String(s || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "p";
+  const KEYS5 = ["filieres", "alumni", "international", "continuum", "reputation"];
+  const msgKey = (n) => (n === 0 ? "recrutement" : KEYS5[n - 1] || "m" + n);
   /* les référentiels réglés dans la base (périodes, noms des messages) remplacent ceux de la démonstration, sur place :
      tout le code qui lit KP.PERIODS ou KP.MESSAGES voit la nouvelle liste */
   const setRefs = (periods, messages) => {
     if (periods && periods.length) PERIODS.splice(0, PERIODS.length, ...periods);
-    (messages || []).forEach((m, i) => { const x = MESSAGES.filter((y) => !y.hors)[i]; if (x) Object.assign(x, { nom: m.nom, info: m.info }); });
+    /* messages : de 1 à 9, plus l'étiquette hors messages (ligne 0). Les 5 premiers gardent leurs clés d'origine */
+    const rows = (messages || []).filter((m) => m.n > 0).sort((a, b) => a.n - b.n), hors = (messages || []).find((m) => m.n === 0);
+    if (rows.length) {
+      const h0 = MESSAGES.find((m) => m.hors);
+      MESSAGES.splice(0, MESSAGES.length, ...rows.map((m) => ({ k: msgKey(m.n), n: m.n, nom: m.nom, info: m.info || "" })), h0);
+    }
+    if (hors) Object.assign(MESSAGES.find((m) => m.hors), { nom: hors.nom, info: hors.info || "" });
   };
   const periodOf = (date) => PERIODS.find((p) => date >= p.du && date <= p.au) || (date < PERIODS[0].du ? PERIODS[0] : PERIODS[PERIODS.length - 1]);
 
@@ -277,6 +285,13 @@
     periodUsed: (k) => db.items.filter((i) => i.variant === "sujet" && (i.pers || [i.per]).includes(k)).length,
     removePeriod(k) { const i = PERIODS.findIndex((x) => x.k === k); if (i < 0 || PERIODS.length < 2) return null; const [p] = PERIODS.splice(i, 1); emit(); return () => { PERIODS.splice(i, 0, p); emit(); }; },
     saveMessage(k, patch) { const m = MESSAGES.find((x) => x.k === k); if (!m) return; Object.assign(m, patch); emit(); },
+    addMessage() {
+      const used = MESSAGES.filter((m) => !m.hors).map((m) => m.n), n = [1, 2, 3, 4, 5, 6, 7, 8, 9].find((x) => !used.includes(x)); if (!n) return null;
+      const m = { k: msgKey(n), n, nom: "Nouveau message", info: "" }, i = MESSAGES.findIndex((x) => x.hors || x.n > n);
+      MESSAGES.splice(i < 0 ? MESSAGES.length : i, 0, m); emit(); return m;
+    },
+    messageUsed: (k) => db.items.filter((i) => i.m.includes(k)).length,
+    removeMessage(k) { const i = MESSAGES.findIndex((x) => x.k === k && !x.hors); if (i < 0 || MESSAGES.filter((m) => !m.hors).length < 2) return null; const [m] = MESSAGES.splice(i, 1); emit(); return () => { MESSAGES.splice(i, 0, m); emit(); }; },
     addPartner(n) { if (n && !db.partners.includes(n)) { db.partners.push(n); db.partners.sort((a, b) => a.localeCompare(b)); } },
     /* fixe la date : un jour précis, ou tout un mois (flou) en attendant. Les relais suivent quand on passe d'un jour à un autre. */
     setDate(id, date, flou, motif) {
@@ -332,5 +347,7 @@
 
   Object.defineProperty(KP, "PEOPLE", { get: () => db.people });
   Object.defineProperty(KP, "SERVICES", { get: () => db.services });
-  Object.assign(KP, { TODAY, PERIODS, MESSAGES, CLES: MESSAGES.filter((m) => !m.hors), STATUTS, ELEMENTS, ASK, MOIS, libOf, slug, setRefs, endOf, monthEnd, fmt, iso, parse, addDays, diff, monday, periodOf, me, person, nomDe, service, message, store });
+  /* les messages clés, sans l'étiquette hors messages : relu à chaque fois, la liste se règle */
+  Object.defineProperty(KP, "CLES", { get: () => MESSAGES.filter((m) => !m.hors) });
+  Object.assign(KP, { TODAY, PERIODS, MESSAGES, msgKey, STATUTS, ELEMENTS, ASK, MOIS, libOf, slug, setRefs, endOf, monthEnd, fmt, iso, parse, addDays, diff, monday, periodOf, me, person, nomDe, service, message, store });
 })();
