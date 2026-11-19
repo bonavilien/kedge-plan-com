@@ -141,6 +141,24 @@ await p.evaluate(() => KP.go({ screen: "reglages", set: "apropos" })); await p.w
 ok((await p.locator(".maj a").getAttribute("href")).includes("DEPLOYER.md"), "bouton pas installé : lien vers le guide");
 await p.context().close();
 
+// écran de connexion : le 7 de l'icône en fond animé, plus de logo dans le formulaire
+{
+  const ctx = await b.newContext({ viewport: { width: 1440, height: 900 }, serviceWorkers: "block" }); const q = await ctx.newPage(); const errs = []; q.on("pageerror", (e) => errs.push(e.message));
+  await q.route("**/vendor/supabase-*.js", (r) => r.fulfill({ contentType: "text/javascript", body: fake }));
+  await q.route("**/config.js", (r) => r.fulfill({ contentType: "text/javascript", body: `window.KPLAN_CONFIG = ${JSON.stringify({ brancher: true, supabaseUrl: "https://faux.supabase.co", supabaseKey: "faux", marque: { app: "Road to 7th", nom: "KEDGE", logo: "assets/road-to-7th.png", carre: true, symbole: "assets/road-to-7th-symbole.png" } })};` }));
+  await q.goto(base); await q.waitForSelector(".login-fond svg .lf-etoile");
+  ok(await q.locator(".login-card img").count() === 0 && await q.locator(".login-fond svg .lf-route").count() === 1 && !errs.length, "connexion : le 7 en fond (route, étoile), plus de logo dans le formulaire");
+  await q.waitForTimeout(3200);
+  ok(await q.evaluate(() => getComputedStyle(document.querySelector(".lf-trace")).strokeDashoffset) === "0px" && await q.evaluate(() => getComputedStyle(document.querySelector(".lf-etoile")).opacity) === "1", "connexion : la route est tracée jusqu'à l'étoile");
+  await ctx.close();
+  const c2 = await b.newContext({ viewport: { width: 1440, height: 900 }, serviceWorkers: "block" }); const q2 = await c2.newPage();
+  await q2.route("**/vendor/supabase-*.js", (r) => r.fulfill({ contentType: "text/javascript", body: fake }));
+  await q2.route("**/config.js", (r) => r.fulfill({ contentType: "text/javascript", body: `window.KPLAN_CONFIG = ${JSON.stringify({ brancher: true, supabaseUrl: "https://faux.supabase.co", supabaseKey: "faux", marque: { nom: "Ville de Test", logo: "" } })};` }));
+  await q2.goto(base); await q2.waitForSelector("#login form");
+  ok(await q2.locator(".login-fond").count() === 0, "sans le symbole (logo d'une autre équipe) : connexion sans fond animé");
+  await c2.close();
+}
+
 // l'icône sans fond : son carré et l'onglet du navigateur prennent la couleur du projet
 p = await open({ copie: false, marque: { app: "Road to 7th", nom: "KEDGE", logo: "assets/road-to-7th.png", carre: true, symbole: "assets/road-to-7th-symbole.png" } });
 const fond = () => p.evaluate(() => getComputedStyle(document.querySelector(".brand img")).backgroundColor);

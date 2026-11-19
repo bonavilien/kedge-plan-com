@@ -5,7 +5,8 @@ Généré depuis `site/js/version.js` par `node scripts/version.mjs`. Ne pas mod
 ## 2.2 · 2026-11-19
 
 - Chaque projet a son sous-titre à côté du nom (« Programme Grande École », « Executive Education ») et sa couleur, prise dans le brand book : Réglages, Projet
-- Le fond de l'icône prend la couleur du projet, dans le menu, à la connexion et dans l'onglet du navigateur
+- Écran de connexion animé : le 7 de l'icône en fond, sa route se trace jusqu'à l'étoile, à la couleur du projet
+- Le fond de l'icône prend la couleur du projet, dans le menu et dans l'onglet du navigateur
 - Réglages rangés en 5 onglets : Mon profil, Projet, Équipe, Carnets, Version
 - L'appli se copie pour une autre équipe, qui la met à jour d'un clic : Réglages, Version, « Mettre à jour »
 - Périodes et messages (de 1 à 9, plus une étiquette à part) se règlent dans Réglages

@@ -289,8 +289,11 @@
   function loginScreen(msg) {
     let el = document.getElementById("login");
     if (!el) { el = document.createElement("div"); el.id = "login"; el.className = "login"; document.body.appendChild(el); }
-    el.innerHTML = `<form class="login-card" autocomplete="on">
-        ${KP.logo ? KP.logo("login-logo") : ""}
+    /* avec le symbole de l'icône, il passe en fond animé et quitte le formulaire */
+    const fond = (KP.marque && KP.marque.symbole) || ((C.marque || {}).symbole || "");
+    el.classList.toggle("fond", !!fond);
+    el.innerHTML = `${fond ? `<div class="login-fond" aria-hidden="true"></div>` : ""}<form class="login-card" autocomplete="on">
+        ${!fond && KP.logo ? KP.logo("login-logo") : ""}
         <h1>${h((KP.marque && KP.marque.app) || "Plan de com")}${(() => { const st = (KP.couleur && KP.couleur.memo().sousTitre) || (KP.marque && !KP.marque.logo ? KP.marque.nom : ""); return st ? ` <small>${h(st)}</small>` : ""; })()}</h1>
         <label class="field"><span>Adresse</span><input class="input" type="email" name="email" autocomplete="username" required autofocus></label>
         <label class="field"><span>Mot de passe</span><input class="input" type="password" name="password" autocomplete="current-password" required></label>
@@ -299,6 +302,7 @@
         ${C.visiteur ? `<button type="button" class="link" data-visiteur>Entrer en visiteur</button>` : ""}
         <p class="login-ver">Version ${h(KP.versionLabel(KP.VERSION.n))}</p>
       </form>`;
+    if (fond) fetch(fond.replace(/symbole\.png$/, "fond.svg")).then((r) => (r.ok ? r.text() : "")).then((t) => { const d = el.querySelector(".login-fond"); if (d && t.startsWith("<svg")) d.innerHTML = t; }).catch(() => {});
     const f = el.querySelector("form");
     const v = el.querySelector("[data-visiteur]");
     if (v) v.addEventListener("click", () => { f.email.value = C.visiteur; f.password.focus(); });
