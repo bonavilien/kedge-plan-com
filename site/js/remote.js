@@ -286,31 +286,53 @@
   }
 
   /* ---------- connexion ---------- */
+  /* le dernier compte connecté sur cet appareil : « Bonjour Julien », l'adresse déjà remplie */
+  const DERNIER = "kplan-dernier";
+  const dernier = () => { try { const d = JSON.parse(localStorage.getItem(DERNIER) || "null"); return d && d.email ? d : null; } catch (e) { return null; } };
   function loginScreen(msg) {
     let el = document.getElementById("login");
     if (!el) { el = document.createElement("div"); el.id = "login"; el.className = "login"; document.body.appendChild(el); }
     /* avec le symbole de l'icône, il passe en fond animé et quitte le formulaire */
     const fond = (KP.marque && KP.marque.symbole) || ((C.marque || {}).symbole || "");
+    const app = (KP.marque && KP.marque.app) || "Plan de com";
+    const st = (KP.couleur && KP.couleur.memo().sousTitre) || (KP.marque && !KP.marque.logo ? KP.marque.nom : "");
+    const moi = dernier(), ic = (n) => KP.ic(n);
     el.classList.toggle("fond", !!fond);
-    el.innerHTML = `${fond ? `<div class="login-fond" aria-hidden="true"></div>` : ""}<form class="login-card" autocomplete="on">
+    el.innerHTML = `${fond ? `<div class="login-fond" aria-hidden="true"></div>` : ""}<form class="login-card" autocomplete="on" novalidate>
         ${!fond && KP.logo ? KP.logo("login-logo") : ""}
-        <h1>${h((KP.marque && KP.marque.app) || "Plan de com")}${(() => { const st = (KP.couleur && KP.couleur.memo().sousTitre) || (KP.marque && !KP.marque.logo ? KP.marque.nom : ""); return st ? ` <small>${h(st)}</small>` : ""; })()}</h1>
-        <label class="field"><span>Adresse</span><input class="input" type="email" name="email" autocomplete="username" required autofocus></label>
-        <label class="field"><span>Mot de passe</span><input class="input" type="password" name="password" autocomplete="current-password" required></label>
+        <div class="lc-tete">${moi && moi.prenom
+          ? `<p class="lc-app">${h(app)}${st ? `<span>${h(st)}</span>` : ""}</p><h1>Bonjour ${h(moi.prenom)}</h1>${(() => { const pq = KP.pique ? KP.pique("connexion") : ""; return pq ? `<p class="lc-pique">${h(pq)}</p>` : ""; })()}`
+          : `<h1>${h(app)}</h1>${st ? `<p class="lc-app"><span>${h(st)}</span></p>` : ""}`}</div>
+        ${moi ? `<div class="lc-moi"><span class="lc-av" aria-hidden="true">${h((moi.prenom || moi.email).charAt(0).toUpperCase())}</span><span class="lc-mail">${h(moi.email)}</span><button type="button" class="lc-autre" data-autre>Changer</button></div>` : ""}
+        <label class="lc-champ"${moi ? " hidden" : ""}><span class="sr">Adresse</span>${ic("mail")}<input type="email" name="email" autocomplete="username" placeholder="Adresse e-mail" required value="${moi ? h(moi.email) : ""}"></label>
+        <label class="lc-champ"><span class="sr">Mot de passe</span>${ic("lock")}<input type="password" name="password" autocomplete="current-password" placeholder="Mot de passe" required><button type="button" class="lc-oeil" data-oeil aria-label="Afficher le mot de passe" aria-pressed="false">${ic("eye")}</button></label>
         <p class="login-err" role="alert">${h(msg || "")}</p>
-        <button type="submit" class="btn primary">Se connecter</button>
-        ${C.visiteur ? `<button type="button" class="link" data-visiteur>Entrer en visiteur</button>` : ""}
-        <p class="login-ver">Version ${h(KP.versionLabel(KP.VERSION.n))}</p>
-      </form>`;
+        <button type="submit" class="lc-go"><span>Entrer</span>${ic("arrow")}</button>
+        ${C.visiteur ? `<button type="button" class="link lc-visiteur" data-visiteur>Entrer en visiteur</button>` : ""}
+      </form>
+      <p class="login-ver">Version ${h(KP.versionLabel(KP.VERSION.n))}</p>`;
     if (fond) fetch(fond.replace(/symbole\.png$/, "fond.svg")).then((r) => (r.ok ? r.text() : "")).then((t) => { const d = el.querySelector(".login-fond"); if (d && t.startsWith("<svg")) d.innerHTML = t; }).catch(() => {});
-    const f = el.querySelector("form");
-    const v = el.querySelector("[data-visiteur]");
-    if (v) v.addEventListener("click", () => { f.email.value = C.visiteur; f.password.focus(); });
-    f.addEventListener("submit", async (e) => {
-      e.preventDefault(); const b = f.querySelector("[type=submit]"); b.disabled = true; f.querySelector(".login-err").textContent = "";
-      try { const { data, error } = await sb.auth.signInWithPassword({ email: f.email.value.trim(), password: f.password.value }); if (error) throw error; user = data.user; await start(); }
-      catch (err) { b.disabled = false; f.querySelector(".login-err").textContent = /invalid/i.test(err.message || "") ? "Adresse ou mot de passe incorrect." : "Connexion impossible : " + (err.message || "pas de réseau ?"); }
+    const f = el.querySelector("form"), err = f.querySelector(".login-err"), go = f.querySelector("[type=submit]");
+    const champMail = f.email.closest(".lc-champ");
+    const autre = () => { const c = f.querySelector(".lc-moi"); if (c) c.remove(); champMail.hidden = false; };
+    f.querySelector("[data-autre]")?.addEventListener("click", () => { autre(); f.email.value = ""; f.email.focus(); });
+    f.querySelector("[data-visiteur]")?.addEventListener("click", () => { autre(); f.email.value = C.visiteur; f.password.focus(); });
+    f.querySelector("[data-oeil]").addEventListener("click", (e) => {
+      const b = e.currentTarget, vu = f.password.type === "password";
+      f.password.type = vu ? "text" : "password"; b.setAttribute("aria-pressed", String(vu));
+      b.setAttribute("aria-label", vu ? "Masquer le mot de passe" : "Afficher le mot de passe"); b.innerHTML = ic(vu ? "eyeoff" : "eye"); f.password.focus();
     });
+    (moi ? f.password : f.email).focus({ preventScroll: true });
+    const rate = (t) => { err.textContent = t; f.classList.remove("secoue"); void f.offsetWidth; f.classList.add("secoue"); };
+    f.addEventListener("submit", async (e) => {
+      e.preventDefault(); err.textContent = "";
+      if (!f.email.value.trim()) { autre(); f.email.focus(); return rate("Ton adresse e-mail, d'abord."); }
+      if (!f.password.value) { f.password.focus(); return rate("Ton mot de passe, d'abord."); }
+      go.disabled = true; go.classList.add("attente");
+      try { const { data, error } = await sb.auth.signInWithPassword({ email: f.email.value.trim(), password: f.password.value }); if (error) throw error; user = data.user; go.classList.replace("attente", "ok"); await start(); }
+      catch (x) { go.disabled = false; go.classList.remove("attente", "ok"); rate(/invalid/i.test(x.message || "") ? "Raté. L'adresse ou le mot de passe, je ne dirai pas lequel." : "Connexion impossible : " + (x.message || "pas de réseau ?")); }
+    });
+    window.kpOuvrir && window.kpOuvrir();
   }
   async function start() {
     const data = await load();
@@ -318,11 +340,14 @@
     store._attach({ sync, uuid, pseudo, relance: (id) => run(sb.rpc("relancer", { p_req: id })).then(() => true, (e) => { KP.toast("Relance non envoyée : " + frErr(e)); return false; }), prevenir: (id, svc) => run(sb.rpc("prevenir", { p_item: id, p_svc: svc })).then(() => true, (e) => { KP.toast("Non envoyé : " + frErr(e)); return false; }) }, data);
     /* mêmes droits que la base : un service modifie les fiches de son service, un pilote tout */
     store.canEdit = (it) => { const u = KP.me(); return u.role === "pilote" || (u.role === "service" && !!it && it.variant !== "partenariat" && it.svc === u.svc); };
-    const el = document.getElementById("login"); if (el) el.remove();
+    /* l'écran de connexion s'efface par-dessus l'appli déjà affichée */
+    const el = document.getElementById("login"); if (el) { el.classList.add("sort"); setTimeout(() => el.remove(), 380); }
     KP.hold = false;
     if (!location.hash) history.replaceState(null, "", "#/accueil");
     if (KP.parseRoute) KP.route = KP.parseRoute(); /* les périodes de la base remplacent celles de la démonstration */
     KP.render();
+    try { localStorage.setItem(DERNIER, JSON.stringify({ email: user.email || "", prenom: String(KP.me().nom || "").trim().split(/\s+/)[0] })); } catch (e) {}
+    window.kpOuvrir && window.kpOuvrir();
     watch();
     push.check().then((on) => { if (on) KP.render(); });
   }
@@ -334,7 +359,7 @@
     blocked: () => "Notification" in window && Notification.permission === "denied",
     async check() { try { const r = push.can() && (await navigator.serviceWorker.getRegistration()); const s = r && (await r.pushManager.getSubscription()); push.on = !!s && Notification.permission === "granted"; } catch (e) { push.on = false; } return push.on; },
     async enable() {
-      if ((await Notification.requestPermission()) !== "granted") throw new Error("Les notifications sont bloquées pour ce site dans les réglages du navigateur.");
+      if ((await Notification.requestPermission()) !== "granted") throw new Error("Ton navigateur bloque mes notifications (voir ses réglages). Je ne le prends pas mal.");
       const r = await navigator.serviceWorker.ready;
       const s = (await r.pushManager.getSubscription()) || (await r.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64key(C.vapidPublicKey) }));
       const j = s.toJSON(); await run(sb.rpc("save_push", { p_endpoint: j.endpoint, p_p256dh: j.keys.p256dh, p_auth: j.keys.auth })); push.on = true;

@@ -29,7 +29,7 @@ let p = await open();
 ok(await p.locator(".side .nav, #main h1").count() === 0 || (await p.locator("#main").innerText()).trim() === "", "rien ne s'affiche avant la connexion");
 await p.fill("#login [name=email]", "pilote@example.com"); await p.fill("#login [name=password]", "faux"); await p.click("#login [type=submit]");
 await p.waitForFunction(() => document.querySelector(".login-err").textContent.length > 0);
-ok((await p.locator(".login-err").innerText()).includes("incorrect"), "mauvais mot de passe : message clair");
+ok((await p.locator(".login-err").innerText()).includes("Raté"), "mauvais mot de passe : message clair");
 await p.fill("#login [name=password]", "test"); await p.click("#login [type=submit]"); await p.waitForSelector("#login", { state: "detached" });
 ok((await p.locator("#main").innerText()).includes("Julien"), "connecté : l'accueil salue Julien");
 

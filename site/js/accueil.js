@@ -19,11 +19,12 @@
     const nreq = inbox.filter((r) => r.de !== r.a).length;
     if (nreq) parts.push(`${nreq} demande${nreq > 1 ? "s t'attendent" : " t'attend"}`);
     parts.push(week.length ? `${week.length} ligne${week.length > 1 ? "s" : ""} dans les sept jours` : "rien dans les sept jours");
+    const pique = KP.pique ? KP.pique("accueil") : "";
     const summary = reader ? `Le plan de la période ${p.nom}, en lecture seule.` : parts.join(", ") + ".";
 
 
     return `<div class="page home">
-      <div class="hello"><h1>${hr < 18 ? "Bonjour" : "Bonsoir"} ${h(u.nom)}</h1><p>${h(summary[0].toUpperCase() + summary.slice(1))}</p></div>
+      <div class="hello"><h1>${hr < 18 ? "Bonjour" : "Bonsoir"} ${h(u.nom)}</h1>${pique ? `<p class="pique">${h(pique)}</p>` : ""}<p>${h(summary[0].toUpperCase() + summary.slice(1))}</p></div>
       <div class="home-cols"><div class="home-main">
 
       ${inbox.length ? `<section class="block"><h2>À traiter${inbox.length > 3 && !KP.ui.allTodo ? `<button type="button" class="link" data-act="all-todo">Voir les ${inbox.length}</button>` : ""}</h2>
@@ -32,7 +33,7 @@
 
 
       <section class="block"><h2>${pilote || reader ? "Les sept prochains jours" : "Ma semaine"}<a class="link" href="${KP.href({ screen: "plan", per: p.k, svc: pilote || reader ? "" : u.svc, msg: "", type: "" })}">Tout le plan</a></h2>
-        ${week.length ? `<div class="rows lines">${week.slice(0, 5).map((it) => KP.row(it)).join("")}</div>${week.length > 5 ? `<p class="muted" style="margin:8px 12px 0;font-size:13.5px">et ${week.length - 5} autre${week.length - 5 > 1 ? "s" : ""} dans le plan</p>` : ""}` : `<p class="muted">Rien de prévu. ${!reader && !mineWk ? "Une semaine calme." : ""}</p>`}</section>
+        ${week.length ? `<div class="rows lines">${week.slice(0, 5).map((it) => KP.row(it)).join("")}</div>${week.length > 5 ? `<p class="muted" style="margin:8px 12px 0;font-size:13.5px">et ${week.length - 5} autre${week.length - 5 > 1 ? "s" : ""} dans le plan</p>` : ""}` : `<p class="muted">Rien de prévu. ${!reader && !mineWk ? "Profite, ça ne durera pas." : ""}</p>`}</section>
 
       ${shown.length ? `<section class="block"><h2>Suggestions</h2>
         ${shown.map((s, i) => `<div class="sugg">${ic(s.icon)}<div class="tx"><p>${h(s.text)}</p><p class="why">${h(s.why)}</p><div class="do">${s.actions.map((a, j) => `<button type="button" class="link" data-act="sg-do" data-i="${i}" data-j="${j}">${h(a.nom)}</button>`).join("")}<button type="button" class="link soft" data-act="sg-skip" data-i="${i}">${h(s.skip)}</button></div></div></div>`).join("")}</section>` : ""}
@@ -47,6 +48,6 @@
   Object.assign(KP.acts, {
     "all-todo": () => { KP.ui.allTodo = true; KP.render(); },
     "sg-do": (a) => { const s = shown[+a.dataset.i]; if (s) s.actions[+a.dataset.j].run(); },
-    "sg-skip": (a) => { const s = shown[+a.dataset.i]; if (s) { KP.skipSuggestion(s); KP.toast("D'accord, elle reviendra dans 3 jours"); } },
+    "sg-skip": (a) => { const s = shown[+a.dataset.i]; if (s) { KP.skipSuggestion(s); KP.toast("Noté. Je te la ressors dans 3 jours."); } },
   });
 })();

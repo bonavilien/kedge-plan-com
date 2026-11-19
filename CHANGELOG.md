@@ -2,6 +2,12 @@
 
 Généré depuis `site/js/version.js` par `node scripts/version.mjs`. Ne pas modifier à la main.
 
+## 2.3 · 2026-11-19
+
+- À l'ouverture, le 7 de l'icône s'ouvre comme une fenêtre sur l'appli (une fois par session, jamais si l'appareil demande moins d'animations)
+- Nouvel écran de connexion sur fond foncé : « Bonjour Prénom » au retour avec ton adresse déjà remplie, un œil pour voir le mot de passe
+- Une petite pique sous « Bonjour », sur la connexion et sur l'accueil, différente à chaque ouverture, et quelques phrases piquantes là où on ne les attend pas
+
 ## 2.2.2 · 2026-11-19
 
 - Les copies pour d'autres équipes gardent toujours le logo Road to 7th

@@ -53,7 +53,6 @@ a { color: inherit; }
 .brand.nologo { flex-direction: column; align-items: flex-start; gap: 4px; }
 .brand.nologo span { border-left: 0; padding-left: 0; font-size: 17px; }
 .brand small { font: 500 12px/1.2 var(--sans, inherit); opacity: .7; }
-.login-card h1 small { display: block; font-size: .55em; font-weight: 500; opacity: .7; margin-top: 4px; }
 .new { display: flex; align-items: center; gap: 8px; height: 38px; padding: 0 12px; margin-bottom: 14px; border-radius: var(--r2); background: var(--yellow); color: var(--yellow-ink); font-weight: 650; }
 .new:hover { filter: brightness(1.05); }
 .new kbd { margin-left: auto; font: 600 11px var(--sans); opacity: .6; }
@@ -303,6 +302,9 @@ dialog.cmdk { margin-top: 12vh; width: min(600px, calc(100vw - 32px)); overflow:
 /* ---------- accueil ---------- */
 .hello h1 { font: 700 34px/1.12 var(--serif); }
 .hello p { color: var(--text2); font-size: 17px; margin-top: 6px; }
+/* la petite pique du jour (js/piques.js) : entre le bonjour et le résumé, en serif, plus présente que le résumé */
+/* la petite pique : une bulle anthracite, pour qu'on sache que c'est l'appli qui parle (pas d'icône : le logo est déjà en haut à gauche) */
+.hello p.pique { width: fit-content; max-width: 100%; margin: 14px 0 10px; padding: 11px 18px; border-radius: 16px 16px 16px 4px; background: var(--anthracite); color: #F4F4F2; font: 500 17px/1.35 var(--serif); text-wrap: pretty; }
 .block { margin-top: 34px; }
 .block > h2 { font-size: 12.5px; font-weight: 600; color: var(--text2); text-transform: uppercase; letter-spacing: .04em; margin-bottom: 10px; display: flex; align-items: baseline; gap: 10px; }
 .block > h2 .link { margin-left: auto; text-transform: none; letter-spacing: 0; font-size: 13.5px; }
@@ -401,6 +403,7 @@ dialog.cmdk { margin-top: 12vh; width: min(600px, calc(100vw - 32px)); overflow:
   .page { padding: 18px 14px 40px; }
   .head h1 { font-size: 25px; }
   .hello h1 { font-size: 27px; }
+  .hello p.pique { font-size: 15.5px; padding: 10px 14px; }
   .bar { flex-wrap: nowrap; overflow-x: auto; margin: -10px -14px 6px; padding: 10px 14px; scrollbar-width: none; }
   .bar::-webkit-scrollbar { display: none; }
   .bar .sp { display: none; }
@@ -491,16 +494,47 @@ dialog.cmdk { margin-top: 12vh; width: min(600px, calc(100vw - 32px)); overflow:
 }
 
 /* ---------- connexion (appli branchée sur la base) ---------- */
-.login { position: fixed; inset: 0; z-index: 100; display: grid; place-items: center; padding: 20px; background: var(--duo, var(--anthracite, #333539)); overflow: auto; }
-.login-card { width: min(380px, 100%); display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; padding: 28px 26px 22px; border-radius: var(--r4); background: var(--card); color: var(--text); box-shadow: var(--shadow); }
-.login-logo { height: 26px; width: auto; justify-self: start; filter: invert(1) brightness(.2); }
-:root[data-theme="dark"] .login-logo { filter: none; }
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .login-logo { filter: none; } }
-.login-card h1 { font: 700 28px/1.1 var(--serif); margin: 2px 0 6px; }
-.login-card .btn { justify-content: center; height: 42px; }
-.login-card .link { justify-self: center; }
-.login-err { min-height: 1.3em; color: var(--red, #c0392b); font-size: 13.5px; margin: 0; }
-.login-ver { text-align: center; font-size: 12.5px; color: var(--text2); margin: 0; }
+/* écran de connexion : toujours sur fond foncé (la couleur foncée du projet, sinon anthracite), formulaire sans carte */
+.login { position: fixed; inset: 0; z-index: 100; display: grid; place-items: center; padding: 24px max(20px, env(safe-area-inset-right)) 24px max(20px, env(safe-area-inset-left)); background: var(--duo, var(--anthracite, #333539)); overflow: auto; color: #F4F4F2; --lc-ink2: #A9ABB0; --lc-champ: rgba(255,255,255,.07); --lc-trait: rgba(255,255,255,.14); }
+.login.sort { animation: lc-sort .38s ease-in forwards; pointer-events: none; }
+.login-card { position: relative; width: min(400px, 100%); display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
+.login-logo { height: 26px; width: auto; justify-self: start; }
+.lc-tete { display: grid; gap: 8px; margin-bottom: 16px; }
+.lc-tete h1 { font: 700 clamp(36px, 4.4vw, 58px)/1.02 var(--serif); letter-spacing: -.01em; text-wrap: balance; margin: 0; }
+.lc-app { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 10px; margin: 0; font: 600 18px/1.3 var(--serif); color: var(--lc-ink2); }
+.lc-app span { font: 500 16px/1.3 var(--sans); }
+.lc-pique { margin: 2px 0 0; font: 500 19px/1.35 var(--serif); color: #DADBDE; text-wrap: pretty; }
+.lc-moi { display: flex; align-items: center; gap: 12px; height: 58px; padding: 0 8px; border-radius: 14px; background: var(--lc-champ); border: 1px solid var(--lc-trait); }
+.lc-av { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; background: var(--yellow); color: var(--yellow-ink); font: 700 18px var(--serif); flex: none; }
+.lc-mail { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 15.5px; }
+.lc-autre { border: 0; background: none; color: var(--lc-ink2); font-size: 14px; font-weight: 600; padding: 9px 11px; border-radius: 9px; cursor: pointer; }
+.lc-autre:hover { color: #fff; background: rgba(255,255,255,.08); }
+.lc-champ { display: flex; align-items: center; height: 58px; border-radius: 14px; background: var(--lc-champ); border: 1px solid var(--lc-trait); transition: border-color .15s, background-color .15s, box-shadow .15s; cursor: text; }
+.lc-champ:hover { border-color: rgba(255,255,255,.24); }
+.lc-champ:focus-within { border-color: var(--yellow-side, var(--yellow)); background: rgba(255,255,255,.1); box-shadow: 0 0 0 3px color-mix(in srgb, var(--yellow-side, var(--yellow)) 28%, transparent); }
+.lc-champ > .ic { width: 20px; height: 20px; margin-left: 18px; color: var(--lc-ink2); transition: color .15s; }
+.lc-champ:focus-within > .ic { color: var(--yellow-side, var(--yellow)); }
+.lc-champ input { flex: 1; min-width: 0; height: 100%; border: 0; background: transparent; color: #fff; font-size: 16px; padding: 0 14px 0 12px; outline: none; }
+.lc-champ input::placeholder { color: var(--lc-ink2); opacity: 1; }
+.lc-champ input:-webkit-autofill { -webkit-text-fill-color: #fff; caret-color: #fff; transition: background-color 99999s; }
+.lc-oeil { width: 44px; height: 44px; margin-right: 6px; border: 0; background: none; color: var(--lc-ink2); display: grid; place-items: center; border-radius: 10px; cursor: pointer; flex: none; }
+.lc-oeil:hover { color: #fff; background: rgba(255,255,255,.08); }
+.lc-oeil .ic { width: 20px; height: 20px; }
+.login-err { min-height: 1.3em; color: #FF9E94; font-size: 14px; margin: 0; }
+.lc-go { position: relative; height: 58px; border: 0; border-radius: 14px; background: var(--yellow); color: var(--yellow-ink); font: 650 17px var(--sans); display: flex; align-items: center; justify-content: center; gap: 10px; cursor: pointer; transition: filter .15s, transform .1s; }
+.lc-go:hover { filter: brightness(1.06); }
+.lc-go:active { transform: scale(.985); }
+.lc-go:focus-visible { outline: 3px solid #fff; outline-offset: 3px; }
+.lc-go .ic { width: 20px; height: 20px; transition: transform .2s cubic-bezier(.2,.8,.3,1); }
+.lc-go:hover .ic, .lc-go.ok .ic { transform: translateX(5px); }
+.lc-go.attente > * { opacity: 0; }
+.lc-go.attente::after { content: ""; position: absolute; width: 22px; height: 22px; border-radius: 50%; border: 2.5px solid currentColor; border-right-color: transparent; animation: lc-tourne .7s linear infinite; }
+.lc-visiteur { justify-self: center; color: var(--lc-ink2); }
+.login-ver { position: absolute; left: max(24px, env(safe-area-inset-left)); bottom: max(18px, env(safe-area-inset-bottom)); margin: 0; font-size: 12.5px; color: var(--lc-ink2); }
+.login .login-card.secoue, .login.fond .login-card.secoue { animation: lc-secoue .42s cubic-bezier(.36,.07,.19,.97); }
+@keyframes lc-secoue { 20%, 60% { transform: translateX(-7px); } 40%, 80% { transform: translateX(7px); } }
+@keyframes lc-tourne { to { transform: rotate(360deg); } }
+@keyframes lc-sort { to { opacity: 0; } }
 .push-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 12px; }
 /* 2.0.2 : boutons d'un rappel ou d'une demande qu'on a faite */
 .req-do { display: flex; align-items: center; gap: 4px; margin-top: 4px; }
@@ -886,9 +920,31 @@ html:root .ag .row .t small { display: block; flex-basis: 100%; max-width: none;
 @keyframes lf-reflet { 0% { opacity: 0; stroke-dashoffset: .14; } 3% { opacity: .85; } 22% { opacity: .85; stroke-dashoffset: -1; } 25%, 100% { opacity: 0; stroke-dashoffset: -1; } }
 @media (min-width: 900px) { .login.fond { place-items: center start; padding-left: max(20px, 10vw); } }
 /* téléphone : le 7 en haut, le formulaire en bas, l'étoile entre les deux */
-@media (max-width: 899px) { .login.fond { place-items: end center; padding-bottom: max(20px, env(safe-area-inset-bottom)); } .login-fond svg { --lf-h: max(0px, min(58vh, 100vh - 400px)); height: var(--lf-h); width: var(--lf-h); right: calc(50% - var(--lf-h) / 2); top: max(0px, 3vh - 24px); } }
+@media (max-width: 899px) { .login.fond { place-items: end center; align-content: end; gap: 18px; padding-bottom: max(20px, env(safe-area-inset-bottom)); } .login.fond .login-ver { position: static; } .lc-tete { margin-bottom: 8px; } .login-fond svg { --lf-h: max(0px, min(58vh, 100vh - 400px)); height: var(--lf-h); width: var(--lf-h); right: calc(50% - var(--lf-h) / 2); top: max(0px, 3vh - 24px); } }
 @media (prefers-reduced-motion: reduce) {
   .login.fond .login-card, .lf-corps, .lf-monte, .lf-etoile, .lf-halo, .lf-trainee, .lf-contour, .lf-eclat, .lf-reflet { animation: none; }
   .lf-trainee { opacity: 0; }
   .lf-trace { animation: none; stroke-dashoffset: 0; }
+  .login.sort, .login .login-card.secoue, .login.fond .login-card.secoue { animation: none; }
+  .lc-go .ic, .lc-champ, .lc-champ > .ic { transition: none; }
 }
+
+/* ---------- ouverture de l'appli (index.html, #ouverture), une fois par session ----------
+   1. l'icône apparaît ; 2. son carré jaune emplit l'écran ; 3. quand l'appli est prête (kpOuvrir), le 7 s'ouvre :
+   il grandit jusqu'à devenir une fenêtre sur l'écran de connexion ou l'accueil, la route et l'étoile s'effacent. */
+.ouv { position: fixed; inset: 0; z-index: 300; pointer-events: none; background: var(--anthracite-deep, #26282B); animation: ouv-fond .01s .95s forwards; }
+.ouv svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; animation: ouv-pop .45s cubic-bezier(.2,.9,.3,1.15) both, ouv-carre .5s .45s cubic-bezier(.7,0,.25,1) both; }
+.ouv-jaune { fill: var(--yellow); }
+.ouv-plein { fill: var(--anthracite-deep, #26282B); }
+.ouv-coeur { fill: var(--yellow); }
+.ouv-sept { transform: translate(50vw, 50vh) scale(.21875) translate(-268px, -262px); }
+.ouv.ouvre .ouv-sept { animation: ouv-zoom .85s cubic-bezier(.55,0,.85,.35) forwards; }
+.ouv.ouvre .ouv-plein { animation: ouv-efface .2s ease-in forwards; }
+.ouv.ouvre .ouv-deco { animation: ouv-efface .14s ease-in forwards; }
+@keyframes ouv-fond { to { background-color: transparent; } }
+@keyframes ouv-pop { from { opacity: 0; transform: scale(.7); } }
+@keyframes ouv-carre { from { clip-path: inset(calc(50% - 56px) calc(50% - 56px) round 25px); } to { clip-path: inset(0 round 0); } }
+@keyframes ouv-zoom { to { transform: translate(50vw, 50vh) scale(42) translate(-268px, -262px); } }
+@keyframes ouv-efface { to { opacity: 0; } }
+/* l'écran de connexion attend que le 7 s'ouvre pour lancer son étoile */
+.ouverture .login, .ouverture .login * { animation-play-state: paused !important; }
