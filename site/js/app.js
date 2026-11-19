@@ -38,7 +38,9 @@
 
   /* ---------- nom et logo de cette copie (config.js) ---------- */
   const M = (window.KPLAN_CONFIG && window.KPLAN_CONFIG.marque) || {};
-  KP.marque = { nom: M.nom || "", logo: M.logo || "", titre: "Plan de com" + (M.nom ? " " + M.nom : "") };
+  /* app : le nom de l'appli (« Road to 7th » chez KEDGE, « Plan de com » par défaut) ; nom : l'organisation */
+  const APP = M.app || "Plan de com";
+  KP.marque = { app: APP, nom: M.nom || "", logo: M.logo || "", titre: M.app ? APP : APP + (M.nom ? " " + M.nom : "") };
   KP.logo = (cls) => KP.marque.logo ? `<img src="${h(KP.marque.logo)}" alt="${h(KP.marque.nom)}"${cls ? ` class="${cls}"` : ""}>` : "";
 
   /* ---------- rendu ---------- */
@@ -47,7 +49,7 @@
     const u = KP.me(), n = KP.inbox().length, r = KP.route;
     const news = KP.notifs().some((j) => j.quand > (store.prefs().vu || 0));
     $("side").innerHTML = `
-      <a class="brand${KP.marque.logo ? "" : " nologo"}" href="#/accueil" aria-label="${h(KP.marque.titre)}, accueil">${KP.logo()}<span>Plan de com</span>${!KP.marque.logo && KP.marque.nom ? `<small>${h(KP.marque.nom)}</small>` : ""}</a>
+      <a class="brand${KP.marque.logo ? "" : " nologo"}" href="#/accueil" aria-label="${h(KP.marque.titre)}, accueil">${KP.logo()}<span>${h(KP.marque.app)}</span>${!KP.marque.logo && KP.marque.nom ? `<small>${h(KP.marque.nom)}</small>` : ""}</a>
       ${store.canCreate() ? `<button class="new" type="button" data-act="new">${ic("plus")}Nouveau<kbd>N</kbd></button>` : ""}
       <div class="nav">${SCREENS.map(([k, nom, i]) => `<a href="${KP.href({ screen: k })}" class="${r.screen === k ? "on" : ""}" ${r.screen === k ? 'aria-current="page"' : ""}>${ic(i)}${nom}${k === "accueil" && n ? `<span class="n" aria-label="${n} à traiter">${n}</span>` : ""}</a>`).join("")}</div>
       <div class="side-foot">
@@ -56,7 +58,7 @@
         <button type="button" data-act="profile" data-side="1"><span class="avatar">${h((u.nom || "?")[0])}</span><span class="who">${h(u.nom)}<small>${h(u.fonction)}</small></span></button>
         <a class="ver" href="#/reglages/apropos" data-tip="Voir les nouveautés">Version ${h(KP.versionLabel(KP.VERSION.n))}</a>
       </div>`;
-    $("topbar").innerHTML = `<b>Plan de com</b>${KP.ib("search", "Rechercher", "search")}${KP.ib("bell", "Notifications", "notifs")}<button class="ib" type="button" data-act="profile" aria-label="Profil"><span class="avatar">${h((u.nom || "?")[0])}</span></button>`;
+    $("topbar").innerHTML = `<b>${h(KP.marque.app)}</b>${KP.ib("search", "Rechercher", "search")}${KP.ib("bell", "Notifications", "notifs")}<button class="ib" type="button" data-act="profile" aria-label="Profil"><span class="avatar">${h((u.nom || "?")[0])}</span></button>`;
     $("tabbar").innerHTML = SCREENS.map(([k, nom, i]) => `<a href="${KP.href({ screen: k })}" class="${r.screen === k ? "on" : ""}">${ic(i)}${nom}</a>`).join("") + (store.canCreate() ? `<button class="plus" type="button" data-act="new" aria-label="Nouveau">${ic("plus")}</button>` : "<span></span>");
   }
   function render() {

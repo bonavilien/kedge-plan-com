@@ -28,6 +28,7 @@ jobs:
           KPLAN_ORIGINE: bonavilien/kedge-plan-com
           KPLAN_SUPABASE_URL: ${{ vars.KPLAN_SUPABASE_URL }}
           KPLAN_SUPABASE_KEY: ${{ vars.KPLAN_SUPABASE_KEY }}
+          KPLAN_APP: ${{ vars.KPLAN_APP }}
           KPLAN_NOM: ${{ vars.KPLAN_NOM }}
           KPLAN_LOGO: ${{ vars.KPLAN_LOGO }}
           KPLAN_VISITEUR: ${{ vars.KPLAN_VISITEUR }}

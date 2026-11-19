@@ -283,7 +283,7 @@
     if (!el) { el = document.createElement("div"); el.id = "login"; el.className = "login"; document.body.appendChild(el); }
     el.innerHTML = `<form class="login-card" autocomplete="on">
         ${KP.logo ? KP.logo("login-logo") : ""}
-        <h1>Plan de com${KP.marque && KP.marque.nom && !KP.marque.logo ? ` <small>${h(KP.marque.nom)}</small>` : ""}</h1>
+        <h1>${h((KP.marque && KP.marque.app) || "Plan de com")}${KP.marque && KP.marque.nom && !KP.marque.logo ? ` <small>${h(KP.marque.nom)}</small>` : ""}</h1>
         <label class="field"><span>Adresse</span><input class="input" type="email" name="email" autocomplete="username" required autofocus></label>
         <label class="field"><span>Mot de passe</span><input class="input" type="password" name="password" autocomplete="current-password" required></label>
         <p class="login-err" role="alert">${h(msg || "")}</p>

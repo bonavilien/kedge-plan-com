@@ -42,6 +42,7 @@ Ta copie s'appelle maintenant `ton-compte/plan-de-com`. **Ne modifie jamais ses 
    |---|---|---|
    | `KPLAN_SUPABASE_URL` | l'adresse du projet | obligatoire |
    | `KPLAN_SUPABASE_KEY` | la clé publishable | obligatoire |
+   | `KPLAN_APP` | le nom de l'appli (« Plan de com » si vide) | facultatif |
    | `KPLAN_NOM` | le nom de ton équipe ou de ton organisation | facultatif |
    | `KPLAN_LOGO` | l'adresse d'un logo **blanc** (PNG ou SVG), posé sur le menu foncé | facultatif |
    | `KPLAN_VISITEUR` | l'adresse d'un compte partagé en lecture seule | facultatif |

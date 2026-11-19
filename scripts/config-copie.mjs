@@ -4,7 +4,8 @@
 // sans jamais tomber sur un conflit.
 //   KPLAN_SUPABASE_URL   adresse de la base   https://xxxx.supabase.co           (obligatoire)
 //   KPLAN_SUPABASE_KEY   clé publique          sb_publishable_… ou anon            (obligatoire)
-//   KPLAN_NOM            nom affiché           « Ville de Lyon »                   (facultatif)
+//   KPLAN_APP            nom de l'appli        « Plan de com » par défaut          (facultatif)
+//   KPLAN_NOM            nom de l'organisation « Ville de Lyon »                   (facultatif)
 //   KPLAN_LOGO           adresse d'un logo blanc, PNG ou SVG                       (facultatif)
 //   KPLAN_VISITEUR       adresse du compte visiteur                                (facultatif)
 //   KPLAN_VAPID          clé publique des notifications sur téléphone              (facultatif)
@@ -33,23 +34,23 @@ if (/^sb_secret_|service_role/i.test(key) || (/^eyJ/.test(key) && /service_role/
   process.exit(1);
 }
 
-const nom = env("KPLAN_NOM"), logo = env("KPLAN_LOGO");
+const nom = env("KPLAN_NOM"), logo = env("KPLAN_LOGO"), app = env("KPLAN_APP");
 const cfg = {
   brancher: true,
   supabaseUrl: url,
   supabaseKey: key,
   vapidPublicKey: env("KPLAN_VAPID"),
   visiteur: env("KPLAN_VISITEUR"),
-  marque: { nom, logo },
+  marque: { app, nom, logo },
   /* une copie : Réglages > Version propose « Mettre à jour » aux pilotes */
   copie: true,
 };
 fs.writeFileSync(path.join(dir, "config.js"), `// Écrit à la publication par scripts/config-copie.mjs, à partir des variables GitHub de ce dépôt. Rien de secret ici.\nwindow.KPLAN_CONFIG = ${JSON.stringify(cfg, null, 2)};\n`);
 
 /* le nom de l'appli installée sur téléphone et l'onglet du navigateur */
-const titre = nom ? `Plan de com ${nom}` : "Plan de com";
+const titre = app || (nom ? `Plan de com ${nom}` : "Plan de com");
 const mf = path.join(dir, "manifest.webmanifest");
-const m = JSON.parse(fs.readFileSync(mf, "utf8")); m.name = titre; fs.writeFileSync(mf, JSON.stringify(m, null, 2) + "\n");
+const m = JSON.parse(fs.readFileSync(mf, "utf8")); m.name = titre; m.short_name = app || "Plan de com"; fs.writeFileSync(mf, JSON.stringify(m, null, 2) + "\n");
 const ix = path.join(dir, "index.html");
 fs.writeFileSync(ix, fs.readFileSync(ix, "utf8").replace(/<title>[^<]*<\/title>/, `<title>${titre.replace(/[<&]/g, "")}</title>`));
 console.log(`Copie réglée : ${url}${nom ? `, « ${nom} »` : ""}${logo ? ", logo personnalisé" : ""}.`);
