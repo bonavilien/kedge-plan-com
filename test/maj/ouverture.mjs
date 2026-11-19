@@ -60,6 +60,7 @@ const enCours = (p) => p.evaluate(() => !!document.getElementById("ouverture") &
   await p.waitForSelector("#login form");
   ok(await p.textContent(".lc-tete h1") === "Road to 7th" && await p.isVisible("[name=email]") && !(await p.locator(".lc-moi").count()), "première fois : le nom de l'appli, l'adresse à taper");
   ok(await p.evaluate(() => document.activeElement && document.activeElement.name === "email"), "première fois : le curseur est dans l'adresse");
+  ok(!(await p.locator(".lc-pique").count()), "première fois : pas de pique, on ne se connaît pas encore");
   await p.click(".lc-go");
   ok(/adresse/i.test(await p.textContent(".login-err")) && await p.locator(".login-card.secoue").count() === 1, "adresse vide : message et secousse");
   await p.fill("[name=email]", "pilote@example.com"); await p.fill("[name=password]", "faux");
@@ -69,10 +70,18 @@ const enCours = (p) => p.evaluate(() => !!document.getElementById("ouverture") &
   await p.click("[data-oeil]");
   ok(await p.getAttribute("[name=password]", "type") === "password", "l'œil le masque à nouveau");
   await p.click(".lc-go"); await p.waitForTimeout(100);
-  ok(/incorrect/i.test(await p.textContent(".login-err")) && !(await p.isDisabled(".lc-go")), "mauvais mot de passe : message, on peut réessayer");
+  ok(/Raté/.test(await p.textContent(".login-err")) && !(await p.isDisabled(".lc-go")), "mauvais mot de passe : message, on peut réessayer");
   await p.fill("[name=password]", "test"); await p.keyboard.press("Enter");
   await p.waitForSelector("#login", { state: "detached" });
   ok(JSON.stringify(await p.evaluate(() => JSON.parse(localStorage.getItem("kplan-dernier")))) === JSON.stringify({ email: "pilote@example.com", prenom: "Julien" }), "connecté : l'adresse et le prénom sont retenus sur cet appareil");
+  const pa = await p.textContent(".hello .pique").catch(() => "");
+  ok(await p.evaluate((t) => KP.PIQUES.accueil.some((x) => (x.t || x) === t), pa), "accueil : une petite pique sous « Bonjour Julien » (" + pa + ")");
+  await p.evaluate(() => KP.render()); 
+  ok(await p.textContent(".hello .pique") === pa, "accueil : la même pique toute la session, même quand l'écran se redessine");
+  const tirages = await p.evaluate(() => { const out = []; for (let i = 0; i < 60; i++) { sessionStorage.removeItem("kplan-pique-accueil"); out.push(KP.pique("accueil")); } return out; });
+  ok(tirages.every((t, i) => !i || t !== tirages[i - 1]) && new Set(tirages).size > 10, "jamais deux fois de suite la même, et elles tournent (" + new Set(tirages).size + " différentes sur 60)");
+  const copie = await p.evaluate(() => { KP.marque.app = "Plan de com"; const out = []; for (let i = 0; i < 80; i++) { sessionStorage.removeItem("kplan-pique-connexion"); sessionStorage.removeItem("kplan-pique-accueil"); out.push(KP.pique("connexion"), KP.pique("accueil")); } KP.marque.app = "Road to 7th"; return out; });
+  ok(!copie.some((t) => /SIGEM|7e|Sept,|écoles devant|Trois places/.test(t)), "dans une copie, pas de phrase sur le 7 ou le SIGEM");
   ok(!p.errs.length, "aucune erreur : " + p.errs.join(" | "));
   await ctx.close();
 }
@@ -83,6 +92,8 @@ const enCours = (p) => p.evaluate(() => !!document.getElementById("ouverture") &
   await p.waitForSelector("#login form");
   ok(await p.textContent(".lc-tete h1") === "Bonjour Julien" && await p.textContent(".lc-mail") === "pilote@example.com" && !(await p.isVisible("[name=email]")), "au retour : Bonjour Julien et son adresse");
   ok(await p.evaluate(() => document.activeElement && document.activeElement.name === "password"), "au retour : le curseur est dans le mot de passe");
+  const pq = await p.textContent(".lc-pique").catch(() => "");
+  ok(await p.evaluate((t) => KP.PIQUES.connexion.some((x) => (x.t || x) === t), pq), "au retour : une petite pique sous « Bonjour Julien » (" + pq + ")");
   await p.click("[data-autre]");
   ok(!(await p.locator(".lc-moi").count()) && await p.isVisible("[name=email]") && await p.inputValue("[name=email]") === "", "« Changer » : une autre adresse à taper");
   await p.fill("[name=email]", "presse@example.com"); await p.fill("[name=password]", "test"); await p.click(".lc-go");

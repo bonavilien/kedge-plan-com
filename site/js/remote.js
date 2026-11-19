@@ -301,7 +301,7 @@
     el.innerHTML = `${fond ? `<div class="login-fond" aria-hidden="true"></div>` : ""}<form class="login-card" autocomplete="on" novalidate>
         ${!fond && KP.logo ? KP.logo("login-logo") : ""}
         <div class="lc-tete">${moi && moi.prenom
-          ? `<p class="lc-app">${h(app)}${st ? `<span>${h(st)}</span>` : ""}</p><h1>Bonjour ${h(moi.prenom)}</h1>`
+          ? `<p class="lc-app">${h(app)}${st ? `<span>${h(st)}</span>` : ""}</p><h1>Bonjour ${h(moi.prenom)}</h1>${(() => { const pq = KP.pique ? KP.pique("connexion") : ""; return pq ? `<p class="lc-pique">${h(pq)}</p>` : ""; })()}`
           : `<h1>${h(app)}</h1>${st ? `<p class="lc-app"><span>${h(st)}</span></p>` : ""}`}</div>
         ${moi ? `<div class="lc-moi"><span class="lc-av" aria-hidden="true">${h((moi.prenom || moi.email).charAt(0).toUpperCase())}</span><span class="lc-mail">${h(moi.email)}</span><button type="button" class="lc-autre" data-autre>Changer</button></div>` : ""}
         <label class="lc-champ"${moi ? " hidden" : ""}><span class="sr">Adresse</span>${ic("mail")}<input type="email" name="email" autocomplete="username" placeholder="Adresse e-mail" required value="${moi ? h(moi.email) : ""}"></label>
@@ -330,7 +330,7 @@
       if (!f.password.value) { f.password.focus(); return rate("Ton mot de passe, d'abord."); }
       go.disabled = true; go.classList.add("attente");
       try { const { data, error } = await sb.auth.signInWithPassword({ email: f.email.value.trim(), password: f.password.value }); if (error) throw error; user = data.user; go.classList.replace("attente", "ok"); await start(); }
-      catch (x) { go.disabled = false; go.classList.remove("attente", "ok"); rate(/invalid/i.test(x.message || "") ? "Adresse ou mot de passe incorrect." : "Connexion impossible : " + (x.message || "pas de réseau ?")); }
+      catch (x) { go.disabled = false; go.classList.remove("attente", "ok"); rate(/invalid/i.test(x.message || "") ? "Raté. L'adresse ou le mot de passe, je ne dirai pas lequel." : "Connexion impossible : " + (x.message || "pas de réseau ?")); }
     });
     window.kpOuvrir && window.kpOuvrir();
   }
@@ -359,7 +359,7 @@
     blocked: () => "Notification" in window && Notification.permission === "denied",
     async check() { try { const r = push.can() && (await navigator.serviceWorker.getRegistration()); const s = r && (await r.pushManager.getSubscription()); push.on = !!s && Notification.permission === "granted"; } catch (e) { push.on = false; } return push.on; },
     async enable() {
-      if ((await Notification.requestPermission()) !== "granted") throw new Error("Les notifications sont bloquées pour ce site dans les réglages du navigateur.");
+      if ((await Notification.requestPermission()) !== "granted") throw new Error("Ton navigateur bloque mes notifications (voir ses réglages). Je ne le prends pas mal.");
       const r = await navigator.serviceWorker.ready;
       const s = (await r.pushManager.getSubscription()) || (await r.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64key(C.vapidPublicKey) }));
       const j = s.toJSON(); await run(sb.rpc("save_push", { p_endpoint: j.endpoint, p_p256dh: j.keys.p256dh, p_auth: j.keys.auth })); push.on = true;

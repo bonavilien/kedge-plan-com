@@ -123,7 +123,7 @@
   /* petite fenêtre qui demande un motif (facultatif) */
   KP.motif = (titre, sous, ok, cb) => {
     const d = KP.dialog(`<form method="dialog"><h2>${KP.h(titre)}</h2>${sous ? `<p class="muted" style="margin-top:-8px">${KP.h(sous)}</p>` : ""}
-      <label class="field"><span>Pourquoi ? Les services concernés le liront</span><input class="input" name="m" id="motif" placeholder="Salle indisponible, intervenant absent…" autocomplete="off"></label>
+      <label class="field"><span>Pourquoi ? Les services concernés le liront</span><input class="input" name="m" id="motif" placeholder="Salle prise, intervenant introuvable, Mercure rétrograde…" autocomplete="off"></label>
       <div class="foot"><button type="button" class="btn quiet" data-close>Ne rien changer</button><button class="btn primary">${KP.h(ok)}</button></div></form>`);
     d.querySelector("input").focus();
     d.querySelector("form").addEventListener("submit", () => cb(new FormData(d.querySelector("form")).get("m").trim()));

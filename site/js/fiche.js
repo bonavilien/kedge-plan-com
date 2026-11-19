@@ -8,7 +8,7 @@
 
   KP.renderFiche = () => {
     const el = $("fiche"), it = KP.route.fiche && store.get(KP.route.fiche);
-    if (!it) { el.hidden = true; el.innerHTML = ""; if (KP.route.fiche && !KP.hold) { setTimeout(() => { KP.toast("Cette fiche n'existe plus"); KP.go({ fiche: "" }, true); }, 0); } return; }
+    if (!it) { el.hidden = true; el.innerHTML = ""; if (KP.route.fiche && !KP.hold) { setTimeout(() => { KP.toast("Cette fiche n'existe plus. Je n'y suis pour rien."); KP.go({ fiche: "" }, true); }, 0); } return; }
     const body = el.querySelector(".f-body"), top = body && el.dataset.id === it.id ? body.scrollTop : 0;
     const can = store.canEdit(it), u = KP.me(), reader = u.role === "lecteur";
     const tf = it.kind === "tf", pinned = store.pinned(it.id), par = it.tf && store.get(it.tf);
@@ -121,7 +121,7 @@
       d.querySelector("form").addEventListener("submit", () => { const n = new FormData(d.querySelector("form")).get("n").trim(); if (n) { store.addPartner(n); KP.toast(`Média : ${n}`, store.update(it.id, { partner: n })); } });
     }, { selected: [it.partner], title: "Média partenaire" }); },
     "f-fin": (a) => { const it = cur(); KP.datepick(a, it.fin || it.date, (d) => { if (d && d < it.date) return KP.toast("La fin vient après le début"); KP.toast(d ? "Fin enregistrée" : "Fin retirée", store.update(it.id, { fin: d })); }, { clear: !!it.fin }); },
-    "f-svc": (a) => { const it = cur(); KP.menu(a, KP.SERVICES.map((s) => ({ v: s.k, nom: s.nom })), (v) => v !== it.svc && KP.toast("Service changé", store.update(it.id, { svc: v }, `a confié l'action à ${KP.service(v).nom}`)), { selected: [it.svc] }); },
+    "f-svc": (a) => { const it = cur(); KP.menu(a, KP.SERVICES.map((s) => ({ v: s.k, nom: s.nom })), (v) => v !== it.svc && KP.toast("Service changé. La patate chaude a changé de mains.", store.update(it.id, { svc: v }, `a confié l'action à ${KP.service(v).nom}`)), { selected: [it.svc] }); },
     "f-msg": (a) => { const it = cur(); KP.menu(a, KP.MESSAGES.map((m) => ({ v: m.k, nom: m.nom, info: m.info })), (m) => { const next = KP.MESSAGES.map((x) => x.k).filter((k) => m.includes(k)); if (next.join() !== it.m.join()) KP.toast("Messages enregistrés", store.update(it.id, { m: next })); }, { selected: it.m, multi: true }); },
     "f-tf": (a) => { const it = cur(); const tfs = store.items().filter((i) => i.kind === "tf").sort((x, y) => x.date.localeCompare(y.date)); KP.menu(a, [{ v: "", nom: "Aucun" }, "-", ...tfs.map((x) => ({ v: x.id, nom: x.t, info: KP.dateLong(x) }))], (v) => v !== it.tf && KP.toast(v ? "Rattachée au temps fort" : "Détachée", store.update(it.id, { tf: v })), { selected: [it.tf] }); },
     "f-st": (a) => KP.setStatus(KP.route.fiche, a.dataset.k),
@@ -136,10 +136,10 @@
       const own = can ? [{ v: "dup", nom: "Dupliquer", icon: "copy" }, it.annule ? { v: "res", nom: "Rétablir", icon: "undo" } : { v: "ann", nom: it.kind === "tf" ? "Annuler ce temps fort" : "Annuler cette action", icon: "close" }, "-", { v: "del", nom: "Supprimer", icon: "trash", danger: true }] : [];
       KP.menu(a, [...x, ...(x.length && own.length ? ["-"] : []), ...own], (v) => {
         if (v.startsWith("x:")) { setTimeout(() => KP.acts[v.slice(2)](a), 0); return; }
-        if (v === "dup") { const n = store.duplicate(it.id); KP.go({ fiche: n.id }); KP.toast("Copie créée", () => { store.unadd(n.id); KP.go({ fiche: it.id }); }); }
+        if (v === "dup") { const n = store.duplicate(it.id); KP.go({ fiche: n.id }); KP.toast("Copie créée. L'original n'en saura rien.", () => { store.unadd(n.id); KP.go({ fiche: it.id }); }); }
         if (v === "ann") KP.motif(it.kind === "tf" ? "Annuler ce temps fort" : "Annuler cette action", `« ${it.t} » reste dans le plan, barré, avec le motif.`, "Annuler", (m) => KP.toast(`« ${it.t} » est annulé`, store.cancel(it.id, m)));
         if (v === "res") KP.toast("Rétabli", store.restore(it.id));
-        if (v === "del") { const go = () => { const undo = store.remove(it.id); KP.go({ fiche: "" }); KP.toast(`« ${it.t} » supprimé`, undo); };
+        if (v === "del") { const go = () => { const undo = store.remove(it.id); KP.go({ fiche: "" }); KP.toast(`« ${it.t} » supprimé. Paix à son âme.`, undo); };
           /* branché, une suppression ne s'annule pas : on demande avant */
           if (!store.remote()) return go();
           const d = KP.dialog(`<form method="dialog"><h2>Supprimer « ${h(it.t)} » ?</h2><p class="muted">Ses demandes, ses liens et son historique partent aussi. Pour garder une trace, annule-la plutôt.</p><div class="foot"><button type="button" class="btn quiet" data-close>Garder</button><button class="btn primary danger-bg">Supprimer</button></div></form>`);
@@ -185,7 +185,7 @@
       d.querySelector("textarea").focus();
       d.querySelector("form").addEventListener("submit", () => KP.toast(`Réponse envoyée à ${KP.dest(r.de)}`, store.answer(r.id, new FormData(d.querySelector("form")).get("rep").trim())));
     },
-    "memo-fait": (a) => { store.answer(a.dataset.id, "Fait"); KP.toast("Rappel fait"); },
+    "memo-fait": (a) => { store.answer(a.dataset.id, "Fait"); KP.toast("Rappel fait. Bravo, sincèrement."); },
     /* noter un rappel pour moi, ou modifier le sien (texte et date) */
     memo: (a) => {
       const it = cur(), old = a && a.dataset.id && store.reqs().find((x) => x.id === a.dataset.id);

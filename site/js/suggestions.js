@@ -39,7 +39,7 @@
 
     // 2. bientôt, et toujours à confirmer
     items.filter((it) => own(it) && !it.flou && it.st === "confirmer" && it.date >= T && KP.diff(it.date, T) <= 15).sort((a, b) => a.date.localeCompare(b.date)).slice(0, 2)
-      .forEach((it) => push({ key: "conf:" + it.id, type: "confirmer", icon: "clock", text: `« ${it.t} » est ${KP.fmt.relatif(it.date)}. On confirme ?`, why: "Elle est encore « À confirmer ».",
+      .forEach((it) => push({ key: "conf:" + it.id, type: "confirmer", icon: "clock", text: `« ${it.t} » est ${KP.fmt.relatif(it.date)}. On confirme ?`, why: "Toujours « À confirmer ». Le suspense est insoutenable.",
         actions: [{ nom: "Confirmer", run: () => KP.setStatus(it.id, "prevu") }, { nom: "Ouvrir", run: open(it.id) }], skip: "Plus tard" }));
 
     // 3. un temps fort approche et mon service n'a rien prévu (visible de moi seul)
@@ -61,7 +61,7 @@
         if (passed.length < 3) push({ key: "tfp:" + it.id, type: "tfpasse", icon: "flag", text: `${it.t} est passé, ${n} relais ${n > 1 ? "restent" : "reste"} à diffuser.`, why: `C'était ${KP.fmt.relatif(it.date)}.`, actions: [{ nom: "Voir", run: open(it.id) }], skip: "Plus tard" }); });
       // 7. la période se termine, la suivante est vide
       const i = KP.PERIODS.indexOf(p), nx = KP.PERIODS[i + 1], left = KP.diff(p.au, T);
-      if (nx && left <= 30 && items.filter((it) => it.date >= nx.du && it.date <= nx.au).length < 3) push({ key: "per:" + nx.k, type: "periode", icon: "calendar", text: `${p.nom} se termine ${left <= 0 ? "aujourd'hui" : left === 1 ? "demain" : `dans ${left} jours`} et ${nx.nom} est presque vide.`, why: "Moins de trois lignes y sont prévues.", actions: [{ nom: `Ouvrir ${nx.nom}`, run: () => KP.go({ screen: "plan", per: nx.k, fiche: "" }) }], skip: "Plus tard" });
+      if (nx && left <= 30 && items.filter((it) => it.date >= nx.du && it.date <= nx.au).length < 3) push({ key: "per:" + nx.k, type: "periode", icon: "calendar", text: `${p.nom} se termine ${left <= 0 ? "aujourd'hui" : left === 1 ? "demain" : `dans ${left} jours`} et ${nx.nom} est presque vide.`, why: "Moins de trois lignes. On entend l'écho.", actions: [{ nom: `Ouvrir ${nx.nom}`, run: () => KP.go({ screen: "plan", per: nx.k, fiche: "" }) }], skip: "Plus tard" });
     }
 
     const x = sg();

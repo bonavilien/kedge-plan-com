@@ -272,7 +272,7 @@
       let n = 0;
       res.innerHTML = (its.length ? `<h4 aria-hidden="true">${q ? "Dans le plan" : "Proche d'aujourd'hui"}</h4>` + its.map((i) => `<button type="button" class="pop-i${n === cur ? " cur" : ""}" role="option" id="cmdk-o${n}" aria-selected="${n === cur}" tabindex="-1" data-n="${n++}">${i.kind === "tf" ? '<i class="tfdot"></i>' : ic("doc")}<span>${h(i.t)}<small>${h(KP.kindName(i))} · ${h(KP.dateLong(i))}</small></span></button>`).join("") : "") +
         (cs.length ? `<h4 aria-hidden="true">Aller à</h4>` + cs.map((c) => `<button type="button" class="pop-i${n === cur ? " cur" : ""}" role="option" id="cmdk-o${n}" aria-selected="${n === cur}" tabindex="-1" data-n="${n++}">${ic(c.icon)}<span>${h(c.nom)}</span></button>`).join("") : "") +
-        (!list.length ? `<p class="txt" style="padding:18px 12px">Rien ne correspond à « ${h(inp.value)} ».</p>` : "");
+        (!list.length ? `<p class="txt" style="padding:18px 12px">Rien pour « ${h(inp.value)} ». J'ai cherché partout, même sous le tapis.</p>` : "");
       const c = res.querySelector(".cur"); if (c) c.scrollIntoView({ block: "nearest" });
       if (c) inp.setAttribute("aria-activedescendant", c.id); else inp.removeAttribute("aria-activedescendant");
     };
@@ -295,7 +295,7 @@
       const r = await fetch("version.json?t=" + Date.now(), { cache: "no-store" }); if (!r.ok) throw 0;
       const v = (await r.json()).version;
       if (v && v !== KP.VERSION.n) { if (latest !== v || manual) { latest = v; KP.maj = () => { const box = $("toasts"); if (!box.querySelector(".toast")) box.innerHTML = `<div class="toast"><span>La version ${h(KP.versionLabel(v))} est en ligne.</span><button type="button" data-act="reload">Mettre à jour</button></div>`; }; $("toasts").innerHTML = ""; KP.maj(); } }
-      else if (manual) KP.toast("Tu as la dernière version");
+      else if (manual) KP.toast("Tu es à jour. Bravo, vraiment.");
     } catch (e) { if (manual) KP.toast("Impossible de vérifier, pas de réseau ?"); }
   };
   KP.acts.reload = async () => { try { const reg = navigator.serviceWorker && await navigator.serviceWorker.getRegistration(); if (reg) await reg.update(); } catch (e) {} location.reload(); };

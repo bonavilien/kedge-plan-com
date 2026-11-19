@@ -41,7 +41,7 @@
     </div>`;
   };
 
-  const empty = (filtered) => `<div class="empty"><h3>${filtered ? "Rien ne correspond à ces filtres" : "Rien de prévu sur cette période"}</h3>
+  const empty = (filtered) => `<div class="empty"><h3>${filtered ? "Rien. Tes filtres sont trop exigeants, même pour moi." : "Rien de prévu sur cette période"}</h3>
     <p>${filtered ? "Le plan de la période est plus large." : "Le plan se remplit au fil des réunions."}</p>
     ${filtered ? `<button type="button" class="btn quiet" data-act="clear-filters">Retirer les filtres</button>` : store.canCreate() ? `<button type="button" class="btn primary" data-act="new">${ic("plus")}Nouveau</button>` : ""}</div>`;
 
