@@ -11,7 +11,8 @@ window.KPLAN_CONFIG = {
   // nom et logo (blanc, posé sur le menu anthracite). Une copie les règle par les variables GitHub KPLAN_NOM et KPLAN_LOGO
   // app : le nom de l'appli (une copie le règle par la variable KPLAN_APP, « Plan de com » sinon)
   // carre : le logo est une icône carrée (pas un logo blanc en longueur)
-  marque: { app: "Road to 7th", nom: "KEDGE", logo: "assets/road-to-7th.png", carre: true },
+  // symbole : la même icône sans son fond ; le fond prend alors la couleur du projet (menu, connexion, onglet du navigateur)
+  marque: { app: "Road to 7th", nom: "KEDGE", logo: "assets/road-to-7th.png", carre: true, symbole: "assets/road-to-7th-symbole.png" },
   // écran d'accueil
   titre: "Plan de com 2026-2027",
   sigem: { annee: 2026, kedge: 10, cible: 7, devant: [{ r: 9, nom: "GEM" }, { r: 8, nom: "Audencia" }, { r: 7, nom: "NEOMA" }] },

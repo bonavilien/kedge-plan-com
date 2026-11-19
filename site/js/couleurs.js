@@ -1,7 +1,8 @@
 /* Couleur du projet : une seule, choisie dans le brand book KEDGE 2025 (pages 28 et 29).
    La gamme vive (programmes, expertises, campus) s'associe au blanc et au gris anthracite ;
    une couleur de la gamme corporate vit avec son foncé, qui prend alors le menu.
-   La couleur remplace le jaune partout : bouton Nouveau, temps forts, semaine en cours, ligne ouverte. */
+   La couleur remplace le jaune partout : bouton Nouveau, temps forts, semaine en cours, ligne ouverte,
+   et le fond de l'icône (menu, connexion, onglet du navigateur) quand config.js donne marque.symbole. */
 (() => {
   const KP = (window.KP = window.KP || {});
   const COULEURS = [
@@ -46,7 +47,27 @@
     if (c.fonce && c.fonce !== ANTHRACITE) { r.setProperty("--duo", c.fonce); r.setProperty("--duo-ink2", mix(c.fonce, "#FFFFFF", 0.86)); }
     else { r.removeProperty("--duo"); r.removeProperty("--duo-ink2"); }
     document.documentElement.dataset.couleur = c.k;
+    favicon(c.hex);
     return c;
+  }
+  /* l'icône de l'onglet : le symbole posé sur la couleur du projet (le jaune d'origine garde ses fichiers) */
+  let favFait = DEFAUT;
+  function favicon(hex) {
+    const src = ((window.KPLAN_CONFIG || {}).marque || {}).symbole;
+    if (!src || favFait === hex || (favFait === DEFAUT && hex === get(DEFAUT).hex)) return;
+    favFait = hex;
+    const img = new Image();
+    img.onload = () => {
+      if (favFait !== hex) return;
+      const n = 64, r = n * 0.17, cv = document.createElement("canvas"); cv.width = cv.height = n;
+      const g = cv.getContext("2d");
+      g.fillStyle = hex; g.beginPath(); g.moveTo(r, 0); g.arcTo(n, 0, n, n, r); g.arcTo(n, n, 0, n, r); g.arcTo(0, n, 0, 0, r); g.arcTo(0, 0, n, 0, r); g.closePath(); g.fill();
+      g.drawImage(img, 0, 0, n, n);
+      document.querySelectorAll('link[rel="icon"]').forEach((l) => l.remove());
+      const l = document.createElement("link"); l.rel = "icon"; l.type = "image/png"; l.sizes = "64x64"; l.href = cv.toDataURL("image/png");
+      document.head.appendChild(l);
+    };
+    img.src = src;
   }
   /* l'écran de connexion s'affiche avant de lire la base : on garde le dernier projet vu sur cet appareil */
   const CLE = "kplan-projet";

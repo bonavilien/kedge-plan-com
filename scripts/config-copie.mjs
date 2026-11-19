@@ -41,7 +41,8 @@ const cfg = {
   supabaseKey: key,
   vapidPublicKey: env("KPLAN_VAPID"),
   visiteur: env("KPLAN_VISITEUR"),
-  marque: { app, nom, logo },
+  /* sans logo à elle, la copie garde l'icône de l'appli : son fond prend la couleur du projet dans l'onglet du navigateur */
+  marque: { app, nom, logo, symbole: logo ? "" : "assets/road-to-7th-symbole.png" },
   /* une copie : Réglages > Version propose « Mettre à jour » aux pilotes */
   copie: true,
 };

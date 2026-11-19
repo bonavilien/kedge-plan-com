@@ -824,6 +824,8 @@ html:root .ag .row .t small { display: block; flex-basis: 100%; max-width: none;
 .topbar b img.carre { height: 26px; width: 26px; border-radius: 6px; vertical-align: middle; margin-right: 9px; }
 .login-logo.carre, :root[data-theme="dark"] .login-logo.carre { height: 60px; width: 60px; border-radius: 14px; filter: none; }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .login-logo.carre { filter: none; } }
+/* le symbole sans fond : le carré prend la couleur du projet (mêmes coins arrondis que l'icône) */
+.brand img.carre.symbole, .topbar b img.carre.symbole, .login-logo.carre.symbole { background: var(--yellow); border-radius: 17%; }
 
 /* nom de l'appli et sous-titre du projet (« Programme Grande École ») */
 .brand .bt { display: grid; gap: 4px; min-width: 0; }

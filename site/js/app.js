@@ -43,8 +43,8 @@
   const M = (window.KPLAN_CONFIG && window.KPLAN_CONFIG.marque) || {};
   /* app : le nom de l'appli (« Road to 7th » chez KEDGE, « Plan de com » par défaut) ; nom : l'organisation */
   const APP = M.app || "Plan de com";
-  KP.marque = { app: APP, nom: M.nom || "", logo: M.logo || "", carre: !!M.carre, titre: M.app ? APP : APP + (M.nom ? " " + M.nom : "") };
-  KP.logo = (cls) => { const c = [cls, KP.marque.carre ? "carre" : ""].filter(Boolean).join(" "); return KP.marque.logo ? `<img src="${h(KP.marque.logo)}" alt="${KP.marque.carre ? "" : h(KP.marque.nom)}"${c ? ` class="${c}"` : ""}>` : ""; };
+  KP.marque = { app: APP, nom: M.nom || "", logo: M.logo || "", carre: !!M.carre, symbole: M.carre ? M.symbole || "" : "", titre: M.app ? APP : APP + (M.nom ? " " + M.nom : "") };
+  KP.logo = (cls) => { const s = KP.marque.symbole, c = [cls, KP.marque.carre ? "carre" : "", s ? "symbole" : ""].filter(Boolean).join(" "); return KP.marque.logo ? `<img src="${h(s || KP.marque.logo)}" alt="${KP.marque.carre ? "" : h(KP.marque.nom)}"${c ? ` class="${c}"` : ""}>` : ""; };
 
   /* ---------- rendu ---------- */
   const SCREENS = [["accueil", "Accueil", "home"], ["plan", "Le plan", "calendar"], ["reunion", "Réunion", "meet"]];

@@ -18,7 +18,7 @@ KPLAN_SUPABASE_URL=https://abcd.supabase.co/ KPLAN_SUPABASE_KEY=sb_publishable_a
 node -e '
 const fs = require("fs"), d = process.argv[1], w = {}; new Function("window", fs.readFileSync(d + "/config.js", "utf8"))(w);
 const c = w.KPLAN_CONFIG, m = JSON.parse(fs.readFileSync(d + "/manifest.webmanifest", "utf8")), ix = fs.readFileSync(d + "/index.html", "utf8");
-const ok = c.brancher && c.copie && c.supabaseUrl === "https://abcd.supabase.co" && c.supabaseKey === "sb_publishable_abc" && c.marque.nom === "Ville de Test" && !c.marque.logo && m.name === "Plan de com Ville de Test" && ix.includes("<title>Plan de com Ville de Test</title>");
+const ok = c.brancher && c.copie && c.supabaseUrl === "https://abcd.supabase.co" && c.supabaseKey === "sb_publishable_abc" && c.marque.nom === "Ville de Test" && !c.marque.logo && c.marque.symbole === "assets/road-to-7th-symbole.png" && m.name === "Plan de com Ville de Test" && ix.includes("<title>Plan de com Ville de Test</title>");
 if (!ok) { console.error(c, m.name); process.exit(1); }' "$S"
 rm -rf "$T"
 echo "Réglages d'une copie à la publication : tout est bon"

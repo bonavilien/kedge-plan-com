@@ -141,6 +141,18 @@ await p.evaluate(() => KP.go({ screen: "reglages", set: "apropos" })); await p.w
 ok((await p.locator(".maj a").getAttribute("href")).includes("DEPLOYER.md"), "bouton pas installé : lien vers le guide");
 await p.context().close();
 
+// l'icône sans fond : son carré et l'onglet du navigateur prennent la couleur du projet
+p = await open({ copie: false, marque: { app: "Road to 7th", nom: "KEDGE", logo: "assets/road-to-7th.png", carre: true, symbole: "assets/road-to-7th-symbole.png" } });
+const fond = () => p.evaluate(() => getComputedStyle(document.querySelector(".brand img")).backgroundColor);
+ok((await p.locator(".brand img").getAttribute("src")).endsWith("road-to-7th-symbole.png") && await fond() === "rgb(255, 212, 83)", "icône du menu : le symbole sur le jaune d'origine");
+ok(await p.evaluate(() => [...document.querySelectorAll('link[rel="icon"]')].every((l) => !l.href.startsWith("data:"))), "en jaune, l'onglet garde ses fichiers d'icône");
+await p.evaluate(() => KP.store.saveProjet({ couleur: "turquoise" })); await p.waitForTimeout(400);
+ok(await fond() === "rgb(69, 186, 189)", "couleur turquoise : le carré de l'icône devient turquoise");
+const fav = await p.evaluate(() => { const l = document.querySelector('link[rel="icon"]'); return new Promise((res) => { const i = new Image(); i.onload = () => { const c = document.createElement("canvas"); c.width = c.height = 64; const g = c.getContext("2d"); g.drawImage(i, 0, 0); res({ n: document.querySelectorAll('link[rel="icon"]').length, px: [...g.getImageData(6, 32, 1, 1).data] }); }; i.src = l.href; }); });
+ok(fav.n === 1 && fav.px.slice(0, 3).join() === "69,186,189", "l'onglet du navigateur : icône redessinée en turquoise");
+await p.evaluate(() => KP.store.saveProjet({ couleur: "jaune-or" })); await p.waitForTimeout(400);
+await p.context().close();
+
 // un service ne voit pas le bouton
 p = await open({ copie: true }, "presse@example.com", async () => [200, etat()]);
 await p.evaluate(() => KP.go({ screen: "reglages", set: "apropos" })); await p.waitForTimeout(300);
