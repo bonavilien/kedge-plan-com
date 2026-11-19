@@ -24,7 +24,7 @@
 
 
     return `<div class="page home">
-      <div class="hello"><h1>${hr < 18 ? "Bonjour" : "Bonsoir"} ${h(u.nom)}</h1>${pique ? `<p class="pique">${h(pique)}</p>` : ""}<p>${h(summary[0].toUpperCase() + summary.slice(1))}</p></div>
+      <div class="hello"><h1>${hr < 18 ? "Bonjour" : "Bonsoir"} ${h(u.nom)}</h1>${pique ? `<p class="pique">${KP.logo ? KP.logo("pq-logo") : ""}<span>${h(pique)}</span></p>` : ""}<p>${h(summary[0].toUpperCase() + summary.slice(1))}</p></div>
       <div class="home-cols"><div class="home-main">
 
       ${inbox.length ? `<section class="block"><h2>À traiter${inbox.length > 3 && !KP.ui.allTodo ? `<button type="button" class="link" data-act="all-todo">Voir les ${inbox.length}</button>` : ""}</h2>

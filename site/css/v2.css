@@ -303,7 +303,9 @@ dialog.cmdk { margin-top: 12vh; width: min(600px, calc(100vw - 32px)); overflow:
 .hello h1 { font: 700 34px/1.12 var(--serif); }
 .hello p { color: var(--text2); font-size: 17px; margin-top: 6px; }
 /* la petite pique du jour (js/piques.js) : entre le bonjour et le résumé, en serif, plus présente que le résumé */
-.hello p.pique { font: 500 19px/1.35 var(--serif); color: var(--text); margin-top: 8px; text-wrap: pretty; }
+/* la petite pique : une bulle anthracite avec le 7 de l'appli, pour qu'on sache que c'est l'appli qui parle */
+.hello p.pique { display: flex; align-items: center; gap: 12px; width: fit-content; max-width: 100%; margin: 14px 0 10px; padding: 9px 18px 9px 9px; border-radius: 16px 16px 16px 4px; background: var(--anthracite); color: #F4F4F2; font: 500 17px/1.35 var(--serif); text-wrap: pretty; }
+.hello p.pique img { width: 30px; height: 30px; flex: none; border-radius: 8px; background: var(--yellow); }
 .block { margin-top: 34px; }
 .block > h2 { font-size: 12.5px; font-weight: 600; color: var(--text2); text-transform: uppercase; letter-spacing: .04em; margin-bottom: 10px; display: flex; align-items: baseline; gap: 10px; }
 .block > h2 .link { margin-left: auto; text-transform: none; letter-spacing: 0; font-size: 13.5px; }
@@ -402,7 +404,7 @@ dialog.cmdk { margin-top: 12vh; width: min(600px, calc(100vw - 32px)); overflow:
   .page { padding: 18px 14px 40px; }
   .head h1 { font-size: 25px; }
   .hello h1 { font-size: 27px; }
-  .hello p.pique { font-size: 17.5px; }
+  .hello p.pique { font-size: 15.5px; padding-right: 14px; }
   .bar { flex-wrap: nowrap; overflow-x: auto; margin: -10px -14px 6px; padding: 10px 14px; scrollbar-width: none; }
   .bar::-webkit-scrollbar { display: none; }
   .bar .sp { display: none; }
