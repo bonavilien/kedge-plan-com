@@ -54,6 +54,11 @@ window.KUI_ICONS = {
     spark: s('<path d="M12 4v4M12 16v4M4 12h4M16 12h4M6.5 6.5l2.5 2.5M15 15l2.500 2.500M17.5 6.5 15 9M9 15l-2.500 2.500"/>'),
     meet: s('<rect x="3.500" y="5" width="17" height="11" rx="2.500"/><path d="M9 20h6M12 16v4"/>'),
     chevD: s('<path d="m6 9.500 6 6 6-6"/>', 2),
+    /* envoyé dans Asana ou Trello, et gardé à jour : deux flèches qui tournent */
+    sync: s('<path d="M19.5 11A7.5 7.5 0 0 0 6.2 6.9L4.5 8.6"/><path d="M4.5 4.5v4.1h4.1"/><path d="M4.5 13a7.5 7.5 0 0 0 13.3 4.1l1.7-1.7"/><path d="M19.5 19.5v-4.1h-4.1"/>'),
+    /* repères des deux outils, dessinés au trait comme les autres icônes */
+    asana: s('<circle cx="12" cy="7.300" r="3.300"/><circle cx="6.300" cy="15.800" r="3.300"/><circle cx="17.700" cy="15.800" r="3.300"/>'),
+    trello: s('<rect x="3.500" y="3.500" width="17" height="17" rx="3"/><rect x="7" y="7" width="4" height="9.500" rx="1"/><rect x="13" y="7" width="4" height="5.500" rx="1"/>'),
     sun: s('<circle cx="12" cy="12" r="4"/><path d="M12 2.500v2M12 19.500v2M2.500 12h2M19.500 12h2M5.300 5.300l1.400 1.400M17.300 17.300l1.400 1.400M18.700 5.300l-1.400 1.400M6.700 17.300l-1.400 1.400"/>'),
   });
 })();

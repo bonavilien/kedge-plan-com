@@ -92,6 +92,8 @@
       signOut: async () => { session = null; sessionStorage.removeItem("fake-session"); return {}; },
     },
     channel: () => ({ on() { return this; }, subscribe() { return this; } }),
+    /* fonctions de la base : window.__fakeRpc = { nom: (args) => réponse } ; sinon « inconnue », comme une migration pas faite */
+    rpc: async (n, a) => { const f = (window.__fakeRpc || {})[n]; return f ? { data: f(a), error: null } : { data: null, error: { message: "fonction inconnue : " + n } }; },
   };
   window.supabase = { createClient: () => client };
 })();
