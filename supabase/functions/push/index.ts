@@ -5,7 +5,7 @@ import { createClient } from "npm:@supabase/supabase-js@2.117.3";
 
 const env = (k: string) => Deno.env.get(k) ?? "";
 const sb = createClient(env("SUPABASE_URL"), env("SUPABASE_SERVICE_ROLE_KEY"), { auth: { persistSession: false } });
-webpush.setVapidDetails(env("VAPID_SUBJECT") || "mailto:communication@kedgebs.com", env("VAPID_PUBLIC_KEY"), env("VAPID_PRIVATE_KEY"));
+webpush.setVapidDetails(env("VAPID_SUBJECT") || "mailto:notifications@example.com", env("VAPID_PUBLIC_KEY"), env("VAPID_PRIVATE_KEY"));
 
 type Row = { id: number; user_id: string; title: string; body: string; url: string; tries: number };
 type Sub = { id: number; user_id: string; endpoint: string; p256dh: string; auth: string };

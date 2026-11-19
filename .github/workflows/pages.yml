@@ -1,9 +1,11 @@
 # Publie le dossier site/ sur GitHub Pages à chaque modification de main.
+# Dans une copie (fork), les réglages de la copie (adresse de sa base, nom, logo) viennent des variables
+# du dépôt et sont écrits juste avant la publication : aucun fichier n'est modifié dans le dépôt.
 name: Publier le site
 on:
   push:
     branches: [main]
-    paths: ["site/**", ".github/workflows/pages.yml"]
+    paths: ["site/**", ".github/workflows/pages.yml", "scripts/config-copie.mjs"]
   workflow_dispatch:
 permissions:
   contents: read
@@ -20,6 +22,17 @@ jobs:
       url: ${{ steps.deploy.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
+      - name: Réglages de cette copie
+        run: node scripts/config-copie.mjs site
+        env:
+          KPLAN_ORIGINE: bonavilien/kedge-plan-com
+          KPLAN_SUPABASE_URL: ${{ vars.KPLAN_SUPABASE_URL }}
+          KPLAN_SUPABASE_KEY: ${{ vars.KPLAN_SUPABASE_KEY }}
+          KPLAN_APP: ${{ vars.KPLAN_APP }}
+          KPLAN_NOM: ${{ vars.KPLAN_NOM }}
+          KPLAN_LOGO: ${{ vars.KPLAN_LOGO }}
+          KPLAN_VISITEUR: ${{ vars.KPLAN_VISITEUR }}
+          KPLAN_VAPID: ${{ vars.KPLAN_VAPID }}
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
