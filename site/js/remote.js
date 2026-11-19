@@ -267,6 +267,7 @@
       /* modifié pendant la lecture : on envoie d'abord, on relira ensuite */
       if (dirty) { reloading = false; dirty = false; sync(store._db()); later(); return; }
       shadow = snapshot(data); store._replace(data);
+      if (KP.outils) KP.outils.charge();
     }
     catch (e) { console.error(e); if (e.session) { reloading = false; return loginScreen("Ta session a expiré, reconnecte-toi."); } KP.toast("Impossible de relire la base, pas de réseau ?"); }
     reloading = false;
@@ -349,6 +350,7 @@
     try { localStorage.setItem(DERNIER, JSON.stringify({ email: user.email || "", prenom: String(KP.me().nom || "").trim().split(/\s+/)[0] })); } catch (e) {}
     window.kpOuvrir && window.kpOuvrir();
     watch();
+    if (KP.outils) KP.outils.charge();
     push.check().then((on) => { if (on) KP.render(); });
   }
   /* ---------- notifications sur cet appareil (téléphone ou ordinateur) ---------- */
@@ -369,20 +371,31 @@
   if (navigator.serviceWorker) navigator.serviceWorker.addEventListener("message", (e) => { if (e.data && e.data.type === "open" && e.data.url) { const h2 = new URL(e.data.url).hash; if (h2) location.hash = h2; } });
 
   /* ---------- mise à jour en un clic (copie seulement) : la fonction « mise-a-jour » du Supabase de cette copie ---------- */
-  async function maj(action) {
+  /* une fonction du Supabase de cette appli (mise-a-jour, export), appelée avec la session du compte */
+  async function fn(nom, corps, absente) {
     const { data } = await sb.auth.getSession();
     const tok = data.session ? data.session.access_token : "";
     let r;
-    try { r = await fetch(C.supabaseUrl + "/functions/v1/mise-a-jour", { method: "POST", headers: { "content-type": "application/json", apikey: C.supabaseKey, authorization: "Bearer " + tok }, body: JSON.stringify({ action }) }); }
-    catch (e) { const x = new Error("La fonction de mise à jour ne répond pas : pas de réseau, ou pas encore installée."); x.code = "absente"; throw x; }
+    try { r = await fetch(C.supabaseUrl + "/functions/v1/" + nom, { method: "POST", headers: { "content-type": "application/json", apikey: C.supabaseKey, authorization: "Bearer " + tok }, body: JSON.stringify(corps) }); }
+    catch (e) { const x = new Error(absente[0]); x.code = "absente"; throw x; }
     let o = {}; try { o = await r.json(); } catch (e) {}
-    if (r.status === 404 && !o.erreur) { const x = new Error("Le bouton n'est pas encore installé dans Supabase."); x.code = "absente"; throw x; }
-    if (!r.ok) { const x = new Error(o.message || "La mise à jour a échoué (" + r.status + ")."); x.code = o.erreur || "panne"; throw x; }
+    if (r.status === 404 && !o.erreur) { const x = new Error(absente[1]); x.code = "absente"; throw x; }
+    if (!r.ok) { const x = new Error(o.message || absente[2] + " (" + r.status + ")."); x.code = o.erreur || "panne"; throw x; }
     return o;
   }
+  const maj = (action) => fn("mise-a-jour", { action }, ["La fonction de mise à jour ne répond pas : pas de réseau, ou pas encore installée.", "Le bouton n'est pas encore installé dans Supabase.", "La mise à jour a échoué"]);
+  /* Asana et Trello : ce qui est relié et les fiches envoyées se lisent dans la base ; le reste passe par la fonction « export » */
+  const exporter = {
+    lire: async () => {
+      const [actifs, lignes] = await Promise.all([soft(sb.rpc("outils_actifs"), null), soft(sb.from("exports").select("item,outil,url,erreur"), [])]);
+      return { base: actifs !== null, actifs: actifs || [], lignes };
+    },
+    fn: (corps) => fn("export", corps, ["La fonction export ne répond pas : pas de réseau, ou pas encore installée.", "La fonction export n'est pas encore installée dans Supabase.", "L'envoi a échoué"]),
+  };
 
   KP.remote = {
     maj,
+    exporter,
     push,
     get email() { return user ? user.email || "" : ""; },
     /* l'appareil ne reçoit plus les notifications de ce compte : le suivant sur ce navigateur ne les verra pas */

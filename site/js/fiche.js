@@ -49,6 +49,7 @@
         ${reader || it.annule ? "" : KP.ib("clock", "Rappel pour moi", "memo", 'data-x="1"')}
         ${reader || it.annule || tf ? "" : KP.ib("megaphone", "Prévenir un service", "prevenir", 'data-x="1"')}
         ${KP.ib("link", "Copier le lien", "f-link", 'data-x="1"')}
+        ${KP.outils ? KP.outils.bouton(it) : ""}
         ${KP.ib("kebab", "Plus", "f-more", `aria-haspopup="menu"${can ? "" : ' data-phone="1"'}`)}
         <button type="button" class="ib tip-l" data-act="close-fiche" data-tip="Fermer (Échap)" aria-label="Fermer">${ic("close")}</button>
       </div>
@@ -132,7 +133,7 @@
     "f-more": (a) => {
       const it = cur(), can = store.canEdit(it);
       /* sur téléphone, les icônes de la barre passent ici, avec leur nom */
-      const x = matchMedia("(max-width: 767px)").matches ? [...$("fiche").querySelectorAll(".f-top .f-x, .f-top [data-x]")].map((b) => ({ v: "x:" + b.dataset.act, nom: b.getAttribute("aria-label"), icon: b.dataset.act === "f-pin" ? "bookmark" : b.dataset.act === "memo" ? "clock" : b.dataset.act === "prevenir" ? "megaphone" : "link" })) : [];
+      const x = matchMedia("(max-width: 767px)").matches ? [...$("fiche").querySelectorAll(".f-top .f-x, .f-top [data-x]")].map((b) => ({ v: "x:" + b.dataset.act, nom: b.getAttribute("aria-label"), icon: b.dataset.act === "f-pin" ? "bookmark" : b.dataset.act === "memo" ? "clock" : b.dataset.act === "prevenir" ? "megaphone" : b.dataset.act === "f-export" ? "sync" : "link" })) : [];
       const own = can ? [{ v: "dup", nom: "Dupliquer", icon: "copy" }, it.annule ? { v: "res", nom: "Rétablir", icon: "undo" } : { v: "ann", nom: it.kind === "tf" ? "Annuler ce temps fort" : "Annuler cette action", icon: "close" }, "-", { v: "del", nom: "Supprimer", icon: "trash", danger: true }] : [];
       KP.menu(a, [...x, ...(x.length && own.length ? ["-"] : []), ...own], (v) => {
         if (v.startsWith("x:")) { setTimeout(() => KP.acts[v.slice(2)](a), 0); return; }

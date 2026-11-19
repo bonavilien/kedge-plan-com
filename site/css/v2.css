@@ -948,3 +948,23 @@ html:root .ag .row .t small { display: block; flex-basis: 100%; max-width: none;
 @keyframes ouv-efface { to { opacity: 0; } }
 /* l'écran de connexion attend que le 7 s'ouvre pour lancer son étoile */
 .ouverture .login, .ouverture .login * { animation-play-state: paused !important; }
+
+/* ---------- 2.4 : Asana et Trello ---------- */
+.ib.sync.lie { color: var(--ok-ink); background: var(--ok-bg); }
+.ib.sync.err { color: var(--red); background: color-mix(in srgb, var(--red) 12%, transparent); }
+.ib.sync.tourne svg { animation: majspin .9s linear infinite; }
+.t-outils .tr { grid-template-columns: 130px minmax(0, 1fr) auto; padding: 10px 0; }
+.t-outils .tr:first-child { border-top: 0; }
+.outil, .o-cible, .outil-t { display: inline-flex; align-items: center; gap: 10px; min-width: 0; }
+.outil svg, .outil-t svg { width: 22px; height: 22px; flex: none; }
+.o-cible { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.o-do { display: inline-flex; gap: 4px; justify-content: flex-end; }
+.ok-dot.sm { width: 22px; height: 22px; flex: none; }
+.ok-dot.sm svg { width: 14px; height: 14px; }
+.o-aide { display: flex; gap: 18px; flex-wrap: wrap; margin: 4px 0 0; font-size: 13.5px; }
+.o-aide a { display: inline-flex; align-items: center; gap: 6px; color: var(--text2); }
+.o-aide a svg { width: 15px; height: 15px; }
+.o-aide a:hover { color: var(--text); }
+.o-err { color: var(--red); }
+.btn.attente { opacity: .6; pointer-events: none; }
+@media (max-width: 767px) { .t-outils .tr { grid-template-columns: 1fr auto; } .t-outils .tr > :nth-child(2) { grid-column: 1 / -1; grid-row: 2; } }

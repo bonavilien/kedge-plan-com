@@ -13,7 +13,7 @@
       <div class="head"><h1>Réglages</h1></div>
       <div class="bar"><div class="seg" role="group" aria-label="Réglages">${TABS.filter(([k]) => admin || k === "profil" || k === "apropos").map(([k, n]) => `<button type="button" data-act="set-tab" data-k="${k}" class="${k === tab ? "on" : ""}" aria-pressed="${k === tab}">${n}</button>`).join("")}</div></div>
       ${({ apropos, profil,
-        projet: () => identite() + periodes() + messages(),
+        projet: () => identite() + periodes() + messages() + (KP.outils ? KP.outils.reglages() : ""),
         equipe: () => equipe() + services(),
         carnets: () => liste("partners", "Médias partenaires", "Proposés quand une action est un partenariat payant.", "Nom du média") + liste("lieux", "Lieux", "Proposés dans le champ Lieu d'un temps fort.", "Nom du lieu") + contacts() })[tab]()}
     </div>`;

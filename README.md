@@ -12,7 +12,7 @@ Pour que les copies suivent sans casser, ici :
 - rien de propre à KEDGE dans le code : le nom vient de `site/config.js` ici, des variables GitHub dans une copie (le logo reste celui de Road to 7th) (`scripts/config-copie.mjs`, lancé à la publication) ; périodes, messages et services sont dans la base ;
 - si la fonction `mise-a-jour` change, monter `FONCTION` en tête du fichier : les copies sont invitées à la recoller.
 
-Tests : `node --experimental-strip-types test/maj/fonction.mjs` (la fonction, faux GitHub), `sh test/maj/installation.sh` (installation sur base neuve), `sh test/maj/config-copie.sh`, `node test/maj/reglages.mjs` et `node test/maj/ouverture.mjs` (ouverture du 7 et écran de connexion), le site servi sur le port 8812.
+Tests : `node --experimental-strip-types test/maj/fonction.mjs` (la fonction, faux GitHub), `sh test/maj/installation.sh` (installation sur base neuve), `sh test/maj/config-copie.sh`, `node test/maj/reglages.mjs` et `node test/maj/ouverture.mjs`, `node --experimental-strip-types test/maj/export.mjs` (fonction Asana et Trello, faux outils) et `node test/maj/export-ui.mjs` (bouton de la fiche et Réglages) (ouverture du 7 et écran de connexion), le site servi sur le port 8812.
 
 ## Les branches
 
