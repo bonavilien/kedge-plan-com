@@ -2,7 +2,7 @@
    Le réseau d'abord (on a toujours la dernière version), le cache en secours. */
 const VERSION = "2.2.0";
 const CACHE = "kplan-v2-" + VERSION;
-const FILES = ["./", "index.html", "version.json", "manifest.webmanifest", "css/v2.css", "fonts/krc-serif.woff", "assets/kedge-logo-blanc.png", "icons/icon-192.png",
+const FILES = ["./", "index.html", "version.json", "manifest.webmanifest", "css/v2.css", "fonts/krc-serif.woff", "assets/kedge-logo-blanc.png", "assets/road-to-7th.png", "icons/icon-192.png", "icons/favicon-32.png", "favicon.ico",
   "js/version.js", "js/icons.js", "js/data.js", "js/ui.js", "js/suggestions.js", "js/fiche.js", "js/plan.js", "js/accueil.js", "js/reunion.js", "js/reglages.js", "js/app.js", "js/remote.js", "config.js", "vendor/supabase-2.117.3.js"];
 self.addEventListener("install", (e) => { e.waitUntil(caches.open(CACHE).then((c) => c.addAll(FILES)).then(() => self.skipWaiting())); });
 self.addEventListener("activate", (e) => { e.waitUntil(caches.keys().then((ks) => Promise.all(ks.filter((k) => k.startsWith("kplan-v2-") && k !== CACHE).map((k) => caches.delete(k)))).then(() => self.clients.claim())); });

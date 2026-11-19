@@ -7,7 +7,7 @@ Généré depuis `site/js/version.js` par `node scripts/version.mjs`. Ne pas mod
 - L'appli se copie pour une autre équipe, qui la met à jour d'un clic : Réglages, Version, « Mettre à jour »
 - Périodes et messages se règlent dans Réglages
 - Nom et logo de chaque copie, réglés sans toucher au code
-- L'appli s'appelle désormais Road to 7th, cap sur la 7e place au SIGEM
+- L'appli s'appelle désormais Road to 7th, cap sur la 7e place au SIGEM, avec sa nouvelle icône
 
 ## 2.1 · 2026-11-17
 

@@ -816,3 +816,11 @@ html:root .ag .row .t small { display: block; flex-basis: 100%; max-width: none;
 @keyframes majspin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .maj-steps li.now .dot, .spin { animation: none; } }
 @media (max-width: 767px) { .maj-steps li + li::before { width: 18px; margin: 0 6px; } .maj-v .vn { font-size: 24px; } }
+
+/* logo carré (icône de l'appli) : à côté du nom, sans trait de séparation */
+.brand.carre { gap: 11px; }
+.brand img.carre { height: 32px; width: 32px; border-radius: 8px; }
+.brand.carre span { border-left: 0; padding-left: 0; font-size: 17px; }
+.topbar b img.carre { height: 26px; width: 26px; border-radius: 6px; vertical-align: middle; margin-right: 9px; }
+.login-logo.carre, :root[data-theme="dark"] .login-logo.carre { height: 60px; width: 60px; border-radius: 14px; filter: none; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .login-logo.carre { filter: none; } }
