@@ -4,7 +4,7 @@ Généré depuis `site/js/version.js` par `node scripts/version.mjs`. Ne pas mod
 
 ## 2.2.2 · 2026-11-19
 
-- Un tutoriel illustré pour installer l'appli dans une autre équipe, étape par étape : Réglages, Version, « Le tutoriel » (pilotes)
+- Les copies pour d'autres équipes gardent toujours le logo Road to 7th
 
 ## 2.2.1 · 2026-11-19
 

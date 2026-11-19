@@ -347,8 +347,6 @@ dialog.cmdk { margin-top: 12vh; width: min(600px, calc(100vw - 32px)); overflow:
 .page.wide-set { max-width: 900px; }
 .set { background: var(--card); border-radius: var(--r3); padding: 18px 20px 20px; margin-bottom: 14px; display: grid; gap: 14px; }
 .set h2 { font: 600 19px var(--serif); display: flex; align-items: center; gap: 12px; }
-a.btn { text-decoration: none; }
-.set > a.btn { justify-self: start; }
 .set h2 .btn { margin-left: auto; font-family: var(--sans); }
 .set .two { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .set .ro { min-height: 38px; display: flex; align-items: center; gap: 8px; }

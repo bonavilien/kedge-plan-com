@@ -9,7 +9,7 @@ D'autres équipes peuvent installer leur propre appli : **[le tutoriel illustré
 Pour que les copies suivent sans casser, ici :
 - **un changement de base = un nouveau fichier numéroté** dans `supabase/migrations` (`0028_…sql`). Ne jamais modifier un fichier déjà publié : les copies l'ont déjà appliqué. Il doit marcher sur une base qui contient des données ;
 - après chaque nouveau script : `node scripts/installation.mjs` (refait `supabase/installation.sql`, le collage unique des nouvelles copies) ;
-- rien de propre à KEDGE dans le code : nom et logo viennent de `site/config.js` ici, des variables GitHub dans une copie (`scripts/config-copie.mjs`, lancé à la publication) ; périodes, messages et services sont dans la base ;
+- rien de propre à KEDGE dans le code : le nom vient de `site/config.js` ici, des variables GitHub dans une copie (le logo reste celui de Road to 7th) (`scripts/config-copie.mjs`, lancé à la publication) ; périodes, messages et services sont dans la base ;
 - si la fonction `mise-a-jour` change, monter `FONCTION` en tête du fichier : les copies sont invitées à la recoller.
 
 Tests : `node --experimental-strip-types test/maj/fonction.mjs` (la fonction, faux GitHub), `sh test/maj/installation.sh` (installation sur base neuve), `sh test/maj/config-copie.sh`, et `node test/maj/reglages.mjs` (le site servi sur le port 8812).

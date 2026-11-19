@@ -1,4 +1,4 @@
-// La page tutoriel (site/tutoriel.html) : six étapes, valeurs personnalisées, étapes cochées retenues, lisible sur téléphone.
+// La page tutoriel (site/tutoriel.html), autonome : six étapes, valeurs personnalisées, étapes cochées retenues, lisible sur téléphone.
 // Usage : (cd site && python3 -m http.server 8812) puis node test/maj/tutoriel.mjs
 import { createRequire } from "node:module";
 const { chromium } = createRequire(import.meta.url)("playwright");
@@ -22,7 +22,10 @@ ok(await p.textContent("#prog-n") === "2" && await p.locator("#etape-1.ok").coun
 await p.reload();
 ok(await p.isChecked("#fait-3") && await p.inputValue("#compte") === "Ville-Exemple", "rechargée : coches et copie retenues");
 const liens = await p.$$eval("a[href^='http']", (as) => as.map((a) => [a.href, a.target]));
-ok(liens.length > 4 && liens.every(([h, t]) => h.startsWith("https://") && t === "_blank"), "liens externes en https, dans un nouvel onglet");
+ok(liens.length >= 4 && liens.every(([h, t]) => h.startsWith("https://") && t === "_blank"), "liens externes en https, dans un nouvel onglet");
+const relatifs = await p.evaluate(() => [...document.querySelectorAll("[src], [href]")].map((e) => e.getAttribute("src") || e.getAttribute("href")).filter((u) => !/^(https:|#|data:)/.test(u)));
+ok(!relatifs.length && !(await p.content()).includes('url("fonts/'), "page autonome : aucun autre fichier du projet chargé " + relatifs.join(" "));
+ok(!(await p.content()).includes("KPLAN_LOGO"), "pas de logo à choisir : il reste celui de Road to 7th");
 ok(!errs.length, "aucune erreur : " + errs.join(" | "));
 await ctx.close();
 
