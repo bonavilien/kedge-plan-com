@@ -37,11 +37,13 @@
   /* ---------- lecture : tout, d'un coup (l'équipe est petite) ---------- */
   async function load() {
     const all = (t, order) => run(sb.from(t).select("*").order(order));
-    const [per, svc, prt, prof, items, links, reqs, blk, ans, meta, journal, lieux, contacts, ic, msgs] = await Promise.all([
+    const [per, svc, prt, prof, items, links, reqs, blk, ans, meta, journal, lieux, contacts, ic, msgs, prix, env] = await Promise.all([
       all("periods", "du"), all("services", "ordre"), all("partners", "nom"), all("profiles", "nom"), all("items", "date"), all("links", "at"), all("reqs", "at"), all("blocks", "at"),
       run(sb.from("answers").select("key,val").eq("user_id", user.id)), all("meta", "k"), soft(sb.from("journal").select("*").order("id", { ascending: false }).limit(3000), []),
       soft(sb.from("lieux").select("*").order("nom"), []), soft(sb.from("contacts").select("*").order("nom"), []), soft(sb.from("item_contacts").select("*"), []),
       soft(sb.from("messages").select("*").order("n"), []),
+      /* budget : la base ne le donne qu'aux chefs de projet ; les autres reçoivent des listes vides */
+      soft(sb.from("budget").select("item,montant"), []), soft(sb.from("enveloppes").select("per,montant"), []),
     ]);
     /* sans session valable, la base renvoie des listes vides sans erreur : on ne remplace pas le plan par du vide */
     if (!prof.some((p) => p.id === user.id)) { const e = new Error("session expirée"); e.session = true; throw e; }
@@ -82,6 +84,7 @@
           tf: r.tf || "", lieu: r.lieu || "", note: r.note || "", docs: docs[r.id] || [], contacts: cts[r.id] || [], reunion: !!blocks[r.id], by: r.author || "",
         };
         if (r.partner) it.partner = partnerNom[r.partner] || "";
+        if (r.res && typeof r.res === "object" && Object.keys(r.res).length) it.res = KP.resPropre(r.res);
         if (r.kind === "classement") { it.rang = r.rang ? (r.rang === 1 ? "1er" : r.rang + "e") : ""; it.cible = r.cible ? "Top " + r.cible : ""; }
         if (sujet && pers.length) { const a = KP.PERIODS.find((p) => p.k === pers[0]), z = KP.PERIODS.find((p) => p.k === pers[pers.length - 1]); it.per = pers[0]; it.pers = pers; it.date = a.du; it.fin = z.au; }
         if (r.st === "retire") it.annule = { txt: r.annule_motif || "", qui: r.annule_par || "", quand: ms(r.annule_at) || ms(r.updated_at) };
@@ -93,6 +96,8 @@
       journal: journal.map((j) => ({ id: "j" + j.id, item: j.item, qui: j.author || "", quand: ms(j.at), txt: jtxt(j) })),
       lastMeeting: m.last_meeting || KP.TODAY,
       projet: { couleur: m.couleur || "", sousTitre: m.sous_titre || "" },
+      budget: Object.fromEntries(prix.map((b) => [b.item, b.montant])),
+      env: Object.fromEntries(env.map((e) => [perK(e.per), e.montant]).filter(([k]) => k)),
     };
     return data;
   }
@@ -107,12 +112,13 @@
     if (j.kind === "prevenu") return d.svc ? "a prévenu " + ((KP.service(d.svc) || {}).nom || "un service") : "a prévenu d'un changement";
     if (j.kind === "relance") return "a relancé une demande";
     if (j.kind === "deadline") return "a changé l'échéance d'une demande";
+    if (k.length === 1 && d.res) return d.res[1] && Object.keys(d.res[1]).length ? "a noté les résultats : " + KP.resTxt(d.res[1]) : "a retiré les résultats";
     if (d.st && d.st[1] === "retire") return "a annulé" + (d.annule_motif && d.annule_motif[1] ? " : " + d.annule_motif[1] : "");
     if (d.st && d.st[0] === "retire") return "a rétabli";
     if (d.report_motif && d.report_motif[1]) return "a reporté" + (d.date ? " au " + KP.fmt.moyen(d.date[1]) : "") + " : " + d.report_motif[1];
     if (d.date) return "a déplacé au " + KP.fmt.moyen(d.date[1]);
     if (d.st) return "a marqué « " + ((KP.STATUTS.find((s) => s.k === stIn[d.st[1]]) || {}).nom || d.st[1]) + " »";
-    const noms = { t: "le titre", fin: "le dernier jour", flou: "la date", per: "les périodes", svc: "le service", m: "les messages", tf: "le temps fort lié", partner: "le média", lieu: "le lieu", note: "la note", rang: "le rang", cible: "l'objectif", cc: "les services prévenus" };
+    const noms = { t: "le titre", fin: "le dernier jour", flou: "la date", per: "les périodes", svc: "le service", m: "les messages", tf: "le temps fort lié", partner: "le média", lieu: "le lieu", note: "la note", rang: "le rang", cible: "l'objectif", cc: "les services prévenus", res: "les résultats" };
     const l = k.map((x) => noms[x]).filter(Boolean);
     return l.length ? "a modifié " + l.join(", ") : "a modifié la fiche";
   }
@@ -138,10 +144,12 @@
     if (has("lieu")) o.lieu = it.lieu || "";
     if (has("note")) o.note = it.note || "";
     if (it.variant === "classement" && (has("rang") || has("cible"))) { o.rang = int(it.rang); o.cible = int(it.cible); }
+    /* les résultats : seulement s'il y en a, pour qu'une base sans la colonne (avant 0031) crée encore des fiches */
+    if (has("res") && (!creation || (it.res && Object.keys(it.res).length))) o.res = it.res || {};
     if (has("report")) { o.report_de = it.report ? it.report.de || "" : ""; o.report_motif = it.report ? it.report.txt || "" : ""; }
     return o;
   }
-  const FIELDS = ["t", "date", "flou", "fin", "per", "pers", "variant", "svc", "m", "st", "annule", "tf", "partner", "lieu", "note", "rang", "cible", "report"];
+  const FIELDS = ["t", "date", "flou", "fin", "per", "pers", "variant", "svc", "m", "st", "annule", "tf", "partner", "lieu", "note", "rang", "cible", "report", "res"];
   /* un nouveau média partenaire se crée avant la fiche qui le cite */
   async function partnerFor(nom) {
     if (!nom || partnerK[nom]) return;
@@ -210,6 +218,13 @@
     });
     /* une demande retirée (ou un rappel effacé) : la base la garde, marquée « annulée » ; celles d'une fiche supprimée partent avec elle */
     shadow.reqs.forEach((r) => { if (!db.reqs.some((x) => x.id === r.id) && !gone.has(r.item) && !r.fait) ops.push(() => changed(sb.from("reqs").update({ st: "annulee" }).eq("id", r.id))); });
+    /* budget des partenariats et enveloppes des périodes (chefs de projet) : après les fiches, qu'un montant puisse citer une fiche créée à l'instant */
+    const b0 = shadow.budget || {}, b1 = db.budget || {};
+    Object.keys(b1).forEach((id) => { if (b1[id] !== b0[id]) ops.push(() => run(sb.from("budget").upsert({ item: id, montant: b1[id] }))); });
+    Object.keys(b0).forEach((id) => { if (!(id in b1) && !gone.has(id)) ops.push(() => run(sb.from("budget").delete().eq("item", id))); });
+    const e0 = shadow.env || {}, e1 = db.env || {}, perN = (k) => (KP.PERIODS.find((p) => p.k === k) || {}).n;
+    Object.keys(e1).forEach((k) => { if (e1[k] !== e0[k] && perN(k) != null) ops.push(() => run(sb.from("enveloppes").upsert({ per: perN(k), montant: e1[k] }))); });
+    Object.keys(e0).forEach((k) => { if (!(k in e1) && perN(k) != null) ops.push(() => run(sb.from("enveloppes").delete().eq("per", perN(k)))); });
     /* équipe, services, médias */
     const p0 = Object.fromEntries(shadow.people.map((p) => [p.k, p]));
     db.people.forEach((p) => { const o = p0[p.k]; if (o && !same(p, o)) ops.push(() => run(sb.from("profiles").update({ nom: p.nom, fonction: p.fonction, ...(p.role !== o.role || p.svc !== o.svc ? { chef: p.role === "pilote", visiteur: p.role === "lecteur", svc: p.svc || null } : {}) }).eq("id", p.k))); });
@@ -255,7 +270,7 @@
   }
   window.addEventListener("online", () => { if (!document.documentElement.classList.contains("offline")) return; document.documentElement.classList.remove("offline"); sync(store._db()); });
   const frErr = (e) => { const m = (e && e.message) || ""; return /row-level security|permission denied/i.test(m) ? "tu n'as pas le droit de faire ce changement" : m || "la base ne répond pas"; };
-  const snapshot = (db) => clone({ periods: KP.PERIODS, messages: KP.MESSAGES.map((m) => ({ n: m.n, nom: m.nom, info: m.info })), items: db.items, reqs: db.reqs, people: db.people, services: db.services, partners: db.partners, lieux: db.lieux, contacts: db.contacts, prefs: { [user.id]: db.prefs[user.id] || {} }, lastMeeting: db.lastMeeting, projet: db.projet || {} });
+  const snapshot = (db) => clone({ periods: KP.PERIODS, messages: KP.MESSAGES.map((m) => ({ n: m.n, nom: m.nom, info: m.info })), items: db.items, reqs: db.reqs, people: db.people, services: db.services, partners: db.partners, lieux: db.lieux, contacts: db.contacts, prefs: { [user.id]: db.prefs[user.id] || {} }, lastMeeting: db.lastMeeting, projet: db.projet || {}, budget: db.budget || {}, env: db.env || {} });
   /* les documents ajoutés ont reçu leur identifiant de la base : la copie de référence le prend aussi */
   function fixDocs() { const cur = Object.fromEntries(store._db().items.map((i) => [i.id, i])); shadow.items.forEach((s) => { const i = cur[s.id]; if (i && i.docs && s.docs && i.docs.length === s.docs.length) s.docs = clone(i.docs); }); }
   function badge() { document.documentElement.classList.toggle("saving", pending > 0); }

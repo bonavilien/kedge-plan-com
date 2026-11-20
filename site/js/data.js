@@ -73,10 +73,15 @@
     { k: "louise", nom: "Louise", fonction: "Production vidéo", role: "service", svc: "video" },
     { k: "visiteur", nom: "Visiteur", fonction: "Lecture seule", role: "lecteur", svc: "" },
   ];
+  /* les résultats d'une diffusion, toujours dans cet ordre ; un nombre entier par unité, zéro compris */
+  const UNITES = [{ k: "vues", un: "vue", nom: "Vues" }, { k: "clics", un: "clic", nom: "Clics" }, { k: "inscrits", un: "inscrit", nom: "Inscrits" }, { k: "retombees", un: "retombée", nom: "Retombées" }];
+  const resPropre = (r) => Object.fromEntries(UNITES.map((u) => [u.k, (r || {})[u.k]]).filter(([, v]) => v !== "" && v != null).map(([k, v]) => [k, Math.round(Number(v))]).filter(([, n]) => Number.isFinite(n) && n >= 0 && n <= 1e9));
+  const nb = (n) => Number(n).toLocaleString("fr-FR");
+  const resTxt = (r) => UNITES.filter((u) => r && r[u.k] != null).map((u) => `${nb(r[u.k])} ${u.un}${r[u.k] > 1 ? "s" : ""}`).join(" · ");
   const ELEMENTS = ["Programme", "Contexte", "Éléments de langage", "Visuels", "Contact", "Rushs", "Autre"];
 
   const ASK = { "Programme": "le programme", "Contexte": "du contexte", "Éléments de langage": "des éléments de langage", "Visuels": "des visuels", "Contact": "un contact", "Rushs": "des rushs", "Autre": "des éléments" };
-  const PARTNERS = ["L'Étudiant", "Le Figaro Étudiant", "Studyrama", "Challenges", "Major-Prépa"];
+  const PARTNERS = ["L'Étudiant", "Le Figaro Étudiant", "Studyrama", "Challenges", "Major-Prépa", "Sud Ouest"];
   const monthEnd = (s) => { const d = parse(s); return iso(new Date(d.getFullYear(), d.getMonth() + 1, 0)); };
   /* dernier jour possible d'une ligne : la fin du mois quand la date reste à préciser */
   const endOf = (it) => it.flou ? monthEnd(it.date) : it.fin || it.date;
@@ -117,13 +122,13 @@
 
     // passé
     const rentree = tf("Rentrée du PGE", d(-58), { m: ["filieres"], lieu: "Campus de Bordeaux et Marseille", st: "diffuse" });
-    ac("Communiqué de rentrée", d(-60), "rp", ["filieres"], "diffuse", { tf: rentree });
-    ac("Film de rentrée", d(-56), "video", ["filieres"], "diffuse", { tf: rentree });
+    ac("Communiqué de rentrée", d(-60), "rp", ["filieres"], "diffuse", { tf: rentree, res: { retombees: 6 } });
+    ac("Film de rentrée", d(-56), "video", ["filieres"], "diffuse", { tf: rentree, res: { vues: 9600 } });
     const forum = tf("Forum entreprises", d(-24), { fin: d(-23), m: ["filieres"], lieu: "Campus de Bordeaux", st: "diffuse" });
-    ac("Carrousel : les recruteurs présents", d(-25), "rs", ["filieres"], "diffuse", { tf: forum });
+    ac("Carrousel : les recruteurs présents", d(-25), "rs", ["filieres"], "diffuse", { tf: forum, res: { vues: 8300, clics: 210 } });
     ac("Reportage vidéo du forum", d(-20), "video", ["filieres"], "prevu", { tf: forum });
     ac("Portrait d'un alumni entrepreneur", d(-9), "rs", ["alumni"], "diffuse");
-    ac("Tribune du directeur du programme", d(-6), "rp", ["continuum"], "diffuse");
+    ac("Tribune du directeur du programme", d(-6), "rp", ["continuum"], "diffuse", { res: { retombees: 3 } });
     ac("Interview croisée, double diplôme Berkeley", d(-3), "video", ["international"], "prevu");
     ac("Brève : accord avec l'université de Séoul", d(-12), "rp", ["international"], "diffuse");
 
@@ -139,7 +144,7 @@
     ac("Stories : une journée en échange à Shanghai", d(3), "rs", ["international"], "prevu");
     ac("Point presse géopolitique avec les prépas", d(9), "rp", ["continuum"], "confirmer", { reunion: true });
     ac("Témoignage d'une diplômée Supply Chain", d(15), "video", ["filieres"], "prevu");
-    ac("Dossier L'Étudiant : spécial écoles de commerce", d(17), "rp", ["filieres"], "prevu", { variant: "partenariat", partner: "L'Étudiant", by: "julien", note: "Encart payant. Éléments à remettre dix jours avant." });
+    const etudiant = ac("Dossier L'Étudiant : spécial écoles de commerce", d(17), "rp", ["filieres"], "prevu", { variant: "partenariat", partner: "L'Étudiant", by: "julien", note: "Encart payant. Éléments à remettre dix jours avant." });
     ac("Carrousel : nos partenaires académiques", d(27), "rs", ["international"], "confirmer");
     tf("Salon des grandes écoles", d(55), { fin: d(56), m: ["filieres"], lieu: "Paris" });
     tf("Oraux des concours", d(200), { fin: d(214), m: ["continuum", "filieres"], lieu: "Bordeaux et Marseille", st: "confirmer" });
@@ -153,10 +158,20 @@
     const m0 = TODAY.slice(0, 8) + "01", m1 = addDays(monthEnd(TODAY), 1);
     ac("Portrait d'un professeur de finance", m0, "video", ["filieres"], "confirmer", { flou: true, note: "Tournage dès que l'agenda du professeur est connu." });
     tf("Conférence géopolitique avec les classes prépas", m1, { flou: true, m: ["continuum"], st: "confirmer", lieu: "Campus de Marseille" });
-    ac("Interview dans Challenges", m1, "rp", ["reputation"], "confirmer", { flou: true, variant: "partenariat", partner: "Challenges", by: "julien" });
+    const challenges = ac("Interview dans Challenges", m1, "rp", ["reputation"], "confirmer", { flou: true, variant: "partenariat", partner: "Challenges", by: "julien" });
 
     // sujets : toute la période
     items.push({ id: id(), kind: "tf", variant: "sujet", t: "L'alternance en dernière année", date: PERIODS.find((p) => p.k === per).du, fin: PERIODS.find((p) => p.k === per).au, per, svc: "", m: ["filieres"], st: "prevu", tf: "", lieu: "", note: "Fil rouge de la période : un contenu par service.", docs: [], reunion: false, by: "estelle" });
+
+    // résultats : ce que les diffusions ont donné ; budget : le prix des partenariats payants (chefs de projet seulement)
+    ac("Vidéo : une journée sur le campus de Bordeaux", d(-14), "video", ["filieres"], "diffuse", { res: { vues: 14200 } });
+    ac("Webinaire : la double compétence", d(-5), "content", ["continuum"], "diffuse", { res: { inscrits: 140 } });
+    ac("Post LinkedIn : nos alumni à l'international", d(-4), "rs", ["international", "alumni"], "diffuse", { res: { vues: 5100, clics: 96 } });
+    const studyrama = ac("Guide Studyrama des écoles", d(-40), "rp", ["filieres"], "diffuse", { variant: "partenariat", partner: "Studyrama", by: "julien", res: { vues: 22000 } });
+    const sudouest = ac("Encart Sud Ouest : journée portes ouvertes", d(-2), "rp", ["recrutement"], "diffuse", { variant: "partenariat", partner: "Sud Ouest", by: "julien", tf: jpo });
+    const salon = ac("Salon L'Étudiant : le stand", d(60), "rp", ["filieres"], "confirmer", { variant: "partenariat", partner: "L'Étudiant", by: "julien" });
+    const budget = { [etudiant]: 4800, [challenges]: 3200, [studyrama]: 3800, [sudouest]: 1800, [salon]: 4500 };
+    const env = Object.fromEntries(PERIODS.map((p, i) => [p.k, [8000, 10000, 12000, 10000, 6000][i] || 0]).filter(([, n]) => n));
 
     const reqs = [
       { id: "r1", item: jpo, de: "aurelie", a: "julien", quoi: "Programme", txt: "Le programme des conférences pour l'invitation presse.", pour: d(1), fait: false, rep: "", quand: Date.now() - 3 * 864e5 },
@@ -178,15 +193,15 @@
       { id: "c3", nom: "Sophie Garnier", role: "Journaliste, Sud Ouest", mail: "s.garnier@exemple.fr", tel: "06 00 00 00 03" },
     ];
     store0(jpo, items).contacts = ["c1", "c2"];
-    return { v: 7, seq: 100, moi: "julien", people: JSON.parse(JSON.stringify(PEOPLE0)), services: JSON.parse(JSON.stringify(SERVICES0)), partners: [...PARTNERS],
-      lieux: ["Campus de Bordeaux", "Campus de Marseille", "Campus de Paris", "Campus de Toulon", "Campus de Bordeaux et Marseille", "Tous les campus", "Palais de la Bourse, Bordeaux"], contacts, items, reqs, journal, prefs, lastMeeting: d(-7) };
+    return { v: 8, seq: 100, moi: "julien", people: JSON.parse(JSON.stringify(PEOPLE0)), services: JSON.parse(JSON.stringify(SERVICES0)), partners: [...PARTNERS],
+      lieux: ["Campus de Bordeaux", "Campus de Marseille", "Campus de Paris", "Campus de Toulon", "Campus de Bordeaux et Marseille", "Tous les campus", "Palais de la Bourse, Bordeaux"], contacts, items, reqs, journal, prefs, lastMeeting: d(-7), budget, env };
   }
 
   /* ---------- magasin ---------- */
   const KEY = "kplan-v2-demo";
   let db;
   const listeners = [];
-  const read = () => { try { const o = JSON.parse(localStorage.getItem(KEY)); if (o && o.v === 7) return o; } catch (e) {} return null; };
+  const read = () => { try { const o = JSON.parse(localStorage.getItem(KEY)); if (o && o.v === 8) return o; } catch (e) {} return null; };
   /* distant : quand l'appli est branchée sur la base (js/remote.js), le magasin garde la même forme en mémoire
      et chaque changement part vers la base au lieu du navigateur */
   let remote = null;
@@ -208,6 +223,13 @@
   const log = (item, txt) => db.journal.push({ id: nid("j"), item, qui: db.moi, quand: Date.now(), txt });
   const prefs = () => (db.prefs[db.moi] = db.prefs[db.moi] || {});
 
+  /* un montant en euros (entier), ou rien */
+  const regle = (t, k, n) => {
+    const m = (db[t] = db[t] || {}), b = m[k], v = n == null || n === "" || !Number.isFinite(Number(n)) ? null : Math.max(0, Math.min(1e8, Math.round(Number(n))));
+    if (v === b || (v == null && b == null)) return () => {};
+    if (v == null) delete m[k]; else m[k] = v; emit();
+    return () => { if (b == null) delete m[k]; else m[k] = b; emit(); };
+  };
   const store = {
     on: (f) => listeners.push(f),
     items: () => db.items,
@@ -239,15 +261,17 @@
       const saved = JSON.parse(JSON.stringify(it)), rel = db.items.filter((i) => i.tf === id).map((i) => i.id), reqs = db.reqs.filter((r) => r.item === id);
       db.items = db.items.filter((i) => i.id !== id);
       db.items.forEach((i) => { if (i.tf === id) i.tf = ""; });
-      db.reqs = db.reqs.filter((r) => r.item !== id); emit();
+      db.reqs = db.reqs.filter((r) => r.item !== id);
+      const prix = (db.budget || {})[id]; if (prix != null) delete db.budget[id];
+      emit();
       if (remote) return null;
-      return () => { if (byId(id)) return; db.items.push(saved); rel.forEach((r) => { const x = byId(r); if (x && !x.tf) x.tf = id; }); db.reqs.push(...reqs); emit(); };
+      return () => { if (byId(id)) return; db.items.push(saved); if (prix != null) db.budget[id] = prix; rel.forEach((r) => { const x = byId(r); if (x && !x.tf) x.tf = id; }); db.reqs.push(...reqs); emit(); };
     },
     /* annuler une création : la fiche n'a encore ni demande ni relais */
     unadd(id) { db.items = db.items.filter((i) => i.id !== id); emit(); },
     duplicate(id) {
       const it = store.get(id); if (!it) return null;
-      const { id: _id, annule, report, ...copie } = JSON.parse(JSON.stringify(it));
+      const { id: _id, annule, report, res, ...copie } = JSON.parse(JSON.stringify(it));
       copie.docs = (copie.docs || []).map((d) => ({ t: d.t, url: d.url })); /* de nouveaux liens, pas ceux de l'original */
       return store.add({ ...copie, t: it.t + " (copie)", st: "confirmer", reunion: false, by: db.moi });
     },
@@ -332,6 +356,20 @@
       log(id, `a prévenu ${nom}`); emit(); ok(); },
     dropReq(id) { const r = db.reqs.find((x) => x.id === id); if (!r) return; db.reqs = db.reqs.filter((x) => x !== r); if (r.a !== r.de) log(r.item, "a retiré une demande"); emit(); },
     answer(id, rep) { const r = db.reqs.find((x) => x.id === id); if (!r) return () => {}; r.fait = true; r.rep = rep || ""; if (r.a !== r.de) log(r.item, "a répondu à une demande"); emit(); if (remote) return null; return () => { r.fait = false; r.rep = ""; emit(); }; },
+    /* les résultats d'une diffusion ; tout effacé, la fiche repart dans « À compléter » */
+    setRes(id, res) {
+      const it = store.get(id); if (!it) return () => {};
+      const before = it.res, r = resPropre(res), vide = !Object.keys(r).length;
+      if (vide) delete it.res; else it.res = r;
+      log(id, vide ? "a retiré les résultats" : "a noté les résultats : " + resTxt(r)); emit();
+      return () => { const x = byId(id); if (!x) return; if (before) x.res = before; else delete x.res; emit(); };
+    },
+    /* le budget des partenariats payants et l'enveloppe de chaque période : vus et réglés par les chefs de projet seulement */
+    voitBudget: () => me().role === "pilote",
+    montant: (id) => (db.budget || {})[id],
+    enveloppe: (k) => (db.env || {})[k],
+    setMontant(id, n) { return regle("budget", id, n); },
+    setEnveloppe(k, n) { return regle("env", k, n); },
     /* l'heure compte : ce qui a été créé ou annulé le matin de la réunion ne revient pas à l'ordre du jour */
     meetingDone() { const b = db.lastMeeting; db.lastMeeting = new Date().toISOString(); const flagged = db.items.filter((i) => i.reunion).map((i) => i.id); flagged.forEach((id) => (byId(id).reunion = false)); emit(); return () => { db.lastMeeting = b; flagged.forEach((id) => { const x = byId(id); if (x) x.reunion = true; }); emit(); }; },
     /* préférences par compte : épingles, thème, suggestions écartées */
@@ -352,5 +390,5 @@
   Object.defineProperty(KP, "SERVICES", { get: () => db.services });
   /* les messages clés, sans l'étiquette hors messages : relu à chaque fois, la liste se règle */
   Object.defineProperty(KP, "CLES", { get: () => MESSAGES.filter((m) => !m.hors) });
-  Object.assign(KP, { TODAY, PERIODS, MESSAGES, msgKey, STATUTS, ELEMENTS, ASK, MOIS, libOf, slug, setRefs, endOf, monthEnd, fmt, iso, parse, addDays, diff, monday, periodOf, me, person, nomDe, service, message, store });
+  Object.assign(KP, { TODAY, PERIODS, MESSAGES, msgKey, STATUTS, ELEMENTS, UNITES, resPropre, resTxt, nb, ASK, MOIS, libOf, slug, setRefs, endOf, monthEnd, fmt, iso, parse, addDays, diff, monday, periodOf, me, person, nomDe, service, message, store });
 })();

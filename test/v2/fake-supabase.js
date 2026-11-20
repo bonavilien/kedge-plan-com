@@ -5,7 +5,7 @@
 (() => {
   const U = (n) => `a0000000-0000-0000-0000-00000000000${n}`, I = (n) => `b0000000-0000-0000-0000-00000000000${n}`;
   const d = (n) => { const x = new Date(); x.setDate(x.getDate() + n); return `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, "0")}-${String(x.getDate()).padStart(2, "0")}`; };
-  const item = (o) => ({ flou: "", per: [], cc: [], m: [], st: "planifie", tf: null, partner: null, lieu: "", note: "", fin: null, rang: null, cible: null, author: U(1), at: new Date().toISOString(), updated_at: new Date().toISOString(),
+  const item = (o) => ({ res: {}, flou: "", per: [], cc: [], m: [], st: "planifie", tf: null, partner: null, lieu: "", note: "", fin: null, rang: null, cible: null, author: U(1), at: new Date().toISOString(), updated_at: new Date().toISOString(),
     report_de: "", report_motif: "", report_par: null, report_at: null, annule_motif: "", annule_par: null, annule_at: null, ...o });
   const db = {
     periods: [{ n: 1, nom: "Installer", du: "2026-09-01", au: "2026-10-31", lib: "" }, { n: 2, nom: "Considérer", du: "2026-11-01", au: "2026-12-31", lib: "" }, { n: 3, nom: "Préférer", du: "2027-01-01", au: "2027-03-31", lib: "" },
@@ -39,12 +39,14 @@
     answers: [], meta: [{ k: "last_meeting", v: d(-7) }],
     journal: [{ id: 1, item: I(1), author: U(1), at: "2026-11-01T09:00:00Z", kind: "creation", diff: null }, { id: 2, item: I(4), author: U(2), at: "2026-11-12T09:00:00Z", kind: "modif", diff: { st: ["planifie", "diffuse"] } }],
     lieux: [{ id: "f0000000-0000-0000-0000-000000000001", nom: "Campus de Bordeaux" }], contacts: [], item_contacts: [],
+    /* 0031 : budget des partenariats et enveloppes des périodes (la vraie base ne les montre qu'aux chefs de projet) */
+    budget: [{ item: I(9), montant: 3200 }], enveloppes: [{ per: 2, montant: 10000 }],
     users: [{ id: U(1), email: "pilote@example.com" }, { id: U(2), email: "presse@example.com" }, { id: U(3), email: "reseaux@example.com" }, { id: U(4), email: "lecteur@example.com" }],
   };
   let session = null;
   try { session = JSON.parse(sessionStorage.getItem("fake-session") || "null"); } catch (e) {}
   const F = (window.__fake = { db, calls: [], failNext: null });
-  const PK = { answers: ["user_id", "key"], meta: ["k"], messages: ["n"] };
+  const PK = { answers: ["user_id", "key"], meta: ["k"], messages: ["n"], budget: ["item"], enveloppes: ["per"] };
   const uid = () => (session ? session.user.id : null);
   const DEF = { items: (r) => item({ author: uid(), ...r }), links: (r) => ({ id: crypto.randomUUID(), author: uid(), at: new Date().toISOString(), ...r }), reqs: (r) => ({ asker: uid(), st: "ouverte", reponse: "", at: new Date().toISOString(), ...r }),
     blocks: (r) => ({ author: uid(), leve: false, at: new Date().toISOString(), ...r }), answers: (r) => ({ user_id: uid(), ...r }), partners: (r) => ({ k: r.nom.toLowerCase().replace(/[^a-z0-9]+/g, "-"), ...r }),
@@ -73,7 +75,7 @@
         });
         return { data: q.ret ? hit.map((r) => ({ id: r.id })) : null, error: null };
       }
-      if (q.op === "delete") { const gone = t === "items" ? hit.filter((r) => r.st === "retire") : hit; db[t] = tbl.filter((r) => !gone.includes(r)); if (t === "items") { const ids = gone.map((g) => g.id); ["links", "reqs", "blocks", "item_contacts"].forEach((k) => (db[k] = db[k].filter((x) => !ids.includes(x.item)))); db.items.forEach((x) => { if (ids.includes(x.tf)) x.tf = null; }); } return { data: q.ret ? gone.map((r) => ({ id: r.id })) : null, error: null }; }
+      if (q.op === "delete") { const gone = t === "items" ? hit.filter((r) => r.st === "retire") : hit; db[t] = tbl.filter((r) => !gone.includes(r)); if (t === "items") { const ids = gone.map((g) => g.id); ["links", "reqs", "blocks", "item_contacts", "budget"].forEach((k) => (db[k] = db[k].filter((x) => !ids.includes(x.item)))); db.items.forEach((x) => { if (ids.includes(x.tf)) x.tf = null; }); } return { data: q.ret ? gone.map((r) => ({ id: r.id })) : null, error: null }; }
     };
     const api = {
       select: () => { if (q.op !== "select") q.ret = true; return api; }, order: (k) => { q.sort = k; return api; }, limit: () => api, eq: (k, v) => { q.filters.push([k, v]); return api; },

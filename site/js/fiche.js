@@ -30,6 +30,9 @@
     if (tf && it.variant !== "sujet") rows.push(["Lieu", can ? `<input class="val" id="f-lieu" data-f="lieu" list="dl-lieux" value="${h(it.lieu || "")}" placeholder="Choisir ou écrire un lieu" autocomplete="off"><datalist id="dl-lieux">${store.lieux().map((l) => `<option value="${h(l)}"></option>`).join("")}</datalist>` : `<span class="val${it.lieu ? "" : " none"}">${h(it.lieu || "—")}</span>`]);
     if (it.variant === "classement") rows.push(["Rang", inp("rang", it.rang, "À la parution")], ["Objectif", inp("cible", it.cible, "Top…")]);
     rows.push(["État", it.annule ? KP.pill(it) : can ? `<div class="seg" role="group" aria-label="État">${KP.STATUTS.map((s) => `<button type="button" data-act="f-st" data-k="${s.k}" class="${it.st === s.k ? "on" : ""}" aria-pressed="${it.st === s.k}">${s.k === "diffuse" && it.st === s.k ? ic("check") : ""}${s.nom}</button>`).join("")}</div>` : KP.pill(it)]);
+    /* résultats d'une diffusion ; budget d'un partenariat payant (chefs de projet seulement) */
+    if (!tf && !it.annule && it.st === "diffuse" && (it.res || can)) rows.push(["Résultat", can ? `<button type="button" class="val r-fv${it.res ? "" : " none"}" data-act="r-edit" data-id="${it.id}">${it.res ? h(KP.resTxt(it.res)) : "Ajouter les chiffres"}</button>` : `<span class="val r-fv">${h(KP.resTxt(it.res))}</span>`]);
+    if (it.variant === "partenariat" && store.voitBudget()) { const m = store.montant(it.id); rows.push(["Budget", `<button type="button" class="val${m != null ? "" : " none"}" data-act="r-prix" data-id="${it.id}">${m != null ? h(KP.nb(m)) + " €" : "Ajouter le montant"}${ic("lock")}</button>`]); }
 
     const showAct = KP.ui.allAct === it.id ? acts : acts.slice(0, 3);
 

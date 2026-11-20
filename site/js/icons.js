@@ -60,5 +60,7 @@ window.KUI_ICONS = {
     asana: s('<circle cx="12" cy="7.300" r="3.300"/><circle cx="6.300" cy="15.800" r="3.300"/><circle cx="17.700" cy="15.800" r="3.300"/>'),
     trello: s('<rect x="3.500" y="3.500" width="17" height="17" rx="3"/><rect x="7" y="7" width="4" height="9.500" rx="1"/><rect x="13" y="7" width="4" height="5.500" rx="1"/>'),
     sun: s('<circle cx="12" cy="12" r="4"/><path d="M12 2.500v2M12 19.500v2M2.500 12h2M19.500 12h2M5.300 5.300l1.400 1.400M17.300 17.300l1.400 1.400M18.700 5.300l-1.400 1.400M6.700 17.300l-1.400 1.400"/>'),
+    /* résultats : une courbe qui monte sur deux axes */
+    chart: s('<path d="M4.500 4v14.500a1.500 1.500 0 0 0 1.500 1.500h14"/><path d="m8 15 3.500-4 3 2.500L19.500 8"/>'),
   });
 })();

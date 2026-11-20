@@ -2,6 +2,13 @@
 
 Généré depuis `site/js/version.js` par `node scripts/version.mjs`. Ne pas modifier à la main.
 
+## 2.6 · 2026-11-20
+
+- Nouvel écran Résultats : ce que les diffusions ont donné, période par période (vues, retombées presse, inscrits, clics), et message par message
+- « À compléter » liste les diffusions sans chiffre : on tape le nombre, on choisit l'unité, Entrée
+- Onglet Budget, réservé aux chefs de projet : le coût des partenariats payants par période, avec une enveloppe facultative qui passe au rouge une fois dépassée
+- Dans la fiche, « 12 400 vues » note le résultat de l'action, et « 1 500 € » le budget du partenariat
+
 ## 2.5 · 2026-11-19
 
 - Sur la fiche, « Demander des éléments » devient une seule ligne : « @Estelle les visuels pour vendredi dans 2 semaines ». L'appli reconnaît la personne et la date, et les surligne pendant que tu écris

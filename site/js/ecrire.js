@@ -4,7 +4,7 @@
 (() => {
   const KP = window.KP, { h, ic, store } = KP, P = KP.phrase;
   const $ = (id) => document.getElementById(id);
-  const etat = (id) => { KP.ui.ph = KP.ui.ph || {}; return KP.ui.ph[id] || (KP.ui.ph[id] = { txt: "", noDate: false, quick: "", dates: false, sansDoc: false, sel: 0 }); };
+  const etat = (id) => { KP.ui.ph = KP.ui.ph || {}; return KP.ui.ph[id] || (KP.ui.ph[id] = { txt: "", noDate: false, quick: "", dates: false, sansDoc: false, sansRes: false, sansPrix: false, sel: 0 }); };
   const recents = () => { try { return JSON.parse(localStorage.getItem("kplan-recents") || "[]"); } catch (e) { return []; } };
   const retenir = (ks) => { try { localStorage.setItem("kplan-recents", JSON.stringify([...ks, ...recents().filter((k) => !ks.includes(k))].slice(0, 8))); } catch (e) { /* rien */ } };
   const cur = () => store.get(KP.route.fiche);
@@ -27,6 +27,11 @@
     a.lue = a.mode === "demande" && !s.quick;   /* la date vient de la phrase (et pas d'un bouton) */
     a.decaler = r.intention === "decaler" && can && r.date && r.date.iso !== it.date && it.variant !== "sujet" ? r.date.iso : "";
     a.docs = can && !it.annule ? r.liens.filter((l) => l.sp && !it.docs.some((d) => d.url === l.url)) : [];
+    /* « 12 000 vues » sur une action diffusée (ou passée) : ses résultats ; « 1 500 € » sur un partenariat, écrit par un chef de projet : son budget */
+    const ch = r.chiffres.filter((c, i, l) => l.findIndex((x) => x.unite === c.unite) === i);
+    a.res = can && ch.length && it.kind === "action" && !it.annule && (it.st === "diffuse" || (!it.flou && it.date <= KP.TODAY)) ? Object.fromEntries(ch.map((c) => [c.unite, c.n])) : null;
+    a.prix = r.montant && it.variant === "partenariat" && !it.annule && store.voitBudget() ? r.montant.n : null;
+    a.noteRes = !!a.res && !s.sansRes; a.notePrix = a.prix != null && !s.sansPrix;
     a.alerte = a.mode === "demande" ? (a.date < KP.TODAY ? "date passée" : a.date > it.date && !it.flou ? `après ${it.kind === "tf" ? "le temps fort" : "la diffusion"} du ${date(it.date)}` : "") : "";
     return a;
   };
@@ -46,7 +51,7 @@
     const box = root.querySelector(".ph"); if (!box) return;
     const a = analyse(it), { r, s } = a, ta = box.querySelector("textarea");
     const clef = r.date && a.mode !== "info" ? r.date.txt : ""; if (clef && clef !== vu) tour++; vu = clef;
-    const cls = (k) => k === "qui" ? "z-qui" : k === "rappel" ? "z-qui" : k === "ref" ? "z-ref" : k === "date" && (a.lue || a.mode === "rappel" || a.decaler) ? `z-date${a.alerte ? " alerte" : ""} t${tour % 2}` : "";
+    const cls = (k) => (k === "chiffre" && a.noteRes) || (k === "montant" && a.notePrix) ? "z-res" : k === "qui" ? "z-qui" : k === "rappel" ? "z-qui" : k === "ref" ? "z-ref" : k === "date" && (a.lue || a.mode === "rappel" || a.decaler) ? `z-date${a.alerte ? " alerte" : ""} t${tour % 2}` : "";
     box.querySelector(".ph-miroir").innerHTML = P.morceaux(s.txt, r).map((m) => m.k && cls(m.k) ? `<mark class="${cls(m.k)}">${h(m.t)}</mark>` : h(m.t)).join("") + "​";
     /* ce que l'appli a compris */
     const chips = [];
@@ -64,9 +69,11 @@
     if (a.decaler) { const n = it.kind === "tf" ? store.relais(it.id).filter((x) => !x.flou && x.st !== "diffuse" && !x.annule).length : 0;
       chips.push(`<button type="button" class="ph-c propose" data-act="ph-decaler">${ic("shift")}Déplacer ${it.kind === "tf" ? "le temps fort" : "l'action"} au ${h(date(a.decaler))}${n ? ` avec ${n > 1 ? `ses ${n} relais` : "son relais"}` : ""}</button>`); }
     if (a.docs.length) chips.push(`<button type="button" class="ph-c propose${s.sansDoc ? "" : " on"}" data-act="ph-doc" aria-pressed="${!s.sansDoc}">${ic("doc")}Ranger ${a.docs.length > 1 ? "les liens" : "le lien"} dans les documents</button>`);
-    if (!a.mode && s.txt.trim() && r.tape === undefined && r.cherche === undefined && !a.decaler) chips.push(`<span class="muted">Tape @ pour choisir à qui</span>`);
+    if (a.res) chips.push(`<button type="button" class="ph-c propose${a.noteRes ? " on" : ""}" data-act="ph-res" aria-pressed="${a.noteRes}">${ic("chart")}Noter ${h(KP.resTxt(a.res))}${it.st !== "diffuse" ? " et passer en Diffusé" : ""}</button>`);
+    if (a.prix != null) chips.push(`<button type="button" class="ph-c propose${a.notePrix ? " on" : ""}" data-act="ph-prix" aria-pressed="${a.notePrix}">${ic("lock")}Budget : ${h(KP.nb(a.prix))} €</button>`);
+    if (!a.mode && !a.noteRes && !a.notePrix && s.txt.trim() && r.tape === undefined && r.cherche === undefined && !a.decaler) chips.push(`<span class="muted">Tape @ pour choisir à qui</span>`);
     const ap = box.querySelector(".ph-apercu"); ap.innerHTML = chips.join(""); ap.hidden = !chips.length;
-    box.querySelector(".ph-go").disabled = !a.mode;
+    box.querySelector(".ph-go").disabled = !a.mode && !a.noteRes && !a.notePrix;
     /* suggestions : @ puis des lettres, ou # puis le début d'un titre */
     const sg = box.querySelector(".ph-sugg"); let list = [];
     if (r.tape !== undefined) {
@@ -123,6 +130,8 @@
     "ph-nodate": () => { const it = cur(), s = etat(it.id); if (s.quick) s.quick = ""; else s.noDate = true; peindre($("fiche"), it); $("ph-t").focus(); },
     "ph-dates": () => { const it = cur(); etat(it.id).dates = true; peindre($("fiche"), it); const b = document.querySelector(".ph-c.choix"); if (b) b.focus(); },
     "ph-quick": (b) => { const it = cur(); etat(it.id).quick = b.dataset.v; peindre($("fiche"), it); $("ph-t").focus(); },
+    "ph-res": () => { const it = cur(), s = etat(it.id); s.sansRes = !s.sansRes; peindre($("fiche"), it); $("ph-t").focus(); },
+    "ph-prix": () => { const it = cur(), s = etat(it.id); s.sansPrix = !s.sansPrix; peindre($("fiche"), it); $("ph-t").focus(); },
     "ph-doc": () => { const it = cur(), s = etat(it.id); s.sansDoc = !s.sansDoc; peindre($("fiche"), it); $("ph-t").focus(); },
     "ph-decaler": () => {
       const it = cur(), a = analyse(it); if (!a.decaler) return;
@@ -133,6 +142,11 @@
     "ph-send": () => {
       const it = cur(); if (!it) return;
       const a = analyse(it), { r, s } = a, ta = $("ph-t");
+      /* sans @ : seulement noter les chiffres ou le montant */
+      const notes = [];
+      if (a.noteRes) { if (it.st !== "diffuse") store.update(it.id, { st: "diffuse" }, "a passé l'état à « Diffusé »"); store.setRes(it.id, { ...(it.res || {}), ...a.res }); notes.push(KP.resTxt(a.res)); }
+      if (a.notePrix) { store.setMontant(it.id, a.prix); notes.push(`budget ${KP.nb(a.prix)} €`); }
+      if (!a.mode && notes.length) { KP.ui.ph[it.id] = null; KP.render(); return KP.toast(`Noté : ${notes.join(", ")}`); }
       if (!a.mode) { if (ta) ta.focus(); return KP.toast(a.decaler ? "Pour prévenir quelqu'un du changement, ajoute @ et son nom" : "Commence par @ et le nom de la personne"); }
       const txt = P.propre(s.txt, r, { sansDate: a.mode === "rappel" }) || s.txt.trim();
       if (a.docs.length && !s.sansDoc) store.update(it.id, { docs: [...it.docs, ...a.docs.map((l) => ({ t: titreLien(l.url), url: l.url }))] }, "a ajouté un document");
