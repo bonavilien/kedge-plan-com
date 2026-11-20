@@ -43,7 +43,6 @@
         <span class="kind"><i class="tag${tf ? " tf" : ""}">${h(KP.kindName(it))}</i></span>
         ${reader ? "" : `<button type="button" class="ib f-x${pinned ? " on" : ""}" data-act="f-pin" aria-pressed="${pinned}" data-tip="${pinned ? "Retirer de mon accueil" : "Épingler sur mon accueil"}" aria-label="${pinned ? "Retirer de mon accueil" : "Épingler sur mon accueil"}">${ic("bookmark")}</button>`}
         ${reader || it.annule ? "" : KP.ib("clock", "Rappel pour moi", "memo", 'data-x="1"')}
-        ${reader || it.annule || tf ? "" : KP.ib("megaphone", "Prévenir un service", "prevenir", 'data-x="1"')}
         ${KP.ib("link", "Copier le lien", "f-link", 'data-x="1"')}
         ${KP.outils ? KP.outils.bouton(it) : ""}
         ${KP.ib("kebab", "Plus", "f-more", `aria-haspopup="menu"${can ? "" : ' data-phone="1"'}`)}
@@ -118,7 +117,7 @@
     "f-more": (a) => {
       const it = cur(), can = store.canEdit(it);
       /* sur téléphone, les icônes de la barre passent ici, avec leur nom */
-      const x = matchMedia("(max-width: 767px)").matches ? [...$("fiche").querySelectorAll(".f-top .f-x, .f-top [data-x]")].map((b) => ({ v: "x:" + b.dataset.act, nom: b.getAttribute("aria-label"), icon: b.dataset.act === "f-pin" ? "bookmark" : b.dataset.act === "memo" ? "clock" : b.dataset.act === "prevenir" ? "megaphone" : b.dataset.act === "f-export" ? "sync" : "link" })) : [];
+      const x = matchMedia("(max-width: 767px)").matches ? [...$("fiche").querySelectorAll(".f-top .f-x, .f-top [data-x]")].map((b) => ({ v: "x:" + b.dataset.act, nom: b.getAttribute("aria-label"), icon: b.dataset.act === "f-pin" ? "bookmark" : b.dataset.act === "memo" ? "clock" : b.dataset.act === "f-export" ? "sync" : "link" })) : [];
       const own = can ? [{ v: "dup", nom: "Dupliquer", icon: "copy" }, it.annule ? { v: "res", nom: "Rétablir", icon: "undo" } : { v: "ann", nom: it.kind === "tf" ? "Annuler ce temps fort" : "Annuler cette action", icon: "close" }, "-", { v: "del", nom: "Supprimer", icon: "trash", danger: true }] : [];
       KP.menu(a, [...x, ...(x.length && own.length ? ["-"] : []), ...own], (v) => {
         if (v.startsWith("x:")) { setTimeout(() => KP.acts[v.slice(2)](a), 0); return; }
@@ -162,8 +161,6 @@
       d.addEventListener("click", (e) => { const pk = e.target.closest("[data-pick]"); if (pk) KP.datepick(pk, s.pour, (v) => { if (v) { s.pour = v; pk.querySelector("span:last-child").textContent = KP.fmt.court(v); } }); });
       d.querySelector("form").addEventListener("submit", () => { const txt = new FormData(d.querySelector("form")).get("txt").trim(); if (!txt) return; if (old) { store.editReq(old.id, { txt, pour: s.pour }); KP.toast("Rappel modifié"); } else { store.ask({ item: it.id, a: KP.me().k, quoi: "Autre", txt, pour: s.pour }); KP.toast("Rappel noté"); } });
     },
-    /* une action ne prévient que son service : « Prévenir » alerte un autre service, au cas par cas */
-    prevenir: (a) => { const it = cur(), u = KP.me(); KP.menu(a, KP.SERVICES.filter((s) => s.k !== it.svc && s.k !== u.svc).map((s) => ({ v: s.k, nom: s.nom })), (v) => store.prevenir(it.id, v), { right: true, title: "Prévenir un service" }); },
     "req-date": (a) => { const r = store.reqs().find((x) => x.id === a.dataset.id); if (r) KP.datepick(a, r.pour, (v) => { if (v && v !== r.pour) { store.editReq(r.id, { pour: v }); KP.toast(`Pour le ${KP.fmt.moyen(v)}`); } }); },
     "req-drop": (a) => { const r = store.reqs().find((x) => x.id === a.dataset.id); if (!r) return; store.dropReq(r.id); KP.toast(r.a === r.de ? "Rappel effacé" : r.pour ? `Demande à ${KP.dest(r.a)} retirée` : `Message à ${KP.dest(r.a)} retiré`); },
     relance: (a) => { const r = store.reqs().find((x) => x.id === a.dataset.id); if (r) store.relance(r.id); },

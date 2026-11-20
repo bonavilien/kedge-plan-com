@@ -2,6 +2,10 @@
 
 Généré depuis `site/js/version.js` par `node scripts/version.mjs`. Ne pas modifier à la main.
 
+## 2.6.2 · 2026-11-20
+
+- Le mégaphone « Prévenir un service » quitte la fiche : pour prévenir quelqu'un, écris @ et son nom dans les messages
+
 ## 2.6.1 · 2026-11-20
 
 - Un message à plusieurs personnes part chez tout le monde, même si l'une d'elles ne peut pas le recevoir ; sans réseau, il attend et part au retour, sans jamais disparaître
