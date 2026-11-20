@@ -11,22 +11,23 @@
     if (old) history.replaceState(null, "", "#/accueil?fiche=" + old[1]); else if (location.hash === "#afaire") history.replaceState(null, "", "#/accueil");
     const [path, q = ""] = location.hash.replace(/^#\/?/, "").split("?");
     const seg = path.split("/").filter(Boolean), p = new URLSearchParams(q);
-    const r = { screen: ["accueil", "plan", "reunion", "reglages"].includes(seg[0]) ? seg[0] : "accueil", per: curPer(), tab: "ordre", vue: p.get("vue") === "grille" ? "grille" : "liste", svc: p.get("svc") || "", msg: p.get("msg") || "", type: p.get("type") || "", fiche: p.get("fiche") || "" };
+    const r = { screen: ["accueil", "plan", "resultats", "reunion", "reglages"].includes(seg[0]) ? seg[0] : "accueil", per: curPer(), tab: "ordre", vue: p.get("vue") === "grille" ? "grille" : "liste", svc: p.get("svc") || "", msg: p.get("msg") || "", type: p.get("type") || "", fiche: p.get("fiche") || "" };
     if (r.screen === "plan" && KP.PERIODS.some((x) => x.k === seg[1])) r.per = seg[1];
     /* les anciennes adresses d'onglets mènent au nouvel onglet qui les regroupe */
     const ALIAS = { services: "equipe", periodes: "projet", messages: "projet", medias: "carnets", lieux: "carnets", contacts: "carnets" };
     const st = ALIAS[seg[1]] || seg[1];
     r.set = r.screen === "reglages" && ["projet", "equipe", "carnets", "apropos"].includes(st) ? st : "profil";
     if (r.screen === "reunion") { r.tab = seg[1] === "bilan" ? "bilan" : "ordre"; if (KP.PERIODS.some((x) => x.k === p.get("per"))) r.per = p.get("per"); }
+    if (r.screen === "resultats") { r.tab = seg[1] === "budget" ? "budget" : "diffusions"; if (KP.PERIODS.some((x) => x.k === p.get("per"))) r.per = p.get("per"); }
     return r;
   };
   KP.parseRoute = parseHash;
   const toHash = (r) => {
     const p = new URLSearchParams();
     if (r.screen === "plan") { if (r.vue === "grille") p.set("vue", "grille"); ["svc", "msg", "type"].forEach((k) => r[k] && p.set(k, r[k])); }
-    if (r.screen === "reunion" && r.tab === "bilan" && r.per !== curPer()) p.set("per", r.per);
+    if ((r.screen === "reunion" && r.tab === "bilan" || r.screen === "resultats") && r.per !== curPer()) p.set("per", r.per);
     if (r.fiche) p.set("fiche", r.fiche);
-    const path = r.screen === "plan" ? `/plan/${r.per}` : r.screen === "reunion" ? `/reunion/${r.tab}` : r.screen === "reglages" ? `/reglages/${r.set || "profil"}` : "/accueil";
+    const path = r.screen === "plan" ? `/plan/${r.per}` : r.screen === "reunion" ? `/reunion/${r.tab === "bilan" ? "bilan" : "ordre"}` : r.screen === "resultats" ? `/resultats/${r.tab === "budget" ? "budget" : "diffusions"}` : r.screen === "reglages" ? `/reglages/${r.set || "profil"}` : "/accueil";
     const q = p.toString();
     return "#" + path + (q ? "?" + q : "");
   };
@@ -47,7 +48,7 @@
   KP.logo = (cls) => { const s = KP.marque.symbole, c = [cls, KP.marque.carre ? "carre" : "", s ? "symbole" : ""].filter(Boolean).join(" "); return KP.marque.logo ? `<img src="${h(s || KP.marque.logo)}" alt="${KP.marque.carre ? "" : h(KP.marque.nom)}"${c ? ` class="${c}"` : ""}>` : ""; };
 
   /* ---------- rendu ---------- */
-  const SCREENS = [["accueil", "Accueil", "home"], ["plan", "Le plan", "calendar"], ["reunion", "Réunion", "meet"]];
+  const SCREENS = [["accueil", "Accueil", "home"], ["plan", "Le plan", "calendar"], ["resultats", "Résultats", "chart"], ["reunion", "Réunion", "meet"]];
   function renderSide() {
     const u = KP.me(), n = KP.inbox().length, r = KP.route;
     const news = KP.notifs().some((j) => j.quand > (store.prefs().vu || 0));
@@ -94,7 +95,7 @@
     else if (!fNow && fWas && (inFiche || !act || act === document.body)) { const x = main.querySelector(`.row[data-id="${fWas}"] .open, .g-i[data-id="${fWas}"]`); if (x) x.focus({ preventScroll: true, focusVisible: !KP.phone() }); }
     else if (fid && $(fid)) { $(fid).focus({ preventScroll: true }); try { if (sel != null) $(fid).setSelectionRange(sel, sel); } catch (e) {} }
     else if (frow) { const x = main.querySelector(`.row[data-id="${frow}"] .open`); if (x) x.focus({ preventScroll: true }); }
-    document.title = ({ accueil: "Accueil", plan: "Le plan", reunion: "Réunion", reglages: "Réglages" })[KP.route.screen] + " · " + KP.marque.titre;
+    document.title = ({ accueil: "Accueil", plan: "Le plan", resultats: "Résultats", reunion: "Réunion", reglages: "Réglages" })[KP.route.screen] + " · " + KP.marque.titre;
     if (window.kpOuvrir) window.kpOuvrir(); /* le 7 s'ouvre sur l'appli (index.html) */
   }
   try { if (window.self !== window.top) document.documentElement.classList.add("embedded"); } catch (e) { document.documentElement.classList.add("embedded"); }
@@ -120,7 +121,7 @@
   const typing = (t) => t && (/^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName) || t.isContentEditable);
   document.addEventListener("keydown", (e) => {
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") { e.preventDefault(); KP.palette(); return; }
-    if (document.querySelector("dialog[open]")) return;
+    if (document.querySelector("dialog[open]") || e.defaultPrevented) return;
     const t = e.target;
     if (e.key === "Escape") { if (typing(t)) { t.blur(); return; } if (KP.route.fiche) { KP.acts["close-fiche"](); } return; }
     if (typing(t) || e.ctrlKey || e.metaKey || e.altKey) return;
@@ -178,8 +179,11 @@
   KP.notifs = () => {
     const u = KP.me();
     const pr = store.prefs(), nx = pr.nx || [], on = pr.notif || {};
-    const kind = (j) => /^a créé/.test(j.txt) ? "creations" : /demandé|répondu|relancé/.test(j.txt) ? "demandes" : "changements";
-    return store.journal().filter((j) => j.qui !== u.k && j.quand > Date.now() - 10 * 864e5 && j.quand > (pr.nall || 0) && !nx.includes(j.id) && on[kind(j)] !== false).filter((j) => { const it = store.get(j.item); return it && (u.role !== "service" || it.svc === u.svc || it.by === u.k || store.relais(it.id).some((r) => r.svc === u.svc)); }).sort((a, b) => b.quand - a.quand);
+    const kind = (j) => /^a créé/.test(j.txt) ? "creations" : /demandé|répondu|relancé|pour info|écrit/.test(j.txt) ? "demandes" : "changements";
+    /* un message qui m'est adressé (ou à mon service), ou la réponse à ma demande : pour moi, quel que soit le service de la fiche */
+    const pourMoi = (j) => (j.dest && (j.dest === u.k || (u.svc && j.dest === u.svc) || (j.dest === "chef" && u.role === "pilote"))) || (j.asker && j.asker === u.k)
+      || (!j.dest && (new RegExp("à " + String(u.nom).replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "$").test(j.txt) || (u.svc && new RegExp("à " + String((KP.service(u.svc) || {}).nom || "~").replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "$").test(j.txt))));
+    return store.journal().filter((j) => j.qui !== u.k && j.quand > Date.now() - 10 * 864e5 && j.quand > (pr.nall || 0) && !nx.includes(j.id) && on[kind(j)] !== false).filter((j) => { const it = store.get(j.item); return it && (u.role !== "service" || pourMoi(j) || it.svc === u.svc || it.by === u.k || store.relais(it.id).some((r) => r.svc === u.svc)); }).sort((a, b) => b.quand - a.quand);
   };
 
   /* ---------- fenêtre « Nouveau » ---------- */
@@ -254,6 +258,8 @@
       { nom: "Accueil", icon: "home", go: () => KP.go({ screen: "accueil", fiche: "" }) },
       { nom: "Le plan, en liste", icon: "list", go: () => KP.go({ screen: "plan", vue: "liste", fiche: "" }) },
       { nom: "Le plan, en calendrier", icon: "grid", go: () => KP.go({ screen: "plan", vue: "grille", fiche: "" }) },
+      { nom: "Résultats des diffusions", icon: "chart", go: () => KP.go({ screen: "resultats", tab: "diffusions", fiche: "" }) },
+      ...(store.voitBudget() ? [{ nom: "Budget des partenariats", icon: "lock", go: () => KP.go({ screen: "resultats", tab: "budget", fiche: "" }) }] : []),
       { nom: "Réunion, ordre du jour", icon: "meet", go: () => KP.go({ screen: "reunion", tab: "ordre", fiche: "" }) },
       { nom: "Réunion, bilan", icon: "meet", go: () => KP.go({ screen: "reunion", tab: "bilan", fiche: "" }) },
       { nom: "Nouveautés et version", icon: "info", go: () => KP.go({ screen: "reglages", set: "apropos", fiche: "" }) },

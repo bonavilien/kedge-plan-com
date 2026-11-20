@@ -2,6 +2,23 @@
 
 Généré depuis `site/js/version.js` par `node scripts/version.mjs`. Ne pas modifier à la main.
 
+## 2.6.1 · 2026-11-20
+
+- Un message à plusieurs personnes part chez tout le monde, même si l'une d'elles ne peut pas le recevoir ; sans réseau, il attend et part au retour, sans jamais disparaître
+- La phrase est mieux comprise : « 2/3 visuels », « version 2.6 », un numéro de téléphone ou « le S2 » ne sont plus pris pour des dates, « reporting » ou « ça avance ? » ne proposent plus de décaler, une date déjà passée est signalée
+- « 1 650,50 € » est noté 1 651 €, un chiffre impossible est refusé avec un message clair, et deux personnes qui notent les chiffres d'une même action en même temps ne s'effacent plus
+- Un montant noté au budget ne part plus dans le message : seuls les chefs de projet le voient
+- Un message pour info arrive dans la cloche et n'efface plus le rappel J-7
+- Le rappel pour moi d'un collègue ne s'affiche plus dans « Vient du temps fort », un long lien ne déborde plus dans « À traiter »
+- Résultats et Budget plus lisibles au téléphone et sur les écrans moyens
+
+## 2.6 · 2026-11-20
+
+- Nouvel écran Résultats : ce que les diffusions ont donné, période par période (vues, retombées presse, inscrits, clics), et message par message
+- « À compléter » liste les diffusions sans chiffre : on tape le nombre, on choisit l'unité, Entrée
+- Onglet Budget, réservé aux chefs de projet : le coût des partenariats payants par période, avec une enveloppe facultative qui passe au rouge une fois dépassée
+- Dans la fiche, « 12 400 vues » note le résultat de l'action, et « 1 500 € » le budget du partenariat
+
 ## 2.5 · 2026-11-19
 
 - Sur la fiche, « Demander des éléments » devient une seule ligne : « @Estelle les visuels pour vendredi dans 2 semaines ». L'appli reconnaît la personne et la date, et les surligne pendant que tu écris

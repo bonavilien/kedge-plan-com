@@ -7,7 +7,8 @@
   const mine = (r) => { const u = KP.me(); return r.a === u.k || (!!u.svc && r.a === u.svc) || (r.a === "chef" && u.role === "pilote"); };
 
   /* demandes qui m'attendent, la plus pressée d'abord */
-  KP.inbox = () => KP.me().role === "lecteur" ? [] : store.reqs().filter((r) => !r.fait && r.pour && mine(r) && store.get(r.item)).sort((a, b) => a.pour.localeCompare(b.pour));
+  /* une fiche annulée n'attend plus rien (sauf mes rappels pour moi) */
+  KP.inbox = () => KP.me().role === "lecteur" ? [] : store.reqs().filter((r) => { const it = store.get(r.item); return !r.fait && r.pour && mine(r) && it && (!it.annule || r.a === r.de); }).sort((a, b) => a.pour.localeCompare(b.pour));
 
   const sg = () => { const p = store.prefs(); p.sg = p.sg || { snooze: {}, n: {} }; return p.sg; };
   KP.skipSuggestion = (s) => { const x = sg(); x.snooze[s.key] = KP.addDays(KP.TODAY, 3); x.n[s.type] = (x.n[s.type] || 0) + 1; store.setPref("sg", x); };

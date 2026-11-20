@@ -12,7 +12,7 @@ Pour que les copies suivent sans casser, ici :
 - rien de propre à KEDGE dans le code : le nom vient de `site/config.js` ici, des variables GitHub dans une copie (le logo reste celui de Road to 7th) (`scripts/config-copie.mjs`, lancé à la publication) ; périodes, messages et services sont dans la base ;
 - si la fonction `mise-a-jour` change, monter `FONCTION` en tête du fichier : les copies sont invitées à la recoller.
 
-Tests : `node --experimental-strip-types test/maj/fonction.mjs` (la fonction, faux GitHub), `sh test/maj/installation.sh` (installation sur base neuve), `sh test/maj/config-copie.sh`, `node test/maj/reglages.mjs` et `node test/maj/ouverture.mjs`, `node --experimental-strip-types test/maj/export.mjs` (fonction Asana et Trello, faux outils) et `node test/maj/export-ui.mjs` (bouton de la fiche et Réglages) (ouverture du 7 et écran de connexion), le site servi sur le port 8812.
+Tests 2.5 et 2.6 : `node test/phrase/dates.mjs`, `node test/phrase/phrases.mjs`, `node test/maj/une-phrase.mjs`, `node test/maj/resultats.mjs`, `sh test/db/une-phrase.sh`, `sh test/db/resultats.sh`. Tests : `node --experimental-strip-types test/maj/fonction.mjs` (la fonction, faux GitHub), `sh test/maj/installation.sh` (installation sur base neuve), `sh test/maj/config-copie.sh`, `node test/maj/reglages.mjs` et `node test/maj/ouverture.mjs`, `node --experimental-strip-types test/maj/export.mjs` (fonction Asana et Trello, faux outils) et `node test/maj/export-ui.mjs` (bouton de la fiche et Réglages) (ouverture du 7 et écran de connexion), le site servi sur le port 8812.
 
 ## Les branches
 
@@ -123,6 +123,8 @@ Les données sont dans Supabase (hébergé en Europe). Le dépôt ne contient au
 - Un compte **Partenariats média** saisit les partenariats payants.
 - Un compte **Prévenu de chaque ajout** reçoit une notification à chaque nouveauté.
 - Un compte sans service lit tout mais ne publie rien.
+- **Messages en une phrase** (2.5, migration 0030) : sur la fiche, « @quelqu'un … pour vendredi » est une demande datée (rappel « Pour demain » la veille) ; sans date, c'est un message pour info (une notification, pas de réponse attendue). Un visiteur n'écrit pas et ne répond pas.
+- **Résultats** (2.6, migrations 0031 et 0032) : qui peut modifier une fiche note ses chiffres (vues, clics, inscrits, retombées), tout le monde les lit ; la base fusionne les chiffres notés en même temps (`set_res`). Le **budget** des partenariats et les enveloppes des périodes : lus et réglés par les chefs de projet seulement (`is_chef()`), invisibles pour les autres comptes.
 - Un **visiteur** lit tout et ne change rien (ni ajout, ni demande, ni blocage, ni document). Le compte partagé est `visiteur@kedgebs.com` (l'adresse de `site/config.js`), créé dans Supabase avec le mot de passe à donner aux visiteurs ; un chef passe un compte en visiteur dans Équipe. Sur l'écran de connexion, « Entrer en visiteur » ne demande que le mot de passe.
 
 ## Mise en route
