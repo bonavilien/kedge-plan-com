@@ -142,6 +142,35 @@ const snap = (p, n) => shots && p.screenshot({ path: `${shots}/${n}.png`, clip: 
   await ctx.close();
 }
 
+/* ---------- répondre depuis « À traiter » : la réponse revient dans les messages de la fiche ---------- */
+{
+  const [ctx, p] = await ouvrir({ brancher: false });
+  await p.evaluate(() => KP.go({ screen: "accueil" })); await p.waitForSelector(".todo");
+  const todo = p.locator(".todo", { hasText: "Aurélie" });
+  ok(await todo.count() === 1, "Aurélie attend le programme dans À traiter");
+  await todo.locator("[data-act=answer]").click();
+  ok((await p.getAttribute("dialog textarea", "placeholder")).startsWith("C'est ok"), "la réponse propose « C'est ok »");
+  await p.fill("dialog textarea", "C'est ok, le programme est sur SharePoint : https://kedgebs.sharepoint.com/sites/com/Documents/programme-jpo.pdf");
+  await p.click("dialog button.primary"); await p.waitForTimeout(80);
+  ok(!(await p.locator(".todo", { hasText: "Aurélie" }).count()), "la demande quitte À traiter");
+  const jpo = await fiche(p, "Journée portes ouvertes");
+  const r = (await reqs(p, jpo)).find((x) => x.txt === "Le programme des conférences pour l'invitation presse.");
+  ok(r.fait && r.rep.startsWith("C'est ok"), "la demande est marquée reçue, avec la réponse");
+  const carte = p.locator(".ph-msg", { hasText: "Le programme des conférences" });
+  ok((await carte.locator(".rep").innerText()).includes("C'est ok, le programme est sur SharePoint"), "dans les messages de la fiche, la réponse s'affiche sous la demande");
+  ok(await carte.locator(".rep a.link").count() === 1, "le lien de la réponse s'ouvre");
+  ok(await carte.locator(".rep").evaluate((e) => { const s = e.querySelector(":scope > span:not(.ic)"); return s.getBoundingClientRect().width > e.getBoundingClientRect().width * 0.8; }), "la réponse prend toute la largeur (le lien ne la coupe pas en colonnes)");
+  if (shots) await carte.screenshot({ path: `${shots}/5-reponse.png` });
+  // plus de contacts : ni sur la fiche, ni sur le temps fort d'un relais, ni dans les Réglages
+  ok(!(await p.locator("#fiche .f-sec h3", { hasText: "Contacts" }).count()), "la fiche n'a plus de section Contacts");
+  await fiche(p, "Teaser de la journée");
+  ok(!(await p.locator("#fiche", { hasText: "Claire Morel" }).count()), "le bloc du temps fort n'affiche plus ses contacts");
+  await p.evaluate(() => KP.go({ screen: "reglages", set: "carnets", fiche: "" })); await p.waitForTimeout(100);
+  ok(await p.locator(".set h2", { hasText: "Lieux" }).count() === 1 && !(await p.locator(".set h2", { hasText: "Contacts" }).count()), "Réglages, Carnets : médias et lieux, plus de contacts");
+  ok(!p.errs.length, "aucune erreur : " + p.errs.join(" | "));
+  await ctx.close();
+}
+
 /* ---------- sombre : lisible ---------- */
 if (shots) {
   const [ctx, p] = await ouvrir({ brancher: false }, { theme: "dark" });

@@ -161,7 +161,7 @@
     const u = moi(), late = !r.fait && r.pour && r.pour < KP.TODAY, reader = u.role === "lecteur";
     const pastille = !r.pour ? `<span class="ph-c info petit">${ic("bell")}pour info</span>` : `<span class="ph-c petit ${r.fait ? "ok" : late ? "retard" : "date"}" title="${h(KP.due(r))}">pour le ${h(date(r.pour))}</span>`;
     const parle = r.txt && P.plat(r.txt).includes(P.plat(r.quoi)) || ["Autre", "Info"].includes(r.quoi);
-    const actions = r.fait ? `<div class="rep">${ic("check")} ${texte(r.rep || "Reçu", it)}</div>`
+    const actions = r.fait ? `<div class="rep">${ic("check")}<span>${texte(r.rep || "Reçu", it)}</span></div>`
       : r.de === u.k ? `<div class="req-do">${r.pour ? `<button type="button" class="link soft" data-act="relance" data-id="${r.id}">Relancer</button>` : ""}<span class="sp"></span>${r.pour ? KP.ib("edit", "Changer la date", "req-date", `data-id="${r.id}"`) : ""}${KP.ib("trash", "Retirer le message", "req-drop", `data-id="${r.id}"`)}</div>`
       : r.pour && (KP.reqMine(r) || u.role === "pilote") && !reader ? `<button type="button" class="link" data-act="answer" data-id="${r.id}">Répondre</button>` : "";
     return `<div class="ph-msg"><div class="ph-msg-h"><span class="ph-c qui petit">${h(KP.dest(r.a))}</span>${pastille}<span class="sp"></span><small class="muted">${h(KP.dest(r.de))}, ${h(KP.fmt.quand(r.quand))}</small></div>

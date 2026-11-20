@@ -271,7 +271,8 @@ a.mini { text-decoration: none; grid-template-columns: 18px minmax(0, 1fr) 18px;
 .ph-msg-h small { font-size: 12.5px; }
 .ph-msg p { margin: 0; overflow-wrap: anywhere; }
 .ph-msg .rep { display: flex; gap: 6px; align-items: baseline; color: var(--ok-ink); font-weight: 600; font-size: 14px; }
-.ph-msg .rep .ic { width: 15px; height: 15px; flex: none; align-self: center; }
+.ph-msg .rep .ic { width: 15px; height: 15px; flex: none; align-self: flex-start; margin-top: 2px; }
+.ph-msg .rep > span:not(.ic) { min-width: 0; overflow-wrap: anywhere; }
 @media (prefers-reduced-motion: reduce) { .ph-miroir mark, .ph-c, .ph-alerte { animation: none !important; } }
 .note { display: block; width: 100%; min-height: 64px; border: 0; resize: none; background: none; padding: 6px 8px; margin: 0 -8px; border-radius: var(--r1); line-height: 1.5; overflow: hidden; }
 .note:hover:not([readonly]) { background: var(--hover); }
@@ -382,15 +383,13 @@ dialog.cmdk { margin-top: 12vh; width: min(600px, calc(100vw - 32px)); overflow:
 .sugg .why { color: var(--text2); font-size: 13px; }
 .sugg .do { display: flex; gap: 16px; margin-top: 6px; flex-wrap: wrap; }
 
-/* ---------- motif, annulé, contacts, notifications ---------- */
+/* ---------- motif, annulé, notifications ---------- */
 .flag { display: grid; grid-template-columns: 18px minmax(0, 1fr); gap: 8px; margin: 8px 0 2px; padding: 8px 10px; border-radius: var(--r2); background: var(--bg); }
 .flag .ic { margin-top: 2px; }
 .f-sec.from .flag { background: var(--card); margin: 0; }
 .row.off .tt, .g-i.off { text-decoration: line-through; color: var(--text2); }
 .g-i.off { background: transparent; opacity: .7; }
 .pill.annule { color: var(--red); border: 1px solid currentColor; }
-.ct { display: flex; align-items: center; gap: 8px; padding: 6px 0; }
-.ct > span { flex: 1; min-width: 0; }
 .copy { user-select: all; font-size: 13.5px; color: var(--text2); overflow-wrap: anywhere; }
 .pop-h { display: flex; align-items: baseline; }
 .pop-h .link { margin-left: auto; text-transform: none; letter-spacing: 0; font-size: 13px; }
@@ -417,7 +416,6 @@ dialog.cmdk { margin-top: 12vh; width: min(600px, calc(100vw - 32px)); overflow:
 .t-per .th, .t-per .tr { grid-template-columns: minmax(0, 1fr) 160px 160px 34px; }
 .t-msg .th, .t-msg .tr { grid-template-columns: minmax(0, 1fr) minmax(0, 2.2fr) 34px; }
 .t-one .tr { grid-template-columns: minmax(0, 1fr) 34px; }
-.t-ct .tr { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 70px; }
 .add-line { display: flex; gap: 8px; }
 .add-line .input { flex: 1; }
 
@@ -489,7 +487,6 @@ dialog.cmdk { margin-top: 12vh; width: min(600px, calc(100vw - 32px)); overflow:
   .t-per .tr { grid-template-columns: 1fr 1fr 34px; padding: 12px 0; }
   .t-per .tr > :first-child, .t-msg .tr > :first-child { grid-column: 1 / -1; }
   .t-msg .tr { grid-template-columns: 1fr 34px; padding: 12px 0; }
-  .t-ct .tr { grid-template-columns: 1fr; }
   .pop-notifs { max-width: none; }
   .counters { grid-template-columns: repeat(2, 1fr); }
   .counter { border-left: 0; border-top: 1px solid var(--sep); }

@@ -8,6 +8,8 @@ Généré depuis `site/js/version.js` par `node scripts/version.mjs`. Ne pas mod
 - Sans date, le message part pour info : une notification, sans rappel ni réponse attendue
 - La veille de l'échéance, la personne reçoit un rappel
 - « Rappelle-moi lundi… » note un rappel pour toi, « on décale au 4 décembre » propose de déplacer l'action, « c'est envoyé » répond à la demande, un lien SharePoint se range dans les documents, et #action mène à sa fiche
+- Une réponse donnée depuis « À traiter » s'affiche sous la demande, dans les messages de la fiche
+- La section Contacts disparaît de la fiche et des Réglages
 
 ## 2.4 · 2026-11-19
 

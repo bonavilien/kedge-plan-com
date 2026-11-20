@@ -16,8 +16,6 @@
     const inp = (f, val, ph) => can ? `<input class="val" id="f-${f}" data-f="${f}" value="${h(val || "")}" placeholder="${h(ph)}" autocomplete="off">` : `<span class="val${val ? "" : " none"}">${h(val || "—")}</span>`;
     const flag = (x) => x.annule ? `<p class="flag late">${ic("close")}<span><b>Annulé</b>${x.annule.txt ? " · " + h(x.annule.txt) : ""} <small class="muted">${h(KP.nomDe(x.annule.qui))}, ${h(KP.fmt.quand(x.annule.quand))}</small></span></p>`
       : x.report ? `<p class="flag">${ic("shift")}<span><b>Reporté</b>, c'était ${h(x.report.de)}${x.report.txt ? " · " + h(x.report.txt) : ""} <small class="muted">${h(KP.nomDe(x.report.qui))}, ${h(KP.fmt.quand(x.report.quand))}</small></span></p>` : "";
-    const cts = (x) => (x.contacts || []).map((id) => store.contact(id)).filter(Boolean);
-    const ct = (c, rm) => `<div class="ct"><span><b>${h(c.nom)}</b>${c.role ? ` <small class="muted">${h(c.role)}</small>` : ""}<br><span class="copy">${h([c.mail, c.tel].filter(Boolean).join(" · "))}</span></span>${rm ? `<button type="button" class="ib" data-act="rm-ct" data-id="${c.id}" data-tip="Retirer" aria-label="Retirer ${h(c.nom)}">${ic("close")}</button>` : ""}</div>`;
     const rel = store.relais(it.id), all = store.reqsOf(it.id), reqs = all.filter((r) => r.de !== r.a), memos = all.filter((r) => r.de === r.a && r.de === KP.me().k && !r.fait), acts = store.journalOf(it.id);
     const rows = [];
     if (it.variant === "sujet") rows.push(["Période", `<span class="val">${h(KP.PERIODS.find((p) => p.k === it.per).nom)}, ${h(KP.PERIODS.find((p) => p.k === it.per).lib)}</span>`]);
@@ -60,7 +58,6 @@
           return `<section class="f-sec from"><h3><i class="tfdot"></i>Vient du temps fort<button type="button" class="link" data-act="open" data-id="${par.id}">Ouvrir</button></h3>
             <p><b>${h(par.t)}</b> · ${h(KP.dateLong(par))}${par.lieu ? " · " + h(par.lieu) : ""}</p>
             ${flag(par)}
-            ${cts(par).map((c) => `<p class="il">${ic("user")}<span><b>${h(c.nom)}</b>${c.role ? ", " + h(c.role) : ""} <span class="sel muted">${h([c.mail, c.tel].filter(Boolean).join(" · "))}</span></span></p>`).join("")}
             ${par.note ? `<p class="muted from-note">${h(par.note)}</p>` : ""}
             ${par.docs.map((d) => `<p class="il">${ic("doc")}<span><a class="link" href="${h(d.url)}" target="_blank" rel="noopener">${h(d.t)}</a></span></p>`).join("")}
             ${ans.map((q) => `<p class="il">${ic("chat")}<span><b>${h(q.quoi)}</b> · ${h(q.rep)} <small class="muted">${h(KP.dest(q.a))}</small></span></p>`).join("")}</section>`; })() : ""}
@@ -70,8 +67,6 @@
         ${it.docs.length || can || rel.some((r) => r.docs.length) ? `<section class="f-sec"><h3>Documents${can ? `<button type="button" class="link" data-act="add-doc">Ajouter un lien</button>` : ""}</h3>
           ${it.docs.map((d, i) => `<div class="mini" style="grid-template-columns:minmax(0,1fr) auto"><a class="link" href="${h(d.url)}" target="_blank" rel="noopener">${h(d.t)}</a>${can ? `<button type="button" class="ib" data-act="rm-doc" data-i="${i}" data-tip="Retirer" aria-label="Retirer ${h(d.t)}">${ic("close")}</button>` : ""}</div>`).join("") || (rel.some((r) => r.docs.length) ? "" : `<p class="muted">Les liens SharePoint utiles à tous.</p>`)}
           ${rel.map((r) => r.docs.map((d) => `<div class="mini" style="grid-template-columns:minmax(0,1fr) auto"><a class="link" href="${h(d.url)}" target="_blank" rel="noopener">${h(d.t)}</a><small class="muted">${h((KP.service(r.svc) || {}).court || "")} · ${h(r.t)}</small></div>`).join("")).join("")}</section>` : ""}
-        ${cts(it).length || can ? `<section class="f-sec"><h3>Contacts${can ? `<button type="button" class="link" data-act="add-ct" aria-haspopup="menu">Ajouter</button>` : ""}</h3>
-          ${cts(it).map((c) => ct(c, can)).join("") || `<p class="muted">Qui appeler, côté programme ou côté presse.</p>`}</section>` : ""}
         ${it.note || can ? `<section class="f-sec"><h3>Note</h3><textarea class="note" id="f-note" data-f="note" data-auto placeholder="Ce qu'il faut savoir" ${can ? "" : "readonly"}>${h(it.note)}</textarea></section>` : ""}
         ${acts.length ? `<section class="f-sec"><h3>Activité${acts.length > 3 && KP.ui.allAct !== it.id ? `<button type="button" class="link" data-act="all-act">Tout voir</button>` : ""}</h3>
           ${showAct.map((j) => `<p class="act"><b>${h(KP.nomDe(j.qui))}</b> ${h(j.txt)} · ${h(KP.fmt.quand(j.quand))}</p>`).join("")}</section>` : ""}
@@ -92,15 +87,6 @@
   document.addEventListener("keydown", (e) => { if (e.target.id === "f-t" && e.key === "Enter") { e.preventDefault(); e.target.blur(); } if (e.key === "Enter" && e.target.matches && e.target.matches("#fiche input.val")) e.target.blur(); });
 
   const cur = () => store.get(KP.route.fiche);
-  KP.contactForm = (c, done) => {
-    const d = KP.dialog(`<form method="dialog"><h2>${c ? "Modifier le contact" : "Nouveau contact"}</h2>
-      <label class="field"><span>Nom</span><input class="input" name="nom" value="${h(c ? c.nom : "")}" required autocomplete="off"></label>
-      <label class="field"><span>Rôle ou organisme</span><input class="input" name="role" value="${h(c ? c.role : "")}" placeholder="Direction, service, journaliste…" autocomplete="off"></label>
-      <div class="two"><label class="field"><span>E-mail</span><input class="input" name="mail" type="email" value="${h(c ? c.mail : "")}" autocomplete="off"></label><label class="field"><span>Téléphone</span><input class="input" name="tel" value="${h(c ? c.tel : "")}" autocomplete="off"></label></div>
-      <div class="foot"><button type="button" class="btn quiet" data-close>Annuler</button><button class="btn primary">Enregistrer</button></div></form>`);
-    d.querySelector("input").focus();
-    d.querySelector("form").addEventListener("submit", () => { const f = new FormData(d.querySelector("form")); const o = { nom: f.get("nom").trim(), role: f.get("role").trim(), mail: f.get("mail").trim(), tel: f.get("tel").trim() }; if (c) o.id = c.id; const r = store.saveContact(o); if (done) done(r); });
-  };
   Object.assign(KP.acts, {
     "f-date": (a) => { const it = cur(); KP.datepick(a, it.flou ? (it.date < KP.TODAY && KP.monthEnd(it.date) >= KP.TODAY ? KP.TODAY : it.date) : it.date, (d) => {
       if (!d) return;
@@ -143,12 +129,6 @@
           d.querySelector("form").addEventListener("submit", go); }
       }, { right: true });
     },
-    "rm-ct": (a) => { const it = cur(); KP.toast("Contact retiré de la fiche", store.update(it.id, { contacts: (it.contacts || []).filter((c) => c !== a.dataset.id) })); },
-    "add-ct": (a) => { const it = cur(), have = it.contacts || [];
-      KP.menu(a, [...store.contacts().filter((c) => !have.includes(c.id)).map((c) => ({ v: c.id, nom: c.nom, info: c.role })), "-", { v: "+", nom: "Nouveau contact", icon: "plus" }], (v) => {
-        if (v !== "+") return KP.toast("Contact ajouté", store.update(it.id, { contacts: [...have, v] }, "a ajouté un contact"));
-        KP.contactForm(null, (c) => KP.toast("Contact ajouté au carnet et à la fiche", store.update(it.id, { contacts: [...have, c.id] }, "a ajouté un contact")));
-      }, { right: true, title: "Carnet de contacts" }); },
     "rm-doc": (a) => { const it = cur(); KP.toast("Lien retiré", store.update(it.id, { docs: it.docs.filter((_, i) => i !== +a.dataset.i) })); },
     "add-doc": () => {
       const it = cur();
@@ -161,7 +141,7 @@
     answer: (a) => {
       const r = store.reqs().find((x) => x.id === a.dataset.id), it = store.get(r.item);
       const d = KP.dialog(`<form method="dialog"><h2>Répondre à ${h(KP.dest(r.de))}</h2><p class="muted" style="margin-top:-8px">${h(r.quoi)} pour « ${h(it.t)} »${r.txt ? " : " + h(r.txt) : ""}</p>
-        <label class="field"><span>Ta réponse</span><textarea class="input" name="rep" placeholder="Un lien SharePoint, une phrase, un contact…"></textarea></label>
+        <label class="field"><span>Ta réponse</span><textarea class="input" name="rep" placeholder="C'est ok, une phrase, un lien SharePoint…"></textarea></label>
         <div class="foot"><button type="button" class="btn quiet" data-close>Annuler</button><button class="btn primary">Envoyer</button></div></form>`);
       d.querySelector("textarea").focus();
       d.querySelector("form").addEventListener("submit", () => KP.toast(`Réponse envoyée à ${KP.dest(r.de)}`, store.answer(r.id, new FormData(d.querySelector("form")).get("rep").trim())));

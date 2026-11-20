@@ -65,7 +65,7 @@ Ton site est en ligne à l'adresse `https://ton-compte.github.io/plan-de-com/`.
 4. Ouvre ton site et connecte-toi. Dans **Réglages** :
    - **Projet** : le sous-titre affiché à côté du nom (exemple : « Executive Education ») et la couleur du projet, prise dans le brand book ; puis les périodes de ton année (elles se suivent sans se chevaucher) et tes messages clés (de 1 à 9), avec une étiquette à part qui ne compte pas dans le bilan (« Recrutement » chez KEDGE) ;
    - **Équipe** : le rôle et le service de chacun, et la liste des services qui diffusent ;
-   - **Carnets** : médias, lieux et contacts.
+   - **Carnets** : médias et lieux.
 5. Pour chaque collègue : **Add user** dans Supabase comme à l'étape 3, puis règle son rôle dans **Réglages**, **Équipe**.
 
 ## 6. Le bouton Mettre à jour
