@@ -18,7 +18,7 @@
 //
 // Ce fichier tient seul (aucun autre fichier à copier) : il se colle tel quel dans l'éditeur de Supabase.
 
-export const FONCTION = 1;
+export const FONCTION = 2;
 
 type Outil = "asana" | "trello";
 type Qui = { id: string; chef: boolean; svc: string; visiteur: boolean };
@@ -89,7 +89,7 @@ export function createHandler(d: Deps) {
     });
     if (r.status === 401) throw new Refus("jeton", "Asana refuse la clé : elle a expiré ou elle est mal recopiée.", 502);
     const t = await r.text(); let o: any = {}; try { o = t ? JSON.parse(t) : {}; } catch { o = {}; }
-    return { status: r.status, ok: r.ok, data: o.data, message: (o.errors && o.errors[0] && o.errors[0].message) || "" };
+    return { status: r.status, ok: r.ok, data: o.data, suite: (o.next_page && o.next_page.offset) || "", message: (o.errors && o.errors[0] && o.errors[0].message) || "" };
   }
   /* ---------- Trello : la clé est « clé:jeton » ---------- */
   async function trello(jeton: string, chemin: string, init: RequestInit = {}, q: Record<string, string> = {}) {
@@ -110,10 +110,16 @@ export function createHandler(d: Deps) {
       if (!ws.ok) throw new Refus("asana", `Asana ne répond pas (${ws.status}) : ${ws.message}`, 502);
       const out: { id: string; nom: string }[] = [];
       for (const w of ws.data || []) {
-        const p = await asana(jeton, `/projects?workspace=${w.gid}&archived=false&opt_fields=name&limit=100`);
-        if (p.ok) for (const x of p.data || []) out.push({ id: x.gid, nom: `${w.name} · ${x.name}` });
+        /* Asana donne les projets par pages de 100, les plus anciens d'abord : on lit toutes les pages (jusqu'à 3 000 projets) */
+        let suite = "", n = 0;
+        do {
+          const p = await asana(jeton, `/projects?workspace=${w.gid}&archived=false&opt_fields=name&limit=100${suite ? "&offset=" + encodeURIComponent(suite) : ""}`);
+          if (!p.ok) break;
+          for (const x of p.data || []) out.push({ id: x.gid, nom: `${w.name} · ${x.name}` });
+          suite = p.suite;
+        } while (suite && ++n < 30);
       }
-      return out;
+      return out.sort((x, y) => x.nom.localeCompare(y.nom, "fr", { sensitivity: "base", numeric: true }));
     }
     if (!jeton.includes(":")) throw new Refus("jeton", "Il faut la clé et le jeton Trello.");
     const b = await trello(jeton, "/members/me/boards", {}, { filter: "open", fields: "name", lists: "open", list_fields: "name" });

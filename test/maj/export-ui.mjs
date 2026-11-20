@@ -26,7 +26,7 @@ async function open(email, o = {}, theme = "light", vp = { width: 1440, height: 
     const c = JSON.parse(r.request().postData() || "{}"); p.calls.push(c);
     if (o.fn === null) return r.fulfill({ status: 404, body: "" });
     const rep = {
-      lister: () => c.jeton === "faux" ? [502, { erreur: "jeton", message: "Asana refuse la clé : elle a expiré ou elle est mal recopiée." }] : [200, { choix: c.outil === "asana" ? [{ id: "p1", nom: "KEDGE · Plan de com PGE" }, { id: "p2", nom: "KEDGE · Événements" }] : [{ id: "l1", nom: "Com · À faire" }] }],
+      lister: () => c.jeton === "faux" ? [502, { erreur: "jeton", message: "Asana refuse la clé : elle a expiré ou elle est mal recopiée." }] : [200, { choix: c.outil === "asana" ? (c.jeton === "beaucoup" ? Array.from({ length: 40 }, (_, i) => ({ id: "q" + i, nom: "KEDGE · Projet " + i })).concat([{ id: "p9", nom: "KEDGE · Événements 2026-2027" }]) : [{ id: "p1", nom: "KEDGE · Plan de com PGE" }, { id: "p2", nom: "KEDGE · Événements" }]) : [{ id: "l1", nom: "Com · À faire" }] }],
       relier: () => [200, { outil: c.outil, cible_nom: c.outil === "asana" ? (c.cible === "p2" ? "KEDGE · Événements" : "KEDGE · Plan de com PGE") : "Com · À faire" }],
       envoyer: () => [200, { item: c.item, outil: c.outil, ext_id: "t1", url: "https://app.asana.com/0/p1/t1", erreur: "" }],
       arreter: () => [200, { ok: true }],
@@ -129,6 +129,24 @@ await p.fill("dialog [name=key]", "a".repeat(32));
 ok(await p.locator("dialog [data-jeton]").isVisible(), "Trello : lien « Mon jeton » dès que la clé est collée");
 await p.fill("dialog [name=token]", "ATTA1"); await p.click("dialog [data-go]"); await p.waitForTimeout(150);
 ok((await p.locator("dialog [data-err]").innerText()).includes("pas encore installée"), "fonction absente : message clair");
+
+// ---------- beaucoup de projets : une case pour chercher ----------
+p = await open("pilote@example.com", {});
+await p.evaluate(() => KP.go({ screen: "reglages", set: "profil", fiche: "" }));
+await p.waitForSelector(".t-outils");
+await p.click('.t-outils [data-act="outil-relier"][data-k="asana"]');
+await p.waitForSelector("dialog .f-outil");
+await p.fill("dialog [name=pat]", "beaucoup"); await p.click("dialog [data-go]");
+await p.waitForSelector("dialog [name=cherche]:visible");
+ok(await p.locator("dialog [name=cible] option").count() === 41, "beaucoup de projets : tous proposés, avec une case pour chercher");
+await p.fill("dialog [name=cherche]", "evenements");
+ok(await p.locator("dialog [name=cible] option").count() === 1 && (await p.locator("dialog [name=cible]").inputValue()) === "p9", "chercher « evenements » (sans accent) trouve le projet");
+await p.press("dialog [name=cherche]", "Enter"); await p.waitForTimeout(100);
+ok(await p.locator("dialog .f-outil").isVisible(), "Entrée dans la recherche ne relie pas tout de suite");
+await shot(p, "6-chercher-projet", "dialog");
+await p.fill("dialog [name=cherche]", "zzz");
+await p.click("dialog [data-go]"); await p.waitForTimeout(100);
+ok((await p.locator("dialog [data-err]").innerText()).includes("Choisis un projet"), "aucun résultat : on demande de choisir");
 
 // ---------- téléphone : dans le menu « Plus » ----------
 p = await open("pilote@example.com", { actifs: [{ outil: "asana", cible_nom: "KEDGE · Plan" }] }, "light", { width: 390, height: 844 });
