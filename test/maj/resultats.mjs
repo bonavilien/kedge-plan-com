@@ -167,7 +167,7 @@ const snap = (p, n, full) => shots && p.screenshot({ path: `${shots}/${n}.png`, 
   await ecrire("@Aurélie facture reçue, 1 650 € au final");
   ok(await apercu() === "Aurélie | pour info | Budget : 1 650 €", "« 1 650 € » sur un partenariat : le budget : " + await apercu());
   await p.keyboard.press("Enter"); await p.waitForTimeout(80);
-  ok(await p.evaluate((id) => KP.store.montant(id), id) === 1650 && await p.evaluate((id) => KP.store.reqsOf(id).some((r) => r.txt.includes("1 650 €")), id), "budget noté et message envoyé");
+  ok(await p.evaluate((id) => KP.store.montant(id), id) === 1650 && await p.evaluate((id) => KP.store.reqsOf(id).some((r) => r.txt.startsWith("Facture reçue") && !r.txt.includes("650")), id), "budget noté, et le message part sans le montant (réservé aux chefs de projet)");
   // Stéphane n'a pas de budget
   await p.evaluate(() => KP.store.switchUser("stephane"));
   await fiche("Encart Sud Ouest"); await ecrire("@Aurélie 1 650 € au final");

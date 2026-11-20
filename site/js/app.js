@@ -121,7 +121,7 @@
   const typing = (t) => t && (/^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName) || t.isContentEditable);
   document.addEventListener("keydown", (e) => {
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") { e.preventDefault(); KP.palette(); return; }
-    if (document.querySelector("dialog[open]")) return;
+    if (document.querySelector("dialog[open]") || e.defaultPrevented) return;
     const t = e.target;
     if (e.key === "Escape") { if (typing(t)) { t.blur(); return; } if (KP.route.fiche) { KP.acts["close-fiche"](); } return; }
     if (typing(t) || e.ctrlKey || e.metaKey || e.altKey) return;
@@ -179,8 +179,11 @@
   KP.notifs = () => {
     const u = KP.me();
     const pr = store.prefs(), nx = pr.nx || [], on = pr.notif || {};
-    const kind = (j) => /^a créé/.test(j.txt) ? "creations" : /demandé|répondu|relancé/.test(j.txt) ? "demandes" : "changements";
-    return store.journal().filter((j) => j.qui !== u.k && j.quand > Date.now() - 10 * 864e5 && j.quand > (pr.nall || 0) && !nx.includes(j.id) && on[kind(j)] !== false).filter((j) => { const it = store.get(j.item); return it && (u.role !== "service" || it.svc === u.svc || it.by === u.k || store.relais(it.id).some((r) => r.svc === u.svc)); }).sort((a, b) => b.quand - a.quand);
+    const kind = (j) => /^a créé/.test(j.txt) ? "creations" : /demandé|répondu|relancé|pour info|écrit/.test(j.txt) ? "demandes" : "changements";
+    /* un message qui m'est adressé (ou à mon service), ou la réponse à ma demande : pour moi, quel que soit le service de la fiche */
+    const pourMoi = (j) => (j.dest && (j.dest === u.k || (u.svc && j.dest === u.svc) || (j.dest === "chef" && u.role === "pilote"))) || (j.asker && j.asker === u.k)
+      || (!j.dest && (new RegExp("à " + String(u.nom).replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "$").test(j.txt) || (u.svc && new RegExp("à " + String((KP.service(u.svc) || {}).nom || "~").replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "$").test(j.txt))));
+    return store.journal().filter((j) => j.qui !== u.k && j.quand > Date.now() - 10 * 864e5 && j.quand > (pr.nall || 0) && !nx.includes(j.id) && on[kind(j)] !== false).filter((j) => { const it = store.get(j.item); return it && (u.role !== "service" || pourMoi(j) || it.svc === u.svc || it.by === u.k || store.relais(it.id).some((r) => r.svc === u.svc)); }).sort((a, b) => b.quand - a.quand);
   };
 
   /* ---------- fenêtre « Nouveau » ---------- */

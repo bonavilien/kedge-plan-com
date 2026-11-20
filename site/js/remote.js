@@ -16,6 +16,10 @@
   const sb = window.KPLAN_CLIENT || window.supabase.createClient(C.supabaseUrl, C.supabaseKey);
   const run = async (q) => { const { data, error } = await q; if (error) throw error; return data; };
   const soft = (q, fallback) => run(q).catch(() => fallback); /* table d'une migration pas encore faite */
+  /* la base n'a pas encore les scripts de la 2.5/2.6 : on le repère au chargement pour ne pas proposer ce qu'elle refusera */
+  const absente = (e) => /42P01|42703|PGRST20[45]|does not exist|could not find/i.test(((e && e.code) || "") + " " + ((e && e.message) || ""));
+  let manque = {};
+  const softT = (nom, q) => run(q).catch((e) => { if (absente(e)) manque[nom] = true; return []; });
   const clone = (o) => JSON.parse(JSON.stringify(o));
   const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
   const h = (s) => String(s == null ? "" : s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
@@ -36,6 +40,7 @@
 
   /* ---------- lecture : tout, d'un coup (l'équipe est petite) ---------- */
   async function load() {
+    manque = {};
     const all = (t, order) => run(sb.from(t).select("*").order(order));
     const [per, svc, prt, prof, items, links, reqs, blk, ans, meta, journal, lieux, contacts, ic, msgs, prix, env] = await Promise.all([
       all("periods", "du"), all("services", "ordre"), all("partners", "nom"), all("profiles", "nom"), all("items", "date"), all("links", "at"), all("reqs", "at"), all("blocks", "at"),
@@ -43,7 +48,7 @@
       soft(sb.from("lieux").select("*").order("nom"), []), soft(sb.from("contacts").select("*").order("nom"), []), soft(sb.from("item_contacts").select("*"), []),
       soft(sb.from("messages").select("*").order("n"), []),
       /* budget : la base ne le donne qu'aux chefs de projet ; les autres reçoivent des listes vides */
-      soft(sb.from("budget").select("item,montant"), []), soft(sb.from("enveloppes").select("per,montant"), []),
+      softT("budget", sb.from("budget").select("item,montant")), softT("enveloppes", sb.from("enveloppes").select("per,montant")),
     ]);
     /* sans session valable, la base renvoie des listes vides sans erreur : on ne remplace pas le plan par du vide */
     if (!prof.some((p) => p.id === user.id)) { const e = new Error("session expirée"); e.session = true; throw e; }
@@ -93,7 +98,7 @@
       }),
       reqs: reqs.filter((r) => r.st !== "annulee").map((r) => ({ id: r.id, item: r.item, de: r.asker || "", a: r.dest === "moi" || r.dest === "programme" ? r.asker || "" : r.dest,
         quoi: KP.ELEMENTS.includes(r.type) || r.type === "Info" ? r.type : "Autre", txt: r.quoi || (KP.ELEMENTS.includes(r.type) ? "" : r.type), pour: r.pour || "", fait: r.st === "recue", rep: r.reponse || "", quand: ms(r.at) })),
-      journal: journal.map((j) => ({ id: "j" + j.id, item: j.item, qui: j.author || "", quand: ms(j.at), txt: jtxt(j) })),
+      journal: journal.map((j) => ({ id: "j" + j.id, item: j.item, qui: j.author || "", quand: ms(j.at), txt: jtxt(j), ...(j.diff && j.diff.dest && /message|reponse|retrait|relance|deadline/.test(j.kind) ? { dest: j.diff.dest } : {}), ...(j.diff && j.diff.asker && j.kind === "reponse" ? { asker: j.diff.asker } : {}) })),
       lastMeeting: m.last_meeting || KP.TODAY,
       projet: { couleur: m.couleur || "", sousTitre: m.sous_titre || "" },
       budget: Object.fromEntries(prix.map((b) => [b.item, b.montant])),
@@ -107,8 +112,9 @@
     const d = j.diff || {}, k = Object.keys(d);
     if (j.kind === "creation") return "a créé la fiche";
     if (j.kind === "document") return "a ajouté un document";
+    if (j.kind === "message") { const a = KP.dest ? KP.dest(d.dest) : d.dest; return d.pour ? `a demandé ${KP.ASK[d.type] || "des éléments"} à ${a}` : `a écrit pour info à ${a}`; }
     if (j.kind === "reponse") return "a répondu à une demande";
-    if (j.kind === "retrait") return "a retiré une demande";
+    if (j.kind === "retrait") return d.info ? "a retiré un message" : "a retiré une demande";
     if (j.kind === "prevenu") return d.svc ? "a prévenu " + ((KP.service(d.svc) || {}).nom || "un service") : "a prévenu d'un changement";
     if (j.kind === "relance") return "a relancé une demande";
     if (j.kind === "deadline") return "a changé l'échéance d'une demande";
@@ -200,8 +206,13 @@
         await side(it, null);
       });
       /* le temps fort supprimé : la base détache elle-même ses relais, inutile (et parfois interdit) de les modifier */
-      const keys = FIELDS.filter((k) => !same(it[k], old[k]) && !(k === "tf" && !it.tf && gone.has(old.tf)));
+      let keys = FIELDS.filter((k) => !same(it[k], old[k]) && !(k === "tf" && !it.tf && gone.has(old.tf)));
       const sides = !same(it.docs, old.docs) || !same(it.contacts, old.contacts) || !!it.reunion !== !!old.reunion;
+      /* les résultats : seules les unités changées partent, la base les fusionne (deux personnes qui notent en même temps ne s'effacent pas) ;
+         avant l'état, pour qu'un « Diffusé » ne parte pas sans ses chiffres refusés */
+      if (keys.includes("res")) { keys = keys.filter((k) => k !== "res"); const a = it.res || {}, b = old.res || {};
+        const pose = Object.fromEntries(Object.keys(a).filter((k) => a[k] !== b[k]).map((k) => [k, a[k]])), retire = Object.keys(b).filter((k) => !(k in a));
+        ops.push(() => run(sb.rpc("set_res", { p_item: it.id, p_pose: pose, p_retire: retire }))); }
       if (keys.length) ops.push(async () => { await partnerFor(it.variant === "partenariat" ? it.partner : ""); await changed(sb.from("items").update(cols(it, keys)).eq("id", it.id)); });
       if (sides) ops.push(() => side(it, old));
     });
@@ -211,7 +222,8 @@
     const r0 = byId(shadow.reqs);
     db.reqs.forEach((r) => {
       const old = r0[r.id];
-      if (!old) return ops.push(() => run(sb.from("reqs").insert({ id: r.id, item: r.item, dest: r.a === user.id ? "moi" : r.a, type: r.quoi || (r.pour ? "Autre" : "Info"), quoi: r.txt || "", pour: r.pour || null })));
+      /* un message à plusieurs personnes : le refus de l'une n'empêche pas les autres de partir */
+      if (!old) return ops.push(Object.assign(() => run(sb.from("reqs").insert({ id: r.id, item: r.item, dest: r.a === user.id ? "moi" : r.a, type: r.quoi || (r.pour ? "Autre" : "Info"), quoi: r.txt || "", pour: r.pour || null })), { seul: true }));
       if (r.fait && !old.fait) ops.push(() => changed(sb.from("reqs").update({ st: "recue", reponse: r.rep || "" }).eq("id", r.id)));
       else if (!r.fait && old.fait) ops.push(async () => { throw new Error("une demande reçue reste reçue"); });
       else if (!r.fait && (r.txt !== old.txt || r.pour !== old.pour)) ops.push(() => changed(sb.from("reqs").update({ quoi: r.txt || "", pour: r.pour || null }).eq("id", r.id)));
@@ -253,35 +265,60 @@
     const before = shadow; shadow = snapshot(db);
     if (!ops.length) return;
     const g = gen; pending++; badge();
-    queue = queue.then(async () => { for (const op of ops) { if (g !== gen) return; await op(); } })
-      .then(() => { pending = Math.max(0, pending - 1); badge(); if (!pending) fixDocs(); },
-        (e) => { pending = Math.max(0, pending - 1); badge(); if (g !== gen) return; gen++; if (!navigator.onLine || /fetch|network/i.test((e && e.message) || "")) { shadow = before; offline(); } else fail(e); });
+    const reseau = (e) => !navigator.onLine || /fetch|network|load failed|timed? ?out/i.test((e && e.message) || "");
+    queue = queue.then(async () => { let refus = null;
+        for (const op of ops) { if (g !== gen) return; if (!op.seul) { await op(); continue; } try { await op(); } catch (e) { if (reseau(e)) throw e; refus = refus || e; } }
+        if (refus) throw Object.assign(refus, { seul: true }); })
+      .then(() => { pending = Math.max(0, pending - 1); badge(); if (!pending) { fixDocs(); if (horsLigne) enLigne(); } },
+        (e) => { pending = Math.max(0, pending - 1); badge(); if (g !== gen) return;
+          /* un message refusé (et seulement lui) : les écritures suivantes, indépendantes, partent quand même */
+          if (e && e.seul && !reseau(e)) return fail(e);
+          gen++; if (reseau(e)) { shadow = before; offline(); } else fail(e); });
   }
   /* la base refuse : on le dit, et on revient à ce qu'elle contient vraiment */
   function fail(e) {
     console.error(e);
     KP.toast("Non enregistré : " + frErr(e));
-    reload();
+    Promise.resolve(reload()).then(() => document.dispatchEvent(new CustomEvent("kp:refus")));
   }
-  /* hors connexion : la modification reste à l'écran et repart au retour du réseau */
+  /* hors connexion (ou serveur qui ne répond pas) : la modification reste à l'écran, aucun rechargement ne l'efface,
+     et elle repart au retour du réseau, au retour sur l'onglet, et toutes les 30 secondes */
+  let horsLigne = false, retente = 0;
   function offline() {
-    document.documentElement.classList.add("offline");
-    KP.toast("Pas de réseau : ta modification partira au retour de la connexion");
+    if (!horsLigne) KP.toast("Pas de réseau : ta modification partira au retour de la connexion");
+    horsLigne = true; document.documentElement.classList.add("offline");
+    clearTimeout(retente); retente = setTimeout(() => { if (horsLigne) sync(store._db()); }, 30000);
   }
-  window.addEventListener("online", () => { if (!document.documentElement.classList.contains("offline")) return; document.documentElement.classList.remove("offline"); sync(store._db()); });
-  const frErr = (e) => { const m = (e && e.message) || ""; return /row-level security|permission denied/i.test(m) ? "tu n'as pas le droit de faire ce changement" : m || "la base ne répond pas"; };
+  function enLigne() { horsLigne = false; clearTimeout(retente); document.documentElement.classList.remove("offline"); KP.toast("Connexion revenue : tout est parti"); later(); }
+  window.addEventListener("online", () => { if (horsLigne) sync(store._db()); });
+  /* base sans les scripts 2.6 : pas d'écran Résultats ni de budget (la base les refuserait), et on dit quoi faire */
+  let prevenu = false;
+  function baseAJour() {
+    const ok = !manque.budget; KP.base = { resultats: ok };
+    if (!ok && !prevenu && KP.me().role === "pilote") { prevenu = true; setTimeout(() => KP.toast("La base n'est pas à jour : colle 2.5_0030 puis 2.6_0031 dans Supabase (SQL Editor)"), 1500); }
+  }
+  document.addEventListener("visibilitychange", () => { if (!document.hidden && horsLigne) sync(store._db()); });
+  const frErr = (e) => { const m = (e && e.message) || "";
+    if (/row-level security|permission denied/i.test(m)) return "tu n'as pas le droit de faire ce changement";
+    if (/null value in column "pour"|column "res"|relation "public\.(budget|enveloppes)"|function public\.set_res|set_res/i.test(m) || absente(e)) return "la base n'est pas à jour (à coller dans Supabase : 2.5_0030 puis 2.6_0031)";
+    if (/res_ok|budget_montant_check|enveloppes_montant_check/i.test(m)) return "ce chiffre n'est pas possible";
+    if (/fetch|network/i.test(m)) return "le serveur ne répond pas";
+    return m || "la base ne répond pas"; };
   const snapshot = (db) => clone({ periods: KP.PERIODS, messages: KP.MESSAGES.map((m) => ({ n: m.n, nom: m.nom, info: m.info })), items: db.items, reqs: db.reqs, people: db.people, services: db.services, partners: db.partners, lieux: db.lieux, contacts: db.contacts, prefs: { [user.id]: db.prefs[user.id] || {} }, lastMeeting: db.lastMeeting, projet: db.projet || {}, budget: db.budget || {}, env: db.env || {} });
   /* les documents ajoutés ont reçu leur identifiant de la base : la copie de référence le prend aussi */
   function fixDocs() { const cur = Object.fromEntries(store._db().items.map((i) => [i.id, i])); shadow.items.forEach((s) => { const i = cur[s.id]; if (i && i.docs && s.docs && i.docs.length === s.docs.length) s.docs = clone(i.docs); }); }
   function badge() { document.documentElement.classList.toggle("saving", pending > 0); }
 
   async function reload() {
+    /* des modifications attendent le réseau : on les envoie d'abord, on ne remplace rien par la base */
+    if (horsLigne) { sync(store._db()); return; }
     if (reloading) return; reloading = true; dirty = false;
     try {
       const data = await load();
       /* modifié pendant la lecture : on envoie d'abord, on relira ensuite */
       if (dirty) { reloading = false; dirty = false; sync(store._db()); later(); return; }
-      shadow = snapshot(data); store._replace(data);
+      if (horsLigne) { reloading = false; sync(store._db()); return; }
+      shadow = snapshot(data); store._replace(data); baseAJour();
       if (KP.outils) KP.outils.charge();
     }
     catch (e) { console.error(e); if (e.session) { reloading = false; return loginScreen("Ta session a expiré, reconnecte-toi."); } KP.toast("Impossible de relire la base, pas de réseau ?"); }
@@ -352,7 +389,7 @@
   }
   async function start() {
     const data = await load();
-    shadow = snapshot(data);
+    shadow = snapshot(data); baseAJour();
     store._attach({ sync, uuid, pseudo, relance: (id) => run(sb.rpc("relancer", { p_req: id })).then(() => true, (e) => { KP.toast("Relance non envoyée : " + frErr(e)); return false; }), prevenir: (id, svc) => run(sb.rpc("prevenir", { p_item: id, p_svc: svc })).then(() => true, (e) => { KP.toast("Non envoyé : " + frErr(e)); return false; }) }, data);
     /* mêmes droits que la base : un service modifie les fiches de son service, un pilote tout */
     store.canEdit = (it) => { const u = KP.me(); return u.role === "pilote" || (u.role === "service" && !!it && it.variant !== "partenariat" && it.svc === u.svc); };

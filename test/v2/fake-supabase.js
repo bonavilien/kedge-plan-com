@@ -95,7 +95,7 @@
     },
     channel: () => ({ on() { return this; }, subscribe() { return this; } }),
     /* fonctions de la base : window.__fakeRpc = { nom: (args) => réponse } ; sinon « inconnue », comme une migration pas faite */
-    rpc: async (n, a) => { const f = (window.__fakeRpc || {})[n]; return f ? { data: f(a), error: null } : { data: null, error: { message: "fonction inconnue : " + n } }; },
+    rpc: async (n, a) => { const f = (window.__fakeRpc || {})[n] || (n === "set_res" ? (x) => { const it = db.items.find((i) => i.id === x.p_item); if (!it) throw new Error("fiche inconnue"); const r = { ...(it.res || {}), ...(x.p_pose || {}) }; (x.p_retire || []).forEach((k) => delete r[k]); it.res = r; (window.__fake.calls || []).push({ t: "rpc", op: "set_res", v: x }); return r; } : null); return f ? { data: f(a), error: null } : { data: null, error: { message: "fonction inconnue : " + n } }; },
   };
   window.supabase = { createClient: () => client };
 })();

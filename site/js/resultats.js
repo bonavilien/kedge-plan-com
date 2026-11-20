@@ -6,7 +6,7 @@
   const curPer = () => KP.periodOf(KP.TODAY).k;
   const nb = KP.nb;
   /* gros chiffres : « 14,2 k », « 1,2 M » */
-  const court = (n) => (n >= 1e6 ? nb(Math.round(n / 1e5) / 10) + " M" : n >= 1e4 ? nb(Math.round(n / 100) / 10) + " k" : nb(n));
+  const court = (n) => { const k = Math.round(n / 100) / 10; return n >= 1e6 || k >= 1000 ? nb(Math.round(n / 1e5) / 10) + " M" : n >= 1e4 ? nb(k) + " k" : nb(n); };
   const eur = (n) => nb(n || 0) + " €";
   /* pour classer les diffusions, la plus forte en haut : une retombée presse pèse mille vues, un inscrit cinquante, un clic deux */
   const POIDS = { vues: 1, clics: 2, inscrits: 50, retombees: 1000 };
@@ -25,9 +25,23 @@
     return best ? best[0] : /presse|^rp$/i.test(it.svc + " " + ((KP.service(it.svc) || {}).nom || "")) ? "retombees" : "vues";
   };
   const brouillon = (it) => { KP.ui.rc = KP.ui.rc || {}; return KP.ui.rc[it.id] || (KP.ui.rc[it.id] = { n: "", u: devine(it) }); };
-  const chiffres = (s) => String(s || "").replace(/[^\d]/g, "").slice(0, 10);
+  /* un nombre tapé à la française : « 14 200 », « 1 650,50 », « 1,5 k », « 2 M » ; vide : null ; illisible ou négatif : NaN */
+  const valeur = (s) => {
+    let t = String(s == null ? "" : s).trim().toLowerCase().replace(/[\s\u00a0\u202f]/g, "").replace(/€|euros?/g, "");
+    if (!t) return null;
+    const m = /^(-?)([\d.,]+)(k|m|mille|millions?)?$/.exec(t); if (!m || m[1]) return NaN;
+    t = m[2].replace(/\.(?=\d{3}(?!\d))/g, "").replace(",", ".");
+    if (!/^\d+(\.\d+)?$/.test(t)) return NaN;
+    let x = Number(t); if (/^k|^mille/.test(m[3] || "")) x *= 1e3; if (/^m/.test(m[3] || "")) x *= 1e6;
+    return Math.round(x);
+  };
+  /* pendant la frappe : grouper les milliers d'un nombre entier ; une virgule ou un « k » restent tels quels */
+  const groupe = (s) => (/^[\d\s\u00a0\u202f]*$/.test(s) ? (s.replace(/\D/g, "").slice(0, 12) ? nb(Number(s.replace(/\D/g, "").slice(0, 12))) : "") : s);
+  const IMPOSSIBLE = "Ce chiffre n'est pas possible : un nombre entier, de 0 à un milliard";
+  const IMPOSSIBLE_EUR = "Ce montant n'est pas possible : de 0 à 100 millions d'euros";
 
   KP.views.resultats = () => {
+    if (!store.resOk()) return `<div class="page res"><div class="head"><h1>Résultats</h1></div><div class="empty"><h3>Bientôt ici</h3><p>La base n'est pas encore à jour pour noter les résultats. ${KP.me().role === "pilote" ? "Colle 2.5_0030 puis 2.6_0031 dans Supabase (SQL Editor)." : "Un chef de projet doit la mettre à jour."}</p></div></div>`;
     const r = KP.route, chef = store.voitBudget(), tab = r.tab === "budget" && chef ? "budget" : "diffusions";
     const p = KP.PERIODS.find((x) => x.k === r.per) || KP.periodOf(KP.TODAY);
     const pers = `<div class="seg pers" role="group" aria-label="Période">${KP.PERIODS.map((x) => `<button type="button" data-act="rper" data-k="${x.k}" class="${x.k === p.k ? "on" : ""}" aria-pressed="${x.k === p.k}">${h(x.nom)}${x.k === curPer() ? '<i class="now" aria-label="en cours"></i>' : ""}</button>`).join("")}</div>`;
@@ -52,8 +66,9 @@
     const tiles = [["vues", "vues"], ["retombees", "retombées presse"], ["inscrits", "inscrits"], ["clics", "clics"]].filter(([k]) => k !== "clics" || somme(all, k) > 0);
     const tuile = ([k, lib]) => { const n = somme(all, k); return `<div class="r-tile${n ? "" : " zero"}"><b>${court(n)}</b><span>${n <= 1 ? lib.replace(/s(\b|$)/g, "$1") : lib}</span></div>`; };
     /* par message : la barre suit les vues (la mesure commune) ; sans aucune vue, le poids des résultats */
+    /* la barre suit le poids de tous les résultats (une retombée pèse mille vues…) : un message sans vues mais avec des inscrits a sa barre */
     const parM = KP.CLES.map((m) => { const l = all.filter((i) => i.m.includes(m.k)); return { m, l, v: somme(l, "vues"), s: l.reduce((a, i) => a + score(i), 0) }; });
-    const vues = parM.some((x) => x.v > 0), max = Math.max(1, ...parM.map((x) => (vues ? x.v : x.s)));
+    const vues = false, max = Math.max(1, ...parM.map((x) => x.s));
     const msg = parM.map(({ m, l, v, s }) => {
       const txt = KP.UNITES.map((u) => [u.k, somme(l, u.k)]).filter(([, n]) => n > 0).map(([k, n]) => `${court(n)} ${mot(k, n)}`).join(" · ");
       const w = Math.round((100 * (vues ? v : s)) / max);
@@ -73,9 +88,9 @@
     const b = brouillon(it);
     return `<div class="r-l" data-id="${it.id}">
       <span class="d">${KP.dateCell(it)}</span>
-      <span class="t"><button type="button" class="open" data-act="open" data-id="${it.id}"><span class="tt">${h(it.t)}</span></button></span>
+      <span class="t"><button type="button" class="open" data-act="open" data-id="${it.id}" title="${h(it.t)}"><span class="tt">${h(it.t)}</span></button></span>
       <span class="svc">${h(svcNom(it))}</span>
-      <input class="input r-n" id="rn-${it.id}" data-id="${it.id}" value="${h(b.n ? nb(b.n) : "")}" inputmode="numeric" autocomplete="off" placeholder="Combien ?" aria-label="Résultat de « ${h(it.t)} »">
+      <input class="input r-n" id="rn-${it.id}" data-id="${it.id}" value="${h(b.n ? groupe(String(b.n)) : "")}" inputmode="numeric" autocomplete="off" placeholder="Combien ?" aria-label="Résultat de « ${h(it.t)} »">
       <span class="r-us" role="group" aria-label="Unité">${KP.UNITES.map((u) => `<button type="button" class="r-u${b.u === u.k ? " on" : ""}" data-act="r-u" data-id="${it.id}" data-k="${u.k}" aria-pressed="${b.u === u.k}">${u.nom}</button>`).join("")}</span>
       <button type="button" class="r-ok" data-act="r-ok" data-id="${it.id}" aria-label="Noter le résultat" data-tip="Noter (Entrée)">${ic("check")}</button>
     </div>`;
@@ -86,7 +101,7 @@
     const val = ks.length ? `<b>${nb(res[ks[0]])}</b> ${mot(ks[0], res[ks[0]])}${ks.length > 1 ? `<small>${ks.slice(1).map((k) => `${nb(res[k])} ${mot(k, res[k])}`).join(" · ")}</small>` : ""}` : `<span class="muted">—</span>`;
     return `<div class="row r-row${KP.route.fiche === it.id ? " sel" : ""}" data-act="open" data-id="${it.id}">
       <span class="d">${KP.dateCell(it)}</span>
-      <span class="t"><button type="button" class="open" data-act="open" data-id="${it.id}"><span class="tt">${h(it.t)}</span></button>${it.variant === "partenariat" ? `<span class="badge">Payant</span>` : ""}</span>
+      <span class="t"><button type="button" class="open" data-act="open" data-id="${it.id}" title="${h(it.t)}"><span class="tt">${h(it.t)}</span></button>${it.variant === "partenariat" ? `<span class="badge">Payant</span>` : ""}</span>
       <span class="svc">${h(svcNom(it))}</span><span class="msg">${tags(it)}</span>
       ${store.canEdit(it) ? `<button type="button" class="r-v" data-act="r-edit" data-id="${it.id}" aria-label="Corriger le résultat de « ${h(it.t)} »">${val}</button>` : `<span class="r-v">${val}</span>`}
     </div>`;
@@ -113,31 +128,33 @@
     const lignes = rows.map((it) => { const m = store.montant(it.id);
       return `<div class="r-b" data-id="${it.id}">
         <span class="d">${KP.dateCell(it)}</span>
-        <span class="t"><button type="button" class="open" data-act="open" data-id="${it.id}"><span class="tt">${h(it.t)}</span></button></span>
+        <span class="t"><button type="button" class="open" data-act="open" data-id="${it.id}" title="${h(it.t)}"><span class="tt">${h(it.t)}</span></button></span>
         <span class="svc">${h(it.partner || "Média à choisir")}</span>
-        <span class="r-eur"><input class="input r-m" id="bm-${it.id}" data-id="${it.id}" value="${m != null ? nb(m) : ""}" inputmode="numeric" autocomplete="off" placeholder="—" aria-label="Montant de « ${h(it.t)} », en euros"><span aria-hidden="true">€</span></span>
+        <span class="r-eur"><input class="input r-m" id="bm-${it.id}" data-id="${it.id}" data-v="${m != null ? nb(m) : ""}" value="${m != null ? nb(m) : ""}" inputmode="numeric" autocomplete="off" placeholder="—" aria-label="Montant de « ${h(it.t)} », en euros"><span aria-hidden="true">€</span></span>
         <span class="st">${KP.pill(it)}</span>
       </div>`; }).join("");
     return `<div class="ag"><h2>L'année<small>${eur(an)}${anEnv ? ` sur ${eur(anEnv)}` : ""}</small></h2></div>
       <div class="r-cards">${cartes}</div>
       <div class="ag"><h2>${h(sel.nom)}<small>${h(sel.lib)}</small><span class="sp"></span>
-        <label class="r-env">Enveloppe <span class="r-eur"><input class="input r-e" id="env-${sel.k}" data-k="${sel.k}" value="${e != null ? nb(e) : ""}" inputmode="numeric" autocomplete="off" placeholder="—" aria-label="Enveloppe de la période ${h(sel.nom)}, en euros"><span aria-hidden="true">€</span></span></label></h2></div>
+        <label class="r-env">Enveloppe <span class="r-eur"><input class="input r-e" id="env-${sel.k}" data-k="${sel.k}" data-v="${e != null ? nb(e) : ""}" value="${e != null ? nb(e) : ""}" inputmode="numeric" autocomplete="off" placeholder="—" aria-label="Enveloppe de la période ${h(sel.nom)}, en euros"><span aria-hidden="true">€</span></span></label></h2></div>
       <div class="rows r-budget">
         <div class="colh r-bh" aria-hidden="true"><span>Date</span><span>Partenariat</span><span>Média</span><span>Montant</span><span>État</span></div>
         ${lignes || `<p class="r-vide muted">Aucun partenariat payant sur cette période.</p>`}
-        ${rows.length ? `<div class="r-b r-tot"><span></span><b>Total</b><span></span><b class="r-eur${e != null && t > e ? " over" : ""}">${eur(t)}</b><span></span></div>` : ""}
+        ${rows.length ? `<div class="r-b r-tot"><b class="r-tot-l">Total</b><b class="r-eur${e != null && t > e ? " over" : ""}">${eur(t)}</b></div>` : ""}
       </div>`;
   }
 
   /* ---------- gestes ---------- */
   /* noter le résultat d'une ligne « À compléter », puis passer à la suivante */
   const noter = (id) => {
-    const it = store.get(id), b = brouillon(it), inp = $("rn-" + id), n = chiffres(inp ? inp.value : b.n);
-    if (!n) { if (inp) inp.focus(); return; }
+    const it = store.get(id), b = brouillon(it), inp = $("rn-" + id), n = valeur(inp ? inp.value : b.n);
+    if (n == null) { if (inp) inp.focus(); return; }
+    if (!(n >= 0 && n <= 1e9)) { if (inp) inp.focus(); return KP.toast(IMPOSSIBLE); }
     const rows = [...document.querySelectorAll(".r-todo .r-l")], i = rows.findIndex((x) => x.dataset.id === id), next = (rows[i + 1] || rows[i - 1] || {}).dataset;
-    const res = { ...(it.res || {}), [b.u]: Number(n) };
+    const undo = store.setRes(id, { [b.u]: n });
+    if (!undo) { if (inp) inp.focus(); return KP.toast(IMPOSSIBLE); }
     KP.ui.rc[id] = null;
-    KP.toast(`Noté : ${KP.resTxt({ [b.u]: Number(n) })}`, store.setRes(id, res));
+    KP.toast(`Noté : ${KP.resTxt({ [b.u]: n })}`, undo);
     const f = next && next.id && $("rn-" + next.id); if (f) f.focus();
   };
   /* corriger les chiffres d'une diffusion : les quatre unités, dans une petite fenêtre */
@@ -147,9 +164,12 @@
     const p = KP.pop(anchor, `<form class="r-pop"><h4>Résultat</h4>${KP.UNITES.map((u) => `<label><span>${u.nom}</span><input class="input" name="${u.k}" value="${res[u.k] != null ? nb(res[u.k]) : ""}" inputmode="numeric" autocomplete="off" placeholder="—"></label>`).join("")}
       <div class="foot">${aRes(it) ? `<button type="button" class="link soft" data-x="vider">Tout effacer</button>` : ""}<span class="sp"></span><button class="btn primary small">Noter</button></div></form>`, { role: "dialog", label: "Résultat", right: true });
     const f = p.el.querySelector("form"), first = f.querySelector("input"); if (first) { first.focus(); first.select(); }
-    const done = (r) => { p.close(); const u = store.setRes(id, r); KP.toast(Object.keys(KP.resPropre(r)).length ? `Noté : ${KP.resTxt(KP.resPropre(r))}` : "Résultats effacés", u); };
-    f.addEventListener("submit", (e) => { e.preventDefault(); done(Object.fromEntries(KP.UNITES.map((u) => [u.k, chiffres(f.elements[u.k].value)]))); });
-    p.el.addEventListener("click", (e) => { if (e.target.closest('[data-x="vider"]')) done({}); });
+    const done = (r) => { const bad = Object.entries(r).find(([, v]) => v != null && !(v >= 0 && v <= 1e9));
+      if (bad) { const x = f.elements[bad[0]]; x.focus(); x.select(); return KP.toast(IMPOSSIBLE); }
+      const u = store.setRes(id, Object.fromEntries(Object.entries(r).map(([k, v]) => [k, v == null ? "" : v])), true); if (!u) return KP.toast(IMPOSSIBLE);
+      p.close(); const x = store.get(id); KP.toast(x && x.res ? `Noté : ${KP.resTxt(x.res)}` : "Résultats effacés", u); };
+    f.addEventListener("submit", (e) => { e.preventDefault(); done(Object.fromEntries(KP.UNITES.map((u) => [u.k, valeur(f.elements[u.k].value)]))); });
+    p.el.addEventListener("click", (e) => { if (e.target.closest('[data-x="vider"]')) done(Object.fromEntries(KP.UNITES.map((u) => [u.k, null]))); });
   };
   /* le budget d'un partenariat, depuis sa fiche */
   KP.prixEdit = (anchor, id) => {
@@ -157,14 +177,17 @@
     const p = KP.pop(anchor, `<form class="r-pop"><h4>Budget</h4><label><span>Montant</span><span class="r-eur"><input class="input" name="m" value="${m != null ? nb(m) : ""}" inputmode="numeric" autocomplete="off" placeholder="—"><span aria-hidden="true">€</span></span></label>
       <div class="foot"><span class="sp"></span><button class="btn primary small">Noter</button></div></form>`, { role: "dialog", label: "Budget", right: true });
     const f = p.el.querySelector("form"), inp = f.querySelector("input"); inp.focus(); inp.select();
-    f.addEventListener("submit", (e) => { e.preventDefault(); p.close(); const v = chiffres(inp.value); KP.toast(v ? `Budget : ${eur(Number(v))}` : "Montant retiré", store.setMontant(it.id, v ? Number(v) : null)); });
+    f.addEventListener("submit", (e) => { e.preventDefault(); const v = valeur(inp.value), u = Number.isNaN(v) ? null : store.setMontant(it.id, v);
+      if (!u) { inp.focus(); inp.select(); return KP.toast(IMPOSSIBLE_EUR); }
+      p.close(); KP.toast(v != null ? `Budget : ${eur(v)}` : "Montant retiré", u); });
   };
 
   /* le nombre se lit groupé (« 14 200 ») pendant qu'on le tape */
   document.addEventListener("input", (e) => {
     const t = e.target; if (!t.classList || !(t.classList.contains("r-n") || t.classList.contains("r-m") || t.classList.contains("r-e"))) return;
-    const n = chiffres(t.value), avant = t.value.slice(0, t.selectionStart).replace(/[^\d]/g, "").length;
-    t.value = n ? nb(Number(n)) : "";
+    if (!/^[\d\s\u00a0\u202f]*$/.test(t.value)) { if (t.classList.contains("r-n")) { const it = store.get(t.dataset.id); if (it) brouillon(it).n = t.value; } return; }
+    const avant = t.value.slice(0, t.selectionStart).replace(/[^\d]/g, "").length;
+    t.value = groupe(t.value); const n = t.value.replace(/\D/g, "");
     let pos = 0, vus = 0; while (pos < t.value.length && vus < avant) { if (/\d/.test(t.value[pos])) vus++; pos++; }
     try { t.setSelectionRange(pos, pos); } catch (err) { /* rien */ }
     if (t.classList.contains("r-n")) { const it = store.get(t.dataset.id); if (it) brouillon(it).n = n; }
@@ -173,11 +196,19 @@
   /* après le déplacement du focus : le rendu qui suit le rend au champ suivant au lieu de le perdre */
   document.addEventListener("change", (e) => {
     const t = e.target; if (!t.classList || !(t.classList.contains("r-m") || t.classList.contains("r-e"))) return;
-    const v = chiffres(t.value), n = v ? Number(v) : null, { id, k } = t.dataset, m = t.classList.contains("r-m");
-    setTimeout(() => (m ? store.setMontant(id, n) : store.setEnveloppe(k, n)), 0);
+    const n = valeur(t.value), { id, k } = t.dataset, m = t.classList.contains("r-m");
+    setTimeout(() => {
+      const u = Number.isNaN(n) ? null : m ? store.setMontant(id, n) : store.setEnveloppe(k, n);
+      if (!u) { t.value = t.dataset.v || ""; return KP.toast(IMPOSSIBLE_EUR); }
+      const nom = m ? (store.get(id) || {}).t || "Montant" : "Enveloppe";
+      KP.toast(n != null ? `${nom} : ${eur(n)}` : `${nom} : montant retiré`, u);
+    }, 0);
   });
   document.addEventListener("keydown", (e) => {
-    const t = e.target; if (e.key !== "Enter" || !t.classList || e.isComposing) return;
+    const t = e.target; if (!t.classList || e.isComposing) return;
+    /* Échap : on retrouve le montant d'avant, rien ne part */
+    if (e.key === "Escape" && (t.classList.contains("r-m") || t.classList.contains("r-e"))) { e.preventDefault(); e.stopPropagation(); t.value = t.dataset.v || ""; t.blur(); return; }
+    if (e.key !== "Enter") return;
     if (t.classList.contains("r-n")) { e.preventDefault(); noter(t.dataset.id); }
     if (t.classList.contains("r-m") || t.classList.contains("r-e")) {
       e.preventDefault(); const all = [...document.querySelectorAll(".r-m")], i = all.indexOf(t);
@@ -188,7 +219,7 @@
   Object.assign(KP.acts, {
     rtab: (a) => KP.go({ tab: a.dataset.k, fiche: "" }),
     rper: (a) => KP.go({ per: a.dataset.k }),
-    "r-u": (a, e) => { e.stopPropagation(); const it = store.get(a.dataset.id), b = brouillon(it), inp = $("rn-" + it.id); if (inp) b.n = chiffres(inp.value); b.u = a.dataset.k;
+    "r-u": (a, e) => { e.stopPropagation(); const it = store.get(a.dataset.id), b = brouillon(it), inp = $("rn-" + it.id); if (inp) b.n = inp.value; b.u = a.dataset.k;
       a.parentNode.querySelectorAll(".r-u").forEach((x) => { const on = x.dataset.k === b.u; x.classList.toggle("on", on); x.setAttribute("aria-pressed", String(on)); });
       if (inp) inp.focus(); },
     "r-ok": (a, e) => { e.stopPropagation(); noter(a.dataset.id); },

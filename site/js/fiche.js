@@ -31,7 +31,7 @@
     if (it.variant === "classement") rows.push(["Rang", inp("rang", it.rang, "À la parution")], ["Objectif", inp("cible", it.cible, "Top…")]);
     rows.push(["État", it.annule ? KP.pill(it) : can ? `<div class="seg" role="group" aria-label="État">${KP.STATUTS.map((s) => `<button type="button" data-act="f-st" data-k="${s.k}" class="${it.st === s.k ? "on" : ""}" aria-pressed="${it.st === s.k}">${s.k === "diffuse" && it.st === s.k ? ic("check") : ""}${s.nom}</button>`).join("")}</div>` : KP.pill(it)]);
     /* résultats d'une diffusion ; budget d'un partenariat payant (chefs de projet seulement) */
-    if (!tf && !it.annule && it.st === "diffuse" && (it.res || can)) rows.push(["Résultat", can ? `<button type="button" class="val r-fv${it.res ? "" : " none"}" data-act="r-edit" data-id="${it.id}">${it.res ? h(KP.resTxt(it.res)) : "Ajouter les chiffres"}</button>` : `<span class="val r-fv">${h(KP.resTxt(it.res))}</span>`]);
+    if (!tf && !it.annule && it.st === "diffuse" && (it.res || can) && store.resOk()) rows.push(["Résultat", can ? `<button type="button" class="val r-fv${it.res ? "" : " none"}" data-act="r-edit" data-id="${it.id}">${it.res ? h(KP.resTxt(it.res)) : "Ajouter les chiffres"}</button>` : `<span class="val r-fv">${h(KP.resTxt(it.res))}</span>`]);
     if (it.variant === "partenariat" && store.voitBudget()) { const m = store.montant(it.id); rows.push(["Budget", `<button type="button" class="val${m != null ? "" : " none"}" data-act="r-prix" data-id="${it.id}">${m != null ? h(KP.nb(m)) + " €" : "Ajouter le montant"}${ic("lock")}</button>`]); }
 
     const showAct = KP.ui.allAct === it.id ? acts : acts.slice(0, 3);
@@ -57,13 +57,13 @@
         ${!reader && !it.annule && (can || u.role === "pilote") ? `<div class="f-actions"><button type="button" class="check" data-act="f-reunion" aria-pressed="${!!it.reunion}"><span class="box">${ic("check")}</span>À voir en réunion</button></div>` : ""}
         ${reader || it.annule ? (reqs.length ? `<section class="f-sec msgs"><h3>Messages · ${reqs.length}</h3>${reqs.map((r) => KP.ecrire.carte(r, it)).join("")}</section>` : "")
           : `<section class="f-sec msgs"><h3>Messages${reqs.length ? " · " + reqs.length : ""}</h3>${reqs.map((r) => KP.ecrire.carte(r, it)).join("")}${KP.ecrire.html(it)}</section>`}
-        ${par ? (() => { const ans = store.reqsOf(par.id).filter((q) => q.fait && q.rep);
+        ${par ? (() => { const ans = store.reqsOf(par.id).filter((q) => q.fait && q.rep && q.de !== q.a);   /* pas les rappels privés */
           return `<section class="f-sec from"><h3><i class="tfdot"></i>Vient du temps fort<button type="button" class="link" data-act="open" data-id="${par.id}">Ouvrir</button></h3>
             <p><b>${h(par.t)}</b> · ${h(KP.dateLong(par))}${par.lieu ? " · " + h(par.lieu) : ""}</p>
             ${flag(par)}
             ${par.note ? `<p class="muted from-note">${h(par.note)}</p>` : ""}
             ${par.docs.map((d) => `<p class="il">${ic("doc")}<span><a class="link" href="${h(d.url)}" target="_blank" rel="noopener">${h(d.t)}</a></span></p>`).join("")}
-            ${ans.map((q) => `<p class="il">${ic("chat")}<span><b>${h(q.quoi)}</b> · ${h(q.rep)} <small class="muted">${h(KP.dest(q.a))}</small></span></p>`).join("")}</section>`; })() : ""}
+            ${ans.map((q) => `<p class="il rep-tf">${ic("chat")}<span><b>${h(["Autre", "Info"].includes(q.quoi) ? (q.txt || "Réponse").slice(0, 60) : q.quoi)}</b> · ${KP.ecrire.texte(q.rep, par)} <small class="muted">${h(KP.dest(q.a))}</small></span></p>`).join("")}</section>`; })() : ""}
         ${tf ? `<section class="f-sec"><h3>Relais${rel.length ? " · " + rel.length : ""}${store.canCreate() ? `<button type="button" class="link" data-act="new" data-tf="${it.id}" data-date="${it.variant === "sujet" ? KP.TODAY : it.date}">Ajouter</button>` : ""}</h3>
           ${rel.length ? rel.map((r) => `<button type="button" class="mini" data-act="open" data-id="${r.id}"><span class="d">${h(KP.dateShort(r))}</span><span class="tt">${h(r.t)} <small>· ${h((KP.service(r.svc) || {}).court || "")}</small></span>${KP.pill(r)}</button>`).join("") : `<p class="muted">Aucun service ne s'en est encore saisi.</p>`}</section>` : ""}
         ${memos.length ? `<div class="memos">${memos.map((r) => `<div class="memo${r.pour < KP.TODAY ? " late" : ""}">${ic("clock")}<span class="tt">${h(r.txt || r.quoi)}</span><small>${h(KP.fmt.court(r.pour))}</small>${KP.ib("edit", "Modifier le rappel", "memo", `data-id="${r.id}"`)}${KP.ib("trash", "Effacer le rappel", "req-drop", `data-id="${r.id}"`)}<button type="button" class="ib" data-act="memo-fait" data-id="${r.id}" data-tip="C'est fait" aria-label="C'est fait">${ic("check")}</button></div>`).join("")}</div>` : ""}
@@ -143,7 +143,8 @@
     },
     answer: (a) => {
       const r = store.reqs().find((x) => x.id === a.dataset.id), it = store.get(r.item);
-      const d = KP.dialog(`<form method="dialog"><h2>Répondre à ${h(KP.dest(r.de))}</h2><p class="muted" style="margin-top:-8px">${h(r.quoi)} pour « ${h(it.t)} »${r.txt ? " : " + h(r.txt) : ""}</p>
+      const parle = ["Autre", "Info"].includes(r.quoi) || (r.txt && KP.phrase.plat(r.txt).includes(KP.phrase.plat(r.quoi)));
+      const d = KP.dialog(`<form method="dialog"><h2>Répondre à ${h(KP.dest(r.de))}</h2><p class="muted rep-ctx" style="margin-top:-8px">${parle ? "" : h(r.quoi) + " pour "}« ${h(it.t)} »${r.txt ? " : " + h(r.txt) : ""}</p>
         <label class="field"><span>Ta réponse</span><textarea class="input" name="rep" placeholder="C'est ok, une phrase, un lien SharePoint…"></textarea></label>
         <div class="foot"><button type="button" class="btn quiet" data-close>Annuler</button><button class="btn primary">Envoyer</button></div></form>`);
       d.querySelector("textarea").focus();
@@ -164,7 +165,7 @@
     /* une action ne prévient que son service : « Prévenir » alerte un autre service, au cas par cas */
     prevenir: (a) => { const it = cur(), u = KP.me(); KP.menu(a, KP.SERVICES.filter((s) => s.k !== it.svc && s.k !== u.svc).map((s) => ({ v: s.k, nom: s.nom })), (v) => store.prevenir(it.id, v), { right: true, title: "Prévenir un service" }); },
     "req-date": (a) => { const r = store.reqs().find((x) => x.id === a.dataset.id); if (r) KP.datepick(a, r.pour, (v) => { if (v && v !== r.pour) { store.editReq(r.id, { pour: v }); KP.toast(`Pour le ${KP.fmt.moyen(v)}`); } }); },
-    "req-drop": (a) => { const r = store.reqs().find((x) => x.id === a.dataset.id); if (!r) return; store.dropReq(r.id); KP.toast(r.a === r.de ? "Rappel effacé" : `Demande à ${KP.dest(r.a)} retirée`); },
+    "req-drop": (a) => { const r = store.reqs().find((x) => x.id === a.dataset.id); if (!r) return; store.dropReq(r.id); KP.toast(r.a === r.de ? "Rappel effacé" : r.pour ? `Demande à ${KP.dest(r.a)} retirée` : `Message à ${KP.dest(r.a)} retiré`); },
     relance: (a) => { const r = store.reqs().find((x) => x.id === a.dataset.id); if (r) store.relance(r.id); },
   });
 })();

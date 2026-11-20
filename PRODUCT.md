@@ -26,7 +26,8 @@ Built for this team's own calendar: the 5 recruitment periods are the navigation
 ## Capabilities and Constraints
 - Vanilla JS, no build, GitHub Pages (main = live), Supabase base. Database changes are SQL that Julien pastes in the Supabase SQL Editor himself.
 - Items: action, temps fort (possibly multi-day), sujet de la période, classement, partenariat média payant. Three states: à confirmer, prévu, diffusé. Dates may be month-only (« courant novembre »).
-- Requests for elements (J-30/J-15/J-7 logic in V1), private « Rappel pour moi », pin, duplicate, postpone or cancel with a reason, contacts and places.
+- Messages in the fiche written as one sentence (« @Estelle les visuels pour vendredi ») : dated requests with a reminder the day before, « pour info » messages without a date, private « Rappel pour moi », pin, duplicate, postpone or cancel with a reason, places.
+- Résultats screen (views, press coverage, sign-ups, clicks per period) ; Budget tab for the chefs de projet only (partnership amounts and period envelopes).
 - Three screens: Accueil, Le plan (list or calendar grid), Réunion; the fiche opens beside the plan.
 
 ## Brand Commitments

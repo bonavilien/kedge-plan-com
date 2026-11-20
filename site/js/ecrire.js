@@ -4,8 +4,8 @@
 (() => {
   const KP = window.KP, { h, ic, store } = KP, P = KP.phrase;
   const $ = (id) => document.getElementById(id);
-  const etat = (id) => { KP.ui.ph = KP.ui.ph || {}; return KP.ui.ph[id] || (KP.ui.ph[id] = { txt: "", noDate: false, quick: "", dates: false, sansDoc: false, sansRes: false, sansPrix: false, sel: 0 }); };
-  const recents = () => { try { return JSON.parse(localStorage.getItem("kplan-recents") || "[]"); } catch (e) { return []; } };
+  const etat = (id) => { KP.ui.ph = KP.ui.ph || {}; return KP.ui.ph[id] || (KP.ui.ph[id] = { txt: "", noDate: false, quick: "", dates: false, sansDoc: false, res: null, sansPrix: false, sel: 0, pos: null, ferme: false }); };
+  const recents = () => { try { const v = JSON.parse(localStorage.getItem("kplan-recents") || "[]"); return Array.isArray(v) ? v : []; } catch (e) { return []; } };
   const retenir = (ks) => { try { localStorage.setItem("kplan-recents", JSON.stringify([...ks, ...recents().filter((k) => !ks.includes(k))].slice(0, 8))); } catch (e) { /* rien */ } };
   const cur = () => store.get(KP.route.fiche);
   const defaut = (it) => [KP.addDays(it.date, -7), KP.addDays(KP.TODAY, 1)].sort().pop();
@@ -22,26 +22,32 @@
     const ouvertes = store.reqsOf(it.id).filter((q) => !q.fait && q.de !== q.a && q.pour && KP.reqMine(q));
     if (r.intention === "fait" && ouvertes.length)
       a.cible = ouvertes.find((q) => r.qui.some((w) => w.k === q.de)) || ouvertes.find((q) => r.quoi && q.quoi === r.quoi.nom) || [...ouvertes].sort((x, y) => x.pour.localeCompare(y.pour))[0];
-    a.mode = r.intention === "rappel" ? "rappel" : a.cible ? "reponse" : r.qui.length ? (r.intention === "demande" && !s.noDate) || s.quick ? "demande" : "info" : "";
+    /* « @RS on décale au 4 décembre » : la date est celle de l'action, RS est prévenu pour info */
+    const datee = r.intention === "demande" && !s.noDate;
+    a.mode = r.intention === "rappel" ? "rappel" : a.cible ? "reponse" : r.qui.length ? datee || s.quick ? "demande" : "info" : "";
     a.date = a.mode === "rappel" ? (r.date ? r.date.iso : defaut(it)) : a.mode === "demande" ? (s.quick || r.date.iso) : "";
     a.lue = a.mode === "demande" && !s.quick;   /* la date vient de la phrase (et pas d'un bouton) */
     a.decaler = r.intention === "decaler" && can && r.date && r.date.iso !== it.date && it.variant !== "sujet" ? r.date.iso : "";
     a.docs = can && !it.annule ? r.liens.filter((l) => l.sp && !it.docs.some((d) => d.url === l.url)) : [];
     /* « 12 000 vues » sur une action diffusée (ou passée) : ses résultats ; « 1 500 € » sur un partenariat, écrit par un chef de projet : son budget */
     const ch = r.chiffres.filter((c, i, l) => l.findIndex((x) => x.unite === c.unite) === i);
-    a.res = can && ch.length && it.kind === "action" && !it.annule && (it.st === "diffuse" || (!it.flou && it.date <= KP.TODAY)) ? Object.fromEntries(ch.map((c) => [c.unite, c.n])) : null;
-    a.prix = r.montant && it.variant === "partenariat" && !it.annule && store.voitBudget() ? r.montant.n : null;
-    a.noteRes = !!a.res && !s.sansRes; a.notePrix = a.prix != null && !s.sansPrix;
-    a.alerte = a.mode === "demande" ? (a.date < KP.TODAY ? "date passée" : a.date > it.date && !it.flou ? `après ${it.kind === "tf" ? "le temps fort" : "la diffusion"} du ${date(it.date)}` : "") : "";
+    a.res = can && store.resOk() && ch.length && it.kind === "action" && !it.annule && (it.st === "diffuse" || (!it.flou && it.date <= KP.TODAY)) ? Object.fromEntries(ch.map((c) => [c.unite, c.n])) : null;
+    a.prix = r.montant && it.variant === "partenariat" && !it.annule && store.voitBudget() && r.montant.n >= 0 && r.montant.n <= 1e8 ? Math.round(r.montant.n) : null;
+    /* noter les chiffres : proposé coché seulement quand la phrase ne demande rien à personne (« 12 400 vues » tout seul) */
+    a.noteRes = !!a.res && (s.res != null ? s.res : !r.qui.length && r.intention !== "rappel"); a.notePrix = a.prix != null && !s.sansPrix;
+    const fin = it.variant === "sujet" ? KP.endOf(it) : it.date;
+    a.alerte = a.mode === "demande" ? (a.date < KP.TODAY ? "date passée" : a.date > fin && !it.flou && it.variant !== "sujet" ? `après ${it.kind === "tf" ? "le temps fort" : "la diffusion"} du ${date(it.date)}` : "") : "";
+    /* un montant écrit dans un message part à la personne : le budget, lui, est réservé aux chefs de projet */
+    a.montantVu = r.montant && r.qui.length && (a.mode === "demande" || a.mode === "info") && !a.notePrix ? r.qui.map((q) => q.nom).join(", ") : "";
     return a;
   };
 
   /* ---------- la ligne pour écrire ---------- */
   const html = (it) => `<div class="ph" data-ph="${it.id}">
       <div class="ph-box"><div class="ph-champ"><div class="ph-miroir" aria-hidden="true"></div>
-        <textarea id="ph-t" rows="1" placeholder="@quelqu'un et ton message" aria-label="Écrire : @ et un nom, ton message, et pour quand" autocomplete="off"></textarea></div>
+        <textarea id="ph-t" rows="1" placeholder="@quelqu'un et ton message" aria-label="Écrire : @ et un nom, ton message, et pour quand" autocomplete="off" role="combobox" aria-autocomplete="list" aria-controls="ph-sugg" aria-expanded="false"></textarea></div>
         <button type="button" class="ph-go" data-act="ph-send" aria-label="Envoyer" data-tip="Envoyer (Entrée)">${ic("arrow")}</button></div>
-      <div class="ph-sugg" role="listbox" aria-label="Suggestions" hidden></div>
+      <div class="ph-sugg" id="ph-sugg" role="listbox" aria-label="Suggestions" hidden></div>
       <div class="ph-apercu" aria-live="polite"></div>
     </div>`;
 
@@ -50,6 +56,9 @@
   const peindre = (root, it) => {
     const box = root.querySelector(".ph"); if (!box) return;
     const a = analyse(it), { r, s } = a, ta = box.querySelector("textarea");
+    /* le @ ou le # en cours : juste avant le curseur, même au milieu de la phrase */
+    const pos = s.pos == null || s.pos > s.txt.length ? s.txt.length : s.pos;
+    const rc0 = pos === s.txt.length ? r : P.lire(s.txt.slice(0, pos), ctx(it));
     const clef = r.date && a.mode !== "info" ? r.date.txt : ""; if (clef && clef !== vu) tour++; vu = clef;
     const cls = (k) => (k === "chiffre" && a.noteRes) || (k === "montant" && a.notePrix) ? "z-res" : k === "qui" ? "z-qui" : k === "rappel" ? "z-qui" : k === "ref" ? "z-ref" : k === "date" && (a.lue || a.mode === "rappel" || a.decaler) ? `z-date${a.alerte ? " alerte" : ""} t${tour % 2}` : "";
     box.querySelector(".ph-miroir").innerHTML = P.morceaux(s.txt, r).map((m) => m.k && cls(m.k) ? `<mark class="${cls(m.k)}">${h(m.t)}</mark>` : h(m.t)).join("") + "​";
@@ -60,6 +69,7 @@
     if (a.mode === "reponse") chips.push(`<span class="ph-c ok">${ic("check")}Répond à ${h(KP.dest(a.cible.de))} · ${h(a.cible.quoi !== "Autre" && a.cible.quoi !== "Info" ? a.cible.quoi : (a.cible.txt || "").slice(0, 32))}</span>`);
     if (a.mode === "demande") chips.push(`<button type="button" class="ph-c date t${tour % 2}" data-act="ph-nodate" aria-label="Retirer la date : pour le ${h(date(a.date))}">pour le ${h(date(a.date))}${ic("close")}</button>`) ;
     if (a.alerte) chips.push(`<span class="ph-alerte">${h(a.alerte)}</span>`);
+    if (a.montantVu) chips.push(`<span class="ph-alerte">${ic("lock")}montant lu par ${h(a.montantVu)}</span>`);
     if (a.mode === "info") {
       chips.push(`<span class="ph-c info">${ic("bell")}pour info</span>`);
       if (!s.dates) chips.push(`<button type="button" class="ph-c rond" data-act="ph-dates" aria-label="Ajouter une échéance" data-tip="Ajouter une échéance">${ic("calendar")}</button>`);
@@ -71,26 +81,28 @@
     if (a.docs.length) chips.push(`<button type="button" class="ph-c propose${s.sansDoc ? "" : " on"}" data-act="ph-doc" aria-pressed="${!s.sansDoc}">${ic("doc")}Ranger ${a.docs.length > 1 ? "les liens" : "le lien"} dans les documents</button>`);
     if (a.res) chips.push(`<button type="button" class="ph-c propose${a.noteRes ? " on" : ""}" data-act="ph-res" aria-pressed="${a.noteRes}">${ic("chart")}Noter ${h(KP.resTxt(a.res))}${it.st !== "diffuse" ? " et passer en Diffusé" : ""}</button>`);
     if (a.prix != null) chips.push(`<button type="button" class="ph-c propose${a.notePrix ? " on" : ""}" data-act="ph-prix" aria-pressed="${a.notePrix}">${ic("lock")}Budget : ${h(KP.nb(a.prix))} €</button>`);
-    if (!a.mode && !a.noteRes && !a.notePrix && s.txt.trim() && r.tape === undefined && r.cherche === undefined && !a.decaler) chips.push(`<span class="muted">Tape @ pour choisir à qui</span>`);
+    if (!a.mode && !a.noteRes && !a.notePrix && s.txt.trim() && rc0.tape === undefined && rc0.cherche === undefined && !a.decaler) chips.push(`<span class="muted">Tape @ pour choisir à qui</span>`);
     const ap = box.querySelector(".ph-apercu"); ap.innerHTML = chips.join(""); ap.hidden = !chips.length;
     box.querySelector(".ph-go").disabled = !a.mode && !a.noteRes && !a.notePrix;
     /* suggestions : @ puis des lettres, ou # puis le début d'un titre */
     const sg = box.querySelector(".ph-sugg"); let list = [];
-    if (r.tape !== undefined) {
-      const t = P.plat(r.tape), rc = recents(), deja = r.qui.map((q) => q.k);
+    const tape = s.ferme ? undefined : rc0.tape, cherche = s.ferme ? undefined : rc0.cherche;
+    if (tape !== undefined) {
+      const t = P.plat(tape), rc = recents(), deja = r.qui.map((q) => q.k);
       list = [...gens().map((p) => ({ k: p.k, nom: p.nom, mot: p.nom })), ...services().map((x) => ({ k: x.k, nom: x.nom, mot: x.court || x.nom }))]
         .filter((c) => !deja.includes(c.k) && (P.plat(c.nom).startsWith(t) || P.plat(c.mot).startsWith(t)))
         .sort((x, y) => ((rc.indexOf(x.k) + 1 || 99) - (rc.indexOf(y.k) + 1 || 99)) || x.nom.localeCompare(y.nom)).slice(0, 5)
         .map((c) => ({ v: "@" + c.mot + " ", lib: "@" + c.mot, info: c.mot !== c.nom ? c.nom : "" }));
-    } else if (r.cherche !== undefined && r.cherche.trim().length) {
-      const t = P.plat(r.cherche.trim());
+    } else if (cherche !== undefined && cherche.trim().length) {
+      const t = P.plat(cherche.trim());
       const rang = (x) => { const n = P.plat(x.t); return n.startsWith(t) ? 0 : new RegExp("\\b" + t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).test(n) ? 1 : 2; };
       list = store.items().filter((x) => x.id !== it.id && P.plat(x.t).includes(t)).sort((x, y) => rang(x) - rang(y) || (x.date < KP.TODAY) - (y.date < KP.TODAY) || x.date.localeCompare(y.date)).slice(0, 5)
         .map((x) => ({ v: "#" + x.t + " ", lib: x.t, info: KP.dateShort(x) }));
     }
     s.sel = Math.min(s.sel, Math.max(0, list.length - 1));
     sg.hidden = !list.length; ta.setAttribute("aria-expanded", String(!!list.length));
-    sg.innerHTML = list.map((c, i) => `<button type="button" role="option" class="ph-s${i === s.sel ? " on" : ""}" aria-selected="${i === s.sel}" data-act="ph-pick" data-v="${h(c.v)}">${h(c.lib)}${c.info ? ` <small>${h(c.info)}</small>` : ""}</button>`).join("");
+    if (list.length) ta.setAttribute("aria-activedescendant", "ph-s" + s.sel); else ta.removeAttribute("aria-activedescendant");
+    sg.innerHTML = list.map((c, i) => `<button type="button" role="option" id="ph-s${i}" tabindex="-1" class="ph-s${i === s.sel ? " on" : ""}" aria-selected="${i === s.sel}" data-act="ph-pick" data-v="${h(c.v)}">${h(c.lib)}${c.info ? ` <small>${h(c.info)}</small>` : ""}</button>`).join("");
     /* la hauteur suit le texte */
     ta.style.height = "auto"; ta.style.height = box.querySelector(".ph-miroir").offsetHeight + "px";
   };
@@ -104,20 +116,28 @@
 
   /* remplacer le @… ou le #… en cours par la suggestion choisie */
   const choisir = (v) => {
-    const it = cur(), s = etat(it.id), ta = $("ph-t");
-    s.txt = s.txt.replace(v.startsWith("@") ? /@[^\s@#]*$/ : /#[^#@]*$/, v); s.sel = 0;
-    ta.value = s.txt; ta.focus(); ta.setSelectionRange(s.txt.length, s.txt.length); peindre($("fiche"), it);
+    const it = cur(), s = etat(it.id), ta = $("ph-t"), pos = s.pos == null || s.pos > s.txt.length ? s.txt.length : s.pos;
+    const avant = s.txt.slice(0, pos).replace(v.startsWith("@") ? /@[^\s@#]*$/ : /#[^#@]*$/, v), apres = s.txt.slice(pos).replace(/^\S*\s?/, (x) => (v.startsWith("@") ? "" : x));
+    s.txt = avant + apres; s.sel = 0; s.pos = avant.length;
+    ta.value = s.txt; ta.focus(); ta.setSelectionRange(avant.length, avant.length); peindre($("fiche"), it);
   };
 
   document.addEventListener("input", (e) => {
     if (e.target.id !== "ph-t") return;
     const it = cur(); if (!it) return;
-    Object.assign(etat(it.id), { txt: e.target.value, noDate: false, quick: "", dates: false, sel: 0 });
+    Object.assign(etat(it.id), { txt: e.target.value, noDate: false, quick: "", dates: false, sel: 0, pos: e.target.selectionStart, ferme: false });
     peindre($("fiche"), it);
   });
+  /* le curseur bouge sans taper (clic, flèches) : les suggestions suivent */
+  const suit = (e) => { if (e.target.id !== "ph-t") return; const it = cur(); if (!it) return; const s = etat(it.id); if (s.pos !== e.target.selectionStart) { s.pos = e.target.selectionStart; peindre($("fiche"), it); } };
+  document.addEventListener("click", suit);
+  document.addEventListener("keyup", (e) => { if (/^(ArrowLeft|ArrowRight|Home|End)$/.test(e.key)) suit(e); });
   document.addEventListener("keydown", (e) => {
-    if (e.target.id !== "ph-t" || e.isComposing) return;
+    /* Safari : la touche qui valide une saisie japonaise ou une correction arrive avec le code 229 */
+    if (e.target.id !== "ph-t" || e.isComposing || e.keyCode === 229) return;
     const it = cur(), s = etat(it.id), opts = [...document.querySelectorAll(".ph-sugg:not([hidden]) .ph-s")];
+    /* Échap ferme d'abord les suggestions, sans quitter la ligne */
+    if (opts.length && e.key === "Escape") { e.preventDefault(); s.ferme = true; peindre($("fiche"), it); return; }
     if (opts.length && (e.key === "ArrowDown" || e.key === "ArrowUp")) { e.preventDefault(); s.sel = (s.sel + (e.key === "ArrowDown" ? 1 : opts.length - 1)) % opts.length; peindre($("fiche"), it); return; }
     if (opts.length && (e.key === "Enter" || e.key === "Tab") && !e.shiftKey) { e.preventDefault(); choisir(opts[s.sel].dataset.v); return; }
     if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); KP.acts["ph-send"](); }
@@ -130,7 +150,7 @@
     "ph-nodate": () => { const it = cur(), s = etat(it.id); if (s.quick) s.quick = ""; else s.noDate = true; peindre($("fiche"), it); $("ph-t").focus(); },
     "ph-dates": () => { const it = cur(); etat(it.id).dates = true; peindre($("fiche"), it); const b = document.querySelector(".ph-c.choix"); if (b) b.focus(); },
     "ph-quick": (b) => { const it = cur(); etat(it.id).quick = b.dataset.v; peindre($("fiche"), it); $("ph-t").focus(); },
-    "ph-res": () => { const it = cur(), s = etat(it.id); s.sansRes = !s.sansRes; peindre($("fiche"), it); $("ph-t").focus(); },
+    "ph-res": () => { const it = cur(), s = etat(it.id), a = analyse(it); s.res = !a.noteRes; peindre($("fiche"), it); $("ph-t").focus(); },
     "ph-prix": () => { const it = cur(), s = etat(it.id); s.sansPrix = !s.sansPrix; peindre($("fiche"), it); $("ph-t").focus(); },
     "ph-doc": () => { const it = cur(), s = etat(it.id); s.sansDoc = !s.sansDoc; peindre($("fiche"), it); $("ph-t").focus(); },
     "ph-decaler": () => {
@@ -143,17 +163,24 @@
       const it = cur(); if (!it) return;
       const a = analyse(it), { r, s } = a, ta = $("ph-t");
       /* sans @ : seulement noter les chiffres ou le montant */
-      const notes = [];
-      if (a.noteRes) { if (it.st !== "diffuse") store.update(it.id, { st: "diffuse" }, "a passé l'état à « Diffusé »"); store.setRes(it.id, { ...(it.res || {}), ...a.res }); notes.push(KP.resTxt(a.res)); }
-      if (a.notePrix) { store.setMontant(it.id, a.prix); notes.push(`budget ${KP.nb(a.prix)} €`); }
-      if (!a.mode && notes.length) { KP.ui.ph[it.id] = null; KP.render(); return KP.toast(`Noté : ${notes.join(", ")}`); }
+      const notes = [], undos = [];
+      /* les chiffres d'abord : s'ils sont refusés, l'état ne passe pas en Diffusé */
+      if (a.noteRes) { const u = store.setRes(it.id, a.res); if (!u) return KP.toast("Ce chiffre n'est pas possible : un nombre entier, de 0 à un milliard"); undos.push(u);
+        if (it.st !== "diffuse") undos.push(store.update(it.id, { st: "diffuse" }, "a passé l'état à « Diffusé »")); notes.push(KP.resTxt(a.res)); }
+      if (a.notePrix) { const u = store.setMontant(it.id, a.prix); if (u) { undos.push(u); notes.push(`budget ${KP.nb(a.prix)} €`); } }
+      const annuler = undos.length ? () => [...undos].reverse().forEach((u) => u && u()) : null;
+      if (!a.mode && notes.length) { KP.ui.ph[it.id] = null; KP.render(); return KP.toast(`Noté : ${notes.join(", ")}`, annuler); }
       if (!a.mode) { if (ta) ta.focus(); return KP.toast(a.decaler ? "Pour prévenir quelqu'un du changement, ajoute @ et son nom" : "Commence par @ et le nom de la personne"); }
-      const txt = P.propre(s.txt, r, { sansDate: a.mode === "rappel" }) || s.txt.trim();
+      /* le montant noté au budget ne part pas dans le message : seuls les chefs de projet le voient */
+      const r2 = a.notePrix ? { ...r, zones: [...r.zones.filter((z) => z.k !== "montant"), ...(r.montant ? [{ k: "rappel", at: r.montant.at, end: r.montant.end }] : [])] } : r;
+      const txt = P.propre(s.txt, r2, { sansDate: a.mode === "rappel" }) || (a.notePrix ? "" : s.txt.trim());
+      if (!txt && a.notePrix) { KP.ui.ph[it.id] = null; KP.render(); return KP.toast(`Noté : ${notes.join(", ")}`, annuler); }
       if (a.docs.length && !s.sansDoc) store.update(it.id, { docs: [...it.docs, ...a.docs.map((l) => ({ t: titreLien(l.url), url: l.url }))] }, "a ajouté un document");
       KP.ui.ph[it.id] = null;
-      if (a.mode === "rappel") { store.ask({ item: it.id, a: moi().k, quoi: "Autre", txt, pour: a.date }); return KP.toast(`Rappel noté pour ${KP.fmt.relatif(a.date)}`); }
+      KP.ecrire.dernier = { id: it.id, txt: s.txt, quand: Date.now(), ids: [] };
+      if (a.mode === "rappel") { KP.ecrire.dernier.ids = [store.ask({ item: it.id, a: moi().k, quoi: "Autre", txt, pour: a.date }).id]; return KP.toast(`Rappel noté pour ${KP.fmt.relatif(a.date)}`); }
       if (a.mode === "reponse") { const undo = store.answer(a.cible.id, txt); return KP.toast(`Réponse envoyée à ${KP.dest(a.cible.de)}`, undo); }
-      r.qui.forEach((q) => store.ask({ item: it.id, a: q.k, quoi: r.quoi ? r.quoi.nom : a.date ? "Autre" : "Info", txt, pour: a.date }));
+      KP.ecrire.dernier.ids = store.askAll(r.qui.map((q) => ({ item: it.id, a: q.k, quoi: r.quoi ? r.quoi.nom : a.date ? "Autre" : "Info", txt, pour: a.date }))).map((x) => x.id);
       retenir(r.qui.map((q) => q.k));
       const noms = r.qui.map((q) => q.nom), n = noms.length;
       KP.toast(`${n > 1 ? noms.slice(0, -1).join(", ") + " et " + noms[n - 1] : noms[0]} ${n > 1 ? "reçoivent" : "reçoit"} une notification${a.date ? ", puis un rappel la veille" : ""}`);
@@ -182,5 +209,14 @@
       <p>${parle ? "" : `<b>${h(r.quoi)}</b>${r.txt ? " · " : ""}`}${texte(r.txt, it)}</p>${actions}</div>`;
   };
 
-  KP.ecrire = { html, monte, carte, texte, analyse };
+  /* la base a refusé l'envoi (un destinataire refusé, plus de réseau…) : la phrase revient dans la ligne, rien n'est perdu */
+  document.addEventListener("kp:refus", () => {
+    const d = KP.ecrire.dernier; if (!d || Date.now() - d.quand > 20000 || !d.ids.length) return;
+    /* seulement si rien n'est parti : sinon on renverrait aux autres le même message */
+    if (d.ids.some((id) => store.reqs().some((q) => q.id === id))) { KP.ecrire.dernier = null; return; }
+    const s = etat(d.id); if (s.txt) return; s.txt = d.txt; KP.ecrire.dernier = null;
+    const it = cur(); if (it && it.id === d.id) monte($("fiche"), it, [d.txt.length, d.txt.length]);
+  });
+
+  KP.ecrire = { html, monte, carte, texte, analyse, dernier: null };
 })();
