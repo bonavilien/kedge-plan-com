@@ -8,7 +8,8 @@ for b in kplan_anc kplan_nouv; do $P -c "drop database if exists $b" -c "create 
 D="$P -d kplan_anc"
 $D -f supabase/migrations/0001_schema.sql
 grep -v "^create extension" supabase/migrations/0002_planification.sql | $D -f - > /dev/null
-for f in supabase/migrations/*.sql; do case $f in *0001_*|*0002_*|*0019_*|*002[0-9]_*) ;; *) $D -f $f 2>/dev/null ;; esac; done
+# la V1 n'a reçu aucune migration de la V2 (0019 et suivantes)
+for f in supabase/migrations/*.sql; do case $f in *0001_*|*0002_*|*0019_*|*002[0-9]_*|*003[0-9]_*) ;; *) $D -f $f 2>/dev/null ;; esac; done
 $D -f test/v2/donnees-v1.sql
 avant=$($D -Atc "select md5(string_agg(x::text, '' order by id)) from public.items x")
 SUPABASE_ACCESS_TOKEN=test node --import ./test/v2/copie-shim.mjs scripts/copie.mjs kplan_anc kplan_nouv

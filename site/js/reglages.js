@@ -15,7 +15,7 @@
       ${({ apropos, profil,
         projet: () => identite() + periodes() + messages(),
         equipe: () => equipe() + services(),
-        carnets: () => liste("partners", "Médias partenaires", "Proposés quand une action est un partenariat payant.", "Nom du média") + liste("lieux", "Lieux", "Proposés dans le champ Lieu d'un temps fort.", "Nom du lieu") + contacts() })[tab]()}
+        carnets: () => liste("partners", "Médias partenaires", "Proposés quand une action est un partenariat payant.", "Nom du média") + liste("lieux", "Lieux", "Proposés dans le champ Lieu d'un temps fort.", "Nom du lieu") })[tab]()}
     </div>`;
   };
 
@@ -157,12 +157,6 @@
       <div class="tbl t-one">${list.map((x) => `<div class="tr"><span>${h(x)}</span>${KP.ib("trash", "Retirer", "set-rm", `data-k="${k}" data-id="${h(x)}"`)}</div>`).join("") || `<p class="muted">La liste est vide.</p>`}</div></section>`;
   }
 
-  function contacts() {
-    return `<section class="set"><h2>Contacts<button type="button" class="btn quiet small" data-act="set-add" data-k="contacts">${ic("plus")}Nouveau contact</button></h2>
-      <p class="muted" style="margin-top:-6px">Le carnet commun. Un contact s'ajoute à une fiche depuis sa section Contacts.</p>
-      <div class="tbl t-ct">${store.contacts().map((c) => `<div class="tr"><span><b>${h(c.nom)}</b><br><small class="muted">${h(c.role)}</small></span><span class="copy">${h(c.mail)}${c.mail && c.tel ? "<br>" : ""}${h(c.tel)}</span><span>${KP.ib("edit", "Modifier", "set-edit-ct", `data-id="${c.id}"`)}${KP.ib("trash", "Retirer", "set-rm", `data-k="contacts" data-id="${c.id}"`)}</span></div>`).join("") || `<p class="muted">Aucun contact pour l'instant.</p>`}</div></section>`;
-  }
-
   document.addEventListener("change", (e) => {
     const d = e.target.dataset && e.target.dataset.set; if (!d) return;
     const [k, id, f] = d.split(":"), v = e.target.value.trim();
@@ -198,10 +192,8 @@
     "set-couleur": (a) => { store.saveProjet({ couleur: a.dataset.k }); },
     "set-theme": (a) => store.setPref("theme", a.dataset.k),
     "set-notif": (a) => { const on = { ...(store.prefs().notif || {}) }; on[a.dataset.k] = on[a.dataset.k] === false; store.setPref("notif", on); },
-    "set-edit-ct": (a) => KP.contactForm(store.contact(a.dataset.id), () => KP.toast("Contact enregistré")),
     "set-add": (a) => {
       const k = a.dataset.k;
-      if (k === "contacts") return KP.contactForm(null, () => KP.toast("Contact ajouté au carnet"));
       const n = k === "people" ? store.addPerson() : k === "periods" ? store.addPeriod() : k === "messages" ? store.addMessage() : store.addService();
       if (!n) return;
       const i = document.getElementById(`${k === "people" ? "p" : k === "periods" ? "pe" : k === "messages" ? "me" : "s"}-${n.k}-nom`); if (i) { i.focus(); i.select(); }

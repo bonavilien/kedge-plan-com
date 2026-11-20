@@ -23,7 +23,7 @@
     const T = KP.TODAY, last = lastMs(), all = store.items(), items = all.filter((i) => !i.annule);
     const moved = all.filter((i) => (i.annule && i.annule.quand > last) || (!i.annule && i.report && i.report.quand > last)).sort((a, b) => a.date.localeCompare(b.date));
     const flagged = items.filter((i) => i.reunion).sort((a, b) => a.date.localeCompare(b.date));
-    const lateReq = store.reqs().filter((q) => !q.fait && q.de !== q.a && q.pour < T && store.get(q.item));
+    const lateReq = store.reqs().filter((q) => !q.fait && q.de !== q.a && q.pour && q.pour < T && store.get(q.item));
     const conf = items.filter((i) => i.st === "confirmer" && !i.flou && i.date >= T && KP.diff(i.date, T) <= 15 && !i.reunion).sort((a, b) => a.date.localeCompare(b.date));
     const fresh = [...new Set(store.journal().filter((j) => j.quand > last && /^a créé/.test(j.txt)).map((j) => j.item))].map((id) => store.get(id)).filter((i) => i && !i.annule && !i.reunion && !conf.includes(i)).sort((a, b) => a.date.localeCompare(b.date));
     const vu = (it) => !store.canEdit(it) ? "<span></span>" : `<button type="button" class="ib tip-l" data-act="vu" data-id="${it.id}" data-tip="Vu en réunion" aria-label="Vu en réunion">${ic("check")}</button>`;
