@@ -92,7 +92,7 @@
         ${trello ? `<div class="two">${cle("key", "Clé", deja ? "Inchangée" : "32 caractères")}${cle("token", "Jeton", deja ? "Inchangé" : "ATTA…")}</div>` : cle("pat", "Clé personnelle", deja ? "Inchangée" : "2/1234…")}
         <p class="o-aide"><a href="${AIDE[outil]}" target="_blank" rel="noopener">${ic("external")}${trello ? "Ma clé Trello" : "Créer une clé Asana"}</a>${trello ? `<a href="#" data-jeton hidden target="_blank" rel="noopener">${ic("external")}Mon jeton</a>` : ""}</p>
       </div>
-      <label class="field" data-etape="2" hidden><span>Mes fiches arrivent dans</span><select class="input" name="cible"></select></label>
+      <label class="field" data-etape="2" hidden><span>Mes fiches arrivent dans</span><input class="input" name="cherche" type="search" placeholder="Chercher" autocomplete="off" hidden><select class="input" name="cible"></select></label>
       <p class="hint o-err" data-err hidden></p>
       <div class="foot"><button type="button" class="btn quiet" data-close>Annuler</button><button class="btn primary" data-go>Suivant</button></div></form>`);
     const f = d.querySelector("form"), go = d.querySelector("[data-go]"), err = d.querySelector("[data-err]"), sel = f.cible;
@@ -110,10 +110,18 @@
           const { choix } = await O.fn({ action: "lister", outil, jeton: j });
           if (!choix.length) throw new Error(trello ? "Aucune liste dans tes tableaux Trello." : "Aucun projet dans ton Asana.");
           const cur = (S.actifs.find((x) => x.outil === outil) || {}).cible_nom;
-          sel.innerHTML = choix.map((c) => `<option value="${h(c.id)}" ${c.nom === cur ? "selected" : ""}>${h(c.nom)}</option>`).join("");
-          d.querySelector('[data-etape="1"]').hidden = true; d.querySelector('[data-etape="2"]').hidden = false; sel.focus();
+          const opts = (l) => l.map((c) => `<option value="${h(c.id)}" ${c.nom === cur ? "selected" : ""}>${h(c.nom)}</option>`).join("");
+          sel.innerHTML = opts(choix);
+          d.querySelector('[data-etape="1"]').hidden = true; d.querySelector('[data-etape="2"]').hidden = false;
+          /* beaucoup de projets ou de listes : une case pour les filtrer */
+          const ch = f.cherche, plat = (x) => x.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+          if (choix.length > 12) { ch.hidden = false; ch.focus();
+            ch.onkeydown = (e) => { if (e.key === "Enter") { e.preventDefault(); sel.focus(); } };
+            ch.oninput = () => { const q = plat(ch.value.trim()), l = choix.filter((c) => plat(c.nom).includes(q)); sel.innerHTML = l.length ? opts(l) : '<option value="">Aucun résultat</option>'; };
+          } else sel.focus();
           etape = 2; go.textContent = "Relier"; f.dataset.jeton = j;
         } else {
+          if (!sel.value) throw new Error(trello ? "Choisis une liste." : "Choisis un projet.");
           const r = await O.fn({ action: "relier", outil, jeton: f.dataset.jeton, cible: sel.value, site: location.origin + location.pathname, app: KP.marque ? KP.marque.titre : "" });
           S.actifs = [...S.actifs.filter((x) => x.outil !== outil), { outil, cible_nom: r.cible_nom }].sort((x, y) => x.outil.localeCompare(y.outil));
           d.close(); KP.render(); KP.toast(`${NOMS[outil]} relié`);

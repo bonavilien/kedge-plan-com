@@ -2,6 +2,10 @@
 
 Généré depuis `site/js/version.js` par `node scripts/version.mjs`. Ne pas modifier à la main.
 
+## 2.6.3 · 2026-11-20
+
+- Relier son Asana : tous les projets sont proposés, pas seulement les 100 plus anciens, rangés par nom, avec une case pour chercher
+
 ## 2.6.2 · 2026-11-20
 
 - Le mégaphone « Prévenir un service » quitte la fiche : pour prévenir quelqu'un, écris @ et son nom dans les messages

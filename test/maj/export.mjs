@@ -26,7 +26,9 @@ function outils() {
     if (u.host === "app.asana.com") {
       if (init.headers.authorization !== "Bearer pat-ok") return res(401, { errors: [{ message: "Not Authorized" }] });
       if (u.pathname === "/api/1.0/workspaces") return res(200, { data: [{ gid: "w1", name: "KEDGE" }] });
-      if (u.pathname === "/api/1.0/projects") return res(200, { data: [{ gid: "p1", name: "Plan de com" }, { gid: "p2", name: "Événements" }] });
+      /* 250 projets, par pages de 100, les plus anciens d'abord : « Plan de com » et « Événements » sont les plus récents */
+      if (u.pathname === "/api/1.0/projects") { const tous = [...Array.from({ length: 248 }, (_, i) => ({ gid: "v" + i, name: "Ancien " + i })), { gid: "p1", name: "Plan de com" }, { gid: "p2", name: "Événements" }];
+        const o = +(u.searchParams.get("offset") || 0), page = tous.slice(o, o + 100); return res(200, { data: page, next_page: o + 100 < tous.length ? { offset: String(o + 100) } : null }); }
       if (u.pathname === "/api/1.0/tasks" && m === "POST") { const gid = "t" + ++n; taches[gid] = body.data; return res(201, { data: { gid, permalink_url: "https://app.asana.com/0/p1/" + gid } }); }
       const t = /^\/api\/1\.0\/tasks\/(\w+)$/.exec(u.pathname);
       if (t && !taches[t[1]]) return res(404, { errors: [{ message: "Not found" }] });
@@ -99,7 +101,8 @@ check(description(w0.db.fiches.a1, { site: "", app: "" }, true).includes("**Serv
   check((await w.appel({ action: "etat" })).status === 401, "sans compte : refusé");
   check((await w.appel({ action: "lister", outil: "asana", jeton: "pat-ok" }, "visiteur")).status === 403, "lecture seule : pas d'outil");
   const l = await w.appel({ action: "lister", outil: "asana", jeton: "pat-ok" }, "stephane");
-  check(l.status === 200 && l.o.choix.length === 2 && l.o.choix[0].nom === "KEDGE · Plan de com", "un service liste ses projets Asana");
+  check(l.status === 200 && l.o.choix.length === 250 && l.o.choix.some((c) => c.nom === "KEDGE · Plan de com") && l.o.choix.some((c) => c.nom === "KEDGE · Événements"), "Asana : tous les projets, même au-delà des 100 premiers");
+  check(l.o.choix[0].nom === "KEDGE · Ancien 0" && l.o.choix[2].nom === "KEDGE · Ancien 2" && l.o.choix.at(-1).nom === "KEDGE · Plan de com", "Asana : projets rangés par nom");
   const faux = await w.appel({ action: "lister", outil: "asana", jeton: "pat-faux" }, "stephane");
   check(faux.status === 502 && faux.o.erreur === "jeton" && /Asana refuse la clé/.test(faux.o.message), "clé Asana fausse : message clair");
   check((await w.appel({ action: "lister", outil: "trello", jeton: "k" }, "louise")).o.erreur === "jeton", "Trello : il faut clé et jeton");
