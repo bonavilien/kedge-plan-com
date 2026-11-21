@@ -61,10 +61,10 @@
       <div class="side-foot">
         <button type="button" data-act="search">${ic("search")}Rechercher<kbd>Ctrl K</kbd></button>
         <button type="button" data-act="notifs">${ic("bell")}Notifications${news ? '<span class="dot" aria-label="Du nouveau"></span>' : ""}</button>
-        <button type="button" data-act="profile" data-side="1"><span class="avatar">${h((u.nom || "?")[0])}</span><span class="who">${h(u.nom)}<small>${h(u.fonction)}</small></span></button>
+        <button type="button" data-act="profile" data-side="1"><span class="avatar">${u.photo ? `<img src="${h(u.photo)}" alt="">` : h((u.nom || "?")[0])}</span><span class="who">${h(u.nom)}<small>${h(u.fonction)}</small></span></button>
         <a class="ver" href="#/reglages/apropos" data-tip="Voir les nouveautés">Version ${h(KP.versionLabel(KP.VERSION.n))}</a>
       </div>`;
-    $("topbar").innerHTML = `<b>${KP.marque.carre ? KP.logo() : ""}<span class="bt"><span>${h(KP.marque.app)}</span>${st ? `<small>${h(st)}</small>` : ""}</span></b>${KP.ib("search", "Rechercher", "search")}${KP.ib("bell", "Notifications", "notifs")}<button class="ib" type="button" data-act="profile" aria-label="Profil"><span class="avatar">${h((u.nom || "?")[0])}</span></button>`;
+    $("topbar").innerHTML = `<b>${KP.marque.carre ? KP.logo() : ""}<span class="bt"><span>${h(KP.marque.app)}</span>${st ? `<small>${h(st)}</small>` : ""}</span></b>${KP.ib("search", "Rechercher", "search")}${KP.ib("bell", "Notifications", "notifs")}<button class="ib" type="button" data-act="profile" aria-label="Profil"><span class="avatar">${u.photo ? `<img src="${h(u.photo)}" alt="">` : h((u.nom || "?")[0])}</span></button>`;
     $("tabbar").innerHTML = SCREENS.map(([k, nom, i]) => `<a href="${KP.href({ screen: k })}" class="${r.screen === k ? "on" : ""}">${ic(i)}${nom}</a>`).join("") + (store.canCreate() ? `<button class="plus" type="button" data-act="new" aria-label="Nouveau">${ic("plus")}</button>` : "<span></span>");
   }
   function render() {

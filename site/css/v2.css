@@ -1164,6 +1164,16 @@ html.fiche-open .r-tot .r-eur { margin-right: 136px; }
 /* des visages : les initiales, chacun sa teinte */
 .av { --ac: var(--a6); width: 24px; height: 24px; border-radius: 50%; display: inline-grid; place-items: center; flex: none; background: var(--ac); color: #FFFFFF; font: 700 11.5px/1 var(--sans); letter-spacing: 0; box-shadow: 0 0 0 2px var(--card); }
 .av img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; }
+.avatar img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; }
+/* Mon profil : ma photo, un rond qu'on clique ou sur lequel on glisse une image */
+.me-photo { display: flex; align-items: center; gap: 16px; }
+.mp-rond { position: relative; flex: none; border-radius: 50%; padding: 0; }
+.av.av-xl { width: 72px; height: 72px; font-size: 28px; box-shadow: none; }
+.mp-cam { position: absolute; right: -2px; bottom: -2px; width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; background: var(--card); color: var(--text); box-shadow: 0 0 0 1px var(--sep), 0 1px 4px rgba(0,0,0,.16); }
+.mp-cam .ic { width: 16px; height: 16px; }
+.mp-rond:hover .av, .mp-rond.survol .av { box-shadow: 0 0 0 3px var(--card), 0 0 0 5px var(--yellow); }
+.mp-rond:focus-visible { outline: 2px solid var(--yellow-ink); outline-offset: 4px; }
+.mp-tx { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
 .av0 { --ac: var(--a0); } .av1 { --ac: var(--a1); } .av2 { --ac: var(--a2); } .av3 { --ac: var(--a3); } .av4 { --ac: var(--a4); } .av5 { --ac: var(--a5); } .av6 { --ac: var(--a6); }
 .av + .av { margin-left: -6px; }
 .av.av-s { width: 20px; height: 20px; font-size: 10px; }

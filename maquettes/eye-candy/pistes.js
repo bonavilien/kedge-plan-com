@@ -18,7 +18,7 @@
     },
     async () => { await aller({ screen: "resultats", tab: "diffusions", per: "considerer" }); haut(); KP.rejouer(); },
     async () => { try { sessionStorage.removeItem("kplan-pique-accueil"); } catch (e) {} KP.piqueVue = false; await aller({ screen: "accueil" }); haut(); KP.rejouer(); },
-    async () => { await aller({ screen: "plan", per: "considerer", vue: "grille" }); haut(); KP.rejouer(); },
+    async () => { await aller({ screen: "reglages", set: "profil" }); haut(); KP.rejouer(); const r = main().querySelector(".mp-rond"); if (r) { r.classList.add("survol"); setTimeout(() => r.classList.remove("survol"), 1600); } },
     async () => {
       await aller({ screen: "plan", per: "considerer", vue: "liste" }); haut();
       await attendre(700); await aller({ screen: "plan", per: "preferer", vue: "liste" });
