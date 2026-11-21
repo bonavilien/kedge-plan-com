@@ -1,0 +1,529 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Installer l'appli</title>
+<meta name="description" content="Installer l'appli Plan de com pour ton équipe : deux clés, ton adresse, un bouton.">
+<meta name="robots" content="noindex">
+<link rel="icon" href="icons/favicon-32.png">
+<style>
+/* Installer une copie en un clic. Page autonome (pas de lien depuis l'appli), mêmes couleurs que le tutoriel.
+   Tout se passe dans le navigateur : les clés vont seulement chez GitHub (copie, réglages, secret chiffré),
+   puis un robot GitHub Actions (.github/workflows/installer.yml) fait la partie Supabase et efface le secret. */
+@font-face { font-family: "KRC Serif"; src: url("fonts/krc-serif.woff") format("woff"); font-display: swap; }
+:root {
+  --yellow: #FFD452; --yellow-ink: #26282B;
+  --hero: #333539; --hero-ink: #F4F4F2; --hero-ink2: #B9BBC0;
+  --bg: #F2F2EF; --card: #FFFFFF; --text: #2B2D31; --text2: #6A6C71; --sep: #DADAD5; --fill: #E6E6E2;
+  --ok: #2E7D32; --ok-bg: #E7F3E8; --red: #C62828; --red-bg: #FCEBEA; --focus: #333539;
+  --shadow: 0 1px 2px rgba(20,20,20,.05), 0 6px 22px rgba(20,20,20,.07);
+  --serif: "KRC Serif", Georgia, "Times New Roman", serif;
+  --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --mono: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+  --r1: 6px; --r2: 8px; --r3: 12px; --r4: 16px;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --hero: #17181A; --bg: #0F1012; --card: #1E1F22; --text: #F1F1EE; --text2: #A4A6AB; --sep: #34363B; --fill: #2C2E33;
+  --ok: #81C784; --ok-bg: #1C2A1E; --red: #EF9A9A; --red-bg: #3A1F1F; --focus: #FFD452;
+  --shadow: 0 1px 2px rgba(0,0,0,.4), 0 6px 22px rgba(0,0,0,.35); color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --hero: #17181A; --bg: #0F1012; --card: #1E1F22; --text: #F1F1EE; --text2: #A4A6AB; --sep: #34363B; --fill: #2C2E33;
+  --ok: #81C784; --ok-bg: #1C2A1E; --red: #EF9A9A; --red-bg: #3A1F1F; --focus: #FFD452;
+  --shadow: 0 1px 2px rgba(0,0,0,.4), 0 6px 22px rgba(0,0,0,.35); color-scheme: dark; }
+*, *::before, *::after { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.5 var(--sans); -webkit-font-smoothing: antialiased; }
+h1, h2, p { margin: 0; }
+a { color: inherit; }
+svg { width: 1em; height: 1em; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+[hidden] { display: none !important; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.wrap { max-width: 720px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.muted { color: var(--text2); }
+
+.hero { background: var(--hero); color: var(--hero-ink); }
+.hero-in { display: flex; align-items: center; gap: 18px; padding-block: 36px 64px; }
+.logo { width: 64px; height: 64px; border-radius: 15px; flex: none; }
+h1 { font: 700 clamp(28px, 5vw, 40px)/1.1 var(--serif); }
+.lead { color: var(--hero-ink2); font-size: 16.5px; margin-top: 6px; }
+
+main { margin-top: -36px; padding-bottom: 64px; display: grid; gap: 14px; }
+.card { background: var(--card); border-radius: var(--r4); box-shadow: var(--shadow); padding: 20px; display: grid; grid-template-columns: 32px minmax(0, 1fr); gap: 4px 14px; }
+.num { width: 32px; height: 32px; border-radius: 50%; background: var(--fill); display: grid; place-items: center; font-weight: 700; font-size: 15px; }
+.card.ok .num { background: var(--ok); color: var(--card); }
+.card h2 { font: 700 20px/32px var(--serif); }
+.card .body { display: grid; gap: 12px; min-width: 0; }
+.aide { color: var(--text2); font-size: 14.5px; }
+.aide b { color: var(--text); font-weight: 650; }
+.ligne { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 10px; align-items: center; }
+.btn { display: inline-flex; align-items: center; gap: 8px; height: 42px; padding: 0 16px; border-radius: var(--r2); border: 1px solid var(--sep); background: var(--card); color: var(--text); font: 600 14.5px var(--sans); text-decoration: none; cursor: pointer; white-space: nowrap; }
+.btn:hover { background: var(--fill); }
+input { height: 42px; width: 100%; border: 1px solid var(--sep); border-radius: var(--r2); background: var(--bg); color: var(--text); padding: 0 12px; font: 15px var(--sans); }
+input.cle { font: 13.5px var(--mono); }
+input:focus { border-color: var(--focus); outline: none; box-shadow: 0 0 0 1px var(--focus); }
+input[aria-invalid="true"] { border-color: var(--red); }
+.etat { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 600; min-height: 20px; }
+.etat:empty { min-height: 0; }
+.etat.ok { color: var(--ok); }
+.etat.non { color: var(--red); }
+.etat img { width: 22px; height: 22px; border-radius: 50%; }
+.champs { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.champ { display: grid; gap: 5px; font-size: 13.5px; font-weight: 600; color: var(--text2); }
+.mdp { position: relative; }
+.mdp input { padding-right: 46px; }
+.oeil { position: absolute; right: 4px; top: 4px; width: 34px; height: 34px; border: 0; background: none; color: var(--text2); border-radius: 6px; cursor: pointer; display: grid; place-items: center; font-size: 18px; }
+.go { height: 52px; border: 0; border-radius: var(--r3); background: var(--yellow); color: var(--yellow-ink); font: 700 17px var(--sans); cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; }
+.go:disabled { opacity: .45; cursor: default; }
+.note { font-size: 13px; color: var(--text2); text-align: center; }
+
+/* les pas-à-pas : fermés par défaut, une action par ligne, les boutons à cliquer écrits comme à l'écran */
+.card.avant .num svg { font-size: 17px; }
+.pap { border: 1px solid var(--sep); border-radius: var(--r3); background: var(--bg); }
+.pap > summary { list-style: none; cursor: pointer; display: grid; grid-template-columns: minmax(0, 1fr) auto 18px; align-items: center; gap: 10px; padding: 12px 14px; font-weight: 650; border-radius: var(--r3); }
+.pap > summary::-webkit-details-marker { display: none; }
+.pap > summary:hover { background: var(--fill); }
+.pap > summary small { color: var(--text2); font-weight: 500; font-size: 13px; }
+.pap > summary svg { color: var(--text2); transition: transform .15s; }
+.pap[open] > summary svg { transform: rotate(180deg); }
+.pap .in { padding: 2px 14px 16px; display: grid; gap: 12px; }
+.pap .quoi { color: var(--text2); font-size: 14px; }
+.acts { margin: 0; padding: 0; list-style: none; counter-reset: a; display: grid; gap: 10px; font-size: 14.5px; }
+.acts li { counter-increment: a; display: grid; grid-template-columns: 22px minmax(0, 1fr); gap: 10px; align-items: baseline; line-height: 1.75; }
+.acts li::before { content: counter(a); font: 600 12px/20px var(--sans); color: var(--text2); text-align: center; width: 22px; height: 22px; border-radius: 50%; border: 1px solid var(--sep); background: var(--card); align-self: start; margin-top: 2px; }
+.acts li > div { min-width: 0; overflow-wrap: anywhere; }
+.acts small { display: block; color: var(--text2); font-size: 13.5px; line-height: 1.5; margin-top: 2px; }
+.ui { display: inline-flex; align-items: center; gap: 5px; padding: 0 9px; border-radius: var(--r1); border: 1px solid var(--sep); background: var(--card); font-size: 13.5px; font-weight: 600; line-height: 1.7; max-width: 100%; color: var(--text); white-space: nowrap; }
+a.ui { text-decoration: none; border-color: color-mix(in srgb, var(--text) 30%, transparent); }
+a.ui:hover { background: var(--yellow); color: var(--yellow-ink); border-color: var(--yellow); }
+.ui svg { font-size: 12px; }
+code { font: 13px var(--mono); background: var(--fill); padding: 1px 5px; border-radius: 4px; overflow-wrap: anywhere; }
+.bien { display: flex; gap: 8px; align-items: baseline; font-size: 14px; color: var(--ok); font-weight: 600; }
+.bien svg { align-self: center; }
+.astuce { display: flex; gap: 8px; align-items: baseline; font-size: 13.5px; color: var(--text2); }
+.astuce svg { align-self: center; }
+
+/* le suivi */
+.suivi { background: var(--card); border-radius: var(--r4); box-shadow: var(--shadow); padding: 22px 20px; display: grid; gap: 16px; }
+.suivi h2 { font: 700 24px/1.2 var(--serif); }
+.pas { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+.pas li { display: grid; grid-template-columns: 26px minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 9px 0; color: var(--text2); }
+.pas li .i { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; border: 2px solid var(--sep); font-size: 14px; }
+.pas li.en { color: var(--text); font-weight: 650; }
+.pas li.en .i { border-color: var(--yellow); border-top-color: transparent; animation: tour 0.9s linear infinite; }
+.pas li.fait { color: var(--text); }
+.pas li.fait .i { background: var(--ok); border-color: var(--ok); color: var(--card); }
+.pas li.rate { color: var(--red); font-weight: 650; }
+.pas li.rate .i { background: var(--red); border-color: var(--red); color: var(--card); }
+.pas small { font-size: 13px; color: var(--text2); font-weight: 400; }
+@keyframes tour { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .pas li.en .i { animation: none; border-top-color: var(--yellow); } }
+.err { background: var(--red-bg); color: var(--text); border-radius: var(--r3); padding: 14px 16px; display: grid; gap: 12px; }
+.err p { font-weight: 600; }
+.err .act { display: flex; flex-wrap: wrap; gap: 10px; }
+.fin { display: grid; gap: 14px; justify-items: start; }
+.fin .go { padding: 0 26px; text-decoration: none; }
+.fin p { font-size: 15px; }
+.fin .adr { font: 14px var(--mono); color: var(--text2); word-break: break-all; }
+.fin .nuit { display: flex; align-items: center; gap: 8px; }
+
+@media (max-width: 600px) {
+  .hero-in { padding-block: 28px 56px; }
+  .logo { width: 52px; height: 52px; border-radius: 12px; }
+  .card { grid-template-columns: minmax(0, 1fr); padding: 18px 16px; }
+  .num { display: none; }
+  .ligne, .champs { grid-template-columns: minmax(0, 1fr); }
+  .btn { justify-content: center; }
+  .ui { white-space: normal; }
+}
+/* ---------- eye candy, comme l'appli (2.8) : le moment « Fait », le suivi sur une route, la bulle de fin ---------- */
+:root { --road: #333539; --road-line: #FFD452; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --road: #4A4C52; } }
+:root[data-theme="dark"] { --road: #4A4C52; }
+.num .ck { display: none; font-size: 18px; stroke-width: 2.8; }
+.card.ok .num b { display: none; }
+.card.ok .num .ck { display: block; }
+.pas { position: relative; }
+.pas::before, .pas::after { content: ""; position: absolute; left: 13px; top: 22px; width: 8px; margin-left: -4px; border-radius: 4px; }
+.pas::before { bottom: 22px; background: repeating-linear-gradient(180deg, var(--road-line) 0 6px, transparent 6px 13px) center / 2px 100% no-repeat, var(--road); }
+.pas::after { height: calc((100% - 44px) * var(--p, 0)); background: var(--ok); transition: height .6s cubic-bezier(.2,.7,.2,1); }
+.pas li { position: relative; z-index: 1; }
+.pas li .i { background: var(--card); border-color: var(--road); }
+.pas li.fait .i { box-shadow: 0 0 0 2px var(--card); }
+.pas li .i svg { stroke-width: 2.8; }
+.bulle { position: relative; width: fit-content; max-width: 100%; padding-left: 8px; color: var(--yellow-ink); font: 500 17px/1.4 var(--serif); text-wrap: pretty; }
+.bulle::before { content: ""; position: absolute; left: 0; bottom: 0; width: 16px; height: 14px; background: var(--yellow); clip-path: polygon(100% 0, 100% 100%, 0 100%); }
+.bulle .b { display: block; padding: 11px 18px; border-radius: 18px 18px 18px 4px; background: var(--yellow); box-shadow: 0 2px 10px rgba(0,0,0,.08); }
+.fin .bulle { font-size: 17px; }
+.pq-pts { display: none; }
+.bravo { display: flex; align-items: flex-end; gap: 14px; flex-wrap: wrap; }
+.illu { position: relative; width: 112px; height: 74px; flex: none; }
+.illu-route { position: absolute; left: 0; right: 0; bottom: 4px; height: 14px; border-radius: 7px; overflow: hidden;
+  background: repeating-linear-gradient(90deg, var(--road-line) 0 10px, transparent 10px 19px) center / 100% 2px no-repeat, var(--road); }
+.illu img { position: absolute; left: 50%; bottom: 11px; width: 54px; height: 54px; margin-left: -27px; border-radius: 13px; filter: drop-shadow(0 4px 10px rgba(0,0,0,.18)); transform: rotate(-6deg); }
+@media (prefers-reduced-motion: no-preference) {
+  .card { transition: box-shadow .25s ease; }
+  .card.ok.vient .num, .pas li.vient .i { animation: t-bond .45s cubic-bezier(.3,1.7,.5,1), t-onde .8s ease-out; }
+  .card.ok.vient .num .ck path, .pas li.vient .i path { stroke-dasharray: 22; stroke-dashoffset: 22; animation: t-trace .35s ease-out .12s forwards; }
+  .fin:not([hidden]) .illu-route { animation: t-flux 1.2s ease-out both; }
+  .fin:not([hidden]) .illu img { animation: t-pose .6s cubic-bezier(.2,.8,.2,1.3) .3s both; }
+  .bulle.ecrit { animation: t-arrive .3s cubic-bezier(.2,.8,.2,1.2) .7s both, t-ouvre .45s cubic-bezier(.2,.7,.2,1) 1.7s backwards; }
+  .bulle.ecrit .pq-pts { display: flex; position: absolute; left: 27px; top: 50%; margin-top: -3.5px; gap: 5px; animation: t-fin .2s ease 1.65s forwards; }
+  .bulle.ecrit .pq-pts i { width: 7px; height: 7px; border-radius: 50%; background: currentColor; opacity: .5; animation: t-saute .9s ease-in-out .7s infinite; }
+  .bulle.ecrit .pq-pts i:nth-child(2) { animation-delay: .85s; }
+  .bulle.ecrit .pq-pts i:nth-child(3) { animation-delay: 1s; }
+  .bulle.ecrit .b { animation: t-texte .35s ease 1.8s both; }
+  .fin:not([hidden]) > :not(.bravo) { animation: t-arrive .4s ease 2.1s both; }
+}
+@keyframes t-bond { 50% { transform: scale(1.14); } }
+@keyframes t-onde { from { box-shadow: 0 0 0 0 color-mix(in srgb, var(--ok) 50%, transparent); } to { box-shadow: 0 0 0 14px transparent; } }
+@keyframes t-trace { to { stroke-dashoffset: 0; } }
+@keyframes t-flux { from { background-position: -112px 50%, 0 0; } }
+@keyframes t-pose { from { opacity: 0; transform: translateY(-24px) rotate(-18deg); } }
+@keyframes t-arrive { from { opacity: 0; transform: translateY(6px) scale(.94); } }
+@keyframes t-ouvre { from { clip-path: inset(0 calc(100% - 86px) 0 0 round 0 18px 18px 0); } to { clip-path: inset(0 0 0 0 round 0 18px 18px 0); } }
+@keyframes t-saute { 0%, 60%, 100% { transform: none; opacity: .45; } 30% { transform: translateY(-4px); opacity: .9; } }
+@keyframes t-fin { to { opacity: 0; visibility: hidden; } }
+@keyframes t-texte { from { color: transparent; } }
+</style>
+</head>
+<body>
+<header class="hero"><div class="wrap hero-in">
+  <img class="logo" src="assets/road-to-7th.png" alt="">
+  <div><h1>Installer l'appli</h1><p class="lead">Deux clés, ton adresse, un bouton. Environ 5 minutes, 10 si tu crées tes comptes.</p></div>
+</div></header>
+
+<main class="wrap">
+  <form id="f" novalidate>
+    <div style="display:grid;gap:14px">
+      <section class="card avant" id="c-comptes">
+        <span class="num" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="8.5" r="3.5"/><path d="M5 19.5c1.200-3.400 3.900-5 7-5s5.800 1.600 7 5"/></svg></span>
+        <div class="body">
+          <h2>Tes deux comptes</h2>
+          <p class="aide">Gratuits, à faire une seule fois. Déjà faits ? Passe à l'étape 1.</p>
+
+          <details class="pap" id="pap-compte-gh">
+            <summary>Créer mon compte GitHub <small>3 min</small><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></summary>
+            <div class="in">
+              <p class="quoi">GitHub garde le code de ton appli et la met en ligne.</p>
+              <ol class="acts">
+                <li><div>Ouvre <a class="ui" id="lien-signup-gh" href="https://github.com/signup" target="_blank" rel="noopener">github.com/signup <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 5h5v5M19 5l-8 8M18 14v4a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h4"/></svg></a></div></li>
+                <li><div>Ton <b>e-mail</b> (celui du travail convient), puis un <b>mot de passe</b>.<small>15 caractères, ou 8 avec au moins un chiffre et une minuscule.</small></div></li>
+                <li><div>Un <b>nom d'utilisateur</b>. Il sera dans l'adresse de ton appli : <code>https://<b>ton-nom</b>.github.io/plan-de-com/</code><small>Simple, en minuscules, avec des tirets si besoin. Exemple : <code>com-executive</code></small></div></li>
+                <li><div>Pays : <b>France</b>. Puis le bouton <span class="ui">Continue</span> ou <span class="ui">Create account</span>.</div></li>
+                <li><div>GitHub vérifie que tu n'es pas un robot : <span class="ui">Verify</span>, puis suis le petit jeu d'images.</div></li>
+                <li><div>Un code à 8 chiffres arrive par e-mail : tape-le.<small>Rien reçu ? Regarde dans les indésirables.</small></div></li>
+                <li><div>Connecte-toi. Si GitHub pose des questions (équipe, centres d'intérêt), tout en bas : <span class="ui">Skip personalization</span>.</div></li>
+              </ol>
+              <p class="bien"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>C'est prêt. Note ton nom d'utilisateur et ton mot de passe.</p>
+              <p class="astuce"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.6v.1"/></svg><span>Plus tard, GitHub peut te demander un code sur ton téléphone à la connexion. Suis ses écrans : l'appli n'est pas concernée.</span></p>
+            </div>
+          </details>
+
+          <details class="pap" id="pap-compte-sb">
+            <summary>Créer mon compte Supabase <small>2 min</small><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></summary>
+            <div class="in">
+              <p class="quoi">Supabase garde les données de ton appli : actions, comptes, réglages. Ton compte GitHub suffit pour y entrer.</p>
+              <ol class="acts">
+                <li><div>Ouvre <a class="ui" id="lien-signup-sb" href="https://supabase.com/dashboard/sign-up" target="_blank" rel="noopener">supabase.com/dashboard/sign-up <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 5h5v5M19 5l-8 8M18 14v4a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h4"/></svg></a></div></li>
+                <li><div>Le bouton <span class="ui">Continue with GitHub</span>, puis, sur la page de GitHub, le bouton vert <span class="ui">Authorize supabase</span>.<small>Pas de nouveau mot de passe à inventer.</small></div></li>
+                <li><div>Supabase te demande une <b>organisation</b>. <b>Name</b> : ton équipe. <b>Plan</b> : <b>Free</b>, 0 $. Puis <span class="ui">Create organization</span>.</div></li>
+                <li><div>Supabase propose ensuite <span class="ui">Create a new project</span> : <b>ne le fais pas</b>, l'installateur s'en charge.</div></li>
+              </ol>
+              <p class="bien"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>C'est prêt. Passe à l'étape 1.</p>
+              <p class="astuce"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.6v.1"/></svg><span>Un compte gratuit a droit à 2 bases. Si tu en as déjà 2, mets-en une en pause sur supabase.com avant d'installer.</span></p>
+            </div>
+          </details>
+        </div>
+      </section>
+
+      <section class="card" id="c-gh">
+        <span class="num"><b>1</b><svg class="ck" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span>
+        <div class="body">
+          <h2>Ta clé GitHub</h2>
+          <p class="aide">Sur la page qui s'ouvre : <b>Expiration</b> sur <b>No expiration</b>, puis <b>Generate token</b> tout en bas. Copie la clé.</p>
+          <details class="pap" id="pap-cle-gh">
+            <summary>La clé, pas à pas <small>2 min</small><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></summary>
+            <div class="in">
+              <ol class="acts">
+                <li><div><span class="ui">Créer ma clé GitHub</span> ouvre la bonne page.<small>GitHub redemande parfois ton mot de passe, ou un code reçu par e-mail : donne-le.</small></div></li>
+                <li><div><b>Note</b> est déjà rempli. <b>Expiration</b> : choisis <span class="ui">No expiration</span>.<small>Un message jaune te le déconseille : c'est normal, la clé sert aux mises à jour de chaque nuit.</small></div></li>
+                <li><div>Les cases <b>repo</b> et <b>workflow</b> sont déjà cochées. Ne touche à rien d'autre.</div></li>
+                <li><div>Tout en bas, le bouton vert <span class="ui">Generate token</span>.</div></li>
+                <li><div>La clé s'affiche une seule fois. Elle commence par <code>ghp_</code>. Copie-la avec l'icône <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2.5"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg> à côté, puis colle-la ici.</div></li>
+              </ol>
+            </div>
+          </details>
+          <div class="ligne">
+            <a class="btn" id="lien-gh" href="https://github.com/settings/tokens/new?scopes=repo,workflow&amp;description=Plan%20de%20com" target="_blank" rel="noopener">Créer ma clé GitHub <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 5h5v5M19 5l-8 8M18 14v4a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h4"/></svg></a>
+            <input class="cle" id="gh" name="gh" placeholder="ghp_…" autocomplete="off" spellcheck="false" aria-label="Clé GitHub" aria-describedby="gh-etat">
+          </div>
+          <p class="etat" id="gh-etat" aria-live="polite"></p>
+        </div>
+      </section>
+
+      <section class="card" id="c-sb">
+        <span class="num"><b>2</b><svg class="ck" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span>
+        <div class="body">
+          <h2>Ta clé Supabase</h2>
+          <p class="aide"><b>Generate new token</b>, un nom (Plan de com), <b>Generate token</b>. Copie la clé.</p>
+          <details class="pap" id="pap-cle-sb">
+            <summary>La clé, pas à pas <small>1 min</small><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></summary>
+            <div class="in">
+              <ol class="acts">
+                <li><div><span class="ui">Créer ma clé Supabase</span> ouvre la bonne page.<small>Si Supabase demande de te connecter : <span class="ui">Continue with GitHub</span>.</small></div></li>
+                <li><div>Le bouton <span class="ui">Generate new token</span>. Un nom : <b>Plan de com</b>.<small>Si une durée est demandée, 1 jour suffit : cette clé ne sert qu'à l'installation.</small></div></li>
+                <li><div>Le bouton <span class="ui">Generate token</span>.</div></li>
+                <li><div>La clé s'affiche une seule fois. Elle commence par <code>sbp_</code>. Copie-la, puis colle-la ici.</div></li>
+              </ol>
+            </div>
+          </details>
+          <div class="ligne">
+            <a class="btn" href="https://supabase.com/dashboard/account/tokens" target="_blank" rel="noopener">Créer ma clé Supabase <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 5h5v5M19 5l-8 8M18 14v4a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h4"/></svg></a>
+            <input class="cle" id="sb" name="sb" placeholder="sbp_…" autocomplete="off" spellcheck="false" aria-label="Clé Supabase" aria-describedby="sb-etat">
+          </div>
+          <p class="etat" id="sb-etat" aria-live="polite"></p>
+        </div>
+      </section>
+
+      <section class="card" id="c-app">
+        <span class="num"><b>3</b><svg class="ck" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span>
+        <div class="body">
+          <h2>Ton appli</h2>
+          <p class="aide">Ton e-mail et un mot de passe tout neuf : ce sera ta connexion à l'appli, rien à voir avec GitHub.</p>
+          <div class="champs">
+            <label class="champ">Nom de l'appli<input id="app" placeholder="Plan de com" maxlength="40" autocomplete="off"></label>
+            <label class="champ">Équipe<input id="nom" placeholder="Executive Education" maxlength="60" autocomplete="organization"></label>
+            <label class="champ">Ton prénom<input id="prenom" maxlength="60" autocomplete="given-name"></label>
+            <label class="champ">Ton e-mail<input id="email" type="email" autocomplete="email"></label>
+            <label class="champ" style="grid-column:1/-1">Ton mot de passe pour l'appli
+              <span class="mdp"><input id="mdp" type="password" minlength="8" autocomplete="new-password" placeholder="8 caractères minimum"><button type="button" class="oeil" id="oeil" aria-label="Afficher le mot de passe" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.600-7 10-7 10 7 10 7-3.600 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg></button></span>
+            </label>
+          </div>
+        </div>
+      </section>
+
+      <button class="go" id="go" type="submit" disabled>Installer</button>
+      <p class="note">Tes clés vont seulement chez GitHub et Supabase. La clé Supabase est effacée à la fin.</p>
+    </div>
+  </form>
+
+  <section class="suivi" id="suivi" hidden aria-live="polite">
+    <div><h2 id="s-titre">Installation en cours</h2><p class="muted" id="s-sous">Garde cette page ouverte.</p></div>
+    <ol class="pas" id="pas"></ol>
+    <div class="err" id="err" hidden>
+      <p id="err-t"></p>
+      <div class="act"><button type="button" class="btn" id="encore">Réessayer</button><a class="btn" id="detail" href="#" target="_blank" rel="noopener" hidden>Voir le détail sur GitHub</a></div>
+    </div>
+    <div class="fin" id="fin" hidden>
+      <div class="bravo"><div class="illu" aria-hidden="true"><span class="illu-route"></span><img src="assets/road-to-7th.png" alt=""></div>
+        <p class="bulle ecrit"><span class="pq-pts" aria-hidden="true"><i></i><i></i><i></i></span><span class="b">Ton équipe peut entrer.</span></p></div>
+      <a class="go" id="ouvrir" href="#" target="_blank" rel="noopener">Ouvrir mon appli</a>
+      <p class="adr" id="adr"></p>
+      <p>Connecte-toi avec <b id="fin-mail"></b> et ton mot de passe. Garde l'adresse dans tes favoris.</p>
+      <p class="nuit" id="fin-nuit"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19.5 11A7.5 7.5 0 0 0 6.2 6.9L4.5 8.6"/><path d="M4.5 4.5v4.1h4.1"/><path d="M4.5 13a7.5 7.5 0 0 0 13.3 4.1l1.7-1.7"/><path d="M19.5 19.5v-4.1h-4.1"/></svg>Elle se met à jour toute seule, chaque nuit.</p>
+      <p class="muted" id="fin-plus">Ta clé Supabase ne sert plus : tu peux la supprimer sur supabase.com.</p>
+    </div>
+  </section>
+</main>
+
+<script src="vendor/tweetnacl-1.0.3.min.js"></script>
+<script src="installer/scelle.js"></script>
+<script>
+(() => {
+  const ORIGINE = "bonavilien/kedge-plan-com", WF = "installer.yml";
+  const API = (window.KPLAN_INSTALLER && window.KPLAN_INSTALLER.api) || "https://api.github.com";
+  const PAUSE = (window.KPLAN_INSTALLER && window.KPLAN_INSTALLER.pause) || 1;
+  const $ = (id) => document.getElementById(id);
+  const attendre = (ms) => new Promise((r) => setTimeout(r, ms * PAUSE));
+  const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+  let jeton = "", login = "", depot = "", site = "";
+
+  /* ---------- GitHub ---------- */
+  async function gh(method, p, body) {
+    const r = await fetch(API + p, { method, headers: { authorization: `Bearer ${jeton}`, accept: "application/vnd.github+json", ...(body ? { "content-type": "application/json" } : {}) }, body: body ? JSON.stringify(body) : undefined });
+    const t = await r.text(); let j = null; try { j = t ? JSON.parse(t) : null; } catch (e) { j = t; }
+    return { ok: r.ok, status: r.status, j, h: r.headers };
+  }
+  const exiger = (r, quoi) => { if (!r.ok) throw new Error(`${quoi} : GitHub répond ${r.status}${r.j && r.j.message ? ` (${r.j.message})` : ""}`); return r.j; };
+
+  /* ---------- les clés et le formulaire ---------- */
+  let ghOk = false, verif = 0;
+  async function verifierGh() {
+    const v = $("gh").value.trim(), n = ++verif, e = $("gh-etat");
+    ghOk = false; login = ""; $("c-gh").classList.remove("ok"); $("gh").removeAttribute("aria-invalid");
+    if (!v) { e.className = "etat"; e.textContent = ""; return pret(); }
+    e.className = "etat"; e.textContent = "Je vérifie…";
+    jeton = v;
+    let r; try { r = await gh("GET", "/user"); } catch (err) { r = { ok: false, status: 0 }; }
+    if (n !== verif) return;
+    if (!r.ok) { e.className = "etat non"; e.textContent = r.status === 401 ? "Clé refusée par GitHub : recopie-la en entier." : "GitHub ne répond pas, réessaie dans un instant."; $("gh").setAttribute("aria-invalid", "true"); return pret(); }
+    const portees = r.h.get("x-oauth-scopes");
+    if (portees !== null && !(/\brepo\b/.test(portees) && /\bworkflow\b/.test(portees))) { e.className = "etat non"; e.textContent = "Il manque les cases repo et workflow : recrée la clé avec le bouton."; $("gh").setAttribute("aria-invalid", "true"); return pret(); }
+    login = r.j.login; ghOk = true; $("c-gh").classList.add("ok");
+    e.className = "etat ok"; e.innerHTML = `${r.j.avatar_url ? `<img src="${esc(r.j.avatar_url)}" alt="">` : ""}Connecté : ${esc(login)}`;
+    pret();
+  }
+  const sbOk = () => /^sbp_[A-Za-z0-9_]{20,}$/.test($("sb").value.trim());
+  function etatSb() {
+    const v = $("sb").value.trim(), e = $("sb-etat");
+    $("c-sb").classList.toggle("ok", sbOk());
+    $("sb").toggleAttribute("aria-invalid", !!v && !sbOk());
+    e.className = "etat" + (!v ? "" : sbOk() ? " ok" : " non");
+    e.textContent = !v ? "" : sbOk() ? "Clé reçue" : "Une clé Supabase commence par sbp_";
+    pret();
+  }
+  const mailOk = () => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test($("email").value.trim());
+  function pret() {
+    const appOk = mailOk() && $("mdp").value.length >= 8;
+    $("c-app").classList.toggle("ok", appOk);
+    $("go").disabled = !(ghOk && sbOk() && appOk);
+  }
+  let minuteur;
+  $("gh").addEventListener("input", () => { clearTimeout(minuteur); minuteur = setTimeout(verifierGh, 350); });
+  $("sb").addEventListener("input", etatSb);
+  ["app", "nom", "prenom", "email", "mdp"].forEach((id) => $(id).addEventListener("input", pret));
+  $("oeil").addEventListener("click", () => { const m = $("mdp"), vu = m.type === "password"; m.type = vu ? "text" : "password"; $("oeil").setAttribute("aria-pressed", vu); $("oeil").setAttribute("aria-label", vu ? "Cacher le mot de passe" : "Afficher le mot de passe"); });
+
+  /* une carte qui devient bonne : son rond se remplit et la coche se trace (le moment « Fait » de l'appli) */
+  if ("MutationObserver" in window) new MutationObserver((ms) => ms.forEach((m) => { const c = m.target; const ok = c.classList.contains("ok"), avant = (m.oldValue || "").split(" ").includes("ok");
+    if (ok && !avant) { c.classList.remove("vient"); void c.offsetWidth; c.classList.add("vient"); setTimeout(() => c.classList.remove("vient"), 1600); } }))
+    .observe(document.querySelector("form") || document.body, { subtree: true, attributes: true, attributeFilter: ["class"], attributeOldValue: true });
+
+  /* ---------- le suivi ---------- */
+  const PAS = [
+    ["copie", "Copier l'appli dans ton GitHub"],
+    ["reglages", "Régler ta copie"],
+    ["Créer la base", "Créer la base", "1 à 3 minutes"],
+    ["Installer les tables", "Installer les tables"],
+    ["Régler la connexion", "Régler la connexion"],
+    ["Créer ton compte", "Créer ton compte"],
+    ["Installer les notifications et le bouton Mettre à jour", "Notifications et bouton Mettre à jour"],
+    ["Brancher le site", "Brancher le site sur la base"],
+    ["Mettre en ligne", "Mettre en ligne"],
+  ];
+  /* les étapes techniques de GitHub comptent dans « Mettre en ligne » */
+  const groupe = (nom) => /^(Préparer le site|Run actions\/configure-pages|Run actions\/upload-pages-artifact|Mettre en ligne)/.test(nom) ? "Mettre en ligne" : nom;
+  const ICONES = { fait: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.500l4.500 4.500L19 7.500"/></svg>', rate: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 7l10 10M17 7 7 17"/></svg>' };
+  const vusPas = {};
+  function dessiner(etats, detail) {
+    $("pas").innerHTML = PAS.map(([k, nom, aide]) => { const s = etats[k] || ""; const vient = s === "fait" && vusPas[k] !== "fait"; vusPas[k] = s; return `<li class="${s}${vient ? " vient" : ""}" data-k="${esc(k)}"><span class="i">${ICONES[s] || ""}</span><span>${esc(nom)}${s === "en" && (detail[k] || aide) ? ` <small>· ${esc(detail[k] || aide)}</small>` : ""}</span><span class="sr">${s === "fait" ? "fait" : s === "en" ? "en cours" : s === "rate" ? "échec" : "à venir"}</span></li>`; }).join("");
+    const n = PAS.filter(([k]) => etats[k] === "fait").length; $("pas").style.setProperty("--p", n ? Math.min(1, n / (PAS.length - 1)) : 0);
+  }
+  let etats = {}, detail = {};
+  const marquer = (k, s, d) => { etats[k] = s; if (d !== undefined) detail[k] = d; dessiner(etats, detail); };
+
+  async function copier() {
+    marquer("copie", "en");
+    let r = await gh("GET", `/repos/${login}/${depot}`);
+    if (r.ok && !(r.j.fork && r.j.parent && r.j.parent.full_name.toLowerCase() === ORIGINE)) throw new Error(`Tu as déjà un dépôt « ${depot} » sur GitHub. Change le nom de l'appli, puis réessaie.`);
+    if (!r.ok) {
+      if (r.status !== 404) exiger(r, "Lecture de ton GitHub");
+      const f = exiger(await gh("POST", `/repos/${ORIGINE}/forks`, { name: depot, default_branch_only: true }), "Copie de l'appli");
+      depot = f.name; // si tu avais déjà une copie sous un autre nom, GitHub la redonne
+    }
+    // une copie ancienne n'a pas encore le robot : on la met à jour d'abord
+    for (let i = 0; ; i++) {
+      const w = await gh("GET", `/repos/${login}/${depot}/contents/.github/workflows/${WF}`);
+      if (w.ok) break;
+      if (i === 3) await gh("POST", `/repos/${login}/${depot}/merge-upstream`, { branch: "main" });
+      if (i > 40) throw new Error("GitHub met trop de temps à copier l'appli. Réessaie dans une minute.");
+      marquer("copie", "en", "GitHub prépare la copie"); await attendre(3000);
+    }
+    marquer("copie", "fait");
+  }
+
+  async function regler(f) {
+    marquer("reglages", "en");
+    const R = `/repos/${login}/${depot}`;
+    await gh("PUT", `${R}/actions/permissions`, { enabled: true, allowed_actions: "all" });
+    for (const w of [WF, "pages.yml"]) { const r = await gh("PUT", `${R}/actions/workflows/${w}/enable`); if (!r.ok && w === WF) exiger(r, "Activation du robot"); }
+    let p = await gh("POST", `${R}/pages`, { build_type: "workflow" });
+    if (p.status === 409) p = await gh("PUT", `${R}/pages`, { build_type: "workflow" });
+    if (!p.ok) exiger(p, "Activation de GitHub Pages");
+    for (const [name, value] of [["KPLAN_APP", f.app], ["KPLAN_NOM", f.nom]]) {
+      if (!value) continue;
+      const r = await gh("PATCH", `${R}/actions/variables/${name}`, { name, value });
+      if (r.status === 404) exiger(await gh("POST", `${R}/actions/variables`, { name, value }), "Nom de l'appli");
+      else exiger(r, "Nom de l'appli");
+    }
+    const cle = exiger(await gh("GET", `${R}/actions/secrets/public-key`), "Clé du coffre GitHub");
+    const valeur = JSON.stringify({ supabase: f.sb, github: jeton, email: f.email, mdp: f.mdp, prenom: f.prenom });
+    exiger(await gh("PUT", `${R}/actions/secrets/KPLAN_INSTALLATION`, { encrypted_value: KPscelle.pourGitHub(valeur, cle.key), key_id: cle.key_id }), "Rangement des clés");
+    marquer("reglages", "fait");
+  }
+
+  async function lancer() {
+    const R = `/repos/${login}/${depot}`, depuis = Date.now() - 60e3;
+    exiger(await gh("POST", `${R}/actions/workflows/${WF}/dispatches`, { ref: "main" }), "Lancement du robot");
+    marquer(PAS[2][0], "en", "GitHub démarre le robot");
+    let run;
+    for (let i = 0; !run; i++) {
+      if (i > 40) throw new Error("Le robot ne démarre pas. Réessaie dans une minute.");
+      await attendre(3000);
+      const r = await gh("GET", `${R}/actions/workflows/${WF}/runs?event=workflow_dispatch&per_page=5`);
+      run = r.ok && (r.j.workflow_runs || []).find((x) => Date.parse(x.created_at) >= depuis && !vus.has(x.id));
+    }
+    vus.add(run.id); $("detail").href = run.html_url; $("detail").hidden = false;
+    for (;;) {
+      await attendre(4000);
+      const jr = await gh("GET", `${R}/actions/runs/${run.id}/jobs`), job = jr.ok && jr.j.jobs && jr.j.jobs[0];
+      if (job) suivre(job);
+      const rr = await gh("GET", `${R}/actions/runs/${run.id}`);
+      if (rr.ok && rr.j.status === "completed") {
+        if (rr.j.conclusion === "success") return;
+        const msg = job ? await raison(job) : "";
+        throw new Error(msg || "Le robot s'est arrêté. Le détail est sur GitHub.");
+      }
+    }
+  }
+  const vus = new Set();
+  function suivre(job) {
+    const par = {};
+    for (const s of job.steps || []) { const k = groupe(s.name); if (!PAS.some((p) => p[0] === k)) continue; (par[k] = par[k] || []).push(s); }
+    for (const [k] of PAS.slice(2)) {
+      const l = par[k]; if (!l) continue;
+      const rate = l.some((s) => s.conclusion === "failure"), fini = l.every((s) => s.status === "completed"), en = l.some((s) => s.status === "in_progress");
+      if (rate) marquer(k, "rate"); else if (fini) marquer(k, "fait"); else if (en || (etats[k] === "en")) marquer(k, "en", k === "Créer la base" ? "1 à 3 minutes" : "");
+    }
+  }
+  async function raison(job) {
+    const r = await gh("GET", `/repos/${login}/${depot}/check-runs/${job.id}/annotations`);
+    const a = (r.ok && r.j || []).filter((x) => x.annotation_level === "failure" && !/exit code|Process completed/i.test(x.message));
+    return a.length ? a[0].message : "";
+  }
+
+  const slug = (s) => (s || "plan de com").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 60) || "plan-de-com";
+  let form;
+  async function installer() {
+    $("err").hidden = true; $("fin").hidden = true; $("s-titre").textContent = "Installation en cours"; $("s-sous").textContent = "Garde cette page ouverte.";
+    for (const k in etats) if (etats[k] === "rate") delete etats[k];
+    try {
+      if (etats.copie !== "fait") await copier();
+      await regler(form);
+      await lancer();
+      for (const [k] of PAS) marquer(k, "fait");
+      site = `https://${login.toLowerCase()}.github.io/${depot}/`;
+      $("s-titre").textContent = "Ton appli est en ligne"; $("s-sous").textContent = "";
+      $("ouvrir").href = site; $("adr").textContent = site; $("fin-mail").textContent = form.email; $("fin").hidden = false;
+      $("ouvrir").focus();
+    } catch (e) {
+      const k = PAS.map((p) => p[0]).find((x) => etats[x] === "en");
+      if (k) marquer(k, "rate");
+      $("s-titre").textContent = "L'installation s'est arrêtée"; $("s-sous").textContent = "Rien n'est perdu : « Réessayer » reprend où elle en était.";
+      $("err-t").textContent = e.message; $("err").hidden = false; $("encore").focus();
+    }
+  }
+  $("f").addEventListener("submit", (e) => {
+    e.preventDefault(); if ($("go").disabled) return;
+    form = { sb: $("sb").value.trim(), app: $("app").value.trim(), nom: $("nom").value.trim(), prenom: $("prenom").value.trim(), email: $("email").value.trim(), mdp: $("mdp").value };
+    depot = slug(form.app);
+    $("f").hidden = true; $("suivi").hidden = false; dessiner(etats, detail); window.scrollTo(0, 0);
+    installer();
+  });
+  $("encore").addEventListener("click", installer);
+})();
+</script>
+</body>
+</html>

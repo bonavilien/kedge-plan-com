@@ -106,6 +106,7 @@ await p.waitForSelector(".maj-dispo");
 ok((await p.locator(".maj-v").innerText()).replace(/\s+/g, " ").includes("→ 9.9"), "version disponible : ancienne → nouvelle");
 ok(await p.locator(".maj-notes li").count() === 2, "les nouveautés de la version s'affichent");
 ok(await p.locator('[data-act="maj-go"]').count() === 1, "un seul bouton : Mettre à jour");
+ok(await p.locator(".maj-nuit").count() === 0, "fonction d'avant la mise à jour de nuit : pas de mention « chaque nuit »");
 await shot(p, "maj-1-disponible", ".maj");
 await p.evaluate(() => { window.__reloaded = 0; KP.acts.reload = () => { window.__reloaded++; }; });
 await p.click('[data-act="maj-go"]');
@@ -120,9 +121,10 @@ ok(!p.errs.length, "aucune erreur : " + p.errs.join(" | "));
 await p.context().close();
 
 // à jour
-p = await open({ copie: true }, "pilote@example.com", async () => [200, etat({ version: { ici: VER, amont: VER }, base: [], nouveautes: [], aJour: true })], "dark");
+p = await open({ copie: true }, "pilote@example.com", async () => [200, etat({ version: { ici: VER, amont: VER }, base: [], nouveautes: [], aJour: true, auto: true })], "dark");
 await p.evaluate(() => KP.go({ screen: "reglages", set: "apropos" })); await p.waitForSelector(".maj-ajour");
 ok((await p.locator(".maj").innerText()).includes("À jour") && await p.locator('[data-act="maj-go"]').count() === 0, "à jour : une coche, pas de bouton");
+ok((await p.locator(".maj-nuit").innerText()).trim() === "Chaque nuit, toute seule" && await p.locator(".maj-nuit svg").count() === 1, "copie inscrite pour la nuit : « Chaque nuit, toute seule », une icône");
 await shot(p, "maj-0-a-jour-sombre", ".maj");
 await p.context().close();
 

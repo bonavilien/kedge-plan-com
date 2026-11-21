@@ -1,9 +1,11 @@
 # Installer l'appli pour ton équipe
 
+> **Le plus simple : [l'installateur en un clic](https://bonavilien.github.io/kedge-plan-com/installer.html).** Deux clés (GitHub et Supabase), ton adresse, un bouton : la page copie l'appli, crée et installe la base, crée ton compte de pilote, installe les notifications et la mise à jour automatique, puis met le site en ligne. Environ 5 minutes. Pas encore de compte GitHub ou Supabase ? La page explique comment les créer, pas à pas (voir aussi l'étape 0 ci-dessous). Les étapes 1 à 7 restent le chemin à la main.
+>
 > **La version illustrée, étape par étape : [le tutoriel](https://bonavilien.github.io/kedge-plan-com/tutoriel.html).** Les valeurs à copier s'y remplissent avec le nom de ta copie.
 
 Environ 20 minutes, sans rien coder. Il te faut un compte **GitHub** et un compte **Supabase** (gratuits tous les deux).
-À la fin, ton équipe a sa propre appli, avec ses propres données, et tu la mets à jour d'un clic quand une nouvelle version sort.
+À la fin, ton équipe a sa propre appli, avec ses propres données, et elle se met à jour toute seule, chaque nuit, quand une nouvelle version sort.
 
 | Où vit quoi | |
 |---|---|
@@ -12,6 +14,31 @@ Environ 20 minutes, sans rien coder. Il te faut un compte **GitHub** et un compt
 | **Tes réglages** (adresse de ta base, nom) | Les « variables » de ta copie sur GitHub, jamais dans le code. Le sous-titre et la couleur se règlent dans l'appli. |
 
 ---
+
+## 0. Tes deux comptes (gratuits)
+
+À faire une seule fois, avant l'installateur ou le chemin à la main. Déjà faits ? Passe à la suite.
+
+**GitHub** garde le code de ton appli et la met en ligne. Environ 3 minutes.
+
+1. Ouvre https://github.com/signup
+2. Ton **e-mail** (celui du travail convient), puis un **mot de passe** : 15 caractères, ou 8 avec au moins un chiffre et une minuscule.
+3. Un **nom d'utilisateur**. Il sera dans l'adresse de ton appli : `https://ton-nom.github.io/plan-de-com/`. Simple, en minuscules, avec des tirets si besoin (exemple : `com-executive`).
+4. Pays : **France**. Puis le bouton **Continue** (ou **Create account**).
+5. GitHub vérifie que tu n'es pas un robot : **Verify**, puis suis le petit jeu d'images.
+6. Un code à 8 chiffres arrive par e-mail (regarde dans les indésirables si rien n'arrive) : tape-le.
+7. Connecte-toi. Si GitHub pose des questions (équipe, centres d'intérêt), tout en bas : **Skip personalization**.
+
+Note ton nom d'utilisateur et ton mot de passe. Plus tard, GitHub peut te demander un code sur ton téléphone à la connexion : suis ses écrans, l'appli n'est pas concernée.
+
+**Supabase** garde les données de ton appli (actions, comptes, réglages). Environ 2 minutes, avec ton compte GitHub.
+
+1. Ouvre https://supabase.com/dashboard/sign-up
+2. **Continue with GitHub**, puis, sur la page de GitHub, le bouton vert **Authorize supabase**. Pas de nouveau mot de passe à inventer.
+3. Supabase te demande une **organisation** : **Name** = ton équipe, **Plan** = **Free** (0 $). Puis **Create organization**.
+4. Supabase propose ensuite **Create a new project** : avec l'installateur, **ne le fais pas**, il s'en charge. À la main, c'est l'étape 2.
+
+Un compte Supabase gratuit a droit à 2 bases actives. Si tu en as déjà 2, mets-en une en pause avant d'installer.
 
 ## 1. Copier l'appli
 
@@ -70,7 +97,7 @@ Ton site est en ligne à l'adresse `https://ton-compte.github.io/plan-de-com/`.
 
 ## 6. Le bouton Mettre à jour
 
-À faire une seule fois. Ensuite, **Réglages**, **Version** affiche la nouvelle version dès qu'elle sort, et un seul bouton la récupère.
+À faire une seule fois. Ensuite, ta copie se met à jour **toute seule, chaque nuit**, et **Réglages**, **Version** a un bouton pour ne pas attendre.
 
 **a. Une clé GitHub, limitée à ta copie**
 
@@ -98,7 +125,7 @@ Ton site est en ligne à l'adresse `https://ton-compte.github.io/plan-de-com/`.
 2. Dans Supabase : **Edge Functions**, **Deploy a new function**, **Via Editor**.
 3. Nom de la fonction : `mise-a-jour` (exactement). Remplace tout le contenu de l'éditeur par ce que tu as copié. **Deploy function**.
 4. Dans les réglages de la fonction (**Details**), désactive **Verify JWT** (« Enforce JWT verification ») et enregistre : la fonction vérifie elle-même que c'est un pilote qui clique.
-5. Dans ton appli : **Réglages**, **Version**. Tu vois une coche verte **À jour**.
+5. Dans ton appli : **Réglages**, **Version**. Tu vois une coche verte **À jour** et la mention **Chaque nuit, toute seule** : en ouvrant cette page, la fonction s'est inscrite pour la mise à jour de nuit.
 
 ## 7. Asana et Trello (facultatif)
 
@@ -113,13 +140,28 @@ Aucun secret à ranger dans Supabase : la clé se colle dans l'appli, et seule l
 
 ## Ensuite, au quotidien
 
-Quand une nouvelle version sort, un pilote va dans **Réglages**, **Version** : l'ancienne et la nouvelle version s'affichent avec leurs nouveautés. **Mettre à jour**, puis trois pastilles s'allument :
+**Rien à faire.** Chaque nuit, vers 3 h ou 4 h (heure de Paris), ta base appelle sa fonction `mise-a-jour` : s'il y a une nouvelle version, la base est mise à jour d'abord, puis le code, puis GitHub publie le site. Le matin, chacun a la nouvelle version au rechargement. Une copie déjà à jour ne bouge pas.
+
+Pour ne pas attendre la nuit, un pilote va dans **Réglages**, **Version** : l'ancienne et la nouvelle version s'affichent avec leurs nouveautés. **Mettre à jour**, puis trois pastilles s'allument :
 
 1. **Base** : les changements de la base sont faits (ta base garde toutes ses données) ;
 2. **Code** : ta copie récupère le nouveau code ;
 3. **En ligne** : GitHub publie, puis l'appli se recharge toute seule (une à trois minutes).
 
 Seuls les pilotes voient le bouton. Les autres comptes reçoivent la nouvelle version au rechargement suivant.
+
+## L'installateur en un clic, en détail
+
+La page [`site/installer.html`](site/installer.html) ne parle qu'à GitHub, depuis ton navigateur : elle copie l'appli (fork), active ses robots et GitHub Pages, range tes clés **chiffrées** dans le secret `KPLAN_INSTALLATION` de ta copie, puis lance le robot **Installer** (`.github/workflows/installer.yml`, `scripts/installer.mjs`). Le robot tourne chez GitHub : il crée la base Supabase à Paris, installe les tables, ferme l'inscription libre, crée ton compte (le premier compte est pilote), installe les fonctions `push`, `mise-a-jour` et `export` avec leurs secrets, inscrit la mise à jour de nuit, branche le site (variables `KPLAN_SUPABASE_URL`, `KPLAN_SUPABASE_KEY`, `KPLAN_VAPID`), le met en ligne, puis **efface le secret**. Ta clé Supabase ne reste nulle part : tu peux la supprimer ensuite. Ta clé GitHub reste dans les secrets de ta base, pour les mises à jour (celle de la nuit et le bouton) : c'est pour ça qu'elle est **sans date d'expiration**.
+
+Si une étape coince, la page affiche le message du robot et un bouton **Réessayer** : tout se relance sans rien faire en double.
+
+| La page dit | Quoi faire |
+|---|---|
+| « Il manque les cases repo et workflow » | Recrée la clé avec le bouton « Créer ma clé GitHub » : les cases sont déjà cochées. |
+| « Tu as déjà un dépôt … » | Change le nom de l'appli (il donne le nom de la copie), puis Installer. |
+| « Ton compte Supabase a déjà ses 2 projets gratuits » | Mets un projet en pause sur supabase.com, puis Réessayer. |
+| « Supabase refuse ta clé » | Recrée une clé Supabase, recopie-la, puis Installer. |
 
 ## Si quelque chose coince
 
@@ -128,6 +170,7 @@ Seuls les pilotes voient le bouton. Les autres comptes reçoivent la nouvelle ve
 | « Le bouton n'est pas encore installé » | Étape 6, c. Vérifie que la fonction s'appelle bien `mise-a-jour`. |
 | « GitHub refuse le jeton » | La clé GitHub a expiré : refais l'étape 6, a, puis remplace `GITHUB_TOKEN` (6, b). |
 | « GitHub refuse l'accès » | `GITHUB_REPO` mal écrit, ou une permission manque à la clé (Contents, Workflows, Actions). |
+| La copie ne se met plus à jour la nuit | Ouvre **Réglages**, **Version** et clique **Mettre à jour** : le message affiché dit ce qui coince (souvent la clé GitHub expirée, voir plus haut). |
 | « Ta copie a été modifiée à la main » | Sur GitHub, dans ta copie : **Sync fork**, puis **Discard commits**. Tes réglages (les variables) ne bougent pas. |
 | « Le script 00xx n'est pas passé » | Rien n'a été changé par ce script, et le code n'a pas été mis à jour. Envoie le message à l'auteur de l'appli. |
 | La publication échoue dans **Actions** | Il manque `KPLAN_SUPABASE_URL` ou `KPLAN_SUPABASE_KEY` (étape 4, 2), ou c'est la clé secrète au lieu de la publishable. |
@@ -136,4 +179,5 @@ Seuls les pilotes voient le bouton. Les autres comptes reçoivent la nouvelle ve
 
 - **Notifications sur téléphone** (facultatif) : elles demandent une étape technique en plus (`scripts/setup.mjs`, avec une clé Supabase personnelle). Sans elles, l'appli marche entièrement ; les rappels restent visibles dans l'appli.
 - **Pas de retour arrière automatique** : une mise à jour de la base ne se défait pas d'un clic. Les changements sont prévus pour garder toutes les données.
-- **Le bouton lui-même** évolue rarement. Quand c'est le cas, **Réglages**, **Version** le signale : recolle la fonction (étape 6, c).
+- **La mise à jour de nuit** : la migration `0033_mise_a_jour_auto.sql` programme l'appel (pg_cron, 2 h 17 en temps universel) ; l'adresse de la fonction et un secret sont rangés dans le coffre de ta base (`kplan_maj_url`, `kplan_maj_secret`), par l'installateur, ou par la fonction elle-même la première fois qu'un pilote ouvre **Réglages**, **Version**. Sur l'appli d'origine, rien ne se passe.
+- **La fonction elle-même** évolue rarement, et ne se remplace pas toute seule. Quand c'est le cas, **Réglages**, **Version** le signale : recolle-la (étape 6, c). Une copie installée avant la 2.7 doit la recoller une fois pour profiter de la mise à jour de nuit.

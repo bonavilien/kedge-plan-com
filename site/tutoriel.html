@@ -137,6 +137,12 @@ code.ex { background: var(--fill); padding: 2px 6px; border-radius: 4px; }
 .resultat { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; padding: 10px 14px; border-radius: var(--r3); background: var(--ok-bg); color: var(--ok); font-weight: 650; font-size: 14px; }
 .resultat > svg { font-size: 18px; stroke-width: 2.6; }
 .resultat .val { background: var(--card); color: var(--text); }
+/* le raccourci vers l'installateur, avant les étapes */
+.raccourci { display: flex; align-items: center; justify-content: space-between; gap: 16px 24px; flex-wrap: wrap; background: var(--card); border-radius: var(--r4); box-shadow: var(--shadow); padding: 20px 22px; }
+.raccourci h2 { font: 700 22px/1.2 var(--serif); }
+.raccourci p { color: var(--text2); margin-top: 4px; }
+.go-court { display: inline-flex; align-items: center; gap: 10px; height: 48px; padding: 0 22px; border-radius: var(--r3); background: var(--yellow); color: var(--yellow-ink); font-weight: 700; font-size: 16px; text-decoration: none; white-space: nowrap; }
+.ou { color: var(--text2); font-weight: 600; margin: 6px 4px -4px; }
 .note { display: flex; gap: 10px; align-items: flex-start; padding: 10px 14px; border-radius: var(--r3); font-size: 14px; background: var(--bg); color: var(--text); line-height: 1.8; }
 .note > svg { font-size: 17px; margin-top: 5px; color: var(--text2); }
 .note.attention { background: var(--warn-bg); }
@@ -202,7 +208,82 @@ details code { background: var(--fill); padding: 1px 5px; border-radius: 4px; co
   .vars td:nth-child(2) { grid-column: 1 / -1; grid-row: 2; font-size: 13.5px; color: var(--text2); }
   .vars td:first-child { white-space: normal; }
 }
-@media print { .rail, .fait, .cp { display: none; } .corps { grid-template-columns: 1fr; } }
+/* ---------- eye candy, comme l'appli (2.8) : les étapes sur une route, le moment « Fait », la bulle de l'appli ---------- */
+:root { --road: #333539; --road-line: #FFD452; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --road: #4A4C52; } }
+:root[data-theme="dark"] { --road: #4A4C52; }
+/* le sommaire : une route vue de haut, un point par étape ; vert et coché quand c'est fait, jaune là où tu en es */
+.prog { justify-content: space-between; gap: 4px 8px; margin-bottom: 10px; }
+.prog-t { font-size: 15px; color: var(--text); }
+.prog-t b { font: 700 17px var(--serif); font-variant-numeric: tabular-nums; }
+.prog-s { font-size: 12.5px; }
+.prog .barre { display: none; }
+.rail ol { position: relative; gap: 8px; }
+.rail ol::before { content: ""; position: absolute; left: 19px; top: 18px; bottom: 18px; width: 8px; margin-left: -4px; border-radius: 4px;
+  background: repeating-linear-gradient(180deg, var(--road-line) 0 6px, transparent 6px 13px) center / 2px 100% no-repeat, var(--road); }
+.rail ol::after { content: ""; position: absolute; left: 19px; top: 18px; width: 8px; margin-left: -4px; border-radius: 4px; height: calc((100% - 36px) * var(--p, 0)); background: var(--ok); transition: height .6s cubic-bezier(.2,.7,.2,1); }
+.rail a { position: relative; z-index: 1; padding: 6px 8px 6px 6px; }
+.rn { position: relative; width: 26px; height: 26px; background: var(--card); color: var(--text2); box-shadow: 0 0 0 2px var(--road); }
+.rn .ck { display: none; font-size: 15px; stroke-width: 2.8; }
+.rail a.coche .rn { background: var(--ok); color: var(--card); box-shadow: 0 0 0 2px var(--card), 0 0 0 4px var(--ok); }
+.rail a.coche .rn b { display: none; }
+.rail a.coche .rn .ck { display: block; }
+.rail a.ici .rn { background: var(--yellow); color: var(--yellow-ink); box-shadow: 0 0 0 2px var(--card), 0 0 0 4px var(--yellow); }
+.rail a.ici.coche .rn { background: var(--ok); color: var(--card); box-shadow: 0 0 0 2px var(--card), 0 0 0 4px var(--ok); }
+/* la petite bulle : c'est l'appli qui parle, comme sur l'accueil */
+.bulle { position: relative; width: fit-content; max-width: 100%; padding-left: 8px; color: var(--yellow-ink); font: 500 16px/1.4 var(--serif); text-wrap: pretty; }
+.bulle::before { content: ""; position: absolute; left: 0; bottom: 0; width: 16px; height: 14px; background: var(--yellow); clip-path: polygon(100% 0, 100% 100%, 0 100%); }
+.bulle .b { display: block; padding: 11px 18px; border-radius: 18px 18px 18px 4px; background: var(--yellow); box-shadow: 0 2px 10px rgba(0,0,0,.08); }
+.etapes > .bulle { margin: 4px 0 -2px; }
+.pq-pts { display: none; }
+/* la fin : le 7 au bout de sa route, puis le site */
+.bravo { display: grid; justify-items: center; gap: 14px; padding: 26px 20px 28px; background: var(--card); border-radius: var(--r4); box-shadow: var(--shadow); text-align: center; }
+.bravo .bulle { text-align: left; font-size: 17px; }
+.illu { position: relative; width: 140px; height: 86px; }
+.illu-route { position: absolute; left: 0; right: 0; bottom: 6px; height: 16px; border-radius: 8px; overflow: hidden;
+  background: repeating-linear-gradient(90deg, var(--road-line) 0 12px, transparent 12px 22px) center / 100% 2px no-repeat, var(--road); }
+.illu-7 { position: absolute; left: 50%; bottom: 14px; width: 66px; height: 66px; margin-left: -33px; filter: drop-shadow(0 4px 10px rgba(0,0,0,.18)); transform: rotate(-6deg); }
+.go-site { display: inline-flex; align-items: center; gap: 8px; height: 46px; padding: 0 22px; border-radius: var(--r3); background: var(--hero); color: var(--hero-ink); font-weight: 700; text-decoration: none; }
+.go-site svg { font-size: 18px; }
+@media (max-width: 899px) {
+  /* téléphone : la route passe à l'horizontale, sans les noms */
+  .rail ol { display: flex; justify-content: space-between; margin-top: 2px; }
+  .rail ol::before { left: 13px; right: 13px; top: 50%; bottom: auto; width: auto; height: 8px; margin: -4px 0 0;
+    background: repeating-linear-gradient(90deg, var(--road-line) 0 6px, transparent 6px 13px) center / 100% 2px no-repeat, var(--road); }
+  .rail ol::after { left: 13px; top: 50%; width: calc((100% - 26px) * var(--p, 0)); height: 8px; margin: -4px 0 0; transition-property: width; }
+  .rail a { font-size: 0; padding: 4px 0; gap: 0; background: none !important; }
+  .rail a .rn { font-size: 12px; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .step, .rail a, .fait { transition: background-color .25s ease, box-shadow .25s ease, color .25s ease, border-color .25s ease; }
+  /* le moment « Fait » : la case se remplit, la coche se trace, une petite onde */
+  .step.ok.vient .num, .rail a.coche.vient .rn { animation: t-bond .45s cubic-bezier(.3,1.7,.5,1), t-onde .8s ease-out; }
+  .step.ok.vient .num svg path, .rail a.coche.vient .rn .ck path { stroke-dasharray: 22; stroke-dashoffset: 22; animation: t-trace .35s ease-out .12s forwards; }
+  .rail a.ici:not(.coche) .rn::after { content: ""; position: absolute; inset: -6px; border-radius: 50%; border: 2px solid var(--yellow); opacity: 0; animation: t-halo 2.4s ease-out .4s 3; }
+  .prog-t b.change { animation: t-bond .45s cubic-bezier(.3,1.7,.5,1); display: inline-block; }
+  /* la fin arrive comme un message : la route se trace, le 7 se pose, trois points puis la phrase */
+  .bravo:not([hidden]) .illu-route { animation: t-flux 1.2s ease-out both; }
+  .bravo:not([hidden]) .illu-7 { animation: t-pose .6s cubic-bezier(.2,.8,.2,1.3) .3s both; }
+  .bulle.ecrit { animation: t-arrive .3s cubic-bezier(.2,.8,.2,1.2) .7s both, t-ouvre .45s cubic-bezier(.2,.7,.2,1) 1.7s backwards; }
+  .bulle.ecrit .pq-pts { display: flex; position: absolute; left: 27px; top: 50%; margin-top: -3.5px; gap: 5px; animation: t-fin .2s ease 1.65s forwards; }
+  .bulle.ecrit .pq-pts i { width: 7px; height: 7px; border-radius: 50%; background: currentColor; opacity: .5; animation: t-saute .9s ease-in-out .7s infinite; }
+  .bulle.ecrit .pq-pts i:nth-child(2) { animation-delay: .85s; }
+  .bulle.ecrit .pq-pts i:nth-child(3) { animation-delay: 1s; }
+  .bulle.ecrit .b { animation: t-texte .35s ease 1.8s both; }
+  .bravo:not([hidden]) .go-site { animation: t-arrive .4s ease 2.1s both; }
+}
+@keyframes t-bond { 50% { transform: scale(1.14); } }
+@keyframes t-onde { from { box-shadow: 0 0 0 0 color-mix(in srgb, var(--ok) 50%, transparent); } to { box-shadow: 0 0 0 14px transparent; } }
+@keyframes t-trace { to { stroke-dashoffset: 0; } }
+@keyframes t-halo { 0% { opacity: .9; transform: scale(1); } 100% { opacity: 0; transform: scale(1.6); } }
+@keyframes t-flux { from { background-position: -140px 50%, 0 0; } }
+@keyframes t-pose { from { opacity: 0; transform: translateY(-26px) rotate(-18deg); } }
+@keyframes t-arrive { from { opacity: 0; transform: translateY(6px) scale(.94); } }
+@keyframes t-ouvre { from { clip-path: inset(0 calc(100% - 86px) 0 0 round 0 18px 18px 0); } to { clip-path: inset(0 0 0 0 round 0 18px 18px 0); } }
+@keyframes t-saute { 0%, 60%, 100% { transform: none; opacity: .45; } 30% { transform: translateY(-4px); opacity: .9; } }
+@keyframes t-fin { to { opacity: 0; visibility: hidden; } }
+@keyframes t-texte { from { color: transparent; } }
+@media print { .rail, .fait, .cp, .bravo { display: none; } .corps { grid-template-columns: 1fr; } }
 </style>
 </head>
 <body>
@@ -212,7 +293,7 @@ details code { background: var(--fill); padding: 1px 5px; border-radius: 4px; co
     <div class="hero-t">
       <p class="eyebrow">Plan de com · tutoriel</p>
       <h1>Installe l’appli pour ton équipe</h1>
-      <p class="lead">Ton équipe a sa propre appli, avec ses propres données. Tu la mets à jour d’un clic quand une nouvelle version sort.</p>
+      <p class="lead">Ton équipe a sa propre appli, avec ses propres données. Elle se met à jour toute seule, chaque nuit, quand une nouvelle version sort.</p>
       <ul class="chips"><li>20 minutes</li><li>Sans coder</li><li>GitHub et Supabase, gratuits</li></ul>
     </div>
     <svg class="sept" viewBox="96 64 330 446" role="img" aria-label="Le symbole de l’appli : un 7, sa route et une étoile">
@@ -248,19 +329,21 @@ details code { background: var(--fill); padding: 1px 5px; border-radius: 4px; co
 
 <div class="wrap corps">
   <nav class="rail" aria-label="Étapes">
-    <p class="prog"><span id="prog-n">0</span> sur 6 étapes<span class="barre" aria-hidden="true"><i id="prog-b"></i></span></p>
+    <p class="prog"><span class="prog-t">Encore <b id="prog-min">20 min</b></span><span class="prog-s"><span id="prog-n">0</span> sur 6</span><span class="barre" aria-hidden="true"><i id="prog-b"></i></span></p>
     <ol>
-      <li><a href="#etape-1" data-r="1"><span class="rn">1</span>Copier l’appli</a></li>
-      <li><a href="#etape-2" data-r="2"><span class="rn">2</span>Créer ta base</a></li>
-      <li><a href="#etape-3" data-r="3"><span class="rn">3</span>Installer la base</a></li>
-      <li><a href="#etape-4" data-r="4"><span class="rn">4</span>Brancher le site</a></li>
-      <li><a href="#etape-5" data-r="5"><span class="rn">5</span>Créer les comptes</a></li>
-      <li><a href="#etape-6" data-r="6"><span class="rn">6</span>Bouton Mettre à jour</a></li>
+      <li><a href="#etape-1" data-r="1"><span class="rn"><b>1</b><svg class="ck" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span>Copier l’appli</a></li>
+      <li><a href="#etape-2" data-r="2"><span class="rn"><b>2</b><svg class="ck" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span>Créer ta base</a></li>
+      <li><a href="#etape-3" data-r="3"><span class="rn"><b>3</b><svg class="ck" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span>Installer la base</a></li>
+      <li><a href="#etape-4" data-r="4"><span class="rn"><b>4</b><svg class="ck" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span>Brancher le site</a></li>
+      <li><a href="#etape-5" data-r="5"><span class="rn"><b>5</b><svg class="ck" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span>Créer les comptes</a></li>
+      <li><a href="#etape-6" data-r="6"><span class="rn"><b>6</b><svg class="ck" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span>Bouton Mettre à jour</a></li>
     </ol>
     <a class="rail-x" href="#ensuite">Ensuite, au quotidien</a>
     <a class="rail-x" href="#coince">Si quelque chose coince</a>
   </nav>
   <main class="etapes" id="main">
+    <section class="raccourci" aria-labelledby="t0"><div><h2 id="t0">Le plus simple : en un clic</h2><p>Deux clés, ton adresse, un bouton. La page fait tout le reste, en 5 minutes environ.</p></div><a class="go-court" href="https://bonavilien.github.io/kedge-plan-com/installer.html" target="_blank" rel="noopener">Installer en un clic<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a></section>
+    <p class="bulle"><span class="b">Ou à la main, étape par étape. Coche « Fait » à chaque fois : je garde ta place.</span></p>
     <section class="step" id="etape-1" data-step="1" aria-labelledby="t1">
   <header class="step-h">
     <span class="num" aria-hidden="true"><b>1</b><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span>
@@ -307,11 +390,16 @@ details code { background: var(--fill); padding: 1px 5px; border-radius: 4px; co
     <div class="step-t"><h2 id="t6">Installer le bouton Mettre à jour</h2><p class="meta"><span class="tag">GitHub</span><span class="tag">Supabase</span><span>5 min</span><span>une seule fois</span></p></div>
     <label class="fait"><input type="checkbox" id="fait-6" data-step="6"><span>Fait</span></label>
   </header>
-  <div class="sub"><h3>a. Une clé GitHub, limitée à ta copie</h3><ol class="acts"><li><div><span class="path"><span class="ui">ta photo</span><span class="chev" aria-hidden="true">›</span><span class="ui">Settings</span><span class="chev" aria-hidden="true">›</span><span class="ui">Developer settings</span><span class="chev" aria-hidden="true">›</span><span class="ui">Personal access tokens</span><span class="chev" aria-hidden="true">›</span><span class="ui">Fine-grained tokens</span><span class="chev" aria-hidden="true">›</span><span class="ui">Generate new token</span></span></div></li><li><div>Nom : <span class="val"><code>Plan de com mise à jour</code><button type="button" class="cp" aria-label="Copier"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2.5"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button></span> Expiration : la plus longue (note la date, il faudra la refaire).</div></li><li><div><span class="path"><span class="ui">Repository access</span><span class="chev" aria-hidden="true">›</span><span class="ui">Only select repositories</span></span> ta copie seulement.</div></li><li><div><span class="path"><span class="ui">Permissions</span><span class="chev" aria-hidden="true">›</span><span class="ui">Repository permissions</span></span> en <strong>Read and write</strong> : <span class="ui">Contents</span> <span class="ui">Workflows</span> <span class="ui">Actions</span></div></li><li><div><span class="path"><span class="ui">Generate token</span></span> puis copie la clé, qui commence par <code class="ex">github_pat_</code>. Elle ne s’affiche qu’une fois.</div></li></ol></div><div class="sub"><h3>b. La ranger dans Supabase</h3><ol class="acts"><li><div><span class="path"><span class="ui">Edge Functions</span><span class="chev" aria-hidden="true">›</span><span class="ui">Secrets</span></span></div></li></ol><div class="tab-wrap"><table class="vars"><tbody><tr><td><span class="val"><code>GITHUB_TOKEN</code><button type="button" class="cp" aria-label="Copier"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2.5"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button></span></td><td>la clé GitHub</td></tr><tr><td><span class="val"><code>GITHUB_REPO</code><button type="button" class="cp" aria-label="Copier"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2.5"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button></span></td><td><span class="val"><code data-k="repo">ton-compte/plan-de-com</code><button type="button" class="cp" aria-label="Copier"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2.5"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button></span></td></tr></tbody></table></div></div><div class="sub"><h3>c. Installer le bouton</h3><ol class="acts"><li><div>Ouvre <a class="ui lien" href="https://github.com/bonavilien/kedge-plan-com/blob/main/supabase/functions/mise-a-jour/index.ts" target="_blank" rel="noopener">index.ts<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 5h5v5M19 5l-8 8M18 14v4a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h4"/></svg></a> et copie-le avec <span class="ui">Copy raw file</span></div></li><li><div><span class="path"><span class="ui">Edge Functions</span><span class="chev" aria-hidden="true">›</span><span class="ui">Deploy a new function</span><span class="chev" aria-hidden="true">›</span><span class="ui">Via Editor</span></span></div></li><li><div>Nom : <span class="val"><code>mise-a-jour</code><button type="button" class="cp" aria-label="Copier"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2.5"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button></span> Remplace tout le contenu par ce que tu as copié, puis <span class="ui">Deploy function</span></div></li><li><div><span class="path"><span class="ui">Details</span></span> désactive <span class="ui">Verify JWT</span> et enregistre.</div></li><li><div>Dans ton appli : <span class="path"><span class="ui">Réglages</span><span class="chev" aria-hidden="true">›</span><span class="ui">Version</span></span></div></li></ol><p class="resultat"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg><span>À jour</span></p></div>
+  <div class="sub"><h3>a. Une clé GitHub, limitée à ta copie</h3><ol class="acts"><li><div><span class="path"><span class="ui">ta photo</span><span class="chev" aria-hidden="true">›</span><span class="ui">Settings</span><span class="chev" aria-hidden="true">›</span><span class="ui">Developer settings</span><span class="chev" aria-hidden="true">›</span><span class="ui">Personal access tokens</span><span class="chev" aria-hidden="true">›</span><span class="ui">Fine-grained tokens</span><span class="chev" aria-hidden="true">›</span><span class="ui">Generate new token</span></span></div></li><li><div>Nom : <span class="val"><code>Plan de com mise à jour</code><button type="button" class="cp" aria-label="Copier"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2.5"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button></span> Expiration : la plus longue (note la date, il faudra la refaire).</div></li><li><div><span class="path"><span class="ui">Repository access</span><span class="chev" aria-hidden="true">›</span><span class="ui">Only select repositories</span></span> ta copie seulement.</div></li><li><div><span class="path"><span class="ui">Permissions</span><span class="chev" aria-hidden="true">›</span><span class="ui">Repository permissions</span></span> en <strong>Read and write</strong> : <span class="ui">Contents</span> <span class="ui">Workflows</span> <span class="ui">Actions</span></div></li><li><div><span class="path"><span class="ui">Generate token</span></span> puis copie la clé, qui commence par <code class="ex">github_pat_</code>. Elle ne s’affiche qu’une fois.</div></li></ol></div><div class="sub"><h3>b. La ranger dans Supabase</h3><ol class="acts"><li><div><span class="path"><span class="ui">Edge Functions</span><span class="chev" aria-hidden="true">›</span><span class="ui">Secrets</span></span></div></li></ol><div class="tab-wrap"><table class="vars"><tbody><tr><td><span class="val"><code>GITHUB_TOKEN</code><button type="button" class="cp" aria-label="Copier"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2.5"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button></span></td><td>la clé GitHub</td></tr><tr><td><span class="val"><code>GITHUB_REPO</code><button type="button" class="cp" aria-label="Copier"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2.5"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button></span></td><td><span class="val"><code data-k="repo">ton-compte/plan-de-com</code><button type="button" class="cp" aria-label="Copier"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2.5"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button></span></td></tr></tbody></table></div></div><div class="sub"><h3>c. Installer le bouton</h3><ol class="acts"><li><div>Ouvre <a class="ui lien" href="https://github.com/bonavilien/kedge-plan-com/blob/main/supabase/functions/mise-a-jour/index.ts" target="_blank" rel="noopener">index.ts<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 5h5v5M19 5l-8 8M18 14v4a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h4"/></svg></a> et copie-le avec <span class="ui">Copy raw file</span></div></li><li><div><span class="path"><span class="ui">Edge Functions</span><span class="chev" aria-hidden="true">›</span><span class="ui">Deploy a new function</span><span class="chev" aria-hidden="true">›</span><span class="ui">Via Editor</span></span></div></li><li><div>Nom : <span class="val"><code>mise-a-jour</code><button type="button" class="cp" aria-label="Copier"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2.5"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button></span> Remplace tout le contenu par ce que tu as copié, puis <span class="ui">Deploy function</span></div></li><li><div><span class="path"><span class="ui">Details</span></span> désactive <span class="ui">Verify JWT</span> et enregistre.</div></li><li><div>Dans ton appli : <span class="path"><span class="ui">Réglages</span><span class="chev" aria-hidden="true">›</span><span class="ui">Version</span></span></div></li></ol><p class="resultat"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg><span>À jour · Chaque nuit, toute seule</span></p></div>
 </section>
+    <section class="bravo" id="bravo" hidden aria-live="polite">
+      <div class="illu" aria-hidden="true"><span class="illu-route"></span><svg class="illu-7" viewBox="40 40 450 450"><rect x="40" y="40" width="450" height="450" rx="96" fill="#FFD452"/><path d="M120.46 81.13C103.67 107.18 84.17 155.3 80.77 186C94.81 167.3 107.24 154.95 129.76 146.96C149.93 139.8 175.85 140.4 197.1 140.3C218.14 140.21 239.32 140.79 260.35 139.82C275.17 139.14 289.93 137.89 304.68 136.28C308.32 135.88 311.99 135.7 315.62 135.2C323.55 134.11 331.34 132.33 339.21 130.89C343.49 130.11 347.83 129.66 352.12 128.9C327.99 144.61 304.28 160.76 282.3 179.43C228.03 225.55 184.88 283.05 151.32 345.64C146.85 353.98 142.83 362.57 138.63 371.05C136.34 375.66 133.83 380.17 131.61 384.82C129.34 389.58 127.39 394.53 125.2 399.34C123.96 402.06 122.47 404.65 121.24 407.38C116.26 418.39 111.67 429.6 107.24 440.85C152.96 441.22 198.69 441.02 244.41 441.02C291.25 441.01 338.09 441.19 384.92 440.8C380.88 438.08 376.55 435.9 372.48 433.24C359.59 424.85 347.79 414.68 338.31 402.53C330.98 393.12 325.79 382.65 321.92 371.43C313.23 346.31 312.57 323.31 318.76 297.46C331.66 243.63 384.71 166.61 416.49 119.84C425.23 106.99 434.58 94.46 442.65 81.18C389.92 80.86 337.19 81.02 284.46 81.01C229.79 81 175.13 80.83 120.46 81.13Z" fill="#26282B"/></svg></div>
+      <p class="bulle ecrit"><span class="pq-pts" aria-hidden="true"><i></i><i></i><i></i></span><span class="b">C'est en ligne. Ton équipe peut entrer.</span></p>
+      <a class="go-site" data-href="site" href="#" target="_blank" rel="noopener">Ouvrir mon site<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+    </section>
     <section class="fin" id="ensuite" aria-labelledby="t-ensuite">
       <h2 id="t-ensuite">Ensuite, au quotidien</h2>
-      <p>Une nouvelle version sort : un pilote ouvre <span class="path"><span class="ui">Réglages</span><span class="chev" aria-hidden="true">›</span><span class="ui">Version</span><span class="chev" aria-hidden="true">›</span><span class="ui">Mettre à jour</span></span></p>
+      <p><b>Rien à faire</b> : chaque nuit, ta copie récupère toute seule la nouvelle version. Pour ne pas attendre, un pilote ouvre <span class="path"><span class="ui">Réglages</span><span class="chev" aria-hidden="true">›</span><span class="ui">Version</span><span class="chev" aria-hidden="true">›</span><span class="ui">Mettre à jour</span></span></p>
       <ol class="pastilles">
         <li><span class="dot"></span><b>Base</b><span>ta base change, tes données restent</span></li>
         <li><span class="dot"></span><b>Code</b><span>ta copie récupère le nouveau code</span></li>
@@ -364,22 +452,34 @@ details code { background: var(--fill); padding: 1px 5px; border-radius: 4px; co
     try { navigator.clipboard.writeText(txt).then(ok, choisir); } catch (x) { choisir(); }
   });
 
-  /* étapes faites */
-  var cases = $$(".fait input");
-  function avancer() {
-    var n = 0;
+  /* étapes faites : la route se remplit, les minutes qui restent descendent, le dernier « Fait » ouvre la fin */
+  var cases = $$(".fait input"), ol = $(".rail ol"), minEl = $("#prog-min"), bravo = $("#bravo"), dejaFini = null;
+  var duree = function (k) { var m = document.querySelector('#etape-' + k + ' .meta'); var x = m && /(\d+)\s*min/.exec(m.textContent); return x ? +x[1] : 0; };
+  function avancer(neuf) {
+    var n = 0, reste = 0;
     cases.forEach(function (c) {
-      var k = c.getAttribute("data-step"), f = c.checked; if (f) n++;
-      document.getElementById("etape-" + k).classList.toggle("ok", f);
-      var r = document.querySelector('.rail a[data-r="' + k + '"]'); if (r) r.classList.toggle("coche", f);
+      var k = c.getAttribute("data-step"), f = c.checked; if (f) n++; else reste += duree(k);
+      var st = document.getElementById("etape-" + k), r = document.querySelector('.rail a[data-r="' + k + '"]');
+      st.classList.toggle("ok", f); if (r) r.classList.toggle("coche", f);
+      if (neuf === c && f) [st, r].forEach(function (el) { if (!el) return; el.classList.remove("vient"); void el.offsetWidth; el.classList.add("vient"); setTimeout(function () { el.classList.remove("vient"); }, 1600); });
     });
     $("#prog-n").textContent = n; $("#prog-b").style.width = (n / cases.length * 100) + "%";
+    if (ol) ol.style.setProperty("--p", n ? (n - 1) / (cases.length - 1) : 0);
+    var txt = n === cases.length ? "C'est fini" : null;
+    if (txt) { minEl.parentNode.innerHTML = '<b id="prog-min">' + txt + "</b>"; minEl = $("#prog-min"); }
+    else { if (!/min/.test(minEl.textContent)) { minEl.parentNode.innerHTML = 'Encore <b id="prog-min"></b>'; minEl = $("#prog-min"); } minEl.textContent = reste + " min"; }
+    if (neuf) { minEl.classList.remove("change"); void minEl.offsetWidth; minEl.classList.add("change"); }
+    var fini = n === cases.length;
+    if (bravo && fini !== dejaFini) { bravo.hidden = !fini; dejaFini = fini; }
   }
   cases.forEach(function (c) {
     c.checked = lire(c.id) === "1";
-    c.addEventListener("change", function () { ecrire(c.id, c.checked ? "1" : "0"); avancer(); });
+    c.addEventListener("change", function () { ecrire(c.id, c.checked ? "1" : "0"); avancer(c); });
   });
   avancer();
+  /* le bouton « Ouvrir mon site » suit l'adresse de « Ta copie » */
+  function lienSite() { $$("[data-href]").forEach(function (a) { var c = document.querySelector('[data-k="' + a.getAttribute("data-href") + '"]'); if (c) a.href = c.textContent; }); }
+  [compte, copie].forEach(function (el) { el.addEventListener("input", lienSite); }); lienSite();
 
   /* le sommaire suit l'étape à l'écran */
   if ("IntersectionObserver" in window) {
