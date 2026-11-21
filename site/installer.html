@@ -1,0 +1,376 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Installer l'appli</title>
+<meta name="description" content="Installer l'appli Plan de com pour ton équipe : deux clés, ton adresse, un bouton.">
+<meta name="robots" content="noindex">
+<link rel="icon" href="icons/favicon-32.png">
+<style>
+/* Installer une copie en un clic. Page autonome (pas de lien depuis l'appli), mêmes couleurs que le tutoriel.
+   Tout se passe dans le navigateur : les clés vont seulement chez GitHub (copie, réglages, secret chiffré),
+   puis un robot GitHub Actions (.github/workflows/installer.yml) fait la partie Supabase et efface le secret. */
+@font-face { font-family: "KRC Serif"; src: url("fonts/krc-serif.woff") format("woff"); font-display: swap; }
+:root {
+  --yellow: #FFD452; --yellow-ink: #26282B;
+  --hero: #333539; --hero-ink: #F4F4F2; --hero-ink2: #B9BBC0;
+  --bg: #F2F2EF; --card: #FFFFFF; --text: #2B2D31; --text2: #6A6C71; --sep: #DADAD5; --fill: #E6E6E2;
+  --ok: #2E7D32; --ok-bg: #E7F3E8; --red: #C62828; --red-bg: #FCEBEA; --focus: #333539;
+  --shadow: 0 1px 2px rgba(20,20,20,.05), 0 6px 22px rgba(20,20,20,.07);
+  --serif: "KRC Serif", Georgia, "Times New Roman", serif;
+  --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --mono: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+  --r2: 8px; --r3: 12px; --r4: 16px;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --hero: #17181A; --bg: #0F1012; --card: #1E1F22; --text: #F1F1EE; --text2: #A4A6AB; --sep: #34363B; --fill: #2C2E33;
+  --ok: #81C784; --ok-bg: #1C2A1E; --red: #EF9A9A; --red-bg: #3A1F1F; --focus: #FFD452;
+  --shadow: 0 1px 2px rgba(0,0,0,.4), 0 6px 22px rgba(0,0,0,.35); color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --hero: #17181A; --bg: #0F1012; --card: #1E1F22; --text: #F1F1EE; --text2: #A4A6AB; --sep: #34363B; --fill: #2C2E33;
+  --ok: #81C784; --ok-bg: #1C2A1E; --red: #EF9A9A; --red-bg: #3A1F1F; --focus: #FFD452;
+  --shadow: 0 1px 2px rgba(0,0,0,.4), 0 6px 22px rgba(0,0,0,.35); color-scheme: dark; }
+*, *::before, *::after { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.5 var(--sans); -webkit-font-smoothing: antialiased; }
+h1, h2, p { margin: 0; }
+a { color: inherit; }
+svg { width: 1em; height: 1em; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+[hidden] { display: none !important; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.wrap { max-width: 720px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.muted { color: var(--text2); }
+
+.hero { background: var(--hero); color: var(--hero-ink); }
+.hero-in { display: flex; align-items: center; gap: 18px; padding-block: 36px 64px; }
+.logo { width: 64px; height: 64px; border-radius: 15px; flex: none; }
+h1 { font: 700 clamp(28px, 5vw, 40px)/1.1 var(--serif); }
+.lead { color: var(--hero-ink2); font-size: 16.5px; margin-top: 6px; }
+
+main { margin-top: -36px; padding-bottom: 64px; display: grid; gap: 14px; }
+.card { background: var(--card); border-radius: var(--r4); box-shadow: var(--shadow); padding: 20px; display: grid; grid-template-columns: 32px minmax(0, 1fr); gap: 4px 14px; }
+.num { width: 32px; height: 32px; border-radius: 50%; background: var(--fill); display: grid; place-items: center; font-weight: 700; font-size: 15px; }
+.card.ok .num { background: var(--ok); color: var(--card); }
+.card h2 { font: 700 20px/32px var(--serif); }
+.card .body { display: grid; gap: 12px; min-width: 0; }
+.aide { color: var(--text2); font-size: 14.5px; }
+.aide b { color: var(--text); font-weight: 650; }
+.ligne { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 10px; align-items: center; }
+.btn { display: inline-flex; align-items: center; gap: 8px; height: 42px; padding: 0 16px; border-radius: var(--r2); border: 1px solid var(--sep); background: var(--card); color: var(--text); font: 600 14.5px var(--sans); text-decoration: none; cursor: pointer; white-space: nowrap; }
+.btn:hover { background: var(--fill); }
+input { height: 42px; width: 100%; border: 1px solid var(--sep); border-radius: var(--r2); background: var(--bg); color: var(--text); padding: 0 12px; font: 15px var(--sans); }
+input.cle { font: 13.5px var(--mono); }
+input:focus { border-color: var(--focus); outline: none; box-shadow: 0 0 0 1px var(--focus); }
+input[aria-invalid="true"] { border-color: var(--red); }
+.etat { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 600; min-height: 20px; }
+.etat.ok { color: var(--ok); }
+.etat.non { color: var(--red); }
+.etat img { width: 22px; height: 22px; border-radius: 50%; }
+.champs { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.champ { display: grid; gap: 5px; font-size: 13.5px; font-weight: 600; color: var(--text2); }
+.mdp { position: relative; }
+.mdp input { padding-right: 46px; }
+.oeil { position: absolute; right: 4px; top: 4px; width: 34px; height: 34px; border: 0; background: none; color: var(--text2); border-radius: 6px; cursor: pointer; display: grid; place-items: center; font-size: 18px; }
+.go { height: 52px; border: 0; border-radius: var(--r3); background: var(--yellow); color: var(--yellow-ink); font: 700 17px var(--sans); cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; }
+.go:disabled { opacity: .45; cursor: default; }
+.note { font-size: 13px; color: var(--text2); text-align: center; }
+
+/* le suivi */
+.suivi { background: var(--card); border-radius: var(--r4); box-shadow: var(--shadow); padding: 22px 20px; display: grid; gap: 16px; }
+.suivi h2 { font: 700 24px/1.2 var(--serif); }
+.pas { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+.pas li { display: grid; grid-template-columns: 26px minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 9px 0; color: var(--text2); }
+.pas li .i { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; border: 2px solid var(--sep); font-size: 14px; }
+.pas li.en { color: var(--text); font-weight: 650; }
+.pas li.en .i { border-color: var(--yellow); border-top-color: transparent; animation: tour 0.9s linear infinite; }
+.pas li.fait { color: var(--text); }
+.pas li.fait .i { background: var(--ok); border-color: var(--ok); color: var(--card); }
+.pas li.rate { color: var(--red); font-weight: 650; }
+.pas li.rate .i { background: var(--red); border-color: var(--red); color: var(--card); }
+.pas small { font-size: 13px; color: var(--text2); font-weight: 400; }
+@keyframes tour { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .pas li.en .i { animation: none; border-top-color: var(--yellow); } }
+.err { background: var(--red-bg); color: var(--text); border-radius: var(--r3); padding: 14px 16px; display: grid; gap: 12px; }
+.err p { font-weight: 600; }
+.err .act { display: flex; flex-wrap: wrap; gap: 10px; }
+.fin { display: grid; gap: 14px; justify-items: start; }
+.fin .go { padding: 0 26px; text-decoration: none; }
+.fin p { font-size: 15px; }
+.fin .adr { font: 14px var(--mono); color: var(--text2); word-break: break-all; }
+
+@media (max-width: 600px) {
+  .hero-in { padding-block: 28px 56px; }
+  .logo { width: 52px; height: 52px; border-radius: 12px; }
+  .card { grid-template-columns: minmax(0, 1fr); padding: 18px 16px; }
+  .num { display: none; }
+  .ligne, .champs { grid-template-columns: minmax(0, 1fr); }
+  .btn { justify-content: center; }
+}
+</style>
+</head>
+<body>
+<header class="hero"><div class="wrap hero-in">
+  <img class="logo" src="assets/road-to-7th.png" alt="">
+  <div><h1>Installer l'appli</h1><p class="lead">Deux clés, ton adresse, un bouton. Environ 5 minutes.</p></div>
+</div></header>
+
+<main class="wrap">
+  <form id="f" novalidate>
+    <div style="display:grid;gap:14px">
+      <section class="card" id="c-gh">
+        <span class="num">1</span>
+        <div class="body">
+          <h2>Ta clé GitHub</h2>
+          <p class="aide">Sur la page qui s'ouvre : <b>Expiration</b> sur <b>No expiration</b>, puis <b>Generate token</b> tout en bas. Copie la clé.</p>
+          <div class="ligne">
+            <a class="btn" id="lien-gh" href="https://github.com/settings/tokens/new?scopes=repo,workflow&amp;description=Plan%20de%20com" target="_blank" rel="noopener">Créer ma clé GitHub <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 5h5v5M19 5l-8 8M18 14v4a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h4"/></svg></a>
+            <input class="cle" id="gh" name="gh" placeholder="ghp_…" autocomplete="off" spellcheck="false" aria-label="Clé GitHub" aria-describedby="gh-etat">
+          </div>
+          <p class="etat" id="gh-etat" aria-live="polite"></p>
+        </div>
+      </section>
+
+      <section class="card" id="c-sb">
+        <span class="num">2</span>
+        <div class="body">
+          <h2>Ta clé Supabase</h2>
+          <p class="aide"><b>Generate new token</b>, un nom (Plan de com), <b>Generate token</b>. Copie la clé.</p>
+          <div class="ligne">
+            <a class="btn" href="https://supabase.com/dashboard/account/tokens" target="_blank" rel="noopener">Créer ma clé Supabase <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 5h5v5M19 5l-8 8M18 14v4a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h4"/></svg></a>
+            <input class="cle" id="sb" name="sb" placeholder="sbp_…" autocomplete="off" spellcheck="false" aria-label="Clé Supabase" aria-describedby="sb-etat">
+          </div>
+          <p class="etat" id="sb-etat" aria-live="polite"></p>
+        </div>
+      </section>
+
+      <section class="card" id="c-app">
+        <span class="num">3</span>
+        <div class="body">
+          <h2>Ton appli</h2>
+          <div class="champs">
+            <label class="champ">Nom de l'appli<input id="app" placeholder="Plan de com" maxlength="40" autocomplete="off"></label>
+            <label class="champ">Équipe<input id="nom" placeholder="Executive Education" maxlength="60" autocomplete="organization"></label>
+            <label class="champ">Ton prénom<input id="prenom" maxlength="60" autocomplete="given-name"></label>
+            <label class="champ">Ton e-mail<input id="email" type="email" autocomplete="email"></label>
+            <label class="champ" style="grid-column:1/-1">Ton mot de passe pour l'appli
+              <span class="mdp"><input id="mdp" type="password" minlength="8" autocomplete="new-password" placeholder="8 caractères minimum"><button type="button" class="oeil" id="oeil" aria-label="Afficher le mot de passe" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.600-7 10-7 10 7 10 7-3.600 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg></button></span>
+            </label>
+          </div>
+        </div>
+      </section>
+
+      <button class="go" id="go" type="submit" disabled>Installer</button>
+      <p class="note">Tes clés vont seulement chez GitHub et Supabase. La clé Supabase est effacée à la fin.</p>
+    </div>
+  </form>
+
+  <section class="suivi" id="suivi" hidden aria-live="polite">
+    <div><h2 id="s-titre">Installation en cours</h2><p class="muted" id="s-sous">Garde cette page ouverte.</p></div>
+    <ol class="pas" id="pas"></ol>
+    <div class="err" id="err" hidden>
+      <p id="err-t"></p>
+      <div class="act"><button type="button" class="btn" id="encore">Réessayer</button><a class="btn" id="detail" href="#" target="_blank" rel="noopener" hidden>Voir le détail sur GitHub</a></div>
+    </div>
+    <div class="fin" id="fin" hidden>
+      <a class="go" id="ouvrir" href="#" target="_blank" rel="noopener">Ouvrir mon appli</a>
+      <p class="adr" id="adr"></p>
+      <p>Connecte-toi avec <b id="fin-mail"></b> et ton mot de passe. Garde l'adresse dans tes favoris.</p>
+      <p class="muted" id="fin-plus">Ta clé Supabase ne sert plus : tu peux la supprimer sur supabase.com.</p>
+    </div>
+  </section>
+</main>
+
+<script src="vendor/tweetnacl-1.0.3.min.js"></script>
+<script src="installer/scelle.js"></script>
+<script>
+(() => {
+  const ORIGINE = "bonavilien/kedge-plan-com", WF = "installer.yml";
+  const API = (window.KPLAN_INSTALLER && window.KPLAN_INSTALLER.api) || "https://api.github.com";
+  const PAUSE = (window.KPLAN_INSTALLER && window.KPLAN_INSTALLER.pause) || 1;
+  const $ = (id) => document.getElementById(id);
+  const attendre = (ms) => new Promise((r) => setTimeout(r, ms * PAUSE));
+  const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+  let jeton = "", login = "", depot = "", site = "";
+
+  /* ---------- GitHub ---------- */
+  async function gh(method, p, body) {
+    const r = await fetch(API + p, { method, headers: { authorization: `Bearer ${jeton}`, accept: "application/vnd.github+json", ...(body ? { "content-type": "application/json" } : {}) }, body: body ? JSON.stringify(body) : undefined });
+    const t = await r.text(); let j = null; try { j = t ? JSON.parse(t) : null; } catch (e) { j = t; }
+    return { ok: r.ok, status: r.status, j, h: r.headers };
+  }
+  const exiger = (r, quoi) => { if (!r.ok) throw new Error(`${quoi} : GitHub répond ${r.status}${r.j && r.j.message ? ` (${r.j.message})` : ""}`); return r.j; };
+
+  /* ---------- les clés et le formulaire ---------- */
+  let ghOk = false, verif = 0;
+  async function verifierGh() {
+    const v = $("gh").value.trim(), n = ++verif, e = $("gh-etat");
+    ghOk = false; login = ""; $("c-gh").classList.remove("ok"); $("gh").removeAttribute("aria-invalid");
+    if (!v) { e.className = "etat"; e.textContent = ""; return pret(); }
+    e.className = "etat"; e.textContent = "Je vérifie…";
+    jeton = v;
+    let r; try { r = await gh("GET", "/user"); } catch (err) { r = { ok: false, status: 0 }; }
+    if (n !== verif) return;
+    if (!r.ok) { e.className = "etat non"; e.textContent = r.status === 401 ? "Clé refusée par GitHub : recopie-la en entier." : "GitHub ne répond pas, réessaie dans un instant."; $("gh").setAttribute("aria-invalid", "true"); return pret(); }
+    const portees = r.h.get("x-oauth-scopes");
+    if (portees !== null && !(/\brepo\b/.test(portees) && /\bworkflow\b/.test(portees))) { e.className = "etat non"; e.textContent = "Il manque les cases repo et workflow : recrée la clé avec le bouton."; $("gh").setAttribute("aria-invalid", "true"); return pret(); }
+    login = r.j.login; ghOk = true; $("c-gh").classList.add("ok");
+    e.className = "etat ok"; e.innerHTML = `${r.j.avatar_url ? `<img src="${esc(r.j.avatar_url)}" alt="">` : ""}Connecté : ${esc(login)}`;
+    pret();
+  }
+  const sbOk = () => /^sbp_[A-Za-z0-9_]{20,}$/.test($("sb").value.trim());
+  function etatSb() {
+    const v = $("sb").value.trim(), e = $("sb-etat");
+    $("c-sb").classList.toggle("ok", sbOk());
+    $("sb").toggleAttribute("aria-invalid", !!v && !sbOk());
+    e.className = "etat" + (!v ? "" : sbOk() ? " ok" : " non");
+    e.textContent = !v ? "" : sbOk() ? "Clé reçue" : "Une clé Supabase commence par sbp_";
+    pret();
+  }
+  const mailOk = () => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test($("email").value.trim());
+  function pret() {
+    const appOk = mailOk() && $("mdp").value.length >= 8;
+    $("c-app").classList.toggle("ok", appOk);
+    $("go").disabled = !(ghOk && sbOk() && appOk);
+  }
+  let minuteur;
+  $("gh").addEventListener("input", () => { clearTimeout(minuteur); minuteur = setTimeout(verifierGh, 350); });
+  $("sb").addEventListener("input", etatSb);
+  ["app", "nom", "prenom", "email", "mdp"].forEach((id) => $(id).addEventListener("input", pret));
+  $("oeil").addEventListener("click", () => { const m = $("mdp"), vu = m.type === "password"; m.type = vu ? "text" : "password"; $("oeil").setAttribute("aria-pressed", vu); $("oeil").setAttribute("aria-label", vu ? "Cacher le mot de passe" : "Afficher le mot de passe"); });
+
+  /* ---------- le suivi ---------- */
+  const PAS = [
+    ["copie", "Copier l'appli dans ton GitHub"],
+    ["reglages", "Régler ta copie"],
+    ["Créer la base", "Créer la base", "1 à 3 minutes"],
+    ["Installer les tables", "Installer les tables"],
+    ["Régler la connexion", "Régler la connexion"],
+    ["Créer ton compte", "Créer ton compte"],
+    ["Installer les notifications et le bouton Mettre à jour", "Notifications et bouton Mettre à jour"],
+    ["Brancher le site", "Brancher le site sur la base"],
+    ["Mettre en ligne", "Mettre en ligne"],
+  ];
+  /* les étapes techniques de GitHub comptent dans « Mettre en ligne » */
+  const groupe = (nom) => /^(Préparer le site|Run actions\/configure-pages|Run actions\/upload-pages-artifact|Mettre en ligne)/.test(nom) ? "Mettre en ligne" : nom;
+  const ICONES = { fait: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.500l4.500 4.500L19 7.500"/></svg>', rate: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 7l10 10M17 7 7 17"/></svg>' };
+  function dessiner(etats, detail) {
+    $("pas").innerHTML = PAS.map(([k, nom, aide]) => { const s = etats[k] || ""; return `<li class="${s}" data-k="${esc(k)}"><span class="i">${ICONES[s] || ""}</span><span>${esc(nom)}${s === "en" && (detail[k] || aide) ? ` <small>· ${esc(detail[k] || aide)}</small>` : ""}</span><span class="sr">${s === "fait" ? "fait" : s === "en" ? "en cours" : s === "rate" ? "échec" : "à venir"}</span></li>`; }).join("");
+  }
+  let etats = {}, detail = {};
+  const marquer = (k, s, d) => { etats[k] = s; if (d !== undefined) detail[k] = d; dessiner(etats, detail); };
+
+  async function copier() {
+    marquer("copie", "en");
+    let r = await gh("GET", `/repos/${login}/${depot}`);
+    if (r.ok && !(r.j.fork && r.j.parent && r.j.parent.full_name.toLowerCase() === ORIGINE)) throw new Error(`Tu as déjà un dépôt « ${depot} » sur GitHub. Change le nom de l'appli, puis réessaie.`);
+    if (!r.ok) {
+      if (r.status !== 404) exiger(r, "Lecture de ton GitHub");
+      const f = exiger(await gh("POST", `/repos/${ORIGINE}/forks`, { name: depot, default_branch_only: true }), "Copie de l'appli");
+      depot = f.name; // si tu avais déjà une copie sous un autre nom, GitHub la redonne
+    }
+    // une copie ancienne n'a pas encore le robot : on la met à jour d'abord
+    for (let i = 0; ; i++) {
+      const w = await gh("GET", `/repos/${login}/${depot}/contents/.github/workflows/${WF}`);
+      if (w.ok) break;
+      if (i === 3) await gh("POST", `/repos/${login}/${depot}/merge-upstream`, { branch: "main" });
+      if (i > 40) throw new Error("GitHub met trop de temps à copier l'appli. Réessaie dans une minute.");
+      marquer("copie", "en", "GitHub prépare la copie"); await attendre(3000);
+    }
+    marquer("copie", "fait");
+  }
+
+  async function regler(f) {
+    marquer("reglages", "en");
+    const R = `/repos/${login}/${depot}`;
+    await gh("PUT", `${R}/actions/permissions`, { enabled: true, allowed_actions: "all" });
+    for (const w of [WF, "pages.yml"]) { const r = await gh("PUT", `${R}/actions/workflows/${w}/enable`); if (!r.ok && w === WF) exiger(r, "Activation du robot"); }
+    let p = await gh("POST", `${R}/pages`, { build_type: "workflow" });
+    if (p.status === 409) p = await gh("PUT", `${R}/pages`, { build_type: "workflow" });
+    if (!p.ok) exiger(p, "Activation de GitHub Pages");
+    for (const [name, value] of [["KPLAN_APP", f.app], ["KPLAN_NOM", f.nom]]) {
+      if (!value) continue;
+      const r = await gh("PATCH", `${R}/actions/variables/${name}`, { name, value });
+      if (r.status === 404) exiger(await gh("POST", `${R}/actions/variables`, { name, value }), "Nom de l'appli");
+      else exiger(r, "Nom de l'appli");
+    }
+    const cle = exiger(await gh("GET", `${R}/actions/secrets/public-key`), "Clé du coffre GitHub");
+    const valeur = JSON.stringify({ supabase: f.sb, github: jeton, email: f.email, mdp: f.mdp, prenom: f.prenom });
+    exiger(await gh("PUT", `${R}/actions/secrets/KPLAN_INSTALLATION`, { encrypted_value: KPscelle.pourGitHub(valeur, cle.key), key_id: cle.key_id }), "Rangement des clés");
+    marquer("reglages", "fait");
+  }
+
+  async function lancer() {
+    const R = `/repos/${login}/${depot}`, depuis = Date.now() - 60e3;
+    exiger(await gh("POST", `${R}/actions/workflows/${WF}/dispatches`, { ref: "main" }), "Lancement du robot");
+    marquer(PAS[2][0], "en", "GitHub démarre le robot");
+    let run;
+    for (let i = 0; !run; i++) {
+      if (i > 40) throw new Error("Le robot ne démarre pas. Réessaie dans une minute.");
+      await attendre(3000);
+      const r = await gh("GET", `${R}/actions/workflows/${WF}/runs?event=workflow_dispatch&per_page=5`);
+      run = r.ok && (r.j.workflow_runs || []).find((x) => Date.parse(x.created_at) >= depuis && !vus.has(x.id));
+    }
+    vus.add(run.id); $("detail").href = run.html_url; $("detail").hidden = false;
+    for (;;) {
+      await attendre(4000);
+      const jr = await gh("GET", `${R}/actions/runs/${run.id}/jobs`), job = jr.ok && jr.j.jobs && jr.j.jobs[0];
+      if (job) suivre(job);
+      const rr = await gh("GET", `${R}/actions/runs/${run.id}`);
+      if (rr.ok && rr.j.status === "completed") {
+        if (rr.j.conclusion === "success") return;
+        const msg = job ? await raison(job) : "";
+        throw new Error(msg || "Le robot s'est arrêté. Le détail est sur GitHub.");
+      }
+    }
+  }
+  const vus = new Set();
+  function suivre(job) {
+    const par = {};
+    for (const s of job.steps || []) { const k = groupe(s.name); if (!PAS.some((p) => p[0] === k)) continue; (par[k] = par[k] || []).push(s); }
+    for (const [k] of PAS.slice(2)) {
+      const l = par[k]; if (!l) continue;
+      const rate = l.some((s) => s.conclusion === "failure"), fini = l.every((s) => s.status === "completed"), en = l.some((s) => s.status === "in_progress");
+      if (rate) marquer(k, "rate"); else if (fini) marquer(k, "fait"); else if (en || (etats[k] === "en")) marquer(k, "en", k === "Créer la base" ? "1 à 3 minutes" : "");
+    }
+  }
+  async function raison(job) {
+    const r = await gh("GET", `/repos/${login}/${depot}/check-runs/${job.id}/annotations`);
+    const a = (r.ok && r.j || []).filter((x) => x.annotation_level === "failure" && !/exit code|Process completed/i.test(x.message));
+    return a.length ? a[0].message : "";
+  }
+
+  const slug = (s) => (s || "plan de com").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 60) || "plan-de-com";
+  let form;
+  async function installer() {
+    $("err").hidden = true; $("fin").hidden = true; $("s-titre").textContent = "Installation en cours"; $("s-sous").textContent = "Garde cette page ouverte.";
+    for (const k in etats) if (etats[k] === "rate") delete etats[k];
+    try {
+      if (etats.copie !== "fait") await copier();
+      await regler(form);
+      await lancer();
+      for (const [k] of PAS) marquer(k, "fait");
+      site = `https://${login.toLowerCase()}.github.io/${depot}/`;
+      $("s-titre").textContent = "Ton appli est en ligne"; $("s-sous").textContent = "";
+      $("ouvrir").href = site; $("adr").textContent = site; $("fin-mail").textContent = form.email; $("fin").hidden = false;
+      $("ouvrir").focus();
+    } catch (e) {
+      const k = PAS.map((p) => p[0]).find((x) => etats[x] === "en");
+      if (k) marquer(k, "rate");
+      $("s-titre").textContent = "L'installation s'est arrêtée"; $("s-sous").textContent = "Rien n'est perdu : « Réessayer » reprend où elle en était.";
+      $("err-t").textContent = e.message; $("err").hidden = false; $("encore").focus();
+    }
+  }
+  $("f").addEventListener("submit", (e) => {
+    e.preventDefault(); if ($("go").disabled) return;
+    form = { sb: $("sb").value.trim(), app: $("app").value.trim(), nom: $("nom").value.trim(), prenom: $("prenom").value.trim(), email: $("email").value.trim(), mdp: $("mdp").value };
+    depot = slug(form.app);
+    $("f").hidden = true; $("suivi").hidden = false; dessiner(etats, detail); window.scrollTo(0, 0);
+    installer();
+  });
+  $("encore").addEventListener("click", installer);
+})();
+</script>
+</body>
+</html>

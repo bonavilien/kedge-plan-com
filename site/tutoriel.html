@@ -137,6 +137,12 @@ code.ex { background: var(--fill); padding: 2px 6px; border-radius: 4px; }
 .resultat { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; padding: 10px 14px; border-radius: var(--r3); background: var(--ok-bg); color: var(--ok); font-weight: 650; font-size: 14px; }
 .resultat > svg { font-size: 18px; stroke-width: 2.6; }
 .resultat .val { background: var(--card); color: var(--text); }
+/* le raccourci vers l'installateur, avant les étapes */
+.raccourci { display: flex; align-items: center; justify-content: space-between; gap: 16px 24px; flex-wrap: wrap; background: var(--card); border-radius: var(--r4); box-shadow: var(--shadow); padding: 20px 22px; }
+.raccourci h2 { font: 700 22px/1.2 var(--serif); }
+.raccourci p { color: var(--text2); margin-top: 4px; }
+.go-court { display: inline-flex; align-items: center; gap: 10px; height: 48px; padding: 0 22px; border-radius: var(--r3); background: var(--yellow); color: var(--yellow-ink); font-weight: 700; font-size: 16px; text-decoration: none; white-space: nowrap; }
+.ou { color: var(--text2); font-weight: 600; margin: 6px 4px -4px; }
 .note { display: flex; gap: 10px; align-items: flex-start; padding: 10px 14px; border-radius: var(--r3); font-size: 14px; background: var(--bg); color: var(--text); line-height: 1.8; }
 .note > svg { font-size: 17px; margin-top: 5px; color: var(--text2); }
 .note.attention { background: var(--warn-bg); }
@@ -261,6 +267,8 @@ details code { background: var(--fill); padding: 1px 5px; border-radius: 4px; co
     <a class="rail-x" href="#coince">Si quelque chose coince</a>
   </nav>
   <main class="etapes" id="main">
+    <section class="raccourci" aria-labelledby="t0"><div><h2 id="t0">Le plus simple : en un clic</h2><p>Deux clés, ton adresse, un bouton. La page fait tout le reste, en 5 minutes environ.</p></div><a class="go-court" href="https://bonavilien.github.io/kedge-plan-com/installer.html" target="_blank" rel="noopener">Installer en un clic<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a></section>
+    <p class="ou">Ou à la main, étape par étape :</p>
     <section class="step" id="etape-1" data-step="1" aria-labelledby="t1">
   <header class="step-h">
     <span class="num" aria-hidden="true"><b>1</b><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span>

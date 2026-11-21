@@ -1,5 +1,7 @@
 # Installer l'appli pour ton équipe
 
+> **Le plus simple : [l'installateur en un clic](https://bonavilien.github.io/kedge-plan-com/installer.html).** Deux clés (GitHub et Supabase), ton adresse, un bouton : la page copie l'appli, crée et installe la base, crée ton compte de pilote, installe les notifications et le bouton Mettre à jour, puis met le site en ligne. Environ 5 minutes. Les étapes ci-dessous restent le chemin à la main.
+>
 > **La version illustrée, étape par étape : [le tutoriel](https://bonavilien.github.io/kedge-plan-com/tutoriel.html).** Les valeurs à copier s'y remplissent avec le nom de ta copie.
 
 Environ 20 minutes, sans rien coder. Il te faut un compte **GitHub** et un compte **Supabase** (gratuits tous les deux).
@@ -120,6 +122,19 @@ Quand une nouvelle version sort, un pilote va dans **Réglages**, **Version** : 
 3. **En ligne** : GitHub publie, puis l'appli se recharge toute seule (une à trois minutes).
 
 Seuls les pilotes voient le bouton. Les autres comptes reçoivent la nouvelle version au rechargement suivant.
+
+## L'installateur en un clic, en détail
+
+La page [`site/installer.html`](site/installer.html) ne parle qu'à GitHub, depuis ton navigateur : elle copie l'appli (fork), active ses robots et GitHub Pages, range tes clés **chiffrées** dans le secret `KPLAN_INSTALLATION` de ta copie, puis lance le robot **Installer** (`.github/workflows/installer.yml`, `scripts/installer.mjs`). Le robot tourne chez GitHub : il crée la base Supabase à Paris, installe les tables, ferme l'inscription libre, crée ton compte (le premier compte est pilote), installe les fonctions `push`, `mise-a-jour` et `export` avec leurs secrets, branche le site (variables `KPLAN_SUPABASE_URL`, `KPLAN_SUPABASE_KEY`, `KPLAN_VAPID`), le met en ligne, puis **efface le secret**. Ta clé Supabase ne reste nulle part : tu peux la supprimer ensuite. Ta clé GitHub reste dans les secrets de ta base, pour le bouton Mettre à jour.
+
+Si une étape coince, la page affiche le message du robot et un bouton **Réessayer** : tout se relance sans rien faire en double.
+
+| La page dit | Quoi faire |
+|---|---|
+| « Il manque les cases repo et workflow » | Recrée la clé avec le bouton « Créer ma clé GitHub » : les cases sont déjà cochées. |
+| « Tu as déjà un dépôt … » | Change le nom de l'appli (il donne le nom de la copie), puis Installer. |
+| « Ton compte Supabase a déjà ses 2 projets gratuits » | Mets un projet en pause sur supabase.com, puis Réessayer. |
+| « Supabase refuse ta clé » | Recrée une clé Supabase, recopie-la, puis Installer. |
 
 ## Si quelque chose coince
 

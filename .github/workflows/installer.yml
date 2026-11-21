@@ -1,0 +1,59 @@
+# Installation d'une copie en un clic. Lancé par la page site/installer.html (bouton « Installer »), dans la copie.
+# Les clés arrivent chiffrées dans le secret KPLAN_INSTALLATION, effacé à la fin. Chaque étape se relance sans risque.
+# Les noms des étapes s'affichent tels quels dans la page : ils restent courts et en français.
+name: Installer
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+concurrency:
+  group: installer
+  cancel-in-progress: false
+jobs:
+  installer:
+    # jamais dans le dépôt d'origine : il a déjà sa base
+    if: github.repository != 'bonavilien/kedge-plan-com'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    env:
+      KPLAN_INSTALLATION: ${{ secrets.KPLAN_INSTALLATION }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Créer la base
+        run: node scripts/installer.mjs base
+      - name: Installer les tables
+        run: node scripts/installer.mjs tables
+      - name: Régler la connexion
+        run: node scripts/installer.mjs connexion
+      - name: Créer ton compte
+        run: node scripts/installer.mjs compte
+      - name: Installer les notifications et le bouton Mettre à jour
+        run: node scripts/installer.mjs fonctions
+      - name: Brancher le site
+        id: site
+        run: node scripts/installer.mjs site
+      - name: Préparer le site
+        run: node scripts/config-copie.mjs site
+        env:
+          KPLAN_ORIGINE: bonavilien/kedge-plan-com
+          KPLAN_SUPABASE_URL: ${{ steps.site.outputs.url }}
+          KPLAN_SUPABASE_KEY: ${{ steps.site.outputs.key }}
+          KPLAN_VAPID: ${{ steps.site.outputs.vapid }}
+          KPLAN_APP: ${{ vars.KPLAN_APP }}
+          KPLAN_NOM: ${{ vars.KPLAN_NOM }}
+          KPLAN_VISITEUR: ${{ vars.KPLAN_VISITEUR }}
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+      - name: Mettre en ligne
+        id: deploy
+        uses: actions/deploy-pages@v4
+      - name: Ranger les clés
+        if: always()
+        run: node scripts/installer.mjs ranger
