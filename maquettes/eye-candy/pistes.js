@@ -1,13 +1,13 @@
 /* maquette seulement : le panneau « Les 7 pistes » qui montre chaque proposition d'eye candy dans l'appli */
 (function () {
-  const P = ["Route vers la 7e", "Moment « Diffusé »", "Résultats animés", "Couleur par message", "Visages", "Transitions douces", "Écrans vides"];
+  const P = ["Route vers la 7e", "Moment « Diffusé »", "Résultats animés", "Petit mot de l'appli", "Visages", "Transitions douces", "Écrans vides"];
   const attendre = (ms) => new Promise((r) => setTimeout(r, ms));
   const main = () => document.getElementById("main");
   const haut = () => { main().scrollTop = 0; window.scrollTo(0, 0); };
   const base = { fiche: "", svc: "", msg: "", type: "" };
   const aller = async (patch) => { KP.go({ ...base, ...patch }); await attendre(60); };
   const demos = [
-    async () => { await aller({ screen: "accueil" }); haut(); KP.rejouer(); },
+    async () => { await aller({ screen: "accueil" }); haut(); KP.rejouer(); const r = main().querySelector(".r7"); if (r && r.getBoundingClientRect().bottom > innerHeight) r.scrollIntoView({ block: "center" }); },
     async () => {
       const it = KP.store.items().find((i) => /Berkeley/.test(i.t));
       if (it && it.st !== "prevu") KP.store.update(it.id, { st: "prevu" });
@@ -17,7 +17,7 @@
       if (it) KP.setStatus(it.id, "diffuse");
     },
     async () => { await aller({ screen: "resultats", tab: "diffusions", per: "considerer" }); haut(); KP.rejouer(); },
-    async () => { await aller({ screen: "plan", per: "considerer", vue: "liste" }); KP.rejouer(); const wk = main().querySelector(".wk.now"); if (wk) wk.scrollIntoView({ block: "start" }); },
+    async () => { try { sessionStorage.removeItem("kplan-pique-accueil"); } catch (e) {} KP.piqueVue = false; await aller({ screen: "accueil" }); haut(); KP.rejouer(); },
     async () => { await aller({ screen: "plan", per: "considerer", vue: "grille" }); haut(); KP.rejouer(); },
     async () => {
       await aller({ screen: "plan", per: "considerer", vue: "liste" }); haut();

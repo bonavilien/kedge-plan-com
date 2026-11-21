@@ -19,13 +19,12 @@
     const nreq = inbox.filter((r) => r.de !== r.a).length;
     if (nreq) parts.push(`${nreq} demande${nreq > 1 ? "s t'attendent" : " t'attend"}`);
     parts.push(week.length ? `${week.length} ligne${week.length > 1 ? "s" : ""} dans les sept jours` : "rien dans les sept jours");
-    const pique = KP.pique ? KP.pique("accueil") : "";
+    const pique = KP.pique ? KP.pique("accueil") : "", ecrit = !!pique && KP.entre && !KP.piqueVue; if (ecrit) KP.piqueVue = true;
     const summary = reader ? `Le plan de la période ${p.nom}, en lecture seule.` : parts.join(", ") + ".";
 
 
     return `<div class="page home">
-      <div class="hello"><h1>${hr < 18 ? "Bonjour" : "Bonsoir"} ${h(u.nom)}</h1>${pique ? `<p class="pique">${h(pique)}</p>` : ""}<p>${h(summary[0].toUpperCase() + summary.slice(1))}</p></div>
-      ${route7()}
+      <div class="hello"><h1>${hr < 18 ? "Bonjour" : "Bonsoir"} ${h(u.nom)}</h1>${pique ? `<p class="pique${ecrit ? " ecrit" : ""}"><span class="pq-pts" aria-hidden="true"><i></i><i></i><i></i></span><span class="pq-t">${h(pique)}</span></p>` : ""}<p>${h(summary[0].toUpperCase() + summary.slice(1))}</p></div>
       <div class="home-cols"><div class="home-main">
 
       ${!inbox.length && !reader ? `<section class="block"><h2>À traiter</h2><div class="vide-todo">${KP.illu ? KP.illu("petit") : ""}<div><b>Rien à traiter.</b><span>Personne n'attend rien de toi.</span></div></div></section>` : ""}
@@ -43,7 +42,7 @@
       </div>
       <aside class="home-side" aria-label="Épinglés"><section class="block"><h2>${ic("bookmark")}Épinglés${pins.length ? `<span class="cnt">${pins.length}</span>` : ""}</h2>
         ${pins.length ? `<div class="pins">${pins.map((it) => `<button type="button" class="pin${it.kind === "tf" ? " tf" : ""}" data-act="open" data-id="${it.id}"><span class="pin-d">${it.flou ? h(KP.dateLong(it)) : h(KP.fmt.moyen(it.date))}</span><span class="pin-t">${h(it.t)}</span>${KP.pill(it)}</button>`).join("")}</div>` : `<p class="pin-empty">${ic("bookmark")}<span>Épingle une fiche pour la garder ici.</span></p>`}
-      </section></aside></div>
+      </section>${route7()}</aside></div>
     </div>`;
   };
 
@@ -54,10 +53,12 @@
     const pts = [{ r: c.kedge, nom: KP.marque.nom || "KEDGE", moi: true }, ...(c.devant || []).filter((d) => d.r < c.kedge && d.r >= c.cible).sort((a, b) => b.r - a.r)];
     const n = pts.length, reste = c.kedge - c.cible;
     const next = store.items().filter((it) => it.variant === "classement" && !it.annule && it.date >= KP.TODAY).sort((a, b) => a.date.localeCompare(b.date))[0];
-    return `<section class="route7" aria-label="SIGEM ${c.annee || ""} : ${h(pts[0].nom)} ${c.kedge}e, objectif ${c.cible}e">
-      <div class="r7-h"><b>${h(app)}</b><span>${reste} place${reste > 1 ? "s" : ""} à gagner au SIGEM</span>${next ? `<button type="button" class="r7-next" data-act="open" data-id="${next.id}">${ic("calendar")}<span>Prochain classement : <b>${h(next.t)}</b> · ${h(KP.dateShort(next))}</span></button>` : ""}</div>
-      <div class="r7-voie" aria-hidden="true"><span class="r7-route"></span>
-        ${pts.map((p, i) => `<span class="r7-pt${p.moi ? " moi" : ""}${p.r === c.cible ? " but" : ""}" style="--x:${(6 + (i * 88) / Math.max(1, n - 1)).toFixed(2)}%;--i:${i}"><b>${p.r}<sup>e</sup></b><small>${h(p.nom)}</small></span>`).join("")}
+    return `<section class="block r7" aria-label="SIGEM ${c.annee || ""} : ${h(pts[0].nom)} ${c.kedge}e, objectif ${c.cible}e"><h2>${ic("flag")}${h(app)}</h2>
+      <div class="route7"><p class="r7-s">${reste} place${reste > 1 ? "s" : ""} à gagner au SIGEM</p>
+        <div class="r7-voie" aria-hidden="true"><span class="r7-route"></span>
+          ${pts.map((p, i) => `<span class="r7-pt${p.moi ? " moi" : ""}${p.r === c.cible ? " but" : ""}" style="--x:${(10 + (i * 80) / Math.max(1, n - 1)).toFixed(2)}%;--i:${i}"><b>${p.r}<sup>e</sup></b><small>${h(p.nom)}</small></span>`).join("")}
+        </div>
+        ${next ? `<button type="button" class="r7-next" data-act="open" data-id="${next.id}">${ic("calendar")}<span><b>${h(next.t)}</b> · ${h(KP.dateShort(next))}</span></button>` : ""}
       </div></section>`;
   }
 

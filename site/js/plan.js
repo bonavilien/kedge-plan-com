@@ -90,7 +90,7 @@
     const cell = (b, lane) => {
       const its = b.items.filter((it) => lane.k === "pay" ? it.variant === "partenariat" : lane.k ? it.kind === "action" && it.svc === lane.k && it.variant !== "partenariat" : it.kind === "tf");
       const can = lane.k !== "pay" && !b.tbc && store.canCreate() && (u.role === "pilote" || !lane.k || lane.k === u.svc);
-      return `<div class="g-c${b.now ? " g-row-now" : b.tbc ? " g-row-tbc" : ""}">${its.map((it) => `<button type="button" class="g-i ${it.kind === "tf" ? "tf " : ""}${it.annule ? "off " : ""}${it.st}${r.fiche === it.id ? " sel" : ""}" data-act="open" data-id="${it.id}">${it.flou ? "" : `<b>${h(KP.fmt.court(it.date))}${it.fin && it.fin !== it.date ? " → " + KP.parse(it.fin).getDate() : ""}</b>`}${h(it.t)}${it.kind === "tf" ? "" : KP.pointsMsg(it)}</button>`).join("")}
+      return `<div class="g-c${b.now ? " g-row-now" : b.tbc ? " g-row-tbc" : ""}">${its.map((it) => `<button type="button" class="g-i ${it.kind === "tf" ? "tf " : ""}${it.annule ? "off " : ""}${it.st}${r.fiche === it.id ? " sel" : ""}" data-act="open" data-id="${it.id}">${it.flou ? "" : `<b>${h(KP.fmt.court(it.date))}${it.fin && it.fin !== it.date ? " → " + KP.parse(it.fin).getDate() : ""}</b>`}${h(it.t)}</button>`).join("")}
         ${can ? `<button type="button" class="g-add" data-act="new" data-date="${b.date}" ${lane.k ? `data-svc="${lane.k}"` : 'data-kind="tf"'} aria-label="Ajouter : ${h(lane.nom)}, ${h(b.label.toLowerCase())}">${ic("plus")}</button>` : ""}</div>`;
     };
     const row = (b) => `<div class="g-s${b.now ? " g-row-now" : b.tbc ? " g-row-tbc" : ""}">${b.now ? '<span class="nowtag">Cette semaine</span>' : ""}<b>${h(b.tbc ? b.label : b.range)}</b>${b.tbc ? h(b.range) : ""}</div>` + lanes.map((l) => cell(b, l)).join("");

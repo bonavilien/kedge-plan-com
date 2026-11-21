@@ -85,7 +85,7 @@
     const msg = parM.map(({ m, l, v, s }) => {
       const txt = KP.UNITES.map((u) => [u.k, somme(l, u.k)]).filter(([, n]) => n > 0).map(([k, n]) => `${court(n)} ${mot(k, n)}`).join(" · ");
       const w = Math.round((100 * (vues ? v : s)) / max);
-      return `<a class="b-row" href="${KP.href({ screen: "plan", per: p.k, msg: m.k, svc: "", type: "", vue: "liste" })}"><b><i class="mp${KP.msgClasse(m.k)}"></i>${h(m.nom)}</b><div class="stack r-bar" role="img" aria-label="${h(txt || "aucun résultat")}">${w ? `<i class="s-ok${KP.msgClasse(m.k)}" style="width:${w}%"></i>` : ""}</div><span class="n${txt ? " ok" : ""}">${txt || (l.length ? "pas encore de chiffres" : "rien de diffusé")}</span></a>`;
+      return `<a class="b-row" href="${KP.href({ screen: "plan", per: p.k, msg: m.k, svc: "", type: "", vue: "liste" })}"><b>${h(m.nom)}</b><div class="stack r-bar" role="img" aria-label="${h(txt || "aucun résultat")}">${w ? `<i class="s-ok" style="width:${w}%"></i>` : ""}</div><span class="n${txt ? " ok" : ""}">${txt || (l.length ? "pas encore de chiffres" : "rien de diffusé")}</span></a>`;
     }).join("");
     const colh = `<div class="colh r-colh" aria-hidden="true"><span>Date</span><span>Action</span><span>Service</span><span>Message</span><span>Résultat</span></div>`;
     return `<div class="r-tiles">${tiles.map(tuile).join("")}</div>

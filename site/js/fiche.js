@@ -25,7 +25,7 @@
     }
     if (it.variant === "partenariat") rows.push(["Média", v("f-partner", h(it.partner) || "Choisir le média", !it.partner)]);
     else if (!tf) rows.push(["Service", u.role === "pilote" ? v("f-svc", h((KP.service(it.svc) || {}).nom || "")) : `<span class="val">${h((KP.service(it.svc) || {}).nom || "—")}</span>`]);
-    rows.push(["Messages", v("f-msg", it.m.length ? `<span class="f-msgs">${it.m.map(KP.tagMsg).join("")}</span>` : "Choisir", !it.m.length)]);
+    rows.push(["Messages", v("f-msg", h(KP.msgNames(it)) || "Choisir", !it.m.length)]);
     if (!tf) rows.push(["Temps fort", v("f-tf", par ? `<i class="tfdot"></i>${h(par.t)}` : "Aucun", !par) + (par ? `<button type="button" class="ib" data-act="open" data-id="${par.id}" data-tip="Ouvrir le temps fort" aria-label="Ouvrir le temps fort">${ic("chevR")}</button>` : "")]);
     if (tf && it.variant !== "sujet") rows.push(["Lieu", can ? `<input class="val" id="f-lieu" data-f="lieu" list="dl-lieux" value="${h(it.lieu || "")}" placeholder="Choisir ou écrire un lieu" autocomplete="off"><datalist id="dl-lieux">${store.lieux().map((l) => `<option value="${h(l)}"></option>`).join("")}</datalist>` : `<span class="val${it.lieu ? "" : " none"}">${h(it.lieu || "—")}</span>`]);
     if (it.variant === "classement") rows.push(["Rang", inp("rang", it.rang, "À la parution")], ["Objectif", inp("cible", it.cible, "Top…")]);
