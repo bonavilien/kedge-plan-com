@@ -183,6 +183,9 @@
     { k: "demander", icone: "send", dire: [
       "{demander} [à|a|aux] {qui} [de|d'] [{envoyer}] {texte}",
       "{qui} [,] [tu peux|peux-tu|pourrais-tu|est-ce que tu peux|tu pourrais] {envoyer} {texte}",
+      "{qui} [,] [est-ce que] (tu as|t'as|tu aurais|as-tu|aurais-tu|vous avez|avez-vous|vous auriez|tu as reçu|tu as pu avoir|tu peux me passer|tu me passes|tu m'envoies|tu peux me donner) [bien] (le|la|les|l'|des|du|de la|de l'|un|une|ton|ta|tes|votre|vos|quelques|encore des|déjà des) {texte}",
+      "[est-ce que] (tu as|t'as|tu aurais|as-tu|aurais-tu|vous avez|avez-vous|vous auriez|tu peux me passer|tu m'envoies) [bien] (le|la|les|l'|des|du|de la|de l'|un|une|ton|ta|tes|votre|vos|quelques|encore des|déjà des) {texte} [,] {qui}",
+      "(tu as|t'as|tu aurais|as-tu|aurais-tu) (le|la|les|l'|des|du|de la|de l'|un|une|ton|ta|tes|votre|vos|quelques|encore des|déjà des) {texte} (à|a|pour) me (passer|donner|envoyer) [,] {qui}",
       "(il me faut|j'ai besoin de|j'ai besoin d'|j'ai besoin des|il faudrait|il faut) {texte} (de|par|de la part de|côté) {qui} [{texte2}]",
     ] },
     { k: "rappel", icone: "clock", dire: ["{rappeler} [de|d'|que] {texte}"] },

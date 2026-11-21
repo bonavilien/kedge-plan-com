@@ -84,6 +84,9 @@ const P = [
   // demander, rappel, note, lieu
   ["demande à Estelle les visuels pour le carrousel JPO Paris avant vendredi", "demander"],
   ["Stéphane tu peux m'envoyer les rushs du tournage pour lundi", "demander"],
+  ["@aurelie tu as des rush de la jpo ?", "demander"],
+  ["tu as les visuels du gala @Estelle ?", "demander"],
+  ["Louise, est-ce que tu aurais les photos du carrousel JPO Paris ?", "demander"],
   ["demande à Aurélie le programme du point presse", "demander"],
   ["rappelle-moi de relancer Aurélie pour la tribune lundi", "rappel"],
   ["rappel : vérifier les visuels du gala jeudi", "rappel"],

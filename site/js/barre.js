@@ -32,7 +32,7 @@
     const list = C.trouver(q, base, { today: KP.TODAY, titre: titreDe });
     let pleins = list.filter((x) => x.score >= 0.99);
     /* « le gala » : le Gala lui-même passe avant les actions qui ne font que s'y rattacher */
-    if (pleins.length > 1) { const qw = C.mots(q), propres = pleins.filter((x) => C.note(qw, C.mots(x.it.t)) >= 0.99); if (propres.length) pleins = propres; }
+    if (pleins.length > 1) { const qw = C.mots(q), propres = pleins.filter((x) => C.note(qw, C.texteDe(x.it, {})) >= 0.99); if (propres.length) pleins = propres; pleins = pleins.filter((x) => x.it.kind === "tf").concat(pleins.filter((x) => x.it.kind !== "tf")); }
     if (pleins.length === 1) return { it: pleins[0].it, q };
     if (pleins.length > 1) { const pile = pleins.find((x) => KP.norm(x.it.t) === KP.norm(q)); return pile ? { it: pile.it, q } : { cands: pleins.slice(0, 5).map((x) => x.it), q }; }
     return { cands: list.slice(0, 4).map((x) => x.it), approx: true, q };

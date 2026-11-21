@@ -250,6 +250,6 @@
   }
   const prox = (it, today) => { const d = (parse(it.date) - parse(today)) / 864e5; return d >= 0 ? d : 30 - d * 2; };
 
-  KP.commande = { analyser, trouver, mots, note, compile, REGLES, outils: { add, lundi, finMois, parse, iso } };
+  KP.commande = { analyser, trouver, mots, note, texteDe, compile, REGLES, outils: { add, lundi, finMois, parse, iso } };
   if (typeof module !== "undefined") module.exports = KP.commande;
 })();
