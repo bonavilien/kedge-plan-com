@@ -25,6 +25,16 @@
     on.classList.add("glisse");
   };
 
+  /* typographie française sur le texte affiché (jamais sur le code ni dans les champs) : espace fine insécable avant ; ! ? » % €
+     et après «, espace insécable avant : — aucun signe ne se retrouve seul en début de ligne */
+  const TYPO = / [;:!?»%€]|« /;
+  KP.typo = (root) => {
+    if (!root) return;
+    const w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, { acceptNode: (n) => (TYPO.test(n.nodeValue) && !n.parentElement.closest("textarea, input, script, style, code, pre, [contenteditable]") ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_SKIP) });
+    const ns = []; while (w.nextNode()) ns.push(w.currentNode);
+    ns.forEach((n) => { n.nodeValue = n.nodeValue.replace(/ ([;!?»%€])/g, "\u202f$1").replace(/« /g, "«\u202f").replace(/ :/g, "\u00a0:"); });
+  };
+
   /* clair ou sombre : le nouveau thème s'étend en cercle depuis le bouton touché (css : g-cercle) */
   KP.changerTheme = (k, depuis) => {
     const faire = () => KP.store.setPref("theme", k), d = document.documentElement;
@@ -43,7 +53,7 @@
   KP.pop = (anchor, html, opt = {}) => {
     KP.closePop();
     const scrim = document.createElement("div"); scrim.className = "scrim";
-    const el = document.createElement("div"); el.className = "pop " + (opt.cls || ""); el.setAttribute("role", opt.role || "menu"); if (opt.label) el.setAttribute("aria-label", opt.label); if (opt.role === "dialog") el.setAttribute("aria-modal", "false"); el.innerHTML = html;
+    const el = document.createElement("div"); el.className = "pop " + (opt.cls || ""); el.setAttribute("role", opt.role || "menu"); if (opt.label) el.setAttribute("aria-label", opt.label); if (opt.role === "dialog") el.setAttribute("aria-modal", "false"); el.innerHTML = html; KP.typo(el);
     /* ses lignes arrivent l'une après l'autre, à l'ouverture seulement (css : .arrive) */
     el.classList.add("arrive"); setTimeout(() => el.classList.remove("arrive"), 600);
     (anchor.closest("dialog") || layer()).append(scrim, el);
@@ -86,10 +96,11 @@
     const draw = () => (opt.title ? `<h4 aria-hidden="true">${KP.h(opt.title)}</h4>` : "") + items.map((it) => it === "-" ? '<hr role="separator">' :
       `<button type="button" class="pop-i${it.danger ? " danger" : ""}" role="${radio ? (opt.multi ? "menuitemcheckbox" : "menuitemradio") : "menuitem"}"${radio ? ` aria-checked="${sel.has(it.v)}"` : ""} data-v="${KP.h(it.v)}">${it.icon ? KP.ic(it.icon) : ""}<span>${it.pill ? `<span class="pill ${it.pill}">${it.pill === "diffuse" ? KP.ic("check") : ""}${KP.h(it.nom)}</span>` : KP.h(it.nom)}${it.info ? `<small>${KP.h(it.info)}</small>` : ""}</span>${sel.has(it.v) ? `<span class="r">${KP.ic("check")}</span>` : it.hint ? `<span class="r">${KP.h(it.hint)}</span>` : ""}</button>`).join("");
     const p = KP.pop(anchor, draw(), { label: opt.title, ...opt });
+    if (radio) p.el.classList.remove("arrive"); /* les menus de choix (filtres, état…) s'ouvrent souvent : leurs lignes sont là tout de suite */
     p.el.addEventListener("click", (e) => {
       const b = e.target.closest("[data-v]"); if (!b) return;
       const v = b.dataset.v;
-      if (opt.multi) { sel.has(v) ? sel.delete(v) : sel.add(v); onPick([...sel]); p.el.innerHTML = draw(); const again = p.el.querySelector(`[data-v="${CSS.escape(v)}"]`); if (again) again.focus(); }
+      if (opt.multi) { sel.has(v) ? sel.delete(v) : sel.add(v); onPick([...sel]); p.el.innerHTML = draw(); KP.typo(p.el); const again = p.el.querySelector(`[data-v="${CSS.escape(v)}"]`); if (again) again.focus(); }
       else { p.close(); onPick(v); }
     });
     return p;
@@ -97,7 +108,7 @@
 
   /* ---------- fenêtre ---------- */
   KP.dialog = (html, opt = {}) => {
-    const d = document.createElement("dialog"); d.className = "dlg " + (opt.cls || ""); d.innerHTML = html;
+    const d = document.createElement("dialog"); d.className = "dlg " + (opt.cls || ""); d.innerHTML = html; KP.typo(d);
     layer().append(d);
     d.addEventListener("close", () => { d.remove(); if (opt.onClose) opt.onClose(); });
     d.addEventListener("click", (e) => { if (e.target === d) d.close(); if (e.target.closest("[data-close]")) d.close(); });
@@ -111,7 +122,7 @@
     const box = document.getElementById("toasts"); box.innerHTML = "";
     /* avec « Annuler », un fin trait jaune montre le temps qu'il reste (css : g-reste) */
     const t = document.createElement("div"); t.className = "toast" + (undo ? " undo" : ""); t.style.setProperty("--d", (undo ? 5000 : 2600) + "ms"); t.innerHTML = `<span>${KP.h(text)}</span>` + (undo ? `<button type="button">Annuler</button>` : "");
-    box.append(t);
+    KP.typo(t); box.append(t);
     /* le message « nouvelle version » revient après chaque message bref, tant qu'on n'a pas mis à jour */
     const kill = setTimeout(() => { t.remove(); if (KP.maj) KP.maj(); }, undo ? 5000 : 2600);
     if (undo) t.querySelector("button").addEventListener("click", () => { clearTimeout(kill); t.remove(); undo(); KP.toast("Annulé"); });

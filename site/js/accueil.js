@@ -53,7 +53,9 @@
     const pts = [{ r: c.kedge, nom: KP.marque.nom || "KEDGE", moi: true }, ...(c.devant || []).filter((d) => d.r < c.kedge && d.r >= c.cible).sort((a, b) => b.r - a.r)];
     const n = pts.length, reste = c.kedge - c.cible;
     const next = store.items().filter((it) => it.variant === "classement" && !it.annule && it.date >= KP.TODAY).sort((a, b) => a.date.localeCompare(b.date))[0];
-    return `<section class="block r7" aria-label="SIGEM ${c.annee || ""} : ${h(pts[0].nom)} ${c.kedge}e, objectif ${c.cible}e"><h2>${ic("flag")}${h(app)}</h2>
+    /* la route s'anime une fois par session : l'accueil, on y revient tout le temps */
+    let anim = false; if (KP.entre) { try { anim = !sessionStorage.getItem("kplan-r7"); if (anim) sessionStorage.setItem("kplan-r7", "1"); } catch (e) { anim = true; } }
+    return `<section class="block r7${anim ? " anim" : ""}" aria-label="SIGEM ${c.annee || ""} : ${h(pts[0].nom)} ${c.kedge}e, objectif ${c.cible}e"><h2>${ic("flag")}${h(app)}</h2>
       <div class="route7"><p class="r7-s">${reste} place${reste > 1 ? "s" : ""} à gagner au SIGEM</p>
         <div class="r7-voie" aria-hidden="true"><span class="r7-route"></span>
           ${pts.map((p, i) => `<span class="r7-pt${p.moi ? " moi" : ""}${p.r === c.cible ? " but" : ""}" style="--x:${(10 + (i * 80) / Math.max(1, n - 1)).toFixed(2)}%;--i:${i}"><b>${p.r}<sup>e</sup></b><small>${h(p.nom)}</small></span>`).join("")}

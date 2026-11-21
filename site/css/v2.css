@@ -1,7 +1,11 @@
 /* Plan de com KEDGE · V2 — pensé pour l'ordinateur, replié pour le téléphone.
    Les valeurs (couleurs, rayons, typographie) viennent du KEDGE UI kit de la V1. */
 
-@font-face { font-family: "KRC Serif"; src: url("../fonts/krc-serif.woff") format("woff"); font-weight: 600 700; font-display: swap; }
+/* la police des titres en woff2 (plus légère), préchargée par index.html : elle est là dès le premier affichage, les titres ne bougent pas */
+@font-face { font-family: "KRC Serif"; src: url("../fonts/krc-serif.woff2") format("woff2"), url("../fonts/krc-serif.woff") format("woff"); font-weight: 600 700; font-display: swap; }
+
+/* un seul langage de mouvement : deux courbes (douce, ou avec un léger ressort) et trois durées */
+:root { --m-doux: cubic-bezier(.2,.8,.2,1); --m-ressort: cubic-bezier(.3,1.5,.5,1); --t-vite: .15s; --t-normal: .25s; --t-moment: .5s; }
 
 :root {
   --yellow: #FFD452; --yellow-ink: #26282B; --yellow-side: #FFD452; --anthracite: #333539; --anthracite-deep: #26282B;
@@ -175,7 +179,7 @@ button.pill:hover { box-shadow: 0 0 0 2px var(--sep); }
 .wk-h small { text-transform: none; letter-spacing: 0; font-weight: 400; }
 
 /* ---------- la fiche (panneau de droite, par-dessus) ---------- */
-.fiche { position: fixed; top: 0; right: 0; bottom: 0; width: min(var(--fiche), 100vw); background: var(--card); box-shadow: var(--shadow); border-left: 1px solid var(--sep); z-index: 20; display: flex; flex-direction: column; animation: slide .16s ease-out; }
+.fiche { position: fixed; top: 0; right: 0; bottom: 0; width: min(var(--fiche), 100vw); background: var(--card); box-shadow: var(--shadow); border-left: 1px solid var(--sep); z-index: 20; display: flex; flex-direction: column; animation: slide var(--t-vite) var(--m-doux); }
 @keyframes slide { from { transform: translateX(24px); opacity: 0; } }
 .f-top { display: flex; align-items: center; gap: 2px; padding: 10px 12px 6px 20px; }
 .f-top .kind { display: flex; align-items: center; gap: 8px; font-size: 12.5px; font-weight: 600; color: var(--text2); text-transform: uppercase; letter-spacing: .03em; margin-right: auto; }
@@ -235,8 +239,8 @@ a.mini { text-decoration: none; grid-template-columns: 18px minmax(0, 1fr) 18px;
 .ph-miroir .z-ref { background: none; box-shadow: inset 0 -2px 0 var(--text2); border-radius: 0; }
 .ph-miroir .z-date { background: linear-gradient(var(--hl-date), var(--hl-date)) no-repeat 0 0 / 100% 100%; }
 .ph-miroir .z-date.alerte { background-image: linear-gradient(var(--hl-alerte), var(--hl-alerte)); }
-.ph-miroir .z-date.t0 { animation: ph-surligne-a .5s cubic-bezier(.2, .7, .2, 1) both; }
-.ph-miroir .z-date.t1 { animation: ph-surligne-b .5s cubic-bezier(.2, .7, .2, 1) both; }
+.ph-miroir .z-date.t0 { animation: ph-surligne-a var(--t-moment) var(--m-doux) both; }
+.ph-miroir .z-date.t1 { animation: ph-surligne-b var(--t-moment) var(--m-doux) both; }
 @keyframes ph-surligne-a { from { background-size: 0% 100%; } to { background-size: 100% 100%; } }
 @keyframes ph-surligne-b { from { background-size: 0% 100%; } to { background-size: 100% 100%; } }
 .ph-go { width: 36px; height: 36px; flex: none; display: inline-flex; align-items: center; justify-content: center; border-radius: var(--r2); background: var(--yellow); color: var(--yellow-ink); }
@@ -248,18 +252,18 @@ a.mini { text-decoration: none; grid-template-columns: 18px minmax(0, 1fr) 18px;
 .ph-c .ic { width: 13px; height: 13px; }
 .ph-c.qui { background: var(--anthracite); color: #FFFFFF; }
 .ph-c.date { background: var(--yellow); color: var(--yellow-ink); }
-.ph-c.date.t0 { animation: ph-pop-a .35s ease-out .2s both; }
-.ph-c.date.t1 { animation: ph-pop-b .35s ease-out .2s both; }
+.ph-c.date.t0 { animation: ph-pop-a var(--t-normal) var(--m-doux) .2s both; }
+.ph-c.date.t1 { animation: ph-pop-b var(--t-normal) var(--m-doux) .2s both; }
 @keyframes ph-pop-a { 0% { transform: scale(.6); opacity: 0; } 70% { transform: scale(1.06); opacity: 1; } 100% { transform: none; } }
 @keyframes ph-pop-b { 0% { transform: scale(.6); opacity: 0; } 70% { transform: scale(1.06); opacity: 1; } 100% { transform: none; } }
 .ph-c.ok { background: var(--ok-bg); color: var(--ok-ink); }
 .ph-c.retard { background: var(--retard-bg); color: var(--retard-ink); }
 .ph-c.rond { width: 26px; padding: 0; justify-content: center; background: none; box-shadow: inset 0 0 0 1px var(--sep); }
-.ph-c.choix, .ph-c.propose { background: none; box-shadow: inset 0 0 0 1px var(--sep); animation: ph-fondu .2s ease-out both; }
+.ph-c.choix, .ph-c.propose { background: none; box-shadow: inset 0 0 0 1px var(--sep); animation: ph-fondu var(--t-normal) var(--m-doux) both; }
 .ph-c.propose.on { background: var(--fill); box-shadow: none; }
 .ph-c.choix:hover, .ph-c.propose:hover, .ph-c.rond:hover { background: var(--hover); }
 .ph-c.petit { height: 22px; padding: 0 8px; font-size: 12px; }
-.ph-alerte { color: var(--red); font-weight: 600; animation: ph-fondu .3s ease-out both; }
+.ph-alerte { color: var(--red); font-weight: 600; animation: ph-fondu var(--t-normal) var(--m-doux) both; }
 @keyframes ph-fondu { from { opacity: 0; transform: translateY(-3px); } to { opacity: 1; transform: none; } }
 .ph-sugg { display: flex; gap: 6px; flex-wrap: wrap; }
 .ph-s { display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 11px; border-radius: 15px; background: var(--bg); box-shadow: inset 0 0 0 1px var(--sep); font-weight: 600; font-size: 14px; }
@@ -342,7 +346,7 @@ dialog.dlg::backdrop { background: rgba(20,20,22,.42); }
 .cal-f { display: flex; justify-content: space-between; margin-top: 8px; padding: 0 4px; }
 
 .toasts { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); z-index: 90; display: grid; gap: 8px; justify-items: center; }
-.toast { display: flex; align-items: center; gap: 14px; background: var(--anthracite-deep); color: #fff; padding: 10px 14px; border-radius: var(--r3); box-shadow: var(--shadow); animation: rise .18s ease-out; max-width: calc(100vw - 32px); }
+.toast { display: flex; align-items: center; gap: 14px; background: var(--anthracite-deep); color: #fff; padding: 10px 14px; border-radius: var(--r3); box-shadow: var(--shadow); animation: rise var(--t-vite) var(--m-doux); max-width: calc(100vw - 32px); }
 .toast button { color: var(--yellow-side); font-weight: 700; }
 @keyframes rise { from { transform: translateY(8px); opacity: 0; } }
 
@@ -631,7 +635,7 @@ textarea::placeholder, input::placeholder { color: var(--text2); opacity: 1; }
 @media (min-width: 1200px) {
   html.fiche-open .shell { padding-right: var(--fiche); }
   html.fiche-open .fiche { box-shadow: none; }
-  .shell { transition: padding-right .16s ease-out; }
+  .shell { transition: padding-right var(--t-vite) var(--m-doux); }
   html.fiche-open .wk .row { grid-template-columns: 96px minmax(0, 1fr) 120px 124px; }
   html.fiche-open .ag .row { grid-template-columns: 96px minmax(0, 1fr) 120px 124px 34px; }
   html.fiche-open .wk .row .msg, html.fiche-open .ag .row .msg { display: none; }
@@ -929,7 +933,7 @@ html:root .ag .row .t small { display: block; flex-basis: 100%; max-width: none;
 .sw-g { display: grid; gap: 8px; margin-top: 6px; }
 .sw-l { font-size: 12.5px; color: var(--text2); font-weight: 600; }
 .sws { display: flex; flex-wrap: wrap; gap: 10px; }
-.sw { position: relative; width: 40px; height: 40px; border-radius: 50%; background: var(--c); display: grid; place-items: center; color: var(--i); box-shadow: inset 0 0 0 1px rgba(0,0,0,.08); transition: transform .12s ease; }
+.sw { position: relative; width: 40px; height: 40px; border-radius: 50%; background: var(--c); display: grid; place-items: center; color: var(--i); box-shadow: inset 0 0 0 1px rgba(0,0,0,.08); transition: transform var(--t-vite) var(--m-doux); }
 .sw.duo { background: linear-gradient(135deg, var(--c) 0 50%, var(--d) 50% 100%); color: #FFFFFF; }
 .sw:hover { transform: scale(1.08); }
 .sw[aria-pressed="true"] { box-shadow: 0 0 0 2px var(--card), 0 0 0 4px var(--text); }
@@ -945,7 +949,7 @@ html:root .ag .row .t small { display: block; flex-basis: 100%; max-width: none;
 .login-fond { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
 .login-fond svg { position: absolute; height: 122vh; width: 122vh; right: -16vh; top: -19vh; overflow: visible; }
 .login.fond .login-card { position: relative; animation: lf-carte .7s .15s cubic-bezier(.2,.7,.2,1) both; }
-.lf-corps { fill: color-mix(in srgb, var(--yellow) 22%, transparent); animation: lf-corps 1s cubic-bezier(.2,.7,.2,1) both; }
+.lf-corps { fill: color-mix(in srgb, var(--yellow) 22%, transparent); animation: lf-corps 1s var(--m-doux) both; }
 .lf-route { fill: #fff; }
 .lf-coeur { fill: var(--yellow); }
 .lf-contour { fill: #fff; stroke: #fff; stroke-width: 2; stroke-linejoin: round; }
@@ -955,13 +959,13 @@ html:root .ag .row .t small { display: block; flex-basis: 100%; max-width: none;
 .lf-reflet { stroke: var(--yellow); stroke-linecap: round; stroke-dasharray: .12 1.4; stroke-dashoffset: .12; opacity: 0; filter: url(#lf-flou); }
 /* 1. l'étoile colorée monte seule d'en bas, avec sa traînée ; 2. elle se pose et s'allume ; 3. son contour blanc jaillit d'elle
    et file dans la route jusqu'en haut du 7 ; 4. un éclat à la pointe ; puis, toutes les 6 s, une lueur remonte la route */
-.lf-monte { animation: lf-monte 1.25s .35s cubic-bezier(.16,.84,.3,1) both; }
-.lf-etoile { transform-origin: 229.5px 396.5px; animation: lf-etoile 1.25s .35s cubic-bezier(.16,.84,.3,1) both; }
-.lf-trainee { transform-origin: 229.5px 396.5px; animation: lf-trainee 1.5s .35s ease-out both; }
-.lf-halo { transform-origin: 229.5px 396.5px; animation: lf-pose .9s 1.45s cubic-bezier(.2,.8,.3,1) both, lf-halo 4.5s 3.2s ease-in-out infinite; }
-.lf-contour { transform-origin: 229.5px 396.5px; animation: lf-jaillit .5s 1.6s cubic-bezier(.2,.9,.3,1.25) both; }
-.lf-trace { stroke-dasharray: 1 2; stroke-dashoffset: 1; animation: lf-trace .95s 1.98s cubic-bezier(.3,.75,.25,1) forwards; }
-.lf-eclat { transform-origin: 0 0; animation: lf-eclat .7s 2.8s ease-out both; }
+.lf-monte { animation: lf-monte 1.25s .35s var(--m-doux) both; }
+.lf-etoile { transform-origin: 229.5px 396.5px; animation: lf-etoile 1.25s .35s var(--m-doux) both; }
+.lf-trainee { transform-origin: 229.5px 396.5px; animation: lf-trainee 1.5s .35s var(--m-doux) both; }
+.lf-halo { transform-origin: 229.5px 396.5px; animation: lf-pose .9s 1.45s var(--m-doux) both, lf-halo 4.5s 3.2s ease-in-out infinite; }
+.lf-contour { transform-origin: 229.5px 396.5px; animation: lf-jaillit var(--t-moment) 1.6s var(--m-ressort) both; }
+.lf-trace { stroke-dasharray: 1 2; stroke-dashoffset: 1; animation: lf-trace .95s 1.98s var(--m-doux) forwards; }
+.lf-eclat { transform-origin: 0 0; animation: lf-eclat var(--t-moment) 2.8s var(--m-doux) both; }
 .lf-reflet { animation: lf-reflet 6s 3.9s ease-in-out infinite; }
 @keyframes lf-carte { from { opacity: 0; transform: translateY(10px); } }
 @keyframes lf-corps { from { opacity: 0; transform: translateY(14px); } }
@@ -1244,62 +1248,62 @@ html.fiche-open .r-tot .r-eur { margin-right: 136px; }
 
 @media (prefers-reduced-motion: no-preference) {
   /* transitions douces : l'écran qui arrive monte en fondu ; la période glisse dans son sens */
-  .main.entre > .page { animation: ec-entre .34s cubic-bezier(.2,.7,.2,1) both; }
+  .main.entre > .page { animation: ec-entre var(--t-normal) var(--m-doux) both; }
   .main.entre.suiv > .page { animation-name: ec-droite; }
   .main.entre.prec > .page { animation-name: ec-gauche; }
-  .main.entre .rows > .row, .main.entre .r-tile, .main.entre .pin, .main.entre .todo { animation: ec-monte .4s cubic-bezier(.2,.7,.2,1) both; }
-  .main.entre .rows > .row:nth-child(2), .main.entre .r-tile:nth-child(2), .main.entre .pin:nth-child(2) { animation-delay: .03s; }
-  .main.entre .rows > .row:nth-child(3), .main.entre .r-tile:nth-child(3), .main.entre .pin:nth-child(3) { animation-delay: .06s; }
-  .main.entre .rows > .row:nth-child(4), .main.entre .r-tile:nth-child(4) { animation-delay: .09s; }
-  .main.entre .rows > .row:nth-child(5) { animation-delay: .12s; }
-  .main.entre .rows > .row:nth-child(n+6) { animation-delay: .15s; }
-  .pin, .todo, .g-i, .r7-next { transition: transform .18s ease, box-shadow .18s ease, background-color .18s ease; }
+  .main.entre .rows > .row, .main.entre .r-tile, .main.entre .pin, .main.entre .todo { animation: ec-monte var(--t-normal) var(--m-doux) both; }
+  .main.entre .rows > .row:nth-child(2), .main.entre .r-tile:nth-child(2), .main.entre .pin:nth-child(2) { animation-delay: .015s; }
+  .main.entre .rows > .row:nth-child(3), .main.entre .r-tile:nth-child(3), .main.entre .pin:nth-child(3) { animation-delay: .03s; }
+  .main.entre .rows > .row:nth-child(4), .main.entre .r-tile:nth-child(4) { animation-delay: .045s; }
+  .main.entre .rows > .row:nth-child(5) { animation-delay: .06s; }
+  .main.entre .rows > .row:nth-child(n+6) { animation-delay: .06s; }
+  .pin, .todo, .g-i, .r7-next { transition: transform var(--t-vite) var(--m-doux), box-shadow var(--t-vite) var(--m-doux), background-color var(--t-vite) var(--m-doux); }
   .pin:hover, .todo:hover { transform: translateY(-1px); box-shadow: 0 2px 4px rgba(20,20,20,.06), 0 8px 20px rgba(20,20,20,.09); }
   .g-i:hover { transform: translateY(-1px); }
-  .r-mini i { transition: height .3s ease; }
-  .main.entre .r-mini i { animation: ec-barre .6s cubic-bezier(.2,.7,.2,1) both; animation-delay: calc(.25s + var(--i) * .06s); transform-origin: bottom; }
-  .main.entre .stack .s-ok { animation: ec-largeur .8s cubic-bezier(.2,.7,.2,1) .15s both; transform-origin: left; }
+  .r-mini i { transition: height var(--t-normal) var(--m-doux); }
+  .main.compte .r-mini i { animation: ec-barre var(--t-moment) var(--m-doux) both; animation-delay: calc(.25s + var(--i) * .06s); transform-origin: bottom; }
+  .main.compte .stack .s-ok { animation: ec-largeur var(--t-moment) var(--m-doux) .15s both; transform-origin: left; }
 
-  /* le chemin vers le 7e : la route défile, KEDGE arrive, les écoles apparaissent l'une après l'autre */
-  .main.entre .r7-route::after { animation: r7-flux 1.6s cubic-bezier(.2,.7,.2,1) both; }
-  .main.entre .r7-pt { animation: ec-pose .5s cubic-bezier(.2,.8,.2,1.2) both; animation-delay: calc(.35s + var(--i) * .12s); }
-  .main.entre .r7-pt.moi { animation: r7-arrive 1s cubic-bezier(.2,.8,.2,1) .1s both; }
+  /* le chemin vers le 7e, une fois par session (.anim) : la route défile, KEDGE arrive, les écoles apparaissent l'une après l'autre */
+  .main.entre .r7.anim .r7-route::after { animation: r7-flux 1.6s var(--m-doux) both; }
+  .main.entre .r7.anim .r7-pt { animation: ec-pose var(--t-moment) var(--m-ressort) both; animation-delay: calc(.35s + var(--i) * .12s); }
+  .main.entre .r7.anim .r7-pt.moi { animation: r7-arrive 1s var(--m-doux) .1s both; }
   /* les fenêtres s'ouvrent en douceur : les menus depuis leur bouton, la recherche et les fenêtres glissent en place */
-  .pop { animation: ec-pop .17s cubic-bezier(.2,.8,.2,1) both; }
-  dialog.dlg[open] { animation: ec-dlg .22s cubic-bezier(.2,.8,.2,1) both; }
-  dialog.dlg[open]::backdrop { animation: ec-fond .22s ease both; }
-  .scrim { animation: ec-fond .2s ease both; }
-  @media (max-width: 767px) { .pop, dialog.dlg[open] { animation-name: ec-feuille; animation-duration: .26s; } dialog.cmdk[open] { animation-name: ec-fond; } }
+  .pop { animation: ec-pop var(--t-vite) var(--m-doux) both; }
+  dialog.dlg[open] { animation: ec-dlg var(--t-normal) var(--m-doux) both; }
+  dialog.dlg[open]::backdrop { animation: ec-fond var(--t-normal) var(--m-doux) both; }
+  .scrim { animation: ec-fond var(--t-normal) var(--m-doux) both; }
+  @media (max-width: 767px) { .pop, dialog.dlg[open] { animation-name: ec-feuille; animation-duration: var(--t-normal); } dialog.cmdk[open] { animation-name: ec-fond; } }
   /* les boutons du menu répondent au survol : la loupe se penche, la cloche sonne, la roue des réglages tourne */
-  .side-foot .ic svg, .topbar .ib .ic svg, .pop-i .ic svg { transition: transform .3s cubic-bezier(.3,1.5,.5,1); }
+  .side-foot .ic svg, .topbar .ib .ic svg, .pop-i .ic svg { transition: transform var(--t-normal) var(--m-ressort); }
   .side-foot [data-act="search"]:hover .ic svg, .topbar [data-act="search"]:hover .ic svg { transform: rotate(-12deg) scale(1.12); }
-  .side-foot [data-act="notifs"]:hover .ic svg, .topbar [data-act="notifs"]:hover .ic svg { animation: ec-cloche .7s ease; transform-origin: 50% 12%; }
-  .pop-i[data-go="reglages"]:hover .ic svg, .pop-i[data-go="reglages"]:focus-visible .ic svg { transform: rotate(75deg); transition-duration: .5s; }
-  .side-foot [data-act="profile"] .avatar, .topbar [data-act="profile"] .avatar { transition: transform .25s cubic-bezier(.3,1.6,.5,1), box-shadow .25s ease; }
+  .side-foot [data-act="notifs"]:hover .ic svg, .topbar [data-act="notifs"]:hover .ic svg { animation: ec-cloche var(--t-moment) var(--m-doux); transform-origin: 50% 12%; }
+  .pop-i[data-go="reglages"]:hover .ic svg, .pop-i[data-go="reglages"]:focus-visible .ic svg { transform: rotate(75deg); transition-duration: var(--t-moment); }
+  .side-foot [data-act="profile"] .avatar, .topbar [data-act="profile"] .avatar { transition: transform var(--t-normal) var(--m-ressort), box-shadow var(--t-normal) var(--m-doux); }
   .side-foot [data-act="profile"]:hover .avatar, .topbar [data-act="profile"]:hover .avatar { transform: scale(1.1); box-shadow: 0 0 0 2px var(--panel, #333539), 0 0 0 4px var(--yellow); }
   /* la pique arrive comme un message : trois points qui s'écrivent, puis la bulle s'ouvre sur la phrase (une fois par ouverture) */
-  .pique.ecrit { animation: pq-arrive .3s cubic-bezier(.2,.8,.2,1.2) .3s both, pq-ouvre .45s cubic-bezier(.2,.7,.2,1) 1.35s backwards; }
-  .pique.ecrit .pq-pts { display: flex; position: absolute; left: 27px; top: 50%; margin-top: -3.5px; gap: 5px; animation: pq-fin .2s ease 1.3s forwards; }
+  .pique.ecrit { animation: pq-arrive var(--t-normal) var(--m-ressort) .3s both, pq-ouvre var(--t-moment) var(--m-doux) 1.35s backwards; }
+  .pique.ecrit .pq-pts { display: flex; position: absolute; left: 27px; top: 50%; margin-top: -3.5px; gap: 5px; animation: pq-fin var(--t-normal) var(--m-doux) 1.3s forwards; }
   .pique.ecrit .pq-pts i { width: 7px; height: 7px; border-radius: 50%; background: currentColor; opacity: .5; animation: pq-saute .9s ease-in-out .3s infinite; }
   .pique.ecrit .pq-pts i:nth-child(2) { animation-delay: .45s; }
   .pique.ecrit .pq-pts i:nth-child(3) { animation-delay: .6s; }
-  .pique.ecrit .pq-t { animation: pq-texte .35s ease 1.45s both; }
+  .pique.ecrit .pq-t { animation: pq-texte var(--t-normal) var(--m-doux) 1.45s both; }
   html.ouverture .pique.ecrit, html.ouverture .pique.ecrit * { animation-play-state: paused; }
-  .r7-pt.moi b::after { content: ""; position: absolute; inset: -5px; border-radius: 50%; border: 2px solid var(--yellow); opacity: 0; animation: r7-halo 2.4s ease-out 1.2s 3; }
+  .r7.anim .r7-pt.moi b::after { content: ""; position: absolute; inset: -5px; border-radius: 50%; border: 2px solid var(--yellow); opacity: 0; animation: r7-halo 2.4s var(--m-doux) 1.2s 3; }
 
   /* le moment « Diffusé » : la case se remplit de vert, la coche se dessine, une onde part */
-  .pill.diffuse.vient { animation: d-remplit .42s ease-out both, d-onde .7s ease-out .36s, d-bond .42s cubic-bezier(.3,1.7,.5,1) .36s; background-image: linear-gradient(var(--ok-bg), var(--ok-bg)); background-repeat: no-repeat; background-position: left; }
-  .pill.diffuse.vient .ck path { stroke-dasharray: 22; stroke-dashoffset: 22; animation: d-trace .32s ease-out .3s forwards; }
-  .cnt.tout.vient { animation: d-bond .5s cubic-bezier(.3,1.7,.5,1) .55s both, d-onde .8s ease-out .55s; }
+  .pill.diffuse.vient { animation: d-remplit var(--t-moment) var(--m-doux) both, d-onde var(--t-moment) var(--m-doux) .36s, d-bond var(--t-moment) var(--m-ressort) .36s; background-image: linear-gradient(var(--ok-bg), var(--ok-bg)); background-repeat: no-repeat; background-position: left; }
+  .pill.diffuse.vient .ck path { stroke-dasharray: 22; stroke-dashoffset: 22; animation: d-trace var(--t-normal) var(--m-doux) .3s forwards; }
+  .cnt.tout.vient { animation: d-bond var(--t-moment) var(--m-ressort) .55s both, d-onde var(--t-moment) var(--m-doux) .55s; }
 
   /* écrans vides : le 7 se pose sur la route */
-  .illu img { animation: ec-tombe .6s cubic-bezier(.3,1.5,.5,1) .1s both; }
-  .illu-route::after { animation: r7-flux 1.4s ease-out both; }
+  .illu img { animation: ec-tombe var(--t-moment) var(--m-ressort) .1s both; }
+  .illu-route::after { animation: r7-flux 1.4s var(--m-doux) both; }
 }
 @keyframes ec-entre { from { opacity: 0; transform: translateY(8px); } }
-@keyframes ec-droite { from { opacity: 0; transform: translateX(32px); } }
-@keyframes ec-gauche { from { opacity: 0; transform: translateX(-32px); } }
-@keyframes ec-monte { from { opacity: 0; transform: translateY(6px); } }
+@keyframes ec-droite { from { opacity: 0; transform: translateX(16px); } }
+@keyframes ec-gauche { from { opacity: 0; transform: translateX(-16px); } }
+@keyframes ec-monte { from { opacity: 0; transform: translateY(4px); } }
 @keyframes ec-barre { from { transform: scaleY(0); } }
 @keyframes ec-largeur { from { transform: scaleX(0); } }
 @keyframes ec-pose { from { opacity: 0; transform: translateX(-50%) scale(.6); } to { opacity: 1; transform: translateX(-50%); } }
@@ -1327,44 +1331,44 @@ html.fiche-open .r-tot .r-eur { margin-right: 136px; }
 .nav a { position: relative; }
 :is(.nav, .tabbar) [data-k="reunion"] .ic rect { fill: currentColor; fill-opacity: 0; }
 @media (prefers-reduced-motion: no-preference) {
-  /* le geste de chaque icône : au survol, une fois en arrivant sur son écran (.glisse), et dans la démo (.joue) */
-  .brand img, .new .ic svg { transition: transform .35s cubic-bezier(.3,1.5,.5,1); }
+  /* le geste de chaque icône : au survol (et dans la démo, .joue) ; pas à chaque changement d'écran, trop fréquent */
+  .brand img, .new .ic svg { transition: transform var(--t-normal) var(--m-ressort); }
   .brand img { transform-origin: 30% 90%; }
   .new.joue .ic svg { transform: rotate(90deg); }
-  .brand.joue img { animation: g-sept .6s cubic-bezier(.3,1.4,.5,1); }
-  :is(.nav, .tabbar) a:is(.joue, .glisse)[data-k="accueil"] .ic svg { animation: g-saut .5s ease .05s; }
-  :is(.nav, .tabbar) a:is(.joue, .glisse)[data-k="plan"] .ic path:last-child { stroke-dasharray: 12; animation: g-trait .45s ease-out .05s both; }
-  :is(.nav, .tabbar) a:is(.joue, .glisse)[data-k="resultats"] .ic path:last-child { stroke-dasharray: 17; animation: g-courbe .6s ease-out .05s both; }
-  :is(.nav, .tabbar) a:is(.joue, .glisse)[data-k="reunion"] .ic rect { animation: g-allume .8s ease .05s; }
+  .brand.joue img { animation: g-sept var(--t-moment) var(--m-ressort); }
+  :is(.nav, .tabbar) a.joue[data-k="accueil"] .ic svg { animation: g-saut var(--t-moment) var(--m-doux) .05s; }
+  :is(.nav, .tabbar) a.joue[data-k="plan"] .ic path:last-child { stroke-dasharray: 12; animation: g-trait var(--t-moment) var(--m-doux) .05s both; }
+  :is(.nav, .tabbar) a.joue[data-k="resultats"] .ic path:last-child { stroke-dasharray: 17; animation: g-courbe var(--t-moment) var(--m-doux) .05s both; }
+  :is(.nav, .tabbar) a.joue[data-k="reunion"] .ic rect { animation: g-allume var(--t-moment) var(--m-doux) .05s; }
   :is(.side-foot, .topbar) [data-act="search"].joue .ic svg { transform: rotate(-12deg) scale(1.12); }
-  :is(.side-foot, .topbar) [data-act="notifs"].joue .ic svg { animation: ec-cloche .7s ease; transform-origin: 50% 12%; }
+  :is(.side-foot, .topbar) [data-act="notifs"].joue .ic svg { animation: ec-cloche var(--t-moment) var(--m-doux); transform-origin: 50% 12%; }
   :is(.side-foot, .topbar) [data-act="profile"].joue .avatar { transform: scale(1.1); box-shadow: 0 0 0 2px var(--panel, #333539), 0 0 0 4px var(--yellow); }
   @media (hover: hover) {
-    .brand:hover img { animation: g-sept .6s cubic-bezier(.3,1.4,.5,1); }
+    .brand:hover img { animation: g-sept var(--t-moment) var(--m-ressort); }
     .new:hover .ic svg { transform: rotate(90deg); }
-    .nav [data-k="accueil"]:hover .ic svg { animation: g-saut .5s ease; }
-    .nav [data-k="plan"]:hover .ic path:last-child { stroke-dasharray: 12; animation: g-trait .45s ease-out both; }
-    .nav [data-k="resultats"]:hover .ic path:last-child { stroke-dasharray: 17; animation: g-courbe .6s ease-out both; }
-    .nav [data-k="reunion"]:hover .ic rect { animation: g-allume .8s ease; }
+    .nav [data-k="accueil"]:hover .ic svg { animation: g-saut var(--t-moment) var(--m-doux); }
+    .nav [data-k="plan"]:hover .ic path:last-child { stroke-dasharray: 12; animation: g-trait var(--t-moment) var(--m-doux) both; }
+    .nav [data-k="resultats"]:hover .ic path:last-child { stroke-dasharray: 17; animation: g-courbe var(--t-moment) var(--m-doux) both; }
+    .nav [data-k="reunion"]:hover .ic rect { animation: g-allume var(--t-moment) var(--m-doux); }
     /* les bulles d'aide attendent un court instant puis montent en fondu : plus de clignotement en passant la souris */
-    [data-tip]:hover::after { animation: g-tip .16s ease-out .35s both; }
+    [data-tip]:hover::after { animation: g-tip var(--t-vite) var(--m-doux) .35s both; }
   }
 
   /* la surbrillance part de l'ancien choix et glisse jusqu'au nouveau */
   .nav a.on.glisse { background: transparent; }
-  .nav a.on.glisse::before { content: ""; position: absolute; inset: 0; z-index: -1; border-radius: inherit; background: var(--panel-hover); animation: g-glisse .3s cubic-bezier(.2,.8,.2,1) both; }
+  .nav a.on.glisse::before { content: ""; position: absolute; inset: 0; z-index: -1; border-radius: inherit; background: var(--panel-hover); animation: g-glisse var(--t-normal) var(--m-doux) both; }
   .seg button.on.glisse { background: transparent; box-shadow: none; }
-  .seg button.on.glisse::before { content: ""; position: absolute; top: 0; bottom: 0; left: 0; width: 100%; z-index: -1; border-radius: inherit; background: var(--card); box-shadow: 0 1px 2px rgba(0,0,0,.12); animation: g-glisse-l .3s cubic-bezier(.2,.8,.2,1) both; }
+  .seg button.on.glisse::before { content: ""; position: absolute; top: 0; bottom: 0; left: 0; width: 100%; z-index: -1; border-radius: inherit; background: var(--card); box-shadow: 0 1px 2px rgba(0,0,0,.12); animation: g-glisse-l var(--t-normal) var(--m-doux) both; }
   .tabbar a.on.glisse .ic { background: transparent; position: relative; }
-  .tabbar a.on.glisse .ic::before { content: ""; position: absolute; inset: 0; z-index: -1; border-radius: 10px; background: var(--yellow); animation: g-glisse .32s cubic-bezier(.2,.8,.2,1) both; }
+  .tabbar a.on.glisse .ic::before { content: ""; position: absolute; inset: 0; z-index: -1; border-radius: 10px; background: var(--yellow); animation: g-glisse var(--t-normal) var(--m-doux) both; }
 
   /* les boutons s'enfoncent sous le clic ; le survol s'allume en douceur au lieu de clignoter */
-  :is(.btn, .new, .ib, .seg button, .chip, .pick, button.pill, .nav a, .side-foot button, .tabbar a, .pop-i, .r-v, .cal-g button) { transition: transform .12s ease, background-color .15s ease, color .15s ease, box-shadow .15s ease, filter .15s ease; }
+  :is(.btn, .new, .ib, .seg button, .chip, .pick, button.pill, .nav a, .side-foot button, .tabbar a, .pop-i, .r-v, .cal-g button) { transition: transform var(--t-vite) var(--m-doux), background-color var(--t-vite) var(--m-doux), color var(--t-vite) var(--m-doux), box-shadow var(--t-vite) var(--m-doux), filter var(--t-vite) var(--m-doux); }
   :is(.btn, .new, .ib, .seg button, .chip, .pick, button.pill, .nav a, .side-foot button, .tabbar a, .pop-i, .r-v, .cal-g button):active { transform: scale(.96); }
   :is(.pin, .todo, .r7-next):active { transform: scale(.98); }
 
   /* les menus déroulent leurs lignes l'une après l'autre */
-  .pop.arrive .pop-i { animation: g-ligne .24s cubic-bezier(.2,.8,.2,1) both; }
+  .pop.arrive .pop-i { animation: g-ligne var(--t-normal) var(--m-doux) both; }
   .pop.arrive .pop-i:nth-of-type(2) { animation-delay: .025s; }
   .pop.arrive .pop-i:nth-of-type(3) { animation-delay: .05s; }
   .pop.arrive .pop-i:nth-of-type(4) { animation-delay: .075s; }
@@ -1372,17 +1376,17 @@ html.fiche-open .r-tot .r-eur { margin-right: 136px; }
   .pop.arrive .pop-i:nth-of-type(n+6) { animation-delay: .12s; }
 
   /* le message du bas arrive avec un petit rebond ; avec « Annuler », un trait jaune montre le temps qu'il reste */
-  .toast { animation: g-toast .34s cubic-bezier(.2,.9,.3,1.25) both; }
+  .toast { animation: g-toast var(--t-normal) var(--m-ressort) both; }
   .toast.undo { position: relative; overflow: hidden; }
   .toast.undo::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 3px; background: var(--yellow-side, #FFD34E); opacity: .85; transform-origin: left; animation: g-reste var(--d, 5s) linear both; }
 
   /* épingler : le marque-page tombe en place ; le compteur « à traiter » et le point des notifications rebondissent quand ils changent */
-  .ib.on.vient .ic svg { animation: g-pose .5s cubic-bezier(.3,1.5,.5,1); }
-  .nav .n.bouge, .side-foot .dot.bouge { animation: g-bouge .5s cubic-bezier(.3,1.7,.5,1); }
+  .ib.on.vient .ic svg { animation: g-pose var(--t-moment) var(--m-ressort); }
+  .nav .n.bouge, .side-foot .dot.bouge { animation: g-bouge var(--t-moment) var(--m-ressort); }
 
   /* clair ou sombre : le nouveau thème s'étend en cercle depuis le bouton */
   html.theme-vt::view-transition-old(root) { animation: none; }
-  html.theme-vt::view-transition-new(root) { animation: g-cercle .7s cubic-bezier(.45,.05,.25,1); }
+  html.theme-vt::view-transition-new(root) { animation: g-cercle var(--t-moment) var(--m-doux); }
 }
 @keyframes g-sept { 0%, 100% { transform: none; } 40% { transform: translateY(-3px) rotate(-8deg); } 70% { transform: translateY(1px) rotate(2deg); } }
 @keyframes g-saut { 0%, 100% { transform: none; } 35% { transform: translateY(-3.5px); } 65% { transform: translateY(.5px) scaleY(.94); } }
@@ -1398,3 +1402,8 @@ html.fiche-open .r-tot .r-eur { margin-right: 136px; }
 @keyframes g-pose { 0% { transform: translateY(-8px) scaleY(.8); opacity: .2; } 60% { transform: translateY(1px) scaleY(1.06); opacity: 1; } }
 @keyframes g-bouge { 0% { transform: scale(.5); } 55% { transform: scale(1.22); } 100% { transform: none; } }
 @keyframes g-cercle { from { clip-path: circle(0 at var(--vx, 50%) var(--vy, 50%)); } to { clip-path: circle(150vmax at var(--vx, 50%) var(--vy, 50%)); } }
+
+/* iPhone et iPad : un champ en dessous de 16 px fait zoomer toute la page quand on le touche ; à 16 px, plus de zoom */
+@supports (-webkit-touch-callout: none) {
+  input:not([type="checkbox"]):not([type="radio"]), select, textarea, .input { font-size: max(16px, 1em); }
+}

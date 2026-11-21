@@ -7,7 +7,7 @@
   const base = { fiche: "", svc: "", msg: "", type: "" };
   const aller = async (patch) => { KP.go({ ...base, ...patch }); await attendre(60); };
   const demos = [
-    async () => { await aller({ screen: "accueil" }); haut(); KP.rejouer(); const r = main().querySelector(".r7"); if (r && r.getBoundingClientRect().bottom > innerHeight) r.scrollIntoView({ block: "center" }); },
+    async () => { try { sessionStorage.removeItem("kplan-r7"); } catch (e) {} await aller({ screen: "accueil" }); haut(); KP.rejouer(); const r = main().querySelector(".r7"); if (r && r.getBoundingClientRect().bottom > innerHeight) r.scrollIntoView({ block: "center" }); },
     async () => {
       const it = KP.store.items().find((i) => /Berkeley/.test(i.t));
       if (it && it.st !== "prevu") KP.store.update(it.id, { st: "prevu" });
@@ -16,7 +16,7 @@
       await attendre(900);
       if (it) KP.setStatus(it.id, "diffuse");
     },
-    async () => { await aller({ screen: "resultats", tab: "diffusions", per: "considerer" }); haut(); KP.rejouer(); },
+    async () => { try { sessionStorage.removeItem("kplan-compte"); } catch (e) {} await aller({ screen: "resultats", tab: "diffusions", per: "considerer" }); haut(); KP.rejouer(); },
     async () => { try { sessionStorage.removeItem("kplan-pique-accueil"); } catch (e) {} KP.piqueVue = false; await aller({ screen: "accueil" }); haut(); KP.rejouer(); },
     async () => { await aller({ screen: "reglages", set: "profil" }); haut(); KP.rejouer(); const r = main().querySelector(".mp-rond"); if (r) { r.classList.add("survol"); setTimeout(() => r.classList.remove("survol"), 1600); } },
     async () => {
@@ -26,7 +26,7 @@
     },
     async () => { await aller({ screen: "plan", per: "decider", vue: "liste", msg: "international" }); haut(); KP.rejouer(); },
     async () => {
-      /* chaque icône fait son geste, puis on change d'écran : la surbrillance glisse et l'icône d'arrivée bouge */
+      /* chaque icône fait son geste (comme au survol), puis on change d'écran : la surbrillance glisse */
       await aller({ screen: "accueil" }); haut(); await attendre(300);
       const tel = matchMedia("(max-width: 767px)").matches;
       const sel = tel ? ['.tabbar [data-k="accueil"]', '.tabbar [data-k="plan"]', '.tabbar [data-k="resultats"]', '.tabbar [data-k="reunion"]', '.topbar [data-act="search"]', '.topbar [data-act="notifs"]', '.topbar [data-act="profile"]']

@@ -108,7 +108,10 @@
     else if (!fNow && fWas && (inFiche || !act || act === document.body)) { const x = main.querySelector(`.row[data-id="${fWas}"] .open, .g-i[data-id="${fWas}"]`); if (x) x.focus({ preventScroll: true, focusVisible: !KP.phone() }); }
     else if (fid && $(fid)) { $(fid).focus({ preventScroll: true }); try { if (sel != null) $(fid).setSelectionRange(sel, sel); } catch (e) {} }
     else if (frow) { const x = main.querySelector(`.row[data-id="${frow}"] .open`); if (x) x.focus({ preventScroll: true }); }
-    document.title = ({ accueil: "Accueil", plan: "Le plan", resultats: "Résultats", reunion: "Réunion", reglages: "Réglages" })[KP.route.screen] + " · " + KP.marque.titre;
+    ["side", "topbar", "fiche"].forEach((k) => KP.typo($(k))); KP.typo(main);
+    /* le titre de l'onglet compte ce qui t'attend : « (2) Accueil · Road to 7th » se voit depuis un autre onglet */
+    const attend = KP.inbox().length;
+    document.title = (attend ? `(${attend}) ` : "") + ({ accueil: "Accueil", plan: "Le plan", resultats: "Résultats", reunion: "Réunion", reglages: "Réglages" })[KP.route.screen] + " · " + KP.marque.titre;
     if (window.kpOuvrir) window.kpOuvrir(); /* le 7 s'ouvre sur l'appli (index.html) */
   }
   try { if (window.self !== window.top) document.documentElement.classList.add("embedded"); } catch (e) { document.documentElement.classList.add("embedded"); }

@@ -40,10 +40,13 @@
   const IMPOSSIBLE = "Ce chiffre n'est pas possible : un nombre entier, de 0 à un milliard";
   const IMPOSSIBLE_EUR = "Ce montant n'est pas possible : de 0 à 100 millions d'euros";
 
-  /* à l'arrivée sur un écran, les chiffres marqués data-n montent de zéro à leur valeur (0,8 s) */
+  /* la première fois de la session, les chiffres marqués data-n montent de zéro à leur valeur (0,8 s) et les barres poussent (css : .compte) ;
+     ensuite ils s'affichent tout de suite, parce qu'on revient souvent sur cet écran */
   KP.apresRendu = (main, entre) => {
     if (!entre || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
     const els = [...main.querySelectorAll("[data-n]")].filter((e) => +e.dataset.n > 0); if (!els.length) return;
+    try { if (sessionStorage.getItem("kplan-compte")) return; sessionStorage.setItem("kplan-compte", "1"); } catch (e) { /* sans stockage : on anime */ }
+    main.classList.add("compte"); setTimeout(() => main.classList.remove("compte"), 1500);
     const t0 = performance.now(), D = 800, ease = (x) => 1 - Math.pow(1 - x, 3);
     const pas = (t) => { const x = Math.min(1, (t - t0) / D); els.forEach((e) => { if (e.isConnected) e.textContent = court(Math.round(+e.dataset.n * ease(x))); }); if (x < 1) requestAnimationFrame(pas); };
     els.forEach((e) => (e.textContent = court(0))); requestAnimationFrame(pas);
