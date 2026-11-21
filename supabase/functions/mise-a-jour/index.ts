@@ -3,8 +3,11 @@
 //   « etat » : la version de la copie, celle du dépôt d'origine, ce qui change, les scripts de base qui manquent.
 //   « base » : applique dans l'ordre les scripts de supabase/migrations du dépôt d'origine que la base n'a pas encore.
 //   « code » : récupère le code du dépôt d'origine dans la copie (« Sync fork » de GitHub), puis relance la publication.
-// Seul un pilote (profiles.chef) peut l'appeler. La base passe avant le code : le site ne charge jamais un code
-// qui attend une table absente.
+//   « auto » : base puis code, chaque nuit, appelé par la base elle-même (pg_cron, migration 0033) avec le secret
+//              du coffre « kplan_maj_secret » dans l'en-tête x-kplan-auto. Aucun clic, aucun compte.
+// Sinon, seul un pilote (profiles.chef) peut l'appeler. La base passe avant le code : le site ne charge jamais un code
+// qui attend une table absente. À chaque visite d'un pilote, la fonction inscrit son adresse et un secret dans le
+// coffre : la mise à jour de nuit démarre donc d'elle-même, même sur une copie installée à la main.
 //
 // Secrets à ranger dans Supabase (Edge Functions > Secrets) : voir DEPLOYER.md, étape 6.
 //   GITHUB_TOKEN   jeton GitHub « fine-grained » limité à la copie : Contents, Workflows et Actions en lecture et écriture
@@ -14,7 +17,7 @@
 //
 // Ce fichier tient seul (aucun autre fichier à copier) : il se colle tel quel dans l'éditeur de Supabase.
 
-export const FONCTION = 1; // monte quand cette fonction change : l'appli propose alors de la recoller
+export const FONCTION = 2; // monte quand cette fonction change : l'appli propose alors de la recoller
 
 type Pilote = { id: string } | null;
 type Deps = {
@@ -24,12 +27,17 @@ type Deps = {
   base: {
     faites: () => Promise<string[]>;
     appliquer: (nom: string, sql: string) => Promise<void>;
+    /* la mise à jour de nuit : le secret rangé dans le coffre, et l'inscription de la fonction dans le coffre */
+    secretAuto: () => Promise<string>;
+    inscrire: (url: string) => Promise<void>;
   };
+  /* tâche de fond (EdgeRuntime.waitUntil dans Supabase) : la réponse part tout de suite, le travail continue */
+  fond?: (p: Promise<unknown>) => void;
 };
 
 const CORS = {
   "access-control-allow-origin": "*",
-  "access-control-allow-headers": "authorization, apikey, content-type, x-client-info",
+  "access-control-allow-headers": "authorization, apikey, content-type, x-client-info, x-kplan-auto",
   "access-control-allow-methods": "POST, OPTIONS",
 };
 const json = (o: unknown, status = 200) => new Response(JSON.stringify(o), { status, headers: { ...CORS, "content-type": "application/json" } });
@@ -144,16 +152,40 @@ export function createHandler(d: Deps) {
     return { fusion: m.o.merge_type || "none", publication, version: await versionDe(copie, branche()) };
   }
 
+  /* chaque nuit : la base d'abord, puis le code ; une copie déjà à jour ne bouge pas */
+  async function auto() {
+    const { source } = await depots();
+    if (!source) return { origine: true };
+    const b = await base(), c = await code();
+    console.log(`mise à jour de nuit : ${b.faites.length} script(s), code ${c.fusion}`);
+    return { faites: b.faites, fusion: c.fusion, version: c.version };
+  }
+  const egal = (a: string, b: string) => { if (!a || a.length !== b.length) return false; let x = 0; for (let i = 0; i < a.length; i++) x |= a.charCodeAt(i) ^ b.charCodeAt(i); return x === 0; };
+
   return async (req: Request): Promise<Response> => {
     if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
     if (req.method !== "POST") return json({ erreur: "methode", message: "POST seulement" }, 405);
     try {
+      const cle = req.headers.get("x-kplan-auto");
+      if (cle !== null) {
+        if (!egal(cle, await d.base.secretAuto())) return json({ erreur: "auto", message: "Secret de la mise à jour de nuit refusé." }, 401);
+        const travail = auto();
+        if (d.fond) { d.fond(travail.catch((e) => console.error("mise à jour de nuit :", (e as Error).message))); return json({ auto: "lancée" }, 202); }
+        return json(await travail);
+      }
       const jwt = (req.headers.get("authorization") || "").replace(/^Bearer\s+/i, "");
       const qui = jwt ? await d.pilote(jwt) : null;
       if (!qui) return json({ erreur: "connexion", message: "Connecte-toi d'abord." }, 401);
       if (qui === "pas-pilote") return json({ erreur: "pilote", message: "Seul un pilote peut mettre l'appli à jour." }, 403);
       let action = "etat"; try { action = (await req.json()).action || "etat"; } catch { /* corps vide : état */ }
-      if (action === "etat") return json(await etat());
+      if (action === "etat") {
+        const e = await etat();
+        if (e.origine) return json(e);
+        /* une copie : la mise à jour de nuit s'inscrit dans le coffre (une fois, rien n'est remplacé) */
+        let auto = false;
+        try { await d.base.inscrire(d.env("SUPABASE_URL").replace(/\/+$/, "") + "/functions/v1/mise-a-jour"); auto = true; } catch (x) { console.error("inscription de nuit :", (x as Error).message); }
+        return json({ ...e, auto });
+      }
       if (action === "base") return json(await base());
       if (action === "code") return json(await code());
       return json({ erreur: "action", message: "Action inconnue" }, 400);
@@ -198,6 +230,17 @@ if (D && D.serve && !D.env.get("KPLAN_TEST")) {
           });
         } finally { await sql.end(); }
       },
+      secretAuto: async () => { const sql = db(); try { const r = await sql`select decrypted_secret from vault.decrypted_secrets where name = 'kplan_maj_secret'`; return r.length ? r[0].decrypted_secret : ""; } finally { await sql.end(); } },
+      inscrire: async (url) => {
+        const sql = db();
+        try {
+          const secret = crypto.randomUUID().replace(/-/g, "") + crypto.randomUUID().replace(/-/g, "");
+          await sql`select vault.create_secret(${url}, 'kplan_maj_url') where not exists (select 1 from vault.secrets where name = 'kplan_maj_url')`;
+          await sql`select vault.create_secret(${secret}, 'kplan_maj_secret') where not exists (select 1 from vault.secrets where name = 'kplan_maj_secret')`;
+        } finally { await sql.end(); }
+      },
     },
+    // deno-lint-ignore no-explicit-any
+    fond: (globalThis as any).EdgeRuntime ? (p) => (globalThis as any).EdgeRuntime.waitUntil(p) : undefined,
   }));
 }
