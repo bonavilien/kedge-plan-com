@@ -78,7 +78,14 @@
     const frow = act && act.classList && act.classList.contains("open") && act.closest(".row") ? act.dataset.id : "";
     const f0 = $("fiche"), fWas = f0.hidden ? "" : f0.dataset.id, inFiche = act && f0.contains(act);
     renderSide();
+    /* transitions douces : un nouvel écran, une autre période ou une autre vue entre en fondu ; la période glisse dans son sens */
+    const rt = KP.route, cle = [rt.screen, rt.per, rt.vue, rt.tab, rt.set].join("|"), entre = cle !== lastCle;
+    const sens = entre && lastCle && lastCle.split("|")[0] === rt.screen && lastCle.split("|")[1] !== rt.per ? (KP.PERIODS.findIndex((x) => x.k === rt.per) > KP.PERIODS.findIndex((x) => x.k === lastCle.split("|")[1]) ? "suiv" : "prec") : "";
+    KP.entre = entre; lastCle = cle;
     main.innerHTML = KP.views[KP.route.screen]();
+    main.classList.remove("entre", "suiv", "prec");
+    if (entre) { void main.offsetWidth; main.classList.add("entre"); if (sens) main.classList.add(sens); clearTimeout(KP.entreT); KP.entreT = setTimeout(() => main.classList.remove("entre", "suiv", "prec"), 900); }
+    if (KP.apresRendu) KP.apresRendu(main, entre);
     main.scrollTop = top;
     KP.renderFiche();
     /* sur un grand écran, la fiche s'ouvre à côté du plan au lieu de le recouvrir */
@@ -99,8 +106,9 @@
     if (window.kpOuvrir) window.kpOuvrir(); /* le 7 s'ouvre sur l'appli (index.html) */
   }
   try { if (window.self !== window.top) document.documentElement.classList.add("embedded"); } catch (e) { document.documentElement.classList.add("embedded"); }
-  let lastPj = "";
+  let lastPj = "", lastCle = "";
   KP.render = render;
+  KP.rejouer = () => { lastCle = ""; render(); }; /* rejoue l'entrée de l'écran courant */
   /* la fiche posée par-dessus (petit écran, calendrier serré) est une vraie fenêtre : Tab ne passe plus derrière */
   function syncModal() {
     const f = $("fiche"), open = !f.hidden, over = open && (window.innerWidth < 1200 || !document.documentElement.classList.contains("fiche-open"));
@@ -172,6 +180,7 @@
 
   KP.setStatus = (id, v) => {
     const it = store.get(id); if (!it || it.st === v) return;
+    if (v === "diffuse") KP.fx = { id, t: Date.now() }; /* le moment « Diffusé » (ui.js, KP.pill) */
     const nom = KP.STATUTS.find((s) => s.k === v).nom;
     KP.toast(`« ${it.t} » : ${nom.toLowerCase()}`, store.update(id, { st: v }, `a passé l'état à « ${nom} »`));
   };

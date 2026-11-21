@@ -40,6 +40,15 @@
   const IMPOSSIBLE = "Ce chiffre n'est pas possible : un nombre entier, de 0 à un milliard";
   const IMPOSSIBLE_EUR = "Ce montant n'est pas possible : de 0 à 100 millions d'euros";
 
+  /* à l'arrivée sur un écran, les chiffres marqués data-n montent de zéro à leur valeur (0,8 s) */
+  KP.apresRendu = (main, entre) => {
+    if (!entre || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const els = [...main.querySelectorAll("[data-n]")].filter((e) => +e.dataset.n > 0); if (!els.length) return;
+    const t0 = performance.now(), D = 800, ease = (x) => 1 - Math.pow(1 - x, 3);
+    const pas = (t) => { const x = Math.min(1, (t - t0) / D); els.forEach((e) => { if (e.isConnected) e.textContent = court(Math.round(+e.dataset.n * ease(x))); }); if (x < 1) requestAnimationFrame(pas); };
+    els.forEach((e) => (e.textContent = court(0))); requestAnimationFrame(pas);
+  };
+
   KP.views.resultats = () => {
     if (!store.resOk()) return `<div class="page res"><div class="head"><h1>Résultats</h1></div><div class="empty"><h3>Bientôt ici</h3><p>La base n'est pas encore à jour pour noter les résultats. ${KP.me().role === "pilote" ? "Colle 2.5_0030 puis 2.6_0031 dans Supabase (SQL Editor)." : "Un chef de projet doit la mettre à jour."}</p></div></div>`;
     const r = KP.route, chef = store.voitBudget(), tab = r.tab === "budget" && chef ? "budget" : "diffusions";
@@ -60,11 +69,15 @@
   /* ---------- Diffusions ---------- */
   function diffusions(p) {
     const all = diffusees(p);
-    if (!all.length) return `<div class="empty"><h3>Rien de diffusé sur ${h(p.nom)}</h3><p>Une action passée en « Diffusé » arrive ici.</p></div>`;
+    if (!all.length) return `<div class="empty">${KP.illu ? KP.illu() : ""}<h3>Rien de diffusé sur ${h(p.nom)}</h3><p>Une action passée en « Diffusé » arrive ici.</p></div>`;
     const todo = all.filter((i) => !aRes(i) && store.canEdit(i)).sort((a, b) => a.date.localeCompare(b.date));
     const done = all.filter((i) => !todo.includes(i)).sort((a, b) => score(b) - score(a) || b.date.localeCompare(a.date));
     const tiles = [["vues", "vues"], ["retombees", "retombées presse"], ["inscrits", "inscrits"], ["clics", "clics"]].filter(([k]) => k !== "clics" || somme(all, k) > 0);
-    const tuile = ([k, lib]) => { const n = somme(all, k); return `<div class="r-tile${n ? "" : " zero"}"><b>${court(n)}</b><span>${n <= 1 ? lib.replace(/s(\b|$)/g, "$1") : lib}</span></div>`; };
+    /* résultats vivants : le chiffre monte jusqu'à sa valeur, et cinq petites barres montrent chaque période */
+    const iCur = KP.PERIODS.findIndex((x) => x.k === curPer());
+    const mini = (k) => { const v = KP.PERIODS.map((x) => somme(diffusees(x), k)), mx = Math.max(1, ...v);
+      return `<span class="r-mini" role="img" aria-label="${h(KP.PERIODS.map((x, i) => `${x.nom} ${court(v[i])}`).join(", "))}">${KP.PERIODS.map((x, i) => `<i class="${x.k === p.k ? "on" : ""}${i > iCur ? " fut" : ""}" style="--h:${i > iCur ? 100 : Math.max(v[i] ? 8 : 3, Math.round((100 * v[i]) / mx))}%;--i:${i}" title="${h(x.nom)} : ${h(court(v[i]))}"></i>`).join("")}</span>`; };
+    const tuile = ([k, lib]) => { const n = somme(all, k); return `<div class="r-tile${n ? "" : " zero"}"><div class="r-tn"><b data-n="${n}">${court(n)}</b><span>${n <= 1 ? lib.replace(/s(\b|$)/g, "$1") : lib}</span></div>${n ? mini(k) : ""}</div>`; };
     /* par message : la barre suit les vues (la mesure commune) ; sans aucune vue, le poids des résultats */
     /* la barre suit le poids de tous les résultats (une retombée pèse mille vues…) : un message sans vues mais avec des inscrits a sa barre */
     const parM = KP.CLES.map((m) => { const l = all.filter((i) => i.m.includes(m.k)); return { m, l, v: somme(l, "vues"), s: l.reduce((a, i) => a + score(i), 0) }; });
@@ -72,7 +85,7 @@
     const msg = parM.map(({ m, l, v, s }) => {
       const txt = KP.UNITES.map((u) => [u.k, somme(l, u.k)]).filter(([, n]) => n > 0).map(([k, n]) => `${court(n)} ${mot(k, n)}`).join(" · ");
       const w = Math.round((100 * (vues ? v : s)) / max);
-      return `<a class="b-row" href="${KP.href({ screen: "plan", per: p.k, msg: m.k, svc: "", type: "", vue: "liste" })}"><b>${h(m.nom)}</b><div class="stack r-bar" role="img" aria-label="${h(txt || "aucun résultat")}">${w ? `<i class="s-ok" style="width:${w}%"></i>` : ""}</div><span class="n${txt ? " ok" : ""}">${txt || (l.length ? "pas encore de chiffres" : "rien de diffusé")}</span></a>`;
+      return `<a class="b-row" href="${KP.href({ screen: "plan", per: p.k, msg: m.k, svc: "", type: "", vue: "liste" })}"><b><i class="mp${KP.msgClasse(m.k)}"></i>${h(m.nom)}</b><div class="stack r-bar" role="img" aria-label="${h(txt || "aucun résultat")}">${w ? `<i class="s-ok${KP.msgClasse(m.k)}" style="width:${w}%"></i>` : ""}</div><span class="n${txt ? " ok" : ""}">${txt || (l.length ? "pas encore de chiffres" : "rien de diffusé")}</span></a>`;
     }).join("");
     const colh = `<div class="colh r-colh" aria-hidden="true"><span>Date</span><span>Action</span><span>Service</span><span>Message</span><span>Résultat</span></div>`;
     return `<div class="r-tiles">${tiles.map(tuile).join("")}</div>

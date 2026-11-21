@@ -129,11 +129,25 @@
     d.querySelector("form").addEventListener("submit", () => cb(new FormData(d.querySelector("form")).get("m").trim()));
   };
   KP.recent = (x) => !!x && x.quand > Date.now() - 14 * 864e5;
+  /* ---------- eye candy (2.8) : une couleur par message, un visage par personne, le moment « Diffusé » ---------- */
+  /* la couleur suit la place du message dans la liste (Réglages, Messages) : six teintes, le nom reste écrit */
+  KP.msgClasse = (k) => { const i = (KP.MESSAGES || []).findIndex((m) => m.k === k); return i < 0 ? "" : " mc" + (i % 6); };
+  KP.tagMsg = (k) => { const m = KP.message(k); return m ? `<i class="tag msg${KP.msgClasse(k)}">${KP.h(m.nom)}</i>` : ""; };
+  KP.pointsMsg = (it) => it.m.length ? `<span class="mpts" aria-hidden="true">${it.m.map((k) => `<i class="mp${KP.msgClasse(k)}"></i>`).join("")}</span>` : "";
+  /* les initiales, sur une teinte propre à chaque personne (toujours la même) */
+  const AV = 7;
+  KP.avatar = (p, cls = "") => { if (!p) return ""; let n = (KP.PEOPLE || []).findIndex((x) => x.k === p.k); if (n < 0) { n = 0; for (const c of p.k || p.nom || "") n = (n * 31 + c.charCodeAt(0)) >>> 0; } const ini = (p.nom || "?").trim().slice(0, 1).toUpperCase();
+    return `<span class="av av${n % AV}${cls ? " " + cls : ""}" title="${KP.h(p.nom)}" aria-hidden="true">${KP.h(ini)}</span>`; };
+  KP.avatarsSvc = (svc, cls) => (KP.PEOPLE || []).filter((x) => x.svc === svc && x.role !== "lecteur").map((x) => KP.avatar(x, cls)).join("");
+  /* une action qui vient de passer à « Diffusé » : sa case se remplit, la coche se dessine */
+  KP.fx = KP.fx || { id: "", t: 0 };
+  KP.vientDetre = (id) => KP.fx.id === id && Date.now() - KP.fx.t < 1600;
   KP.pill = (it, editable) => {
     if (it.annule) return `<span class="pill annule">Annulé</span>`;
     const s = KP.STATUTS.find((x) => x.k === it.st) || KP.STATUTS[0];
     const inner = (it.st === "diffuse" ? KP.ic("check") : "") + KP.h(s.nom);
-    return editable ? `<button type="button" class="pill ${s.k}" data-act="row-st" data-id="${it.id}" aria-label="État : ${KP.h(s.nom)}. Changer">${inner}</button>` : `<span class="pill ${s.k}">${inner}</span>`;
+    const pop = it.st === "diffuse" && KP.vientDetre(it.id) ? " vient" : "";
+    return editable ? `<button type="button" class="pill ${s.k}${pop}" data-act="row-st" data-id="${it.id}" aria-label="État : ${KP.h(s.nom)}. Changer">${inner}</button>` : `<span class="pill ${s.k}${pop}">${inner}</span>`;
   };
   KP.due = (r) => !r.pour ? "pour info" : !r.fait && r.pour < KP.TODAY ? `attendu ${KP.fmt.relatif(r.pour)}` : `pour ${KP.fmt.relatif(r.pour)}`;
   KP.kindName = (it) => it.variant === "sujet" ? "Sujet de la période" : it.variant === "classement" ? "Classement" : it.kind === "tf" ? "Temps fort" : it.variant === "partenariat" ? "Partenariat payant" : "Action";
@@ -148,7 +162,7 @@
     return `<div class="row ${it.kind === "tf" ? "tf" : ""}${it.annule ? " off" : ""}${KP.route && KP.route.fiche === it.id ? " sel" : ""}" data-act="open" data-id="${it.id}">
       <span class="d">${opt.date || KP.dateCell(it)}</span>
       <span class="t">${it.kind === "tf" && opt.slim ? '<i class="tfdot"></i>' : ""}<button type="button" class="open" data-act="open" data-id="${it.id}"><span class="tt">${KP.h(it.t)}</span></button>${it.variant === "classement" && it.rang ? `<span class="rang">${KP.h(it.rang)}</span>` : ""}${!it.annule && KP.recent(it.report) ? `<span class="badge">Reporté</span>` : ""}${it.variant === "partenariat" ? `<span class="badge">Payant</span>` : ""}${opt.sub ? `<small>${KP.h(opt.sub)}</small>` : par ? `<small>pour ${KP.h(par.t)}</small>` : it.variant === "classement" && it.cible ? `<small>objectif ${KP.h(it.cible)}</small>` : ""}</span>
-      ${opt.slim ? "" : `<span class="svc">${it.kind === "tf" ? '<i class="tag tf">Temps fort</i>' : KP.h(svc)}</span><span class="msg">${it.m.map((k) => (KP.message(k) || {}).nom).filter(Boolean).map((n) => `<i class="tag">${KP.h(n)}</i>`).join("")}</span>`}
+      ${opt.slim ? "" : `<span class="svc">${it.kind === "tf" ? '<i class="tag tf">Temps fort</i>' : `${it.variant === "partenariat" ? "" : KP.avatarsSvc(it.svc, "av-s")}<span class="svc-n">${KP.h(svc)}</span>`}</span><span class="msg">${it.m.map(KP.tagMsg).join("")}</span>`}
       ${opt.mid != null ? opt.mid : ""}
       <span class="st">${KP.pill(it, KP.store.canEdit(it))}</span>${opt.end || ""}
     </div>`;

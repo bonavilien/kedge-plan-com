@@ -41,7 +41,9 @@
     </div>`;
   };
 
-  const empty = (filtered) => `<div class="empty"><h3>${filtered ? "Rien. Tes filtres sont trop exigeants, même pour moi." : "Rien de prévu sur cette période"}</h3>
+  /* écran vide illustré : le 7 de l'icône, posé sur un bout de route */
+  KP.illu = (cls = "") => `<div class="illu${cls ? " " + cls : ""}" aria-hidden="true"><span class="illu-route"></span><img src="${KP.marque && KP.marque.symbole || "assets/road-to-7th-symbole.png"}" alt=""></div>`;
+  const empty = (filtered) => `<div class="empty">${KP.illu(filtered ? "filtre" : "")}<h3>${filtered ? "Rien. Tes filtres sont trop exigeants, même pour moi." : "Rien de prévu sur cette période"}</h3>
     <p>${filtered ? "Le plan de la période est plus large." : "Le plan se remplit au fil des réunions."}</p>
     ${filtered ? `<button type="button" class="btn quiet" data-act="clear-filters">Retirer les filtres</button>` : store.canCreate() ? `<button type="button" class="btn primary" data-act="new">${ic("plus")}Nouveau</button>` : ""}</div>`;
 
@@ -64,14 +66,18 @@
   }
   /* cette semaine : un trait jaune « aujourd'hui » entre ce qui est passé et ce qui vient */
   const nowRows = (its) => { const i = its.findIndex((it) => (it.fin || it.date) >= KP.TODAY), at = i < 0 ? its.length : i, line = `<div class="today-line" aria-hidden="true"><span>Aujourd'hui</span></div>`;
-    return its.slice(0, at).map((it) => KP.row(it)).join("") + (at > 0 ? line : "") + its.slice(at).map((it) => KP.row(it)).join(""); };
+    /* tout est passé : le trait tombe sous la dernière ligne, avec la place pour son badge */
+    return its.slice(0, at).map((it) => KP.row(it)).join("") + (at > 0 ? (at === its.length ? line.replace('class="today-line"', 'class="today-line fin"') : line) : "") + its.slice(at).map((it) => KP.row(it)).join(""); };
+  /* une semaine dont toutes les actions sont diffusées prend une coche ; elle s'anime si elle vient de se compléter */
+  const toutDiffuse = (its) => { const a = its.filter((it) => !it.annule && it.kind === "action"); return a.length > 0 && a.every((it) => it.st === "diffuse"); };
+  const cntWk = (b) => toutDiffuse(b.items) ? `<span class="cnt tout${b.items.some((it) => KP.vientDetre(it.id)) ? " vient" : ""}" title="Tout est diffusé">${ic("check")}${b.items.length}</span>` : `<span class="cnt">${b.items.length}</span>`;
   const foldBtn = (past, fold) => { const n = past.reduce((s, b) => s + b.items.length, 0), w = past.filter((b) => !b.tbc && b.items.length).length; /* la grille montre aussi les semaines vides : on ne compte que celles qui ont des lignes, comme la liste */
     return `<button type="button" class="fold" data-act="past" aria-expanded="${!fold}">${ic(fold ? "chevR" : "chevD")}${w} semaine${w > 1 ? "s" : ""} passée${w > 1 ? "s" : ""}, ${n} ligne${n > 1 ? "s" : ""}</button>`; };
 
   function liste(p, items) {
     const all = blocs(p, items), past = all.filter((b) => b.past), rest = all.filter((b) => !b.past);
     const fold = past.length && rest.length && !KP.ui.past;
-    const bloc = (b) => `<section class="wk${b.now ? " now" : ""}"><div class="wk-h"><b>${h(b.label)}</b><small>${h(b.range)}</small><span class="cnt">${b.items.length}</span></div><div class="colh" aria-hidden="true"><span>Date</span><span>Action</span><span>Service</span><span>Message</span><span>État</span></div><div class="rows">${b.now ? nowRows(b.items) : b.items.map((it) => KP.row(it)).join("")}</div></section>`;
+    const bloc = (b) => `<section class="wk${b.now ? " now" : ""}"><div class="wk-h"><b>${h(b.label)}</b><small>${h(b.range)}</small>${cntWk(b)}</div><div class="colh" aria-hidden="true"><span>Date</span><span>Action</span><span>Service</span><span>Message</span><span>État</span></div><div class="rows">${b.now ? nowRows(b.items) : b.items.map((it) => KP.row(it)).join("")}</div></section>`;
     return (past.length && rest.length ? foldBtn(past, fold) : "") + (fold ? "" : past.map(bloc).join("")) + rest.map(bloc).join("");
   }
 
@@ -84,12 +90,12 @@
     const cell = (b, lane) => {
       const its = b.items.filter((it) => lane.k === "pay" ? it.variant === "partenariat" : lane.k ? it.kind === "action" && it.svc === lane.k && it.variant !== "partenariat" : it.kind === "tf");
       const can = lane.k !== "pay" && !b.tbc && store.canCreate() && (u.role === "pilote" || !lane.k || lane.k === u.svc);
-      return `<div class="g-c${b.now ? " g-row-now" : b.tbc ? " g-row-tbc" : ""}">${its.map((it) => `<button type="button" class="g-i ${it.kind === "tf" ? "tf " : ""}${it.annule ? "off " : ""}${it.st}${r.fiche === it.id ? " sel" : ""}" data-act="open" data-id="${it.id}">${it.flou ? "" : `<b>${h(KP.fmt.court(it.date))}${it.fin && it.fin !== it.date ? " → " + KP.parse(it.fin).getDate() : ""}</b>`}${h(it.t)}</button>`).join("")}
+      return `<div class="g-c${b.now ? " g-row-now" : b.tbc ? " g-row-tbc" : ""}">${its.map((it) => `<button type="button" class="g-i ${it.kind === "tf" ? "tf " : ""}${it.annule ? "off " : ""}${it.st}${r.fiche === it.id ? " sel" : ""}" data-act="open" data-id="${it.id}">${it.flou ? "" : `<b>${h(KP.fmt.court(it.date))}${it.fin && it.fin !== it.date ? " → " + KP.parse(it.fin).getDate() : ""}</b>`}${h(it.t)}${it.kind === "tf" ? "" : KP.pointsMsg(it)}</button>`).join("")}
         ${can ? `<button type="button" class="g-add" data-act="new" data-date="${b.date}" ${lane.k ? `data-svc="${lane.k}"` : 'data-kind="tf"'} aria-label="Ajouter : ${h(lane.nom)}, ${h(b.label.toLowerCase())}">${ic("plus")}</button>` : ""}</div>`;
     };
     const row = (b) => `<div class="g-s${b.now ? " g-row-now" : b.tbc ? " g-row-tbc" : ""}">${b.now ? '<span class="nowtag">Cette semaine</span>' : ""}<b>${h(b.tbc ? b.label : b.range)}</b>${b.tbc ? h(b.range) : ""}</div>` + lanes.map((l) => cell(b, l)).join("");
     return (past.length && rest.length ? foldBtn(past, fold) : "") + `<div class="grille-wrap"><div class="grille" style="grid-template-columns:128px repeat(${lanes.length}, minmax(0, 1fr))">
-      <div class="g-h"></div>${lanes.map((l, i) => `<div class="g-h${i === lanes.length - 1 ? " last" : ""}">${h(l.nom)}${l.sub ? `<small>${h(l.sub)}</small>` : ""}</div>`).join("")}
+      <div class="g-h"></div>${lanes.map((l, i) => { const av = l.k && l.k !== "pay" ? KP.avatarsSvc(l.k) : ""; return `<div class="g-h${i === lanes.length - 1 ? " last" : ""}${av ? " a-av" : ""}">${av ? `<span class="g-av">${av}</span>` : ""}<span class="g-hn">${h(l.nom)}${l.sub ? `<small>${h(l.sub)}</small>` : ""}</span></div>`; }).join("")}
       ${(fold ? rest : all).map(row).join("")}
     </div></div>`;
   }
