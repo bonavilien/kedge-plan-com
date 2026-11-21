@@ -2,6 +2,16 @@
 
 Généré depuis `site/js/version.js` par `node scripts/version.mjs`. Ne pas modifier à la main.
 
+## 2.7 · 2026-11-21
+
+- Ta photo dans Réglages, Mon profil : clique ou glisse une image, elle remplace tes initiales sur tous tes visages
+- Les visages des services dans les lignes, le calendrier et « À traiter »
+- Passer une action en Diffusé se voit : la case se remplit de vert, la coche se dessine, et une semaine entièrement diffusée reçoit sa coche
+- Résultats : les chiffres montent et les barres poussent, une fois par session
+- Le petit mot de l'appli arrive comme un message, dans une bulle jaune, et les écrans vides ont leur illustration
+- Mouvements doux : les écrans et les périodes glissent, les menus sortent de leur bouton, la sélection glisse d'un choix à l'autre, chaque icône du menu a son geste au survol, le thème clair ou sombre s'étend en cercle
+- Finitions : typographie française, icônes au même trait, police des titres préchargée, plus de zoom sur iPhone dans les champs, le nombre à traiter dans le titre de l'onglet, le badge « Aujourd'hui » n'est plus coupé
+
 ## 2.6.3 · 2026-11-20
 
 - Relier son Asana : tous les projets sont proposés, pas seulement les 100 plus anciens, rangés par nom, avec une case pour chercher

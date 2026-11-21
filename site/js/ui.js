@@ -173,8 +173,10 @@
   /* la couleur suit la place du message dans la liste (Réglages, Messages) : six teintes, le nom reste écrit */
   /* les initiales, sur une teinte propre à chaque personne (toujours la même) */
   const AV = 7;
+  /* une photo de profil n'est qu'un petit JPEG en data URL (la base le vérifie aussi) ; tout le reste est ignoré */
+  KP.photoSure = (v) => (typeof v === "string" && /^data:image\/jpeg;base64,[A-Za-z0-9+/=]+$/.test(v) && v.length <= 60000 ? v : "");
   KP.avatar = (p, cls = "") => { if (!p) return ""; let n = (KP.PEOPLE || []).findIndex((x) => x.k === p.k); if (n < 0) { n = 0; for (const c of p.k || p.nom || "") n = (n * 31 + c.charCodeAt(0)) >>> 0; } const ini = (p.nom || "?").trim().slice(0, 1).toUpperCase();
-    return `<span class="av av${n % AV}${cls ? " " + cls : ""}" title="${KP.h(p.nom)}" aria-hidden="true">${p.photo ? `<img src="${KP.h(p.photo)}" alt="" loading="lazy">` : KP.h(ini)}</span>`; };
+    return `<span class="av av${n % AV}${cls ? " " + cls : ""}" title="${KP.h(p.nom)}" aria-hidden="true">${KP.photoSure(p.photo) ? `<img src="${KP.h(p.photo)}" alt="" loading="lazy">` : KP.h(ini)}</span>`; };
   KP.avatarsSvc = (svc, cls) => (KP.PEOPLE || []).filter((x) => x.svc === svc && x.role !== "lecteur").map((x) => KP.avatar(x, cls)).join("");
   /* une action qui vient de passer à « Diffusé » : sa case se remplit, la coche se dessine */
   KP.fx = KP.fx || { id: "", t: 0 };

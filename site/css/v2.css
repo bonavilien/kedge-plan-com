@@ -1191,24 +1191,6 @@ html.fiche-open .r-tot .r-eur { margin-right: 136px; }
 .g-av .av { width: 28px; height: 28px; font-size: 12.5px; }
 .g-hn { display: flex; flex-direction: column; min-width: 0; }
 
-/* le chemin vers le 7e */
-/* le chemin vers le 7e : une petite carte sous les épinglés, l'info d'ambiance de l'année */
-.r7 .route7 { background: var(--card); border-radius: var(--r3); box-shadow: var(--lift); padding: 12px 14px 6px; }
-.r7-s { color: var(--text2); font-size: 13.5px; }
-.r7-voie { position: relative; height: 60px; margin: 8px 2px 0; }
-.r7-route { position: absolute; left: 0; right: 0; top: 12px; height: 10px; border-radius: 5px; background: var(--road); overflow: hidden; }
-.r7-route::after { content: ""; position: absolute; left: 0; right: 0; top: 50%; height: 2px; margin-top: -1px; background: repeating-linear-gradient(90deg, var(--road-line) 0 8px, transparent 8px 15px); opacity: .9; }
-.r7-pt { position: absolute; left: var(--x); top: 2px; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 5px; }
-.r7-pt b { position: relative; width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: var(--card); color: var(--text); font: 700 13px/1 var(--serif); font-variant-numeric: tabular-nums; box-shadow: 0 0 0 2px var(--road), 0 1px 4px rgba(0,0,0,.14); }
-.r7-pt sup { font-size: 8px; margin-left: 1px; transform: translateY(-4px); }
-.r7-pt small { font-size: 11.5px; font-weight: 600; color: var(--text2); white-space: nowrap; }
-.r7-pt.moi b { background: var(--yellow); color: var(--yellow-ink); box-shadow: 0 0 0 2px var(--card), 0 0 0 4px var(--yellow), 0 2px 8px rgba(0,0,0,.2); }
-.r7-pt.moi small, .r7-pt.but small { color: var(--text); }
-.r7-pt.but b { background: var(--anthracite-deep); color: var(--yellow); box-shadow: 0 0 0 2px var(--yellow), 0 1px 4px rgba(0,0,0,.2); }
-.r7-next { display: flex; align-items: flex-start; gap: 7px; width: calc(100% + 12px); margin: 2px -6px 0; padding: 6px; border-radius: var(--r2); color: var(--text2); font-size: 13px; line-height: 1.3; text-align: left; }
-.r7-next b { color: var(--text); font-weight: 600; }
-.r7-next .ic { width: 15px; height: 15px; flex: none; margin-top: 1px; }
-.r7-next:hover { background: var(--hover); }
 
 /* le moment « Diffusé » et la semaine complète */
 .wk .wk-h .cnt.tout, .wk.now .wk-h .cnt.tout { background: var(--ok-bg); color: var(--ok-ink); gap: 3px; display: inline-flex; align-items: center; }
@@ -1257,17 +1239,13 @@ html.fiche-open .r-tot .r-eur { margin-right: 136px; }
   .main.entre .rows > .row:nth-child(4), .main.entre .r-tile:nth-child(4) { animation-delay: .045s; }
   .main.entre .rows > .row:nth-child(5) { animation-delay: .06s; }
   .main.entre .rows > .row:nth-child(n+6) { animation-delay: .06s; }
-  .pin, .todo, .g-i, .r7-next { transition: transform var(--t-vite) var(--m-doux), box-shadow var(--t-vite) var(--m-doux), background-color var(--t-vite) var(--m-doux); }
+  .pin, .todo, .g-i { transition: transform var(--t-vite) var(--m-doux), box-shadow var(--t-vite) var(--m-doux), background-color var(--t-vite) var(--m-doux); }
   .pin:hover, .todo:hover { transform: translateY(-1px); box-shadow: 0 2px 4px rgba(20,20,20,.06), 0 8px 20px rgba(20,20,20,.09); }
   .g-i:hover { transform: translateY(-1px); }
   .r-mini i { transition: height var(--t-normal) var(--m-doux); }
   .main.compte .r-mini i { animation: ec-barre var(--t-moment) var(--m-doux) both; animation-delay: calc(.25s + var(--i) * .06s); transform-origin: bottom; }
   .main.compte .stack .s-ok { animation: ec-largeur var(--t-moment) var(--m-doux) .15s both; transform-origin: left; }
 
-  /* le chemin vers le 7e, une fois par session (.anim) : la route défile, KEDGE arrive, les écoles apparaissent l'une après l'autre */
-  .main.entre .r7.anim .r7-route::after { animation: r7-flux 1.6s var(--m-doux) both; }
-  .main.entre .r7.anim .r7-pt { animation: ec-pose var(--t-moment) var(--m-ressort) both; animation-delay: calc(.35s + var(--i) * .12s); }
-  .main.entre .r7.anim .r7-pt.moi { animation: r7-arrive 1s var(--m-doux) .1s both; }
   /* les fenêtres s'ouvrent en douceur : les menus depuis leur bouton, la recherche et les fenêtres glissent en place */
   .pop { animation: ec-pop var(--t-vite) var(--m-doux) both; }
   dialog.dlg[open] { animation: ec-dlg var(--t-normal) var(--m-doux) both; }
@@ -1289,7 +1267,6 @@ html.fiche-open .r-tot .r-eur { margin-right: 136px; }
   .pique.ecrit .pq-pts i:nth-child(3) { animation-delay: .6s; }
   .pique.ecrit .pq-t { animation: pq-texte var(--t-normal) var(--m-doux) 1.45s both; }
   html.ouverture .pique.ecrit, html.ouverture .pique.ecrit * { animation-play-state: paused; }
-  .r7.anim .r7-pt.moi b::after { content: ""; position: absolute; inset: -5px; border-radius: 50%; border: 2px solid var(--yellow); opacity: 0; animation: r7-halo 2.4s var(--m-doux) 1.2s 3; }
 
   /* le moment « Diffusé » : la case se remplit de vert, la coche se dessine, une onde part */
   .pill.diffuse.vient { animation: d-remplit var(--t-moment) var(--m-doux) both, d-onde var(--t-moment) var(--m-doux) .36s, d-bond var(--t-moment) var(--m-ressort) .36s; background-image: linear-gradient(var(--ok-bg), var(--ok-bg)); background-repeat: no-repeat; background-position: left; }
@@ -1319,8 +1296,6 @@ html.fiche-open .r-tot .r-eur { margin-right: 136px; }
 @keyframes pq-fin { to { opacity: 0; visibility: hidden; } }
 @keyframes pq-texte { from { color: transparent; } }
 @keyframes r7-flux { from { background-position: -320px 0; } }
-@keyframes r7-arrive { from { opacity: 0; left: 0; } to { opacity: 1; } }
-@keyframes r7-halo { 0% { opacity: .9; transform: scale(1); } 100% { opacity: 0; transform: scale(1.55); } }
 @keyframes d-remplit { from { background-size: 0% 100%; background-color: transparent; color: var(--text); } to { background-size: 100% 100%; } }
 @keyframes d-trace { to { stroke-dashoffset: 0; } }
 @keyframes d-bond { 50% { transform: scale(1.08); } }
@@ -1365,7 +1340,7 @@ html.fiche-open .r-tot .r-eur { margin-right: 136px; }
   /* les boutons s'enfoncent sous le clic ; le survol s'allume en douceur au lieu de clignoter */
   :is(.btn, .new, .ib, .seg button, .chip, .pick, button.pill, .nav a, .side-foot button, .tabbar a, .pop-i, .r-v, .cal-g button) { transition: transform var(--t-vite) var(--m-doux), background-color var(--t-vite) var(--m-doux), color var(--t-vite) var(--m-doux), box-shadow var(--t-vite) var(--m-doux), filter var(--t-vite) var(--m-doux); }
   :is(.btn, .new, .ib, .seg button, .chip, .pick, button.pill, .nav a, .side-foot button, .tabbar a, .pop-i, .r-v, .cal-g button):active { transform: scale(.96); }
-  :is(.pin, .todo, .r7-next):active { transform: scale(.98); }
+  :is(.pin, .todo):active { transform: scale(.98); }
 
   /* les menus déroulent leurs lignes l'une après l'autre */
   .pop.arrive .pop-i { animation: g-ligne var(--t-normal) var(--m-doux) both; }

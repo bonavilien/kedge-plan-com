@@ -23,7 +23,7 @@
     const u = KP.me(), admin = u.role === "pilote", ro = u.role === "lecteur" ? "readonly" : "", th = store.prefs().theme || "auto", on = store.prefs().notif || {};
     const chk = (k, t) => `<button type="button" class="check" data-act="set-notif" data-k="${k}" aria-pressed="${on[k] !== false}"><span class="box">${ic("check")}</span>${t}</button>`;
     return `<section class="set"><h2>Mes infos</h2>
-        ${ro ? "" : `<div class="me-photo"><button type="button" class="mp-rond" data-act="photo-choisir" aria-label="${u.photo ? "Changer ma photo" : "Ajouter ma photo"}">${KP.avatar(u, "av-xl")}<span class="mp-cam" aria-hidden="true">${ic("camera")}</span></button>
+        ${ro || !store.photoOk() ? "" : `<div class="me-photo"><button type="button" class="mp-rond" data-act="photo-choisir" aria-label="${u.photo ? "Changer ma photo" : "Ajouter ma photo"}">${KP.avatar(u, "av-xl")}<span class="mp-cam" aria-hidden="true">${ic("camera")}</span></button>
           <input type="file" id="me-photo" accept="image/*" hidden>
           <div class="mp-tx"><button type="button" class="btn quiet small" data-act="photo-choisir">${u.photo ? "Changer la photo" : "Ajouter ma photo"}</button>${u.photo ? `<button type="button" class="link soft" data-act="photo-retirer">Retirer</button>` : ""}</div></div>`}
         <div class="two">${field("Prénom", `<input class="input" id="me-nom" data-set="me:nom" value="${h(u.nom)}" maxlength="40" autocomplete="off" ${ro}>`)}${field("Fonction", `<input class="input" id="me-fonction" data-set="me:fonction" value="${h(u.fonction)}" maxlength="80" autocomplete="off" ${ro}>`)}</div>

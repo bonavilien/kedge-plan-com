@@ -14,10 +14,10 @@
     services: [{ k: "rp", nom: "Relations presse", court: "RP", ordre: 1 }, { k: "rs", nom: "Réseaux sociaux", court: "RS", ordre: 2 }, { k: "video", nom: "Production vidéo", court: "Vidéo", ordre: 3 }, { k: "content", nom: "Content", court: "Content", ordre: 4 }],
     partners: [{ k: "challenges", nom: "Challenges" }],
     profiles: [
-      { id: U(1), nom: "Julien", fonction: "Chef de projet com", svc: "content", chef: true, media: true, visiteur: false, notif_all: true, notif_demandes: true, notif_changements: true, version: "" },
-      { id: U(2), nom: "Aurélie", fonction: "Relations presse", svc: "rp", chef: false, media: false, visiteur: false, notif_all: false, notif_demandes: true, notif_changements: true, version: "1.5.0" },
-      { id: U(3), nom: "Stéphane", fonction: "Réseaux sociaux", svc: "rs", chef: false, media: false, visiteur: false, notif_all: false, notif_demandes: true, notif_changements: true, version: "" },
-      { id: U(4), nom: "Visiteur", fonction: "", svc: null, chef: false, media: false, visiteur: true, notif_all: false, notif_demandes: true, notif_changements: true, version: "" },
+      { id: U(1), nom: "Julien", fonction: "Chef de projet com", svc: "content", chef: true, media: true, visiteur: false, notif_all: true, notif_demandes: true, notif_changements: true, version: "" , photo: null },
+      { id: U(2), nom: "Aurélie", fonction: "Relations presse", svc: "rp", chef: false, media: false, visiteur: false, notif_all: false, notif_demandes: true, notif_changements: true, version: "1.5.0" , photo: null },
+      { id: U(3), nom: "Stéphane", fonction: "Réseaux sociaux", svc: "rs", chef: false, media: false, visiteur: false, notif_all: false, notif_demandes: true, notif_changements: true, version: "" , photo: null },
+      { id: U(4), nom: "Visiteur", fonction: "", svc: null, chef: false, media: false, visiteur: true, notif_all: false, notif_demandes: true, notif_changements: true, version: "" , photo: null },
     ],
     items: [
       item({ id: I(1), kind: "tf", t: "Journée portes ouvertes", date: d(12), svc: "chef", m: ["REC"], lieu: "Campus de Bordeaux", note: "Accueil des familles." }),
