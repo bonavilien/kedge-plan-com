@@ -212,7 +212,7 @@
     "push-toggle": async () => { const p = KP.remote.push; try { if (p.on) { await p.disable(); KP.toast("Cet appareil ne reçoit plus les notifications"); } else { await p.enable(); KP.toast("Notifications activées sur cet appareil"); } } catch (e) { KP.toast(e.message || "Impossible d'activer les notifications"); } KP.render(); },
     "set-tab": (a) => KP.go({ set: a.dataset.k }),
     "set-couleur": (a) => { store.saveProjet({ couleur: a.dataset.k }); },
-    "set-theme": (a) => store.setPref("theme", a.dataset.k),
+    "set-theme": (a) => KP.changerTheme(a.dataset.k, a),
     "photo-choisir": () => { const i = document.getElementById("me-photo"); if (i) { i.value = ""; i.click(); } },
     "photo-retirer": () => { store.savePerson(KP.me().k, { photo: "" }); KP.toast("Photo retirée"); },
     "set-notif": (a) => { const on = { ...(store.prefs().notif || {}) }; on[a.dataset.k] = on[a.dataset.k] === false; store.setPref("notif", on); },

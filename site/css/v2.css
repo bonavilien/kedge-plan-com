@@ -1321,3 +1321,80 @@ html.fiche-open .r-tot .r-eur { margin-right: 136px; }
 @keyframes d-trace { to { stroke-dashoffset: 0; } }
 @keyframes d-bond { 50% { transform: scale(1.08); } }
 @keyframes d-onde { from { box-shadow: 0 0 0 0 color-mix(in srgb, var(--ok-ink) 45%, transparent); } to { box-shadow: 0 0 0 12px transparent; } }
+
+/* ---------- maquette eye candy, suite : chaque icône du menu a son geste, la sélection glisse, les boutons répondent ---------- */
+.nav, .seg, .tabbar { isolation: isolate; }
+.nav a { position: relative; }
+:is(.nav, .tabbar) [data-k="reunion"] .ic rect { fill: currentColor; fill-opacity: 0; }
+@media (prefers-reduced-motion: no-preference) {
+  /* le geste de chaque icône : au survol, une fois en arrivant sur son écran (.glisse), et dans la démo (.joue) */
+  .brand img, .new .ic svg { transition: transform .35s cubic-bezier(.3,1.5,.5,1); }
+  .brand img { transform-origin: 30% 90%; }
+  .new.joue .ic svg { transform: rotate(90deg); }
+  .brand.joue img { animation: g-sept .6s cubic-bezier(.3,1.4,.5,1); }
+  :is(.nav, .tabbar) a:is(.joue, .glisse)[data-k="accueil"] .ic svg { animation: g-saut .5s ease .05s; }
+  :is(.nav, .tabbar) a:is(.joue, .glisse)[data-k="plan"] .ic path:last-child { stroke-dasharray: 12; animation: g-trait .45s ease-out .05s both; }
+  :is(.nav, .tabbar) a:is(.joue, .glisse)[data-k="resultats"] .ic path:last-child { stroke-dasharray: 17; animation: g-courbe .6s ease-out .05s both; }
+  :is(.nav, .tabbar) a:is(.joue, .glisse)[data-k="reunion"] .ic rect { animation: g-allume .8s ease .05s; }
+  :is(.side-foot, .topbar) [data-act="search"].joue .ic svg { transform: rotate(-12deg) scale(1.12); }
+  :is(.side-foot, .topbar) [data-act="notifs"].joue .ic svg { animation: ec-cloche .7s ease; transform-origin: 50% 12%; }
+  :is(.side-foot, .topbar) [data-act="profile"].joue .avatar { transform: scale(1.1); box-shadow: 0 0 0 2px var(--panel, #333539), 0 0 0 4px var(--yellow); }
+  @media (hover: hover) {
+    .brand:hover img { animation: g-sept .6s cubic-bezier(.3,1.4,.5,1); }
+    .new:hover .ic svg { transform: rotate(90deg); }
+    .nav [data-k="accueil"]:hover .ic svg { animation: g-saut .5s ease; }
+    .nav [data-k="plan"]:hover .ic path:last-child { stroke-dasharray: 12; animation: g-trait .45s ease-out both; }
+    .nav [data-k="resultats"]:hover .ic path:last-child { stroke-dasharray: 17; animation: g-courbe .6s ease-out both; }
+    .nav [data-k="reunion"]:hover .ic rect { animation: g-allume .8s ease; }
+    /* les bulles d'aide attendent un court instant puis montent en fondu : plus de clignotement en passant la souris */
+    [data-tip]:hover::after { animation: g-tip .16s ease-out .35s both; }
+  }
+
+  /* la surbrillance part de l'ancien choix et glisse jusqu'au nouveau */
+  .nav a.on.glisse { background: transparent; }
+  .nav a.on.glisse::before { content: ""; position: absolute; inset: 0; z-index: -1; border-radius: inherit; background: var(--panel-hover); animation: g-glisse .3s cubic-bezier(.2,.8,.2,1) both; }
+  .seg button.on.glisse { background: transparent; box-shadow: none; }
+  .seg button.on.glisse::before { content: ""; position: absolute; top: 0; bottom: 0; left: 0; width: 100%; z-index: -1; border-radius: inherit; background: var(--card); box-shadow: 0 1px 2px rgba(0,0,0,.12); animation: g-glisse-l .3s cubic-bezier(.2,.8,.2,1) both; }
+  .tabbar a.on.glisse .ic { background: transparent; position: relative; }
+  .tabbar a.on.glisse .ic::before { content: ""; position: absolute; inset: 0; z-index: -1; border-radius: 10px; background: var(--yellow); animation: g-glisse .32s cubic-bezier(.2,.8,.2,1) both; }
+
+  /* les boutons s'enfoncent sous le clic ; le survol s'allume en douceur au lieu de clignoter */
+  :is(.btn, .new, .ib, .seg button, .chip, .pick, button.pill, .nav a, .side-foot button, .tabbar a, .pop-i, .r-v, .cal-g button) { transition: transform .12s ease, background-color .15s ease, color .15s ease, box-shadow .15s ease, filter .15s ease; }
+  :is(.btn, .new, .ib, .seg button, .chip, .pick, button.pill, .nav a, .side-foot button, .tabbar a, .pop-i, .r-v, .cal-g button):active { transform: scale(.96); }
+  :is(.pin, .todo, .r7-next):active { transform: scale(.98); }
+
+  /* les menus déroulent leurs lignes l'une après l'autre */
+  .pop.arrive .pop-i { animation: g-ligne .24s cubic-bezier(.2,.8,.2,1) both; }
+  .pop.arrive .pop-i:nth-of-type(2) { animation-delay: .025s; }
+  .pop.arrive .pop-i:nth-of-type(3) { animation-delay: .05s; }
+  .pop.arrive .pop-i:nth-of-type(4) { animation-delay: .075s; }
+  .pop.arrive .pop-i:nth-of-type(5) { animation-delay: .1s; }
+  .pop.arrive .pop-i:nth-of-type(n+6) { animation-delay: .12s; }
+
+  /* le message du bas arrive avec un petit rebond ; avec « Annuler », un trait jaune montre le temps qu'il reste */
+  .toast { animation: g-toast .34s cubic-bezier(.2,.9,.3,1.25) both; }
+  .toast.undo { position: relative; overflow: hidden; }
+  .toast.undo::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 3px; background: var(--yellow-side, #FFD34E); opacity: .85; transform-origin: left; animation: g-reste var(--d, 5s) linear both; }
+
+  /* épingler : le marque-page tombe en place ; le compteur « à traiter » et le point des notifications rebondissent quand ils changent */
+  .ib.on.vient .ic svg { animation: g-pose .5s cubic-bezier(.3,1.5,.5,1); }
+  .nav .n.bouge, .side-foot .dot.bouge { animation: g-bouge .5s cubic-bezier(.3,1.7,.5,1); }
+
+  /* clair ou sombre : le nouveau thème s'étend en cercle depuis le bouton */
+  html.theme-vt::view-transition-old(root) { animation: none; }
+  html.theme-vt::view-transition-new(root) { animation: g-cercle .7s cubic-bezier(.45,.05,.25,1); }
+}
+@keyframes g-sept { 0%, 100% { transform: none; } 40% { transform: translateY(-3px) rotate(-8deg); } 70% { transform: translateY(1px) rotate(2deg); } }
+@keyframes g-saut { 0%, 100% { transform: none; } 35% { transform: translateY(-3.5px); } 65% { transform: translateY(.5px) scaleY(.94); } }
+@keyframes g-trait { from { stroke-dashoffset: 12; } to { stroke-dashoffset: 0; } }
+@keyframes g-courbe { from { stroke-dashoffset: 17; } to { stroke-dashoffset: 0; } }
+@keyframes g-allume { 0%, 100% { fill-opacity: 0; } 30%, 60% { fill-opacity: .3; } }
+@keyframes g-tip { from { opacity: 0; translate: 0 -3px; } }
+@keyframes g-glisse { from { transform: translate(var(--gx, 0), var(--gy, 0)); } }
+@keyframes g-glisse-l { from { transform: translateX(var(--gx, 0)); width: var(--gw, 100%); } }
+@keyframes g-ligne { from { opacity: 0; transform: translateX(-6px); } }
+@keyframes g-toast { from { opacity: 0; transform: translateY(14px) scale(.96); } }
+@keyframes g-reste { to { transform: scaleX(0); } }
+@keyframes g-pose { 0% { transform: translateY(-8px) scaleY(.8); opacity: .2; } 60% { transform: translateY(1px) scaleY(1.06); opacity: 1; } }
+@keyframes g-bouge { 0% { transform: scale(.5); } 55% { transform: scale(1.22); } 100% { transform: none; } }
+@keyframes g-cercle { from { clip-path: circle(0 at var(--vx, 50%) var(--vy, 50%)); } to { clip-path: circle(150vmax at var(--vx, 50%) var(--vy, 50%)); } }

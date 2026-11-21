@@ -54,19 +54,24 @@
     const news = KP.notifs().some((j) => j.quand > (store.prefs().vu || 0));
     /* sous-titre : le projet (« Programme Grande École »), sinon l'organisation quand il n'y a pas de logo */
     const st = store.projet().sousTitre || (!KP.marque.logo ? KP.marque.nom : "");
+    /* le compteur « à traiter » et le point des notifications rebondissent quand ils changent */
+    const bougeN = lastN != null && n !== lastN, bougeD = lastNews === false && news; lastN = n; lastNews = news;
     $("side").innerHTML = `
       <a class="brand${KP.marque.logo ? "" : " nologo"}${KP.marque.carre ? " carre" : ""}" href="#/accueil" aria-label="${h(KP.marque.titre)}${st ? " " + h(st) : ""}, accueil">${KP.logo()}<span class="bt"><b>${h(KP.marque.app)}</b>${st ? `<small>${h(st)}</small>` : ""}</span></a>
       ${store.canCreate() ? `<button class="new" type="button" data-act="new">${ic("plus")}Nouveau<kbd>N</kbd></button>` : ""}
-      <div class="nav">${SCREENS.map(([k, nom, i]) => `<a href="${KP.href({ screen: k })}" class="${r.screen === k ? "on" : ""}" ${r.screen === k ? 'aria-current="page"' : ""}>${ic(i)}${nom}${k === "accueil" && n ? `<span class="n" aria-label="${n} à traiter">${n}</span>` : ""}</a>`).join("")}</div>
+      <div class="nav">${SCREENS.map(([k, nom, i]) => `<a href="${KP.href({ screen: k })}" data-k="${k}" class="${r.screen === k ? "on" : ""}" ${r.screen === k ? 'aria-current="page"' : ""}>${ic(i)}${nom}${k === "accueil" && n ? `<span class="n${bougeN ? " bouge" : ""}" aria-label="${n} à traiter">${n}</span>` : ""}</a>`).join("")}</div>
       <div class="side-foot">
         <button type="button" data-act="search">${ic("search")}Rechercher<kbd>Ctrl K</kbd></button>
-        <button type="button" data-act="notifs">${ic("bell")}Notifications${news ? '<span class="dot" aria-label="Du nouveau"></span>' : ""}</button>
+        <button type="button" data-act="notifs">${ic("bell")}Notifications${news ? `<span class="dot${bougeD ? " bouge" : ""}" aria-label="Du nouveau"></span>` : ""}</button>
         <button type="button" data-act="profile" data-side="1"><span class="avatar">${u.photo ? `<img src="${h(u.photo)}" alt="">` : h((u.nom || "?")[0])}</span><span class="who">${h(u.nom)}<small>${h(u.fonction)}</small></span></button>
         <a class="ver" href="#/reglages/apropos" data-tip="Voir les nouveautés">Version ${h(KP.versionLabel(KP.VERSION.n))}</a>
       </div>`;
     $("topbar").innerHTML = `<b>${KP.marque.carre ? KP.logo() : ""}<span class="bt"><span>${h(KP.marque.app)}</span>${st ? `<small>${h(st)}</small>` : ""}</span></b>${KP.ib("search", "Rechercher", "search")}${KP.ib("bell", "Notifications", "notifs")}<button class="ib" type="button" data-act="profile" aria-label="Profil"><span class="avatar">${u.photo ? `<img src="${h(u.photo)}" alt="">` : h((u.nom || "?")[0])}</span></button>`;
-    $("tabbar").innerHTML = SCREENS.map(([k, nom, i]) => `<a href="${KP.href({ screen: k })}" class="${r.screen === k ? "on" : ""}">${ic(i)}${nom}</a>`).join("") + (store.canCreate() ? `<button class="plus" type="button" data-act="new" aria-label="Nouveau">${ic("plus")}</button>` : "<span></span>");
+    $("tabbar").innerHTML = SCREENS.map(([k, nom, i]) => `<a href="${KP.href({ screen: k })}" data-k="${k}" class="${r.screen === k ? "on" : ""}">${ic(i)}${nom}</a>`).join("") + (store.canCreate() ? `<button class="plus" type="button" data-act="new" aria-label="Nouveau">${ic("plus")}</button>` : "<span></span>");
+    /* la surbrillance glisse de l'ancien écran vers le nouveau, et l'icône d'arrivée fait son geste */
+    KP.glisser($("side").querySelector(".nav")); KP.glisser($("tabbar"));
   }
+  let lastN = null, lastNews = null;
   function render() {
     if (KP.hold) return; /* branché sur la base : rien ne s'affiche avant la connexion */
     /* la couleur du projet, gardée aussi pour l'écran de connexion de cet appareil */
@@ -85,6 +90,7 @@
     main.innerHTML = KP.views[KP.route.screen]();
     main.classList.remove("entre", "suiv", "prec");
     if (entre) { void main.offsetWidth; main.classList.add("entre"); if (sens) main.classList.add(sens); clearTimeout(KP.entreT); KP.entreT = setTimeout(() => main.classList.remove("entre", "suiv", "prec"), 900); }
+    main.querySelectorAll(".seg[aria-label]").forEach((g) => KP.glisser(g, rt.screen));
     if (KP.apresRendu) KP.apresRendu(main, entre);
     main.scrollTop = top;
     KP.renderFiche();

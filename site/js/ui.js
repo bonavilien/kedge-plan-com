@@ -10,6 +10,30 @@
   KP.norm = (s) => String(s).normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
   KP.phone = () => window.matchMedia("(max-width: 767px)").matches;
   KP.acts = {};
+
+  /* la surbrillance glisse de l'ancien choix vers le nouveau : menu de gauche, onglets du téléphone, périodes, affichage, apparence.
+     On retient où était le choix ; au rendu suivant, le nouveau part de là (css : .glisse, g-glisse) */
+  const glis = {};
+  KP.glisser = (g, ou = "") => {
+    if (!g) return;
+    const k = ou + "|" + (g.getAttribute("aria-label") || g.className), on = g.querySelector(":scope > .on"), avant = glis[k];
+    if (!on) { delete glis[k]; return; }
+    const r = { x: on.offsetLeft, y: on.offsetTop, w: on.offsetWidth, id: on.dataset.k || on.textContent };
+    glis[k] = r;
+    if (!avant || avant.id === r.id || !on.offsetWidth) return;
+    on.style.setProperty("--gx", avant.x - r.x + "px"); on.style.setProperty("--gy", avant.y - r.y + "px"); on.style.setProperty("--gw", avant.w + "px");
+    on.classList.add("glisse");
+  };
+
+  /* clair ou sombre : le nouveau thème s'étend en cercle depuis le bouton touché (css : g-cercle) */
+  KP.changerTheme = (k, depuis) => {
+    const faire = () => KP.store.setPref("theme", k), d = document.documentElement;
+    if (!document.startViewTransition || matchMedia("(prefers-reduced-motion: reduce)").matches) return faire();
+    const r = depuis && depuis.getBoundingClientRect ? depuis.getBoundingClientRect() : null;
+    d.style.setProperty("--vx", r ? r.left + r.width / 2 + "px" : "50%"); d.style.setProperty("--vy", r ? r.top + r.height / 2 + "px" : "50%");
+    d.classList.add("theme-vt");
+    document.startViewTransition(faire).finished.finally(() => d.classList.remove("theme-vt"));
+  };
   KP.views = {};
   KP.ui = { past: false, gx: null, gper: "" };
 
@@ -20,6 +44,8 @@
     KP.closePop();
     const scrim = document.createElement("div"); scrim.className = "scrim";
     const el = document.createElement("div"); el.className = "pop " + (opt.cls || ""); el.setAttribute("role", opt.role || "menu"); if (opt.label) el.setAttribute("aria-label", opt.label); if (opt.role === "dialog") el.setAttribute("aria-modal", "false"); el.innerHTML = html;
+    /* ses lignes arrivent l'une après l'autre, à l'ouverture seulement (css : .arrive) */
+    el.classList.add("arrive"); setTimeout(() => el.classList.remove("arrive"), 600);
     (anchor.closest("dialog") || layer()).append(scrim, el);
     const place = () => {
       if (KP.phone()) return;
@@ -83,7 +109,8 @@
   /* ---------- message bref, avec « Annuler » pendant 5 secondes ---------- */
   KP.toast = (text, undo) => {
     const box = document.getElementById("toasts"); box.innerHTML = "";
-    const t = document.createElement("div"); t.className = "toast"; t.innerHTML = `<span>${KP.h(text)}</span>` + (undo ? `<button type="button">Annuler</button>` : "");
+    /* avec « Annuler », un fin trait jaune montre le temps qu'il reste (css : g-reste) */
+    const t = document.createElement("div"); t.className = "toast" + (undo ? " undo" : ""); t.style.setProperty("--d", (undo ? 5000 : 2600) + "ms"); t.innerHTML = `<span>${KP.h(text)}</span>` + (undo ? `<button type="button">Annuler</button>` : "");
     box.append(t);
     /* le message « nouvelle version » revient après chaque message bref, tant qu'on n'a pas mis à jour */
     const kill = setTimeout(() => { t.remove(); if (KP.maj) KP.maj(); }, undo ? 5000 : 2600);
