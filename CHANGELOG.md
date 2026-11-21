@@ -2,6 +2,13 @@
 
 Généré depuis `site/js/version.js` par `node scripts/version.mjs`. Ne pas modifier à la main.
 
+## 2.8 · 2026-11-22
+
+- Une barre tout en haut de l'accueil : écris comme tu parles (« décale le carrousel JPO de vendredi à mardi prochain », « @Louise t'as des photos du gala ? », « on laisse tomber la relance PGE »). Elle surligne ce qu'elle a compris, montre l'avant et l'après, et tout se défait avec Annuler
+- Elle sait créer, décaler, barrer, confirmer, noter un résultat ou un budget, confier, demander des éléments, noter un rappel, un lieu, une note, épingler, ouvrir une fiche ou chercher ; la petite icône à droite liste ce qu'elle comprend
+- Une demande sans date attend une réponse la veille de l'action ; « pour info » seulement si tu l'écris
+- Réglages, Suivi (l'admin seul) : santé du plan, phrases que la barre n'a pas comprises, erreurs, recherches sans résultat, écrans utilisés, et un export à donner à Claude
+
 ## 2.7 · 2026-11-21
 
 - Ta photo dans Réglages, Mon profil : clique ou glisse une image, elle remplace tes initiales sur tous tes visages
