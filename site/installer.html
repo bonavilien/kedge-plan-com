@@ -21,7 +21,7 @@
   --serif: "KRC Serif", Georgia, "Times New Roman", serif;
   --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   --mono: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
-  --r2: 8px; --r3: 12px; --r4: 16px;
+  --r1: 6px; --r2: 8px; --r3: 12px; --r4: 16px;
   color-scheme: light;
 }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
@@ -65,6 +65,7 @@ input.cle { font: 13.5px var(--mono); }
 input:focus { border-color: var(--focus); outline: none; box-shadow: 0 0 0 1px var(--focus); }
 input[aria-invalid="true"] { border-color: var(--red); }
 .etat { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 600; min-height: 20px; }
+.etat:empty { min-height: 0; }
 .etat.ok { color: var(--ok); }
 .etat.non { color: var(--red); }
 .etat img { width: 22px; height: 22px; border-radius: 50%; }
@@ -76,6 +77,32 @@ input[aria-invalid="true"] { border-color: var(--red); }
 .go { height: 52px; border: 0; border-radius: var(--r3); background: var(--yellow); color: var(--yellow-ink); font: 700 17px var(--sans); cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; }
 .go:disabled { opacity: .45; cursor: default; }
 .note { font-size: 13px; color: var(--text2); text-align: center; }
+
+/* les pas-à-pas : fermés par défaut, une action par ligne, les boutons à cliquer écrits comme à l'écran */
+.card.avant .num svg { font-size: 17px; }
+.pap { border: 1px solid var(--sep); border-radius: var(--r3); background: var(--bg); }
+.pap > summary { list-style: none; cursor: pointer; display: grid; grid-template-columns: minmax(0, 1fr) auto 18px; align-items: center; gap: 10px; padding: 12px 14px; font-weight: 650; border-radius: var(--r3); }
+.pap > summary::-webkit-details-marker { display: none; }
+.pap > summary:hover { background: var(--fill); }
+.pap > summary small { color: var(--text2); font-weight: 500; font-size: 13px; }
+.pap > summary svg { color: var(--text2); transition: transform .15s; }
+.pap[open] > summary svg { transform: rotate(180deg); }
+.pap .in { padding: 2px 14px 16px; display: grid; gap: 12px; }
+.pap .quoi { color: var(--text2); font-size: 14px; }
+.acts { margin: 0; padding: 0; list-style: none; counter-reset: a; display: grid; gap: 10px; font-size: 14.5px; }
+.acts li { counter-increment: a; display: grid; grid-template-columns: 22px minmax(0, 1fr); gap: 10px; align-items: baseline; line-height: 1.75; }
+.acts li::before { content: counter(a); font: 600 12px/20px var(--sans); color: var(--text2); text-align: center; width: 22px; height: 22px; border-radius: 50%; border: 1px solid var(--sep); background: var(--card); align-self: start; margin-top: 2px; }
+.acts li > div { min-width: 0; overflow-wrap: anywhere; }
+.acts small { display: block; color: var(--text2); font-size: 13.5px; line-height: 1.5; margin-top: 2px; }
+.ui { display: inline-flex; align-items: center; gap: 5px; padding: 0 9px; border-radius: var(--r1); border: 1px solid var(--sep); background: var(--card); font-size: 13.5px; font-weight: 600; line-height: 1.7; max-width: 100%; color: var(--text); white-space: nowrap; }
+a.ui { text-decoration: none; border-color: color-mix(in srgb, var(--text) 30%, transparent); }
+a.ui:hover { background: var(--yellow); color: var(--yellow-ink); border-color: var(--yellow); }
+.ui svg { font-size: 12px; }
+code { font: 13px var(--mono); background: var(--fill); padding: 1px 5px; border-radius: 4px; overflow-wrap: anywhere; }
+.bien { display: flex; gap: 8px; align-items: baseline; font-size: 14px; color: var(--ok); font-weight: 600; }
+.bien svg { align-self: center; }
+.astuce { display: flex; gap: 8px; align-items: baseline; font-size: 13.5px; color: var(--text2); }
+.astuce svg { align-self: center; }
 
 /* le suivi */
 .suivi { background: var(--card); border-radius: var(--r4); box-shadow: var(--shadow); padding: 22px 20px; display: grid; gap: 16px; }
@@ -99,6 +126,7 @@ input[aria-invalid="true"] { border-color: var(--red); }
 .fin .go { padding: 0 26px; text-decoration: none; }
 .fin p { font-size: 15px; }
 .fin .adr { font: 14px var(--mono); color: var(--text2); word-break: break-all; }
+.fin .nuit { display: flex; align-items: center; gap: 8px; }
 
 @media (max-width: 600px) {
   .hero-in { padding-block: 28px 56px; }
@@ -107,23 +135,77 @@ input[aria-invalid="true"] { border-color: var(--red); }
   .num { display: none; }
   .ligne, .champs { grid-template-columns: minmax(0, 1fr); }
   .btn { justify-content: center; }
+  .ui { white-space: normal; }
 }
 </style>
 </head>
 <body>
 <header class="hero"><div class="wrap hero-in">
   <img class="logo" src="assets/road-to-7th.png" alt="">
-  <div><h1>Installer l'appli</h1><p class="lead">Deux clés, ton adresse, un bouton. Environ 5 minutes.</p></div>
+  <div><h1>Installer l'appli</h1><p class="lead">Deux clés, ton adresse, un bouton. Environ 5 minutes, 10 si tu crées tes comptes.</p></div>
 </div></header>
 
 <main class="wrap">
   <form id="f" novalidate>
     <div style="display:grid;gap:14px">
+      <section class="card avant" id="c-comptes">
+        <span class="num" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="8.5" r="3.5"/><path d="M5 19.5c1.200-3.400 3.900-5 7-5s5.800 1.600 7 5"/></svg></span>
+        <div class="body">
+          <h2>Tes deux comptes</h2>
+          <p class="aide">Gratuits, à faire une seule fois. Déjà faits ? Passe à l'étape 1.</p>
+
+          <details class="pap" id="pap-compte-gh">
+            <summary>Créer mon compte GitHub <small>3 min</small><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></summary>
+            <div class="in">
+              <p class="quoi">GitHub garde le code de ton appli et la met en ligne.</p>
+              <ol class="acts">
+                <li><div>Ouvre <a class="ui" id="lien-signup-gh" href="https://github.com/signup" target="_blank" rel="noopener">github.com/signup <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 5h5v5M19 5l-8 8M18 14v4a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h4"/></svg></a></div></li>
+                <li><div>Ton <b>e-mail</b> (celui du travail convient), puis un <b>mot de passe</b>.<small>15 caractères, ou 8 avec au moins un chiffre et une minuscule.</small></div></li>
+                <li><div>Un <b>nom d'utilisateur</b>. Il sera dans l'adresse de ton appli : <code>https://<b>ton-nom</b>.github.io/plan-de-com/</code><small>Simple, en minuscules, avec des tirets si besoin. Exemple : <code>com-executive</code></small></div></li>
+                <li><div>Pays : <b>France</b>. Puis le bouton <span class="ui">Continue</span> ou <span class="ui">Create account</span>.</div></li>
+                <li><div>GitHub vérifie que tu n'es pas un robot : <span class="ui">Verify</span>, puis suis le petit jeu d'images.</div></li>
+                <li><div>Un code à 8 chiffres arrive par e-mail : tape-le.<small>Rien reçu ? Regarde dans les indésirables.</small></div></li>
+                <li><div>Connecte-toi. Si GitHub pose des questions (équipe, centres d'intérêt), tout en bas : <span class="ui">Skip personalization</span>.</div></li>
+              </ol>
+              <p class="bien"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>C'est prêt. Note ton nom d'utilisateur et ton mot de passe.</p>
+              <p class="astuce"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.6v.1"/></svg><span>Plus tard, GitHub peut te demander un code sur ton téléphone à la connexion. Suis ses écrans : l'appli n'est pas concernée.</span></p>
+            </div>
+          </details>
+
+          <details class="pap" id="pap-compte-sb">
+            <summary>Créer mon compte Supabase <small>2 min</small><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></summary>
+            <div class="in">
+              <p class="quoi">Supabase garde les données de ton appli : actions, comptes, réglages. Ton compte GitHub suffit pour y entrer.</p>
+              <ol class="acts">
+                <li><div>Ouvre <a class="ui" id="lien-signup-sb" href="https://supabase.com/dashboard/sign-up" target="_blank" rel="noopener">supabase.com/dashboard/sign-up <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 5h5v5M19 5l-8 8M18 14v4a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h4"/></svg></a></div></li>
+                <li><div>Le bouton <span class="ui">Continue with GitHub</span>, puis, sur la page de GitHub, le bouton vert <span class="ui">Authorize supabase</span>.<small>Pas de nouveau mot de passe à inventer.</small></div></li>
+                <li><div>Supabase te demande une <b>organisation</b>. <b>Name</b> : ton équipe. <b>Plan</b> : <b>Free</b>, 0 $. Puis <span class="ui">Create organization</span>.</div></li>
+                <li><div>Supabase propose ensuite <span class="ui">Create a new project</span> : <b>ne le fais pas</b>, l'installateur s'en charge.</div></li>
+              </ol>
+              <p class="bien"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>C'est prêt. Passe à l'étape 1.</p>
+              <p class="astuce"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.6v.1"/></svg><span>Un compte gratuit a droit à 2 bases. Si tu en as déjà 2, mets-en une en pause sur supabase.com avant d'installer.</span></p>
+            </div>
+          </details>
+        </div>
+      </section>
+
       <section class="card" id="c-gh">
         <span class="num">1</span>
         <div class="body">
           <h2>Ta clé GitHub</h2>
           <p class="aide">Sur la page qui s'ouvre : <b>Expiration</b> sur <b>No expiration</b>, puis <b>Generate token</b> tout en bas. Copie la clé.</p>
+          <details class="pap" id="pap-cle-gh">
+            <summary>La clé, pas à pas <small>2 min</small><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></summary>
+            <div class="in">
+              <ol class="acts">
+                <li><div><span class="ui">Créer ma clé GitHub</span> ouvre la bonne page.<small>GitHub redemande parfois ton mot de passe, ou un code reçu par e-mail : donne-le.</small></div></li>
+                <li><div><b>Note</b> est déjà rempli. <b>Expiration</b> : choisis <span class="ui">No expiration</span>.<small>Un message jaune te le déconseille : c'est normal, la clé sert aux mises à jour de chaque nuit.</small></div></li>
+                <li><div>Les cases <b>repo</b> et <b>workflow</b> sont déjà cochées. Ne touche à rien d'autre.</div></li>
+                <li><div>Tout en bas, le bouton vert <span class="ui">Generate token</span>.</div></li>
+                <li><div>La clé s'affiche une seule fois. Elle commence par <code>ghp_</code>. Copie-la avec l'icône <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2.5"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg> à côté, puis colle-la ici.</div></li>
+              </ol>
+            </div>
+          </details>
           <div class="ligne">
             <a class="btn" id="lien-gh" href="https://github.com/settings/tokens/new?scopes=repo,workflow&amp;description=Plan%20de%20com" target="_blank" rel="noopener">Créer ma clé GitHub <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 5h5v5M19 5l-8 8M18 14v4a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h4"/></svg></a>
             <input class="cle" id="gh" name="gh" placeholder="ghp_…" autocomplete="off" spellcheck="false" aria-label="Clé GitHub" aria-describedby="gh-etat">
@@ -137,6 +219,17 @@ input[aria-invalid="true"] { border-color: var(--red); }
         <div class="body">
           <h2>Ta clé Supabase</h2>
           <p class="aide"><b>Generate new token</b>, un nom (Plan de com), <b>Generate token</b>. Copie la clé.</p>
+          <details class="pap" id="pap-cle-sb">
+            <summary>La clé, pas à pas <small>1 min</small><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></summary>
+            <div class="in">
+              <ol class="acts">
+                <li><div><span class="ui">Créer ma clé Supabase</span> ouvre la bonne page.<small>Si Supabase demande de te connecter : <span class="ui">Continue with GitHub</span>.</small></div></li>
+                <li><div>Le bouton <span class="ui">Generate new token</span>. Un nom : <b>Plan de com</b>.<small>Si une durée est demandée, 1 jour suffit : cette clé ne sert qu'à l'installation.</small></div></li>
+                <li><div>Le bouton <span class="ui">Generate token</span>.</div></li>
+                <li><div>La clé s'affiche une seule fois. Elle commence par <code>sbp_</code>. Copie-la, puis colle-la ici.</div></li>
+              </ol>
+            </div>
+          </details>
           <div class="ligne">
             <a class="btn" href="https://supabase.com/dashboard/account/tokens" target="_blank" rel="noopener">Créer ma clé Supabase <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 5h5v5M19 5l-8 8M18 14v4a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h4"/></svg></a>
             <input class="cle" id="sb" name="sb" placeholder="sbp_…" autocomplete="off" spellcheck="false" aria-label="Clé Supabase" aria-describedby="sb-etat">
@@ -149,6 +242,7 @@ input[aria-invalid="true"] { border-color: var(--red); }
         <span class="num">3</span>
         <div class="body">
           <h2>Ton appli</h2>
+          <p class="aide">Ton e-mail et un mot de passe tout neuf : ce sera ta connexion à l'appli, rien à voir avec GitHub.</p>
           <div class="champs">
             <label class="champ">Nom de l'appli<input id="app" placeholder="Plan de com" maxlength="40" autocomplete="off"></label>
             <label class="champ">Équipe<input id="nom" placeholder="Executive Education" maxlength="60" autocomplete="organization"></label>
@@ -177,6 +271,7 @@ input[aria-invalid="true"] { border-color: var(--red); }
       <a class="go" id="ouvrir" href="#" target="_blank" rel="noopener">Ouvrir mon appli</a>
       <p class="adr" id="adr"></p>
       <p>Connecte-toi avec <b id="fin-mail"></b> et ton mot de passe. Garde l'adresse dans tes favoris.</p>
+      <p class="nuit" id="fin-nuit"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19.5 11A7.5 7.5 0 0 0 6.2 6.9L4.5 8.6"/><path d="M4.5 4.5v4.1h4.1"/><path d="M4.5 13a7.5 7.5 0 0 0 13.3 4.1l1.7-1.7"/><path d="M19.5 19.5v-4.1h-4.1"/></svg>Elle se met à jour toute seule, chaque nuit.</p>
       <p class="muted" id="fin-plus">Ta clé Supabase ne sert plus : tu peux la supprimer sur supabase.com.</p>
     </div>
   </section>

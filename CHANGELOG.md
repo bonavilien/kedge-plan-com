@@ -5,6 +5,8 @@ Généré depuis `site/js/version.js` par `node scripts/version.mjs`. Ne pas mod
 ## 2.7 · 2026-11-21
 
 - Une autre équipe installe sa propre appli en un clic : deux clés, son adresse, le bouton Installer. La base, le premier compte, les notifications, le bouton Mettre à jour et la mise en ligne se font tout seuls
+- La page d'installation explique pas à pas comment créer un compte GitHub et un compte Supabase, puis les deux clés
+- Les copies des autres équipes se mettent à jour toutes seules, chaque nuit : la base, puis le code. Le bouton Mettre à jour sert à ne pas attendre
 
 ## 2.6.3 · 2026-11-20
 

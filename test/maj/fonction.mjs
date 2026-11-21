@@ -55,8 +55,8 @@ function github(o = {}) {
   return { fetch, calls };
 }
 function make(o = {}) {
-  const g = github(o), faites = ["0001_schema.sql", ...(o.faites || [])], applied = [];
-  const env = { GITHUB_TOKEN: "jeton-test", GITHUB_REPO: o.repo ?? "copie/plan", GITHUB_BRANCH: "" };
+  const g = github(o), faites = ["0001_schema.sql", ...(o.faites || [])], applied = [], coffre = { ...(o.coffre || {}) }, fonds = [];
+  const env = { GITHUB_TOKEN: "jeton-test", GITHUB_REPO: o.repo ?? "copie/plan", GITHUB_BRANCH: "", SUPABASE_URL: "https://abcd.supabase.co/" };
   const handler = createHandler({
     env: (k) => env[k] || "",
     fetch: g.fetch,
@@ -64,10 +64,13 @@ function make(o = {}) {
     base: {
       faites: async () => [...faites],
       appliquer: async (nom, sql) => { if (sql.startsWith("casse")) throw new Error("syntax error at or near \"casse\""); applied.push(nom); faites.push(nom); },
+      secretAuto: async () => coffre.kplan_maj_secret || "",
+      inscrire: async (url) => { if (o.coffrePanne) throw new Error("coffre fermé"); coffre.kplan_maj_url ??= url; coffre.kplan_maj_secret ??= "s".repeat(64); },
     },
+    fond: o.fond ? (p) => fonds.push(p) : undefined,
   });
-  const call = async (action, jwt = "pilote") => { const r = await handler(new Request("https://x/functions/v1/mise-a-jour", { method: "POST", headers: { authorization: `Bearer ${jwt}` }, body: JSON.stringify({ action }) })); return { status: r.status, body: await r.json(), cors: r.headers.get("access-control-allow-origin") }; };
-  return { call, applied, g, handler };
+  const call = async (action, jwt = "pilote", extra = {}) => { const r = await handler(new Request("https://x/functions/v1/mise-a-jour", { method: "POST", headers: { ...(jwt ? { authorization: `Bearer ${jwt}` } : {}), ...extra }, body: JSON.stringify({ action }) })); return { status: r.status, body: await r.json(), cors: r.headers.get("access-control-allow-origin") }; };
+  return { call, applied, g, handler, coffre, fonds };
 }
 
 { const { call } = make(); const r = await call("etat", ""); check(r.status === 401 && r.cors === "*", "sans connexion : 401, avec CORS"); }
@@ -99,6 +102,41 @@ function make(o = {}) {
 { const { call } = make({ origine: true }); const r = await call("etat"); check(r.body.origine === true, "dépôt d'origine reconnu"); const c = await call("code"); check(c.status === 400, "l'origine ne se met pas à jour elle-même"); }
 { const { call } = make({ jetonFaux: true }); const r = await call("etat"); check(r.status === 502 && r.body.erreur === "jeton", "jeton refusé : dit clairement"); }
 { const { call } = make({ repo: "" }); const r = await call("etat"); check(r.status === 500 && r.body.erreur === "secrets", "secrets manquants : dit lesquels"); }
+
+/* la mise à jour de nuit : aucune personne, un secret du coffre */
+{
+  const { call, coffre } = make();
+  const r = await call("etat");
+  check(r.body.auto === true && coffre.kplan_maj_url === "https://abcd.supabase.co/functions/v1/mise-a-jour" && coffre.kplan_maj_secret.length === 64, "un pilote ouvre Réglages : la fonction inscrit son adresse et un secret dans le coffre");
+  coffre.kplan_maj_secret = "deja-la"; await call("etat");
+  check(coffre.kplan_maj_secret === "deja-la", "inscription : rien n'est remplacé une fois en place");
+}
+{ const { call } = make({ coffrePanne: true }); const r = await call("etat"); check(r.status === 200 && r.body.auto === false && r.body.version.ici === "2.1.0", "coffre en panne : l'état s'affiche quand même, sans la mise à jour de nuit"); }
+{ const { call, coffre } = make({ origine: true }); const r = await call("etat"); check(r.body.origine === true && !("kplan_maj_url" in coffre), "l'appli d'origine ne s'inscrit pas : elle ne se met pas à jour"); }
+{
+  const { call, applied, g } = make({ coffre: { kplan_maj_secret: "x".repeat(64) } });
+  const r = await call("auto", "", { "x-kplan-auto": "x".repeat(64) });
+  check(r.status === 200 && JSON.stringify(applied) === JSON.stringify(["0027_nouveau.sql", "0028_encore.sql"]) && r.body.fusion === "fast-forward" && r.body.version === "2.2.0", "de nuit : la base puis le code, sans compte ni clic");
+  check(g.calls.indexOf("POST /repos/copie/plan/merge-upstream") > g.calls.lastIndexOf("GET /repos/origine/plan/contents/supabase/migrations/0028_encore.sql"), "de nuit : le code arrive après la base");
+  const r2 = await call("auto", "", { "x-kplan-auto": "x".repeat(64) });
+  check(r2.status === 200 && r2.body.faites.length === 0, "de nuit, déjà à jour : rien ne bouge");
+}
+{
+  const { call, applied } = make({ coffre: { kplan_maj_secret: "x".repeat(64) } });
+  for (const faux of ["y".repeat(64), "x", ""]) { const r = await call("auto", "", { "x-kplan-auto": faux }); check(r.status === 401, `de nuit, mauvais secret « ${faux.slice(0, 4)}… » : refusé`); }
+  check(applied.length === 0, "mauvais secret : rien n'est appliqué");
+}
+{ const { call } = make(); const r = await call("auto", "", { "x-kplan-auto": "" }); check(r.status === 401, "coffre vide : la mise à jour de nuit est refusée, même avec un secret vide"); }
+{ const { call } = make(); const r = await call("auto"); check(r.status === 400, "un pilote ne passe pas par « auto » (il a ses boutons)"); }
+{ const { call, applied } = make({ casse: true, coffre: { kplan_maj_secret: "x".repeat(64) } }); const r = await call("auto", "", { "x-kplan-auto": "x".repeat(64) }); check(r.status === 500 && /0028_encore/.test(r.body.message) && applied.length === 1, "de nuit, un script cassé : on s'arrête avant le code"); }
+{
+  const { call, fonds, applied } = make({ fond: true, coffre: { kplan_maj_secret: "x".repeat(64) } });
+  const r = await call("auto", "", { "x-kplan-auto": "x".repeat(64) });
+  check(r.status === 202 && fonds.length === 1, "dans Supabase : réponse immédiate, le travail continue en tâche de fond");
+  await fonds[0];
+  check(applied.length === 2, "tâche de fond terminée : base à jour");
+}
+check(FONCTION === 2, "FONCTION monte à 2 : l'appli propose de recoller la fonction");
 
 fs.rmSync(tmp, { recursive: true, force: true });
 console.log(`Fonction mise-a-jour : ${ok} vérifications, tout est bon`);

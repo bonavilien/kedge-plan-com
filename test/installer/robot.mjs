@@ -45,7 +45,12 @@ async function tout(f, secret) {
   ok(f.mdp === SECRET.mdp, "le mot de passe choisi est celui du compte");
   ok(f.secrets.GITHUB_TOKEN === "ghp_test" && f.secrets.GITHUB_REPO === "claire-kedge/plan-de-com" && /^[A-Za-z0-9_-]{80,}$/.test(f.secrets.VAPID_PUBLIC_KEY) && f.secrets.VAPID_PRIVATE_KEY && f.secrets.CRON_SECRET, "secrets : bouton Mettre à jour et notifications");
   const v = requete("kplan_installer", "select name, decrypted_secret from vault.decrypted_secrets order by name").lignes;
-  ok(v.length === 2 && v.find((x) => x.name === "kplan_push_url").decrypted_secret.endsWith("/auth-abcdefghijklmnopqrst/functions/v1/push") && v.find((x) => x.name === "kplan_cron_secret").decrypted_secret === f.secrets.CRON_SECRET, "coffre de la base : adresse de la fonction push et secret partagé");
+  ok(v.length === 4 && v.find((x) => x.name === "kplan_push_url").decrypted_secret.endsWith("/auth-abcdefghijklmnopqrst/functions/v1/push") && v.find((x) => x.name === "kplan_cron_secret").decrypted_secret === f.secrets.CRON_SECRET, "coffre de la base : adresse de la fonction push et secret partagé");
+  const maj = Object.fromEntries(v.filter((x) => x.name.startsWith("kplan_maj")).map((x) => [x.name, x.decrypted_secret]));
+  ok(maj.kplan_maj_url && maj.kplan_maj_url.endsWith("/auth-abcdefghijklmnopqrst/functions/v1/mise-a-jour") && /^[0-9a-f]{64}$/.test(maj.kplan_maj_secret), "coffre : adresse de la fonction mise-a-jour et secret de la nuit");
+  requete("kplan_installer", "select kplan_private.maj_auto()");
+  const nuit = requete("kplan_installer", "select url, body, headers from net.calls order by id desc limit 1").lignes[0];
+  ok(nuit && nuit.url === maj.kplan_maj_url && nuit.body.action === "auto" && nuit.headers["x-kplan-auto"] === maj.kplan_maj_secret && requete("kplan_installer", "select count(*)::int as n from cron.job where jobname = 'kplan-mise-a-jour'").lignes[0].n === 1, "la nuit venue, la base appelle sa fonction mise-a-jour : la copie se met à jour seule");
   ok(["push", "mise-a-jour", "export"].every((x) => f.fonctions[x] && f.fonctions[x].verify_jwt === false && f.fonctions[x].entrypoint_path === "index.ts" && f.fonctions[x].taille > 2000), "trois fonctions installées, sans Verify JWT");
   ok(f.vars.KPLAN_SUPABASE_URL === "http://127.0.0.1:" + f.env.KPLAN_HOTE.split(":")[2].split("/")[0] + "/auth-abcdefghijklmnopqrst" && f.vars.KPLAN_SUPABASE_KEY === "sb_publishable_abc" && f.vars.KPLAN_VAPID === f.secrets.VAPID_PUBLIC_KEY, "variables du site : adresse, clé publique, clé des notifications");
   const sortie = fs.readFileSync(path.join(tmp, "sortie.txt"), "utf8");

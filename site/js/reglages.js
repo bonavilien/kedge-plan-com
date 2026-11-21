@@ -85,7 +85,9 @@
       absente: () => `<p class="muted">Le bouton n'est pas encore installé.</p><a class="btn quiet" href="${GUIDE}#6-le-bouton-mettre-à-jour" target="_blank" rel="noopener">${ic("external")}Le guide, étape 6</a>`,
       origine: () => `<div class="maj-v"><span class="ok-dot">${ic("check")}</span><span class="vn">${lab()}</span><b class="maj-tag">Version d'origine</b></div>`,
     }[M.st] || (() => "");
-    return `<section class="set maj maj-${M.st}" aria-live="polite"><h2>Mise à jour</h2>${body()}
+    /* la copie se met à jour seule chaque nuit (fonction 2 et migration 0033) : le bouton sert à ne pas attendre */
+    const nuit = e.auto && (M.st === "ajour" || M.st === "dispo") ? `<p class="muted maj-hint maj-nuit">${ic("sync")}Chaque nuit, toute seule</p>` : "";
+    return `<section class="set maj maj-${M.st}" aria-live="polite"><h2>Mise à jour</h2>${body()}${nuit}
       ${e.fonctionAmont > e.fonction && M.st !== "absente" ? `<p class="muted maj-hint">${ic("info")}Le bouton lui-même a une nouvelle version : <a href="${GUIDE}#6-le-bouton-mettre-à-jour" target="_blank" rel="noopener">recolle-le</a>.</p>` : ""}</section>`;
   }
 

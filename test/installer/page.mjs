@@ -35,6 +35,16 @@ const pas = (p) => p.$$eval("#pas li", (l) => l.map((x) => (x.className || "-") 
 {
   const g = fauxGitHub(), p = await ouvrir(g);
   ok(await p.$eval("#go", (b) => b.disabled), "« Installer » attend les deux clés et l'adresse");
+  /* les pas-à-pas : fermés au départ, une action par ligne, les bons liens */
+  ok(await p.$$eval("details.pap", (d) => d.length === 4 && d.every((x) => !x.open)), "quatre pas-à-pas (deux comptes, deux clés), fermés au départ");
+  ok((await p.getAttribute("#lien-signup-gh", "href")) === "https://github.com/signup" && (await p.getAttribute("#lien-signup-sb", "href")) === "https://supabase.com/dashboard/sign-up", "liens d'inscription GitHub et Supabase");
+  await p.click("#pap-compte-gh summary");
+  ok(await p.$eval("#pap-compte-gh", (d) => d.open) && await p.locator("#pap-compte-gh .acts li").count() === 7 && (await p.textContent("#pap-compte-gh")).includes("github.io/plan-de-com/"), "compte GitHub : 7 étapes, le nom d'utilisateur expliqué par l'adresse de l'appli");
+  await p.click("#pap-compte-sb summary");
+  ok(await p.locator("#pap-compte-sb .acts li").count() === 4 && (await p.textContent("#pap-compte-sb")).includes("Continue with GitHub") && (await p.textContent("#pap-compte-sb")).includes("ne le fais pas"), "compte Supabase : par GitHub, une organisation, et surtout pas de projet");
+  await p.click("#pap-cle-gh summary"); await p.click("#pap-cle-sb summary");
+  ok((await p.textContent("#pap-cle-gh")).includes("No expiration") && (await p.textContent("#pap-cle-gh")).includes("ghp_") && (await p.textContent("#pap-cle-sb")).includes("sbp_"), "les deux clés pas à pas : durée, début de la clé");
+  if (shots) await p.screenshot({ path: `${shots}/0-pas-a-pas.png`, fullPage: true });
   ok((await p.getAttribute("#lien-gh", "href")) === "https://github.com/settings/tokens/new?scopes=repo,workflow&description=Plan%20de%20com", "« Créer ma clé GitHub » ouvre la page pré-remplie (repo et workflow)");
   await p.fill("#gh", "ghp_faux"); await p.waitForSelector("#gh-etat.non");
   ok((await p.textContent("#gh-etat")).includes("Clé refusée"), "clé GitHub fausse : refusée tout de suite");
@@ -59,6 +69,7 @@ const pas = (p) => p.$$eval("#pas li", (l) => l.map((x) => (x.className || "-") 
   ok(s && s.key_id === "k-42" && s.clair && s.clair.supabase === "sbp_" + "a1b2c3d4e5".repeat(4) && s.clair.github === "ghp_bon" && s.clair.email === "claire.morel@exemple.fr" && s.clair.mdp === "Rentrée 2027 !" && s.clair.prenom === "Claire", "les clés partent chiffrées dans le secret, et se rouvrent avec la clé du dépôt");
   ok(!g.appels.some((a) => /supabase/i.test(a)) && g.runs.length === 1, "la page ne parle qu'à GitHub, et lance le robot une fois");
   ok((await p.getAttribute("#ouvrir", "href")) === "https://claire-kedge.github.io/plan-de-com/" && (await p.textContent("#fin-mail")) === "claire.morel@exemple.fr" && (await p.textContent("#s-titre")) === "Ton appli est en ligne", "à la fin : « Ton appli est en ligne », le lien et l'adresse de connexion");
+  ok((await p.textContent("#fin-nuit")).includes("toute seule, chaque nuit") && await p.isVisible("#fin-nuit"), "à la fin : « Elle se met à jour toute seule, chaque nuit »");
   if (shots) await p.screenshot({ path: `${shots}/3-fin.png`, fullPage: true });
   ok(!p.errs.length, "aucune erreur : " + p.errs.join(" | "));
   await p.fermer();
@@ -96,7 +107,8 @@ const pas = (p) => p.$$eval("#pas li", (l) => l.map((x) => (x.className || "-") 
 {
   const g = fauxGitHub(), p = await ouvrir(g, { mobile: true, theme: "dark" });
   await remplir(p);
-  ok(await p.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), "téléphone : rien ne dépasse en largeur");
+  await p.evaluate(() => document.querySelectorAll("details.pap").forEach((d) => (d.open = true)));
+  ok(await p.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), "téléphone, pas-à-pas ouverts : rien ne dépasse en largeur");
   ok(await p.evaluate(() => getComputedStyle(document.body).backgroundColor === "rgb(15, 16, 18)"), "sombre : fond sombre");
   if (shots) await p.screenshot({ path: `${shots}/5-telephone-sombre.png`, fullPage: true });
   await p.fermer();

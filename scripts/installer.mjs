@@ -180,13 +180,16 @@ const etapes = {
       { name: "GITHUB_TOKEN", value: I.github }, { name: "GITHUB_REPO", value: REPO },
     ]);
     ecrireEtat({ vapid });
-    for (const [name, value] of [["kplan_push_url", `${hote(ref)}/functions/v1/push`], ["kplan_cron_secret", cron]]) {
+    // la mise à jour de nuit (0033) : la base appelle la fonction mise-a-jour avec ce secret, sans personne
+    const coffre = [["kplan_push_url", `${hote(ref)}/functions/v1/push`], ["kplan_cron_secret", cron],
+      ["kplan_maj_url", `${hote(ref)}/functions/v1/mise-a-jour`], ["kplan_maj_secret", crypto.randomBytes(32).toString("hex")]];
+    for (const [name, value] of coffre) {
       await sql(ref, `do $$ declare i uuid; begin
         select id into i from vault.secrets where name = ${lit(name)};
         if i is null then perform vault.create_secret(${lit(value)}, ${lit(name)}); else perform vault.update_secret(i, ${lit(value)}); end if;
       end $$;`);
     }
-    say("Secrets rangés (notifications, bouton Mettre à jour)");
+    say("Secrets rangés (notifications, mise à jour de nuit, bouton Mettre à jour)");
     const manque = [];
     for (const nom of ["push", "mise-a-jour", "export"]) {
       try {
