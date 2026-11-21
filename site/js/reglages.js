@@ -23,6 +23,9 @@
     const u = KP.me(), admin = u.role === "pilote", ro = u.role === "lecteur" ? "readonly" : "", th = store.prefs().theme || "auto", on = store.prefs().notif || {};
     const chk = (k, t) => `<button type="button" class="check" data-act="set-notif" data-k="${k}" aria-pressed="${on[k] !== false}"><span class="box">${ic("check")}</span>${t}</button>`;
     return `<section class="set"><h2>Mes infos</h2>
+        ${ro || !store.photoOk() ? "" : `<div class="me-photo"><button type="button" class="mp-rond" data-act="photo-choisir" aria-label="${u.photo ? "Changer ma photo" : "Ajouter ma photo"}">${KP.avatar(u, "av-xl")}<span class="mp-cam" aria-hidden="true">${ic("camera")}</span></button>
+          <input type="file" id="me-photo" accept="image/*" hidden>
+          <div class="mp-tx"><button type="button" class="btn quiet small" data-act="photo-choisir">${u.photo ? "Changer la photo" : "Ajouter ma photo"}</button>${u.photo ? `<button type="button" class="link soft" data-act="photo-retirer">Retirer</button>` : ""}</div></div>`}
         <div class="two">${field("Prénom", `<input class="input" id="me-nom" data-set="me:nom" value="${h(u.nom)}" maxlength="40" autocomplete="off" ${ro}>`)}${field("Fonction", `<input class="input" id="me-fonction" data-set="me:fonction" value="${h(u.fonction)}" maxlength="80" autocomplete="off" ${ro}>`)}</div>
         <div class="two">${field("Service", admin ? svcSel("me-svc", u.svc, 'data-set="me:svc"') : `<span class="ro">${h((KP.service(u.svc) || { nom: "Aucun" }).nom)}</span>`)}${field("Droits", `<span class="ro">${ROLES.find((r) => r[0] === u.role)[1]} <small class="muted">${ROLES.find((r) => r[0] === u.role)[2]}</small></span>`)}</div>
         ${admin ? "" : `<p class="muted">Ton service et tes droits sont réglés par un pilote${(() => { const p = KP.PEOPLE.filter((x) => x.role === "pilote").map((x) => x.nom); return p.length ? ` (${h(p.join(", "))})` : ""; })()}.</p>`}
@@ -178,6 +181,25 @@
       KP.toast("Enregistré");
     }, 0);
   });
+  /* ma photo : un carré de 160 px pris au centre (un peu vers le haut, là où est le visage), en JPEG léger */
+  const photoDe = (file) => new Promise((ok, ko) => {
+    if (!file || !/^image\//.test(file.type)) return ko(new Error("type"));
+    const url = URL.createObjectURL(file), img = new Image();
+    img.onload = () => { const S = 160, m = Math.min(img.naturalWidth, img.naturalHeight), c = document.createElement("canvas"); c.width = c.height = S;
+      c.getContext("2d").drawImage(img, (img.naturalWidth - m) / 2, (img.naturalHeight - m) * 0.3, m, m, 0, 0, S, S); URL.revokeObjectURL(url); ok(c.toDataURL("image/jpeg", 0.85)); };
+    img.onerror = () => { URL.revokeObjectURL(url); ko(new Error("lecture")); };
+    img.src = url;
+  });
+  const garderPhoto = async (file) => {
+    try { store.savePerson(KP.me().k, { photo: await photoDe(file) }); KP.toast("Photo enregistrée"); }
+    catch (e) { KP.toast("Cette image ne s'ouvre pas. Essaie une photo en JPEG ou en PNG."); }
+  };
+  document.addEventListener("change", (e) => { if (e.target.id === "me-photo" && e.target.files[0]) garderPhoto(e.target.files[0]); });
+  /* on peut aussi glisser la photo sur le rond */
+  document.addEventListener("dragover", (e) => { const r = e.target.closest && e.target.closest(".mp-rond"); if (!r) return; e.preventDefault(); r.classList.add("survol"); });
+  document.addEventListener("dragleave", (e) => { const r = e.target.closest && e.target.closest(".mp-rond"); if (r) r.classList.remove("survol"); });
+  document.addEventListener("drop", (e) => { const r = e.target.closest && e.target.closest(".mp-rond"); if (!r) return; e.preventDefault(); r.classList.remove("survol"); if (e.dataTransfer.files[0]) garderPhoto(e.dataTransfer.files[0]); });
+
   document.addEventListener("submit", (e) => {
     const k = e.target.dataset && e.target.dataset.add; if (!k) return; e.preventDefault();
     const v = e.target.querySelector("input").value.trim(); if (!v) return;
@@ -190,7 +212,9 @@
     "push-toggle": async () => { const p = KP.remote.push; try { if (p.on) { await p.disable(); KP.toast("Cet appareil ne reçoit plus les notifications"); } else { await p.enable(); KP.toast("Notifications activées sur cet appareil"); } } catch (e) { KP.toast(e.message || "Impossible d'activer les notifications"); } KP.render(); },
     "set-tab": (a) => KP.go({ set: a.dataset.k }),
     "set-couleur": (a) => { store.saveProjet({ couleur: a.dataset.k }); },
-    "set-theme": (a) => store.setPref("theme", a.dataset.k),
+    "set-theme": (a) => KP.changerTheme(a.dataset.k, a),
+    "photo-choisir": () => { const i = document.getElementById("me-photo"); if (i) { i.value = ""; i.click(); } },
+    "photo-retirer": () => { store.savePerson(KP.me().k, { photo: "" }); KP.toast("Photo retirée"); },
     "set-notif": (a) => { const on = { ...(store.prefs().notif || {}) }; on[a.dataset.k] = on[a.dataset.k] === false; store.setPref("notif", on); },
     "set-add": (a) => {
       const k = a.dataset.k;

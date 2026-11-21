@@ -1,7 +1,11 @@
 /* Plan de com KEDGE · V2 — pensé pour l'ordinateur, replié pour le téléphone.
    Les valeurs (couleurs, rayons, typographie) viennent du KEDGE UI kit de la V1. */
 
-@font-face { font-family: "KRC Serif"; src: url("../fonts/krc-serif.woff") format("woff"); font-weight: 600 700; font-display: swap; }
+/* la police des titres en woff2 (plus légère), préchargée par index.html : elle est là dès le premier affichage, les titres ne bougent pas */
+@font-face { font-family: "KRC Serif"; src: url("../fonts/krc-serif.woff2") format("woff2"), url("../fonts/krc-serif.woff") format("woff"); font-weight: 600 700; font-display: swap; }
+
+/* un seul langage de mouvement : deux courbes (douce, ou avec un léger ressort) et trois durées */
+:root { --m-doux: cubic-bezier(.2,.8,.2,1); --m-ressort: cubic-bezier(.3,1.5,.5,1); --t-vite: .15s; --t-normal: .25s; --t-moment: .5s; }
 
 :root {
   --yellow: #FFD452; --yellow-ink: #26282B; --yellow-side: #FFD452; --anthracite: #333539; --anthracite-deep: #26282B;
@@ -175,7 +179,7 @@ button.pill:hover { box-shadow: 0 0 0 2px var(--sep); }
 .wk-h small { text-transform: none; letter-spacing: 0; font-weight: 400; }
 
 /* ---------- la fiche (panneau de droite, par-dessus) ---------- */
-.fiche { position: fixed; top: 0; right: 0; bottom: 0; width: min(var(--fiche), 100vw); background: var(--card); box-shadow: var(--shadow); border-left: 1px solid var(--sep); z-index: 20; display: flex; flex-direction: column; animation: slide .16s ease-out; }
+.fiche { position: fixed; top: 0; right: 0; bottom: 0; width: min(var(--fiche), 100vw); background: var(--card); box-shadow: var(--shadow); border-left: 1px solid var(--sep); z-index: 20; display: flex; flex-direction: column; animation: slide var(--t-vite) var(--m-doux); }
 @keyframes slide { from { transform: translateX(24px); opacity: 0; } }
 .f-top { display: flex; align-items: center; gap: 2px; padding: 10px 12px 6px 20px; }
 .f-top .kind { display: flex; align-items: center; gap: 8px; font-size: 12.5px; font-weight: 600; color: var(--text2); text-transform: uppercase; letter-spacing: .03em; margin-right: auto; }
@@ -235,8 +239,8 @@ a.mini { text-decoration: none; grid-template-columns: 18px minmax(0, 1fr) 18px;
 .ph-miroir .z-ref { background: none; box-shadow: inset 0 -2px 0 var(--text2); border-radius: 0; }
 .ph-miroir .z-date { background: linear-gradient(var(--hl-date), var(--hl-date)) no-repeat 0 0 / 100% 100%; }
 .ph-miroir .z-date.alerte { background-image: linear-gradient(var(--hl-alerte), var(--hl-alerte)); }
-.ph-miroir .z-date.t0 { animation: ph-surligne-a .5s cubic-bezier(.2, .7, .2, 1) both; }
-.ph-miroir .z-date.t1 { animation: ph-surligne-b .5s cubic-bezier(.2, .7, .2, 1) both; }
+.ph-miroir .z-date.t0 { animation: ph-surligne-a var(--t-moment) var(--m-doux) both; }
+.ph-miroir .z-date.t1 { animation: ph-surligne-b var(--t-moment) var(--m-doux) both; }
 @keyframes ph-surligne-a { from { background-size: 0% 100%; } to { background-size: 100% 100%; } }
 @keyframes ph-surligne-b { from { background-size: 0% 100%; } to { background-size: 100% 100%; } }
 .ph-go { width: 36px; height: 36px; flex: none; display: inline-flex; align-items: center; justify-content: center; border-radius: var(--r2); background: var(--yellow); color: var(--yellow-ink); }
@@ -248,18 +252,18 @@ a.mini { text-decoration: none; grid-template-columns: 18px minmax(0, 1fr) 18px;
 .ph-c .ic { width: 13px; height: 13px; }
 .ph-c.qui { background: var(--anthracite); color: #FFFFFF; }
 .ph-c.date { background: var(--yellow); color: var(--yellow-ink); }
-.ph-c.date.t0 { animation: ph-pop-a .35s ease-out .2s both; }
-.ph-c.date.t1 { animation: ph-pop-b .35s ease-out .2s both; }
+.ph-c.date.t0 { animation: ph-pop-a var(--t-normal) var(--m-doux) .2s both; }
+.ph-c.date.t1 { animation: ph-pop-b var(--t-normal) var(--m-doux) .2s both; }
 @keyframes ph-pop-a { 0% { transform: scale(.6); opacity: 0; } 70% { transform: scale(1.06); opacity: 1; } 100% { transform: none; } }
 @keyframes ph-pop-b { 0% { transform: scale(.6); opacity: 0; } 70% { transform: scale(1.06); opacity: 1; } 100% { transform: none; } }
 .ph-c.ok { background: var(--ok-bg); color: var(--ok-ink); }
 .ph-c.retard { background: var(--retard-bg); color: var(--retard-ink); }
 .ph-c.rond { width: 26px; padding: 0; justify-content: center; background: none; box-shadow: inset 0 0 0 1px var(--sep); }
-.ph-c.choix, .ph-c.propose { background: none; box-shadow: inset 0 0 0 1px var(--sep); animation: ph-fondu .2s ease-out both; }
+.ph-c.choix, .ph-c.propose { background: none; box-shadow: inset 0 0 0 1px var(--sep); animation: ph-fondu var(--t-normal) var(--m-doux) both; }
 .ph-c.propose.on { background: var(--fill); box-shadow: none; }
 .ph-c.choix:hover, .ph-c.propose:hover, .ph-c.rond:hover { background: var(--hover); }
 .ph-c.petit { height: 22px; padding: 0 8px; font-size: 12px; }
-.ph-alerte { color: var(--red); font-weight: 600; animation: ph-fondu .3s ease-out both; }
+.ph-alerte { color: var(--red); font-weight: 600; animation: ph-fondu var(--t-normal) var(--m-doux) both; }
 @keyframes ph-fondu { from { opacity: 0; transform: translateY(-3px); } to { opacity: 1; transform: none; } }
 .ph-sugg { display: flex; gap: 6px; flex-wrap: wrap; }
 .ph-s { display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 11px; border-radius: 15px; background: var(--bg); box-shadow: inset 0 0 0 1px var(--sep); font-weight: 600; font-size: 14px; }
@@ -342,7 +346,7 @@ dialog.dlg::backdrop { background: rgba(20,20,22,.42); }
 .cal-f { display: flex; justify-content: space-between; margin-top: 8px; padding: 0 4px; }
 
 .toasts { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); z-index: 90; display: grid; gap: 8px; justify-items: center; }
-.toast { display: flex; align-items: center; gap: 14px; background: var(--anthracite-deep); color: #fff; padding: 10px 14px; border-radius: var(--r3); box-shadow: var(--shadow); animation: rise .18s ease-out; max-width: calc(100vw - 32px); }
+.toast { display: flex; align-items: center; gap: 14px; background: var(--anthracite-deep); color: #fff; padding: 10px 14px; border-radius: var(--r3); box-shadow: var(--shadow); animation: rise var(--t-vite) var(--m-doux); max-width: calc(100vw - 32px); }
 .toast button { color: var(--yellow-side); font-weight: 700; }
 @keyframes rise { from { transform: translateY(8px); opacity: 0; } }
 
@@ -359,8 +363,11 @@ dialog.cmdk { margin-top: 12vh; width: min(600px, calc(100vw - 32px)); overflow:
 .hello h1 { font: 700 34px/1.12 var(--serif); }
 .hello p { color: var(--text2); font-size: 17px; margin-top: 6px; }
 /* la petite pique du jour (js/piques.js) : entre le bonjour et le résumé, en serif, plus présente que le résumé */
-/* la petite pique : une bulle anthracite, pour qu'on sache que c'est l'appli qui parle (pas d'icône : le logo est déjà en haut à gauche) */
-.hello p.pique { width: fit-content; max-width: 100%; margin: 14px 0 10px; padding: 11px 18px; border-radius: 16px 16px 16px 4px; background: var(--anthracite); color: #F4F4F2; font: 500 17px/1.35 var(--serif); text-wrap: pretty; }
+/* la petite pique : une bulle de message jaune avec sa pointe, la couleur du logo : c'est l'appli qui parle (pas d'icône) */
+.hello p.pique { position: relative; width: fit-content; max-width: 100%; margin: 16px 0 14px; padding-left: 8px; color: var(--yellow-ink); font: 500 17px/1.35 var(--serif); text-wrap: pretty; }
+.hello p.pique::before { content: ""; position: absolute; left: 0; bottom: 0; width: 16px; height: 14px; background: var(--yellow); clip-path: polygon(100% 0, 100% 100%, 0 100%); }
+.pq-t { display: block; padding: 11px 18px; border-radius: 18px 18px 18px 4px; background: var(--yellow); box-shadow: 0 2px 10px rgba(0,0,0,.08); }
+.pq-pts { display: none; }
 .block { margin-top: 34px; }
 .block > h2 { font-size: 12.5px; font-weight: 600; color: var(--text2); text-transform: uppercase; letter-spacing: .04em; margin-bottom: 10px; display: flex; align-items: baseline; gap: 10px; }
 .block > h2 .link { margin-left: auto; text-transform: none; letter-spacing: 0; font-size: 13.5px; }
@@ -456,7 +463,8 @@ dialog.cmdk { margin-top: 12vh; width: min(600px, calc(100vw - 32px)); overflow:
   .page { padding: 18px 14px 40px; }
   .head h1 { font-size: 25px; }
   .hello h1 { font-size: 27px; }
-  .hello p.pique { font-size: 15.5px; padding: 10px 14px; }
+  .hello p.pique { font-size: 15.5px; }
+  .pq-t { padding: 10px 14px; }
   .bar { flex-wrap: nowrap; overflow-x: auto; margin: -10px -14px 6px; padding: 10px 14px; scrollbar-width: none; }
   .bar::-webkit-scrollbar { display: none; }
   .bar .sp { display: none; }
@@ -627,7 +635,7 @@ textarea::placeholder, input::placeholder { color: var(--text2); opacity: 1; }
 @media (min-width: 1200px) {
   html.fiche-open .shell { padding-right: var(--fiche); }
   html.fiche-open .fiche { box-shadow: none; }
-  .shell { transition: padding-right .16s ease-out; }
+  .shell { transition: padding-right var(--t-vite) var(--m-doux); }
   html.fiche-open .wk .row { grid-template-columns: 96px minmax(0, 1fr) 120px 124px; }
   html.fiche-open .ag .row { grid-template-columns: 96px minmax(0, 1fr) 120px 124px 34px; }
   html.fiche-open .wk .row .msg, html.fiche-open .ag .row .msg { display: none; }
@@ -925,7 +933,7 @@ html:root .ag .row .t small { display: block; flex-basis: 100%; max-width: none;
 .sw-g { display: grid; gap: 8px; margin-top: 6px; }
 .sw-l { font-size: 12.5px; color: var(--text2); font-weight: 600; }
 .sws { display: flex; flex-wrap: wrap; gap: 10px; }
-.sw { position: relative; width: 40px; height: 40px; border-radius: 50%; background: var(--c); display: grid; place-items: center; color: var(--i); box-shadow: inset 0 0 0 1px rgba(0,0,0,.08); transition: transform .12s ease; }
+.sw { position: relative; width: 40px; height: 40px; border-radius: 50%; background: var(--c); display: grid; place-items: center; color: var(--i); box-shadow: inset 0 0 0 1px rgba(0,0,0,.08); transition: transform var(--t-vite) var(--m-doux); }
 .sw.duo { background: linear-gradient(135deg, var(--c) 0 50%, var(--d) 50% 100%); color: #FFFFFF; }
 .sw:hover { transform: scale(1.08); }
 .sw[aria-pressed="true"] { box-shadow: 0 0 0 2px var(--card), 0 0 0 4px var(--text); }
@@ -941,7 +949,7 @@ html:root .ag .row .t small { display: block; flex-basis: 100%; max-width: none;
 .login-fond { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
 .login-fond svg { position: absolute; height: 122vh; width: 122vh; right: -16vh; top: -19vh; overflow: visible; }
 .login.fond .login-card { position: relative; animation: lf-carte .7s .15s cubic-bezier(.2,.7,.2,1) both; }
-.lf-corps { fill: color-mix(in srgb, var(--yellow) 22%, transparent); animation: lf-corps 1s cubic-bezier(.2,.7,.2,1) both; }
+.lf-corps { fill: color-mix(in srgb, var(--yellow) 22%, transparent); animation: lf-corps 1s var(--m-doux) both; }
 .lf-route { fill: #fff; }
 .lf-coeur { fill: var(--yellow); }
 .lf-contour { fill: #fff; stroke: #fff; stroke-width: 2; stroke-linejoin: round; }
@@ -951,13 +959,13 @@ html:root .ag .row .t small { display: block; flex-basis: 100%; max-width: none;
 .lf-reflet { stroke: var(--yellow); stroke-linecap: round; stroke-dasharray: .12 1.4; stroke-dashoffset: .12; opacity: 0; filter: url(#lf-flou); }
 /* 1. l'étoile colorée monte seule d'en bas, avec sa traînée ; 2. elle se pose et s'allume ; 3. son contour blanc jaillit d'elle
    et file dans la route jusqu'en haut du 7 ; 4. un éclat à la pointe ; puis, toutes les 6 s, une lueur remonte la route */
-.lf-monte { animation: lf-monte 1.25s .35s cubic-bezier(.16,.84,.3,1) both; }
-.lf-etoile { transform-origin: 229.5px 396.5px; animation: lf-etoile 1.25s .35s cubic-bezier(.16,.84,.3,1) both; }
-.lf-trainee { transform-origin: 229.5px 396.5px; animation: lf-trainee 1.5s .35s ease-out both; }
-.lf-halo { transform-origin: 229.5px 396.5px; animation: lf-pose .9s 1.45s cubic-bezier(.2,.8,.3,1) both, lf-halo 4.5s 3.2s ease-in-out infinite; }
-.lf-contour { transform-origin: 229.5px 396.5px; animation: lf-jaillit .5s 1.6s cubic-bezier(.2,.9,.3,1.25) both; }
-.lf-trace { stroke-dasharray: 1 2; stroke-dashoffset: 1; animation: lf-trace .95s 1.98s cubic-bezier(.3,.75,.25,1) forwards; }
-.lf-eclat { transform-origin: 0 0; animation: lf-eclat .7s 2.8s ease-out both; }
+.lf-monte { animation: lf-monte 1.25s .35s var(--m-doux) both; }
+.lf-etoile { transform-origin: 229.5px 396.5px; animation: lf-etoile 1.25s .35s var(--m-doux) both; }
+.lf-trainee { transform-origin: 229.5px 396.5px; animation: lf-trainee 1.5s .35s var(--m-doux) both; }
+.lf-halo { transform-origin: 229.5px 396.5px; animation: lf-pose .9s 1.45s var(--m-doux) both, lf-halo 4.5s 3.2s ease-in-out infinite; }
+.lf-contour { transform-origin: 229.5px 396.5px; animation: lf-jaillit var(--t-moment) 1.6s var(--m-ressort) both; }
+.lf-trace { stroke-dasharray: 1 2; stroke-dashoffset: 1; animation: lf-trace .95s 1.98s var(--m-doux) forwards; }
+.lf-eclat { transform-origin: 0 0; animation: lf-eclat var(--t-moment) 2.8s var(--m-doux) both; }
 .lf-reflet { animation: lf-reflet 6s 3.9s ease-in-out infinite; }
 @keyframes lf-carte { from { opacity: 0; transform: translateY(10px); } }
 @keyframes lf-corps { from { opacity: 0; transform: translateY(14px); } }
@@ -1149,3 +1157,228 @@ html.fiche-open .r-tot .r-eur { margin-right: 136px; }
 /* 1100 à 1300 px (fiche fermée) : les unités passent sous le nombre, le titre garde de la place */
 @media (max-width: 1300px) and (min-width: 1101px) { html:not(.fiche-open) .r-l { grid-template-columns: 96px minmax(0, 1fr) 132px 130px 38px; } html:not(.fiche-open) .r-l .r-us { grid-column: 2 / -1; grid-row: 2; } }
 @media (max-width: 1300px) and (min-width: 1101px) { html:not(.fiche-open) .ag .row.r-row, html:not(.fiche-open) .r-colh { grid-template-columns: 96px minmax(0, 1fr) 120px 170px; } html:not(.fiche-open) .ag .r-row .msg, html:not(.fiche-open) .r-colh span:nth-child(4) { display: none; } }
+
+/* ---------- eye candy (2.8) : chemin vers le 7e, moment « Diffusé », résultats vivants, visages,
+   transitions douces, écrans vides illustrés. Tout mouvement se coupe quand l'appareil demande moins d'animations. ---------- */
+:root { --road: #333539; --road-line: #FFD452;
+  --a0: #4F6FA8; --a1: #86629F; --a2: #2F8A80; --a3: #B8743C; --a4: #A84E6E; --a5: #6F7D33; --a6: #5C6670; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --road: #46484E; } }
+:root[data-theme="dark"] { --road: #46484E; }
+
+/* des visages : les initiales, chacun sa teinte */
+.av { --ac: var(--a6); width: 24px; height: 24px; border-radius: 50%; display: inline-grid; place-items: center; flex: none; background: var(--ac); color: #FFFFFF; font: 700 11.5px/1 var(--sans); letter-spacing: 0; box-shadow: 0 0 0 2px var(--card); }
+.av img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; }
+.avatar img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; }
+/* Mon profil : ma photo, un rond qu'on clique ou sur lequel on glisse une image */
+.me-photo { display: flex; align-items: center; gap: 16px; }
+.mp-rond { position: relative; flex: none; border-radius: 50%; padding: 0; }
+.av.av-xl { width: 72px; height: 72px; font-size: 28px; box-shadow: none; }
+.mp-cam { position: absolute; right: -2px; bottom: -2px; width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; background: var(--card); color: var(--text); box-shadow: 0 0 0 1px var(--sep), 0 1px 4px rgba(0,0,0,.16); }
+.mp-cam .ic { width: 16px; height: 16px; }
+.mp-rond:hover .av, .mp-rond.survol .av { box-shadow: 0 0 0 3px var(--card), 0 0 0 5px var(--yellow); }
+.mp-rond:focus-visible { outline: 2px solid var(--yellow-ink); outline-offset: 4px; }
+.mp-tx { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.av0 { --ac: var(--a0); } .av1 { --ac: var(--a1); } .av2 { --ac: var(--a2); } .av3 { --ac: var(--a3); } .av4 { --ac: var(--a4); } .av5 { --ac: var(--a5); } .av6 { --ac: var(--a6); }
+.av + .av { margin-left: -6px; }
+.av.av-s { width: 20px; height: 20px; font-size: 10px; }
+.row .svc { display: flex; align-items: center; gap: 7px; }
+/* tableau étroit (téléphone, fiche ouverte) : le service passe sous le titre, le visage garde sa place devant le nom */
+@container (max-width: 720px) { html:root .row.row .svc .av { vertical-align: middle; margin-top: -2px; } html:root .row.row .svc .av + .svc-n { margin-left: 6px; } }
+.row .svc .svc-n { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.todo .todo-av { width: 34px; height: 34px; font-size: 14px; box-shadow: none; }
+.g-h.a-av { flex-direction: row; align-items: center; gap: 9px; }
+.g-av { display: flex; }
+.g-av .av { width: 28px; height: 28px; font-size: 12.5px; }
+.g-hn { display: flex; flex-direction: column; min-width: 0; }
+
+
+/* le moment « Diffusé » et la semaine complète */
+.wk .wk-h .cnt.tout, .wk.now .wk-h .cnt.tout { background: var(--ok-bg); color: var(--ok-ink); gap: 3px; display: inline-flex; align-items: center; }
+.cnt.tout .ic { width: 12px; height: 12px; }
+
+/* résultats vivants : cinq petites barres, une par période */
+.r-tile { flex-direction: row; align-items: flex-end; justify-content: space-between; gap: 10px; }
+.r-tn { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.r-mini { display: flex; align-items: flex-end; gap: 3px; height: 34px; flex: none; }
+.r-mini i { width: 7px; height: var(--h); border-radius: 2px; background: color-mix(in srgb, var(--ok-ink) 38%, transparent); }
+.r-mini i.on { background: var(--ok-ink); }
+.r-mini i.fut { height: 100%; background: transparent; box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ok-ink) 22%, transparent); }
+
+/* écrans vides illustrés : le 7 posé sur un bout de route */
+.illu { position: relative; width: 136px; height: 96px; margin: 0 auto 16px; }
+.illu-route { position: absolute; left: 0; right: 0; bottom: 12px; height: 18px; border-radius: 9px; background: var(--road); }
+.illu-route::after { content: ""; position: absolute; left: 12px; right: 12px; top: 50%; height: 2px; margin-top: -1px; background: repeating-linear-gradient(90deg, var(--road-line) 0 10px, transparent 10px 19px); }
+.illu img { position: absolute; left: 50%; bottom: 22px; width: 66px; height: 66px; margin-left: -33px; border-radius: 17px; background: var(--yellow); padding: 9px; box-shadow: 0 6px 16px rgba(0,0,0,.18); }
+.illu.filtre img { transform: rotate(-9deg); }
+.illu.petit { width: 74px; height: 58px; margin: 0; flex: none; }
+.illu.petit .illu-route { height: 10px; bottom: 6px; border-radius: 5px; }
+.illu.petit .illu-route::after { left: 7px; right: 7px; height: 1.5px; background: repeating-linear-gradient(90deg, var(--road-line) 0 6px, transparent 6px 11px); }
+.illu.petit img { width: 42px; height: 42px; margin-left: -21px; bottom: 12px; border-radius: 11px; padding: 6px; box-shadow: 0 3px 8px rgba(0,0,0,.16); }
+.vide-todo { display: flex; align-items: center; gap: 16px; background: var(--card); border-radius: var(--r3); padding: 12px 18px; box-shadow: var(--lift); }
+.vide-todo b { display: block; font: 600 17px/1.3 var(--serif); }
+.vide-todo span { color: var(--text2); font-size: 14px; }
+
+/* le trait « Aujourd'hui » sous la dernière ligne de la semaine : de la place pour son badge */
+.today-line.fin { height: 24px; align-items: flex-start; }
+.today-line.fin span { transform: translateY(-50%); }
+.today-line.fin::before { margin-top: -1px; }
+
+@media (max-width: 767px) {
+  .r-mini { height: 28px; }
+  .r-mini i { width: 6px; }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  /* transitions douces : l'écran qui arrive monte en fondu ; la période glisse dans son sens */
+  .main.entre > .page { animation: ec-entre var(--t-normal) var(--m-doux) both; }
+  .main.entre.suiv > .page { animation-name: ec-droite; }
+  .main.entre.prec > .page { animation-name: ec-gauche; }
+  .main.entre .rows > .row, .main.entre .r-tile, .main.entre .pin, .main.entre .todo { animation: ec-monte var(--t-normal) var(--m-doux) both; }
+  .main.entre .rows > .row:nth-child(2), .main.entre .r-tile:nth-child(2), .main.entre .pin:nth-child(2) { animation-delay: .015s; }
+  .main.entre .rows > .row:nth-child(3), .main.entre .r-tile:nth-child(3), .main.entre .pin:nth-child(3) { animation-delay: .03s; }
+  .main.entre .rows > .row:nth-child(4), .main.entre .r-tile:nth-child(4) { animation-delay: .045s; }
+  .main.entre .rows > .row:nth-child(5) { animation-delay: .06s; }
+  .main.entre .rows > .row:nth-child(n+6) { animation-delay: .06s; }
+  .pin, .todo, .g-i { transition: transform var(--t-vite) var(--m-doux), box-shadow var(--t-vite) var(--m-doux), background-color var(--t-vite) var(--m-doux); }
+  .pin:hover, .todo:hover { transform: translateY(-1px); box-shadow: 0 2px 4px rgba(20,20,20,.06), 0 8px 20px rgba(20,20,20,.09); }
+  .g-i:hover { transform: translateY(-1px); }
+  .r-mini i { transition: height var(--t-normal) var(--m-doux); }
+  .main.compte .r-mini i { animation: ec-barre var(--t-moment) var(--m-doux) both; animation-delay: calc(.25s + var(--i) * .06s); transform-origin: bottom; }
+  .main.compte .stack .s-ok { animation: ec-largeur var(--t-moment) var(--m-doux) .15s both; transform-origin: left; }
+
+  /* les fenêtres s'ouvrent en douceur : les menus depuis leur bouton, la recherche et les fenêtres glissent en place */
+  .pop { animation: ec-pop var(--t-vite) var(--m-doux) both; }
+  dialog.dlg[open] { animation: ec-dlg var(--t-normal) var(--m-doux) both; }
+  dialog.dlg[open]::backdrop { animation: ec-fond var(--t-normal) var(--m-doux) both; }
+  .scrim { animation: ec-fond var(--t-normal) var(--m-doux) both; }
+  @media (max-width: 767px) { .pop, dialog.dlg[open] { animation-name: ec-feuille; animation-duration: var(--t-normal); } dialog.cmdk[open] { animation-name: ec-fond; } }
+  /* les boutons du menu répondent au survol : la loupe se penche, la cloche sonne, la roue des réglages tourne */
+  .side-foot .ic svg, .topbar .ib .ic svg, .pop-i .ic svg { transition: transform var(--t-normal) var(--m-ressort); }
+  .side-foot [data-act="search"]:hover .ic svg, .topbar [data-act="search"]:hover .ic svg { transform: rotate(-12deg) scale(1.12); }
+  .side-foot [data-act="notifs"]:hover .ic svg, .topbar [data-act="notifs"]:hover .ic svg { animation: ec-cloche var(--t-moment) var(--m-doux); transform-origin: 50% 12%; }
+  .pop-i[data-go="reglages"]:hover .ic svg, .pop-i[data-go="reglages"]:focus-visible .ic svg { transform: rotate(75deg); transition-duration: var(--t-moment); }
+  .side-foot [data-act="profile"] .avatar, .topbar [data-act="profile"] .avatar { transition: transform var(--t-normal) var(--m-ressort), box-shadow var(--t-normal) var(--m-doux); }
+  .side-foot [data-act="profile"]:hover .avatar, .topbar [data-act="profile"]:hover .avatar { transform: scale(1.1); box-shadow: 0 0 0 2px var(--panel, #333539), 0 0 0 4px var(--yellow); }
+  /* la pique arrive comme un message : trois points qui s'écrivent, puis la bulle s'ouvre sur la phrase (une fois par ouverture) */
+  .pique.ecrit { animation: pq-arrive var(--t-normal) var(--m-ressort) .3s both, pq-ouvre var(--t-moment) var(--m-doux) 1.35s backwards; }
+  .pique.ecrit .pq-pts { display: flex; position: absolute; left: 27px; top: 50%; margin-top: -3.5px; gap: 5px; animation: pq-fin var(--t-normal) var(--m-doux) 1.3s forwards; }
+  .pique.ecrit .pq-pts i { width: 7px; height: 7px; border-radius: 50%; background: currentColor; opacity: .5; animation: pq-saute .9s ease-in-out .3s infinite; }
+  .pique.ecrit .pq-pts i:nth-child(2) { animation-delay: .45s; }
+  .pique.ecrit .pq-pts i:nth-child(3) { animation-delay: .6s; }
+  .pique.ecrit .pq-t { animation: pq-texte var(--t-normal) var(--m-doux) 1.45s both; }
+  html.ouverture .pique.ecrit, html.ouverture .pique.ecrit * { animation-play-state: paused; }
+
+  /* le moment « Diffusé » : la case se remplit de vert, la coche se dessine, une onde part */
+  .pill.diffuse.vient { animation: d-remplit var(--t-moment) var(--m-doux) both, d-onde var(--t-moment) var(--m-doux) .36s, d-bond var(--t-moment) var(--m-ressort) .36s; background-image: linear-gradient(var(--ok-bg), var(--ok-bg)); background-repeat: no-repeat; background-position: left; }
+  .pill.diffuse.vient .ck path { stroke-dasharray: 22; stroke-dashoffset: 22; animation: d-trace var(--t-normal) var(--m-doux) .3s forwards; }
+  .cnt.tout.vient { animation: d-bond var(--t-moment) var(--m-ressort) .55s both, d-onde var(--t-moment) var(--m-doux) .55s; }
+
+  /* écrans vides : le 7 se pose sur la route */
+  .illu img { animation: ec-tombe var(--t-moment) var(--m-ressort) .1s both; }
+  .illu-route::after { animation: r7-flux 1.4s var(--m-doux) both; }
+}
+@keyframes ec-entre { from { opacity: 0; transform: translateY(8px); } }
+@keyframes ec-droite { from { opacity: 0; transform: translateX(16px); } }
+@keyframes ec-gauche { from { opacity: 0; transform: translateX(-16px); } }
+@keyframes ec-monte { from { opacity: 0; transform: translateY(4px); } }
+@keyframes ec-barre { from { transform: scaleY(0); } }
+@keyframes ec-largeur { from { transform: scaleX(0); } }
+@keyframes ec-pose { from { opacity: 0; transform: translateX(-50%) scale(.6); } to { opacity: 1; transform: translateX(-50%); } }
+@keyframes ec-tombe { from { opacity: 0; transform: translateY(-26px) rotate(-14deg); } }
+@keyframes ec-pop { from { opacity: 0; transform: scale(.94); } }
+@keyframes ec-dlg { from { opacity: 0; transform: translateY(12px) scale(.98); } }
+@keyframes ec-fond { from { opacity: 0; } }
+@keyframes ec-feuille { from { transform: translateY(48px); opacity: .4; } }
+@keyframes ec-cloche { 0%, 100% { transform: none; } 20% { transform: rotate(16deg); } 40% { transform: rotate(-12deg); } 60% { transform: rotate(7deg); } 80% { transform: rotate(-3deg); } }
+@keyframes pq-arrive { from { opacity: 0; transform: translateY(6px) scale(.92); transform-origin: left bottom; } }
+@keyframes pq-ouvre { from { clip-path: inset(0 calc(100% - 86px) 0 0 round 0 18px 18px 0); } to { clip-path: inset(0 0 0 0 round 0 18px 18px 0); } }
+@keyframes pq-saute { 0%, 60%, 100% { transform: none; opacity: .45; } 30% { transform: translateY(-4px); opacity: .9; } }
+@keyframes pq-fin { to { opacity: 0; visibility: hidden; } }
+@keyframes pq-texte { from { color: transparent; } }
+@keyframes r7-flux { from { background-position: -320px 0; } }
+@keyframes d-remplit { from { background-size: 0% 100%; background-color: transparent; color: var(--text); } to { background-size: 100% 100%; } }
+@keyframes d-trace { to { stroke-dashoffset: 0; } }
+@keyframes d-bond { 50% { transform: scale(1.08); } }
+@keyframes d-onde { from { box-shadow: 0 0 0 0 color-mix(in srgb, var(--ok-ink) 45%, transparent); } to { box-shadow: 0 0 0 12px transparent; } }
+
+/* ---------- maquette eye candy, suite : chaque icône du menu a son geste, la sélection glisse, les boutons répondent ---------- */
+.nav, .seg, .tabbar { isolation: isolate; }
+.nav a { position: relative; }
+:is(.nav, .tabbar) [data-k="reunion"] .ic rect { fill: currentColor; fill-opacity: 0; }
+@media (prefers-reduced-motion: no-preference) {
+  /* le geste de chaque icône : au survol (et dans la démo, .joue) ; pas à chaque changement d'écran, trop fréquent */
+  .brand img, .new .ic svg { transition: transform var(--t-normal) var(--m-ressort); }
+  .brand img { transform-origin: 30% 90%; }
+  .new.joue .ic svg { transform: rotate(90deg); }
+  .brand.joue img { animation: g-sept var(--t-moment) var(--m-ressort); }
+  :is(.nav, .tabbar) a.joue[data-k="accueil"] .ic svg { animation: g-saut var(--t-moment) var(--m-doux) .05s; }
+  :is(.nav, .tabbar) a.joue[data-k="plan"] .ic path:last-child { stroke-dasharray: 12; animation: g-trait var(--t-moment) var(--m-doux) .05s both; }
+  :is(.nav, .tabbar) a.joue[data-k="resultats"] .ic path:last-child { stroke-dasharray: 17; animation: g-courbe var(--t-moment) var(--m-doux) .05s both; }
+  :is(.nav, .tabbar) a.joue[data-k="reunion"] .ic rect { animation: g-allume var(--t-moment) var(--m-doux) .05s; }
+  :is(.side-foot, .topbar) [data-act="search"].joue .ic svg { transform: rotate(-12deg) scale(1.12); }
+  :is(.side-foot, .topbar) [data-act="notifs"].joue .ic svg { animation: ec-cloche var(--t-moment) var(--m-doux); transform-origin: 50% 12%; }
+  :is(.side-foot, .topbar) [data-act="profile"].joue .avatar { transform: scale(1.1); box-shadow: 0 0 0 2px var(--panel, #333539), 0 0 0 4px var(--yellow); }
+  @media (hover: hover) {
+    .brand:hover img { animation: g-sept var(--t-moment) var(--m-ressort); }
+    .new:hover .ic svg { transform: rotate(90deg); }
+    .nav [data-k="accueil"]:hover .ic svg { animation: g-saut var(--t-moment) var(--m-doux); }
+    .nav [data-k="plan"]:hover .ic path:last-child { stroke-dasharray: 12; animation: g-trait var(--t-moment) var(--m-doux) both; }
+    .nav [data-k="resultats"]:hover .ic path:last-child { stroke-dasharray: 17; animation: g-courbe var(--t-moment) var(--m-doux) both; }
+    .nav [data-k="reunion"]:hover .ic rect { animation: g-allume var(--t-moment) var(--m-doux); }
+    /* les bulles d'aide attendent un court instant puis montent en fondu : plus de clignotement en passant la souris */
+    [data-tip]:hover::after { animation: g-tip var(--t-vite) var(--m-doux) .35s both; }
+  }
+
+  /* la surbrillance part de l'ancien choix et glisse jusqu'au nouveau */
+  .nav a.on.glisse { background: transparent; }
+  .nav a.on.glisse::before { content: ""; position: absolute; inset: 0; z-index: -1; border-radius: inherit; background: var(--panel-hover); animation: g-glisse var(--t-normal) var(--m-doux) both; }
+  .seg button.on.glisse { background: transparent; box-shadow: none; }
+  .seg button.on.glisse::before { content: ""; position: absolute; top: 0; bottom: 0; left: 0; width: 100%; z-index: -1; border-radius: inherit; background: var(--card); box-shadow: 0 1px 2px rgba(0,0,0,.12); animation: g-glisse-l var(--t-normal) var(--m-doux) both; }
+  .tabbar a.on.glisse .ic { background: transparent; position: relative; }
+  .tabbar a.on.glisse .ic::before { content: ""; position: absolute; inset: 0; z-index: -1; border-radius: 10px; background: var(--yellow); animation: g-glisse var(--t-normal) var(--m-doux) both; }
+
+  /* les boutons s'enfoncent sous le clic ; le survol s'allume en douceur au lieu de clignoter */
+  :is(.btn, .new, .ib, .seg button, .chip, .pick, button.pill, .nav a, .side-foot button, .tabbar a, .pop-i, .r-v, .cal-g button) { transition: transform var(--t-vite) var(--m-doux), background-color var(--t-vite) var(--m-doux), color var(--t-vite) var(--m-doux), box-shadow var(--t-vite) var(--m-doux), filter var(--t-vite) var(--m-doux); }
+  :is(.btn, .new, .ib, .seg button, .chip, .pick, button.pill, .nav a, .side-foot button, .tabbar a, .pop-i, .r-v, .cal-g button):active { transform: scale(.96); }
+  :is(.pin, .todo):active { transform: scale(.98); }
+
+  /* les menus déroulent leurs lignes l'une après l'autre */
+  .pop.arrive .pop-i { animation: g-ligne var(--t-normal) var(--m-doux) both; }
+  .pop.arrive .pop-i:nth-of-type(2) { animation-delay: .025s; }
+  .pop.arrive .pop-i:nth-of-type(3) { animation-delay: .05s; }
+  .pop.arrive .pop-i:nth-of-type(4) { animation-delay: .075s; }
+  .pop.arrive .pop-i:nth-of-type(5) { animation-delay: .1s; }
+  .pop.arrive .pop-i:nth-of-type(n+6) { animation-delay: .12s; }
+
+  /* le message du bas arrive avec un petit rebond ; avec « Annuler », un trait jaune montre le temps qu'il reste */
+  .toast { animation: g-toast var(--t-normal) var(--m-ressort) both; }
+  .toast.undo { position: relative; overflow: hidden; }
+  .toast.undo::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 3px; background: var(--yellow-side, #FFD34E); opacity: .85; transform-origin: left; animation: g-reste var(--d, 5s) linear both; }
+
+  /* épingler : le marque-page tombe en place ; le compteur « à traiter » et le point des notifications rebondissent quand ils changent */
+  .ib.on.vient .ic svg { animation: g-pose var(--t-moment) var(--m-ressort); }
+  .nav .n.bouge, .side-foot .dot.bouge { animation: g-bouge var(--t-moment) var(--m-ressort); }
+
+  /* clair ou sombre : le nouveau thème s'étend en cercle depuis le bouton */
+  html.theme-vt::view-transition-old(root) { animation: none; }
+  html.theme-vt::view-transition-new(root) { animation: g-cercle var(--t-moment) var(--m-doux); }
+}
+@keyframes g-sept { 0%, 100% { transform: none; } 40% { transform: translateY(-3px) rotate(-8deg); } 70% { transform: translateY(1px) rotate(2deg); } }
+@keyframes g-saut { 0%, 100% { transform: none; } 35% { transform: translateY(-3.5px); } 65% { transform: translateY(.5px) scaleY(.94); } }
+@keyframes g-trait { from { stroke-dashoffset: 12; } to { stroke-dashoffset: 0; } }
+@keyframes g-courbe { from { stroke-dashoffset: 17; } to { stroke-dashoffset: 0; } }
+@keyframes g-allume { 0%, 100% { fill-opacity: 0; } 30%, 60% { fill-opacity: .3; } }
+@keyframes g-tip { from { opacity: 0; translate: 0 -3px; } }
+@keyframes g-glisse { from { transform: translate(var(--gx, 0), var(--gy, 0)); } }
+@keyframes g-glisse-l { from { transform: translateX(var(--gx, 0)); width: var(--gw, 100%); } }
+@keyframes g-ligne { from { opacity: 0; transform: translateX(-6px); } }
+@keyframes g-toast { from { opacity: 0; transform: translateY(14px) scale(.96); } }
+@keyframes g-reste { to { transform: scaleX(0); } }
+@keyframes g-pose { 0% { transform: translateY(-8px) scaleY(.8); opacity: .2; } 60% { transform: translateY(1px) scaleY(1.06); opacity: 1; } }
+@keyframes g-bouge { 0% { transform: scale(.5); } 55% { transform: scale(1.22); } 100% { transform: none; } }
+@keyframes g-cercle { from { clip-path: circle(0 at var(--vx, 50%) var(--vy, 50%)); } to { clip-path: circle(150vmax at var(--vx, 50%) var(--vy, 50%)); } }
+
+/* iPhone et iPad : un champ en dessous de 16 px fait zoomer toute la page quand on le touche ; à 16 px, plus de zoom */
+@supports (-webkit-touch-callout: none) {
+  input:not([type="checkbox"]):not([type="radio"]), select, textarea, .input { font-size: max(16px, 1em); }
+}

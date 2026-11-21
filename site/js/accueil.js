@@ -19,17 +19,18 @@
     const nreq = inbox.filter((r) => r.de !== r.a).length;
     if (nreq) parts.push(`${nreq} demande${nreq > 1 ? "s t'attendent" : " t'attend"}`);
     parts.push(week.length ? `${week.length} ligne${week.length > 1 ? "s" : ""} dans les sept jours` : "rien dans les sept jours");
-    const pique = KP.pique ? KP.pique("accueil") : "";
+    const pique = KP.pique ? KP.pique("accueil") : "", ecrit = !!pique && KP.entre && !KP.piqueVue; if (ecrit) KP.piqueVue = true;
     const summary = reader ? `Le plan de la période ${p.nom}, en lecture seule.` : parts.join(", ") + ".";
 
 
     return `<div class="page home">
-      <div class="hello"><h1>${hr < 18 ? "Bonjour" : "Bonsoir"} ${h(u.nom)}</h1>${pique ? `<p class="pique">${h(pique)}</p>` : ""}<p>${h(summary[0].toUpperCase() + summary.slice(1))}</p></div>
+      <div class="hello"><h1>${hr < 18 ? "Bonjour" : "Bonsoir"} ${h(u.nom)}</h1>${pique ? `<p class="pique${ecrit ? " ecrit" : ""}"><span class="pq-pts" aria-hidden="true"><i></i><i></i><i></i></span><span class="pq-t">${h(pique)}</span></p>` : ""}<p>${h(summary[0].toUpperCase() + summary.slice(1))}</p></div>
       <div class="home-cols"><div class="home-main">
 
+      ${!inbox.length && !reader ? `<section class="block"><h2>À traiter</h2><div class="vide-todo">${KP.illu ? KP.illu("petit") : ""}<div><b>Rien à traiter.</b><span>Personne n'attend rien de toi.</span></div></div></section>` : ""}
       ${inbox.length ? `<section class="block"><h2>À traiter${inbox.length > 3 && !KP.ui.allTodo ? `<button type="button" class="link" data-act="all-todo">Voir les ${inbox.length}</button>` : ""}</h2>
         ${todo.map((r) => { const it = store.get(r.item), late = r.pour && r.pour < T; if (r.de === r.a) return `<div class="todo"><div class="tx"><b>${h(r.txt || r.quoi)}</b><small>${h(it.t)} · <span class="${late ? "late" : ""}">${h(KP.due(r))}</span></small></div><button type="button" class="link soft" data-act="open" data-id="${it.id}">Voir</button><button type="button" class="ib" data-act="memo-fait" data-id="${r.id}" data-tip="C'est fait" aria-label="C'est fait">${KP.ic("check")}</button></div>`;
-          return `<div class="todo"><div class="tx"><b>${r.txt ? `${h(KP.dest(r.de))} : ${KP.ecrire ? KP.ecrire.texte(r.txt, it) : h(r.txt)}` : `${h(KP.dest(r.de))} attend ${h(KP.ASK[r.quoi] || "des éléments")}`}</b><small>${h(it.t)} · <span class="${late ? "late" : ""}">${h(KP.due(r))}</span></small></div><button type="button" class="link soft" data-act="open" data-id="${it.id}">Voir</button><button type="button" class="btn primary small" data-act="answer" data-id="${r.id}">Répondre</button></div>`; }).join("")}</section>` : ""}
+          return `<div class="todo">${KP.avatar(KP.person(r.de), "todo-av")}<div class="tx"><b>${r.txt ? `${h(KP.dest(r.de))} : ${KP.ecrire ? KP.ecrire.texte(r.txt, it) : h(r.txt)}` : `${h(KP.dest(r.de))} attend ${h(KP.ASK[r.quoi] || "des éléments")}`}</b><small>${h(it.t)} · <span class="${late ? "late" : ""}">${h(KP.due(r))}</span></small></div><button type="button" class="link soft" data-act="open" data-id="${it.id}">Voir</button><button type="button" class="btn primary small" data-act="answer" data-id="${r.id}">Répondre</button></div>`; }).join("")}</section>` : ""}
 
 
       <section class="block"><h2>${pilote || reader ? "Les sept prochains jours" : "Ma semaine"}<a class="link" href="${KP.href({ screen: "plan", per: p.k, svc: pilote || reader ? "" : u.svc, msg: "", type: "" })}">Tout le plan</a></h2>

@@ -10,6 +10,40 @@
   KP.norm = (s) => String(s).normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
   KP.phone = () => window.matchMedia("(max-width: 767px)").matches;
   KP.acts = {};
+
+  /* la surbrillance glisse de l'ancien choix vers le nouveau : menu de gauche, onglets du téléphone, périodes, affichage, apparence.
+     On retient où était le choix ; au rendu suivant, le nouveau part de là (css : .glisse, g-glisse) */
+  const glis = {};
+  KP.glisser = (g, ou = "") => {
+    if (!g) return;
+    const k = ou + "|" + (g.getAttribute("aria-label") || g.className), on = g.querySelector(":scope > .on"), avant = glis[k];
+    if (!on) { delete glis[k]; return; }
+    const r = { x: on.offsetLeft, y: on.offsetTop, w: on.offsetWidth, id: on.dataset.k || on.textContent };
+    glis[k] = r;
+    if (!avant || avant.id === r.id || !on.offsetWidth) return;
+    on.style.setProperty("--gx", avant.x - r.x + "px"); on.style.setProperty("--gy", avant.y - r.y + "px"); on.style.setProperty("--gw", avant.w + "px");
+    on.classList.add("glisse");
+  };
+
+  /* typographie française sur le texte affiché (jamais sur le code ni dans les champs) : espace fine insécable avant ; ! ? » % €
+     et après «, espace insécable avant : — aucun signe ne se retrouve seul en début de ligne */
+  const TYPO = / [;:!?»%€]|« /;
+  KP.typo = (root) => {
+    if (!root) return;
+    const w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, { acceptNode: (n) => (TYPO.test(n.nodeValue) && !n.parentElement.closest("textarea, input, script, style, code, pre, [contenteditable]") ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_SKIP) });
+    const ns = []; while (w.nextNode()) ns.push(w.currentNode);
+    ns.forEach((n) => { n.nodeValue = n.nodeValue.replace(/ ([;!?»%€])/g, "\u202f$1").replace(/« /g, "«\u202f").replace(/ :/g, "\u00a0:"); });
+  };
+
+  /* clair ou sombre : le nouveau thème s'étend en cercle depuis le bouton touché (css : g-cercle) */
+  KP.changerTheme = (k, depuis) => {
+    const faire = () => KP.store.setPref("theme", k), d = document.documentElement;
+    if (!document.startViewTransition || matchMedia("(prefers-reduced-motion: reduce)").matches) return faire();
+    const r = depuis && depuis.getBoundingClientRect ? depuis.getBoundingClientRect() : null;
+    d.style.setProperty("--vx", r ? r.left + r.width / 2 + "px" : "50%"); d.style.setProperty("--vy", r ? r.top + r.height / 2 + "px" : "50%");
+    d.classList.add("theme-vt");
+    document.startViewTransition(faire).finished.finally(() => d.classList.remove("theme-vt"));
+  };
   KP.views = {};
   KP.ui = { past: false, gx: null, gper: "" };
 
@@ -19,7 +53,9 @@
   KP.pop = (anchor, html, opt = {}) => {
     KP.closePop();
     const scrim = document.createElement("div"); scrim.className = "scrim";
-    const el = document.createElement("div"); el.className = "pop " + (opt.cls || ""); el.setAttribute("role", opt.role || "menu"); if (opt.label) el.setAttribute("aria-label", opt.label); if (opt.role === "dialog") el.setAttribute("aria-modal", "false"); el.innerHTML = html;
+    const el = document.createElement("div"); el.className = "pop " + (opt.cls || ""); el.setAttribute("role", opt.role || "menu"); if (opt.label) el.setAttribute("aria-label", opt.label); if (opt.role === "dialog") el.setAttribute("aria-modal", "false"); el.innerHTML = html; KP.typo(el);
+    /* ses lignes arrivent l'une après l'autre, à l'ouverture seulement (css : .arrive) */
+    el.classList.add("arrive"); setTimeout(() => el.classList.remove("arrive"), 600);
     (anchor.closest("dialog") || layer()).append(scrim, el);
     const place = () => {
       if (KP.phone()) return;
@@ -29,6 +65,8 @@
       left = Math.max(8, Math.min(left, innerWidth - w - 8));
       if (top + hh > innerHeight - 8) top = Math.max(8, r.top - hh - 6);
       el.style.left = left + "px"; el.style.top = top + "px";
+      /* il s'ouvre depuis le bouton qui l'a appelé (css : ec-pop) */
+      el.style.transformOrigin = `${opt.side || !opt.right ? "left" : "right"} ${opt.side || top < r.top ? "bottom" : "top"}`;
     };
     place();
     anchor.setAttribute("aria-expanded", "true");
@@ -58,10 +96,11 @@
     const draw = () => (opt.title ? `<h4 aria-hidden="true">${KP.h(opt.title)}</h4>` : "") + items.map((it) => it === "-" ? '<hr role="separator">' :
       `<button type="button" class="pop-i${it.danger ? " danger" : ""}" role="${radio ? (opt.multi ? "menuitemcheckbox" : "menuitemradio") : "menuitem"}"${radio ? ` aria-checked="${sel.has(it.v)}"` : ""} data-v="${KP.h(it.v)}">${it.icon ? KP.ic(it.icon) : ""}<span>${it.pill ? `<span class="pill ${it.pill}">${it.pill === "diffuse" ? KP.ic("check") : ""}${KP.h(it.nom)}</span>` : KP.h(it.nom)}${it.info ? `<small>${KP.h(it.info)}</small>` : ""}</span>${sel.has(it.v) ? `<span class="r">${KP.ic("check")}</span>` : it.hint ? `<span class="r">${KP.h(it.hint)}</span>` : ""}</button>`).join("");
     const p = KP.pop(anchor, draw(), { label: opt.title, ...opt });
+    if (radio) p.el.classList.remove("arrive"); /* les menus de choix (filtres, état…) s'ouvrent souvent : leurs lignes sont là tout de suite */
     p.el.addEventListener("click", (e) => {
       const b = e.target.closest("[data-v]"); if (!b) return;
       const v = b.dataset.v;
-      if (opt.multi) { sel.has(v) ? sel.delete(v) : sel.add(v); onPick([...sel]); p.el.innerHTML = draw(); const again = p.el.querySelector(`[data-v="${CSS.escape(v)}"]`); if (again) again.focus(); }
+      if (opt.multi) { sel.has(v) ? sel.delete(v) : sel.add(v); onPick([...sel]); p.el.innerHTML = draw(); KP.typo(p.el); const again = p.el.querySelector(`[data-v="${CSS.escape(v)}"]`); if (again) again.focus(); }
       else { p.close(); onPick(v); }
     });
     return p;
@@ -69,7 +108,7 @@
 
   /* ---------- fenêtre ---------- */
   KP.dialog = (html, opt = {}) => {
-    const d = document.createElement("dialog"); d.className = "dlg " + (opt.cls || ""); d.innerHTML = html;
+    const d = document.createElement("dialog"); d.className = "dlg " + (opt.cls || ""); d.innerHTML = html; KP.typo(d);
     layer().append(d);
     d.addEventListener("close", () => { d.remove(); if (opt.onClose) opt.onClose(); });
     d.addEventListener("click", (e) => { if (e.target === d) d.close(); if (e.target.closest("[data-close]")) d.close(); });
@@ -81,8 +120,9 @@
   /* ---------- message bref, avec « Annuler » pendant 5 secondes ---------- */
   KP.toast = (text, undo) => {
     const box = document.getElementById("toasts"); box.innerHTML = "";
-    const t = document.createElement("div"); t.className = "toast"; t.innerHTML = `<span>${KP.h(text)}</span>` + (undo ? `<button type="button">Annuler</button>` : "");
-    box.append(t);
+    /* avec « Annuler », un fin trait jaune montre le temps qu'il reste (css : g-reste) */
+    const t = document.createElement("div"); t.className = "toast" + (undo ? " undo" : ""); t.style.setProperty("--d", (undo ? 5000 : 2600) + "ms"); t.innerHTML = `<span>${KP.h(text)}</span>` + (undo ? `<button type="button">Annuler</button>` : "");
+    KP.typo(t); box.append(t);
     /* le message « nouvelle version » revient après chaque message bref, tant qu'on n'a pas mis à jour */
     const kill = setTimeout(() => { t.remove(); if (KP.maj) KP.maj(); }, undo ? 5000 : 2600);
     if (undo) t.querySelector("button").addEventListener("click", () => { clearTimeout(kill); t.remove(); undo(); KP.toast("Annulé"); });
@@ -129,11 +169,24 @@
     d.querySelector("form").addEventListener("submit", () => cb(new FormData(d.querySelector("form")).get("m").trim()));
   };
   KP.recent = (x) => !!x && x.quand > Date.now() - 14 * 864e5;
+  /* ---------- eye candy (2.8) : une couleur par message, un visage par personne, le moment « Diffusé » ---------- */
+  /* la couleur suit la place du message dans la liste (Réglages, Messages) : six teintes, le nom reste écrit */
+  /* les initiales, sur une teinte propre à chaque personne (toujours la même) */
+  const AV = 7;
+  /* une photo de profil n'est qu'un petit JPEG en data URL (la base le vérifie aussi) ; tout le reste est ignoré */
+  KP.photoSure = (v) => (typeof v === "string" && /^data:image\/jpeg;base64,[A-Za-z0-9+/=]+$/.test(v) && v.length <= 60000 ? v : "");
+  KP.avatar = (p, cls = "") => { if (!p) return ""; let n = (KP.PEOPLE || []).findIndex((x) => x.k === p.k); if (n < 0) { n = 0; for (const c of p.k || p.nom || "") n = (n * 31 + c.charCodeAt(0)) >>> 0; } const ini = (p.nom || "?").trim().slice(0, 1).toUpperCase();
+    return `<span class="av av${n % AV}${cls ? " " + cls : ""}" title="${KP.h(p.nom)}" aria-hidden="true">${KP.photoSure(p.photo) ? `<img src="${KP.h(p.photo)}" alt="" loading="lazy">` : KP.h(ini)}</span>`; };
+  KP.avatarsSvc = (svc, cls) => (KP.PEOPLE || []).filter((x) => x.svc === svc && x.role !== "lecteur").map((x) => KP.avatar(x, cls)).join("");
+  /* une action qui vient de passer à « Diffusé » : sa case se remplit, la coche se dessine */
+  KP.fx = KP.fx || { id: "", t: 0 };
+  KP.vientDetre = (id) => KP.fx.id === id && Date.now() - KP.fx.t < 1600;
   KP.pill = (it, editable) => {
     if (it.annule) return `<span class="pill annule">Annulé</span>`;
     const s = KP.STATUTS.find((x) => x.k === it.st) || KP.STATUTS[0];
     const inner = (it.st === "diffuse" ? KP.ic("check") : "") + KP.h(s.nom);
-    return editable ? `<button type="button" class="pill ${s.k}" data-act="row-st" data-id="${it.id}" aria-label="État : ${KP.h(s.nom)}. Changer">${inner}</button>` : `<span class="pill ${s.k}">${inner}</span>`;
+    const pop = it.st === "diffuse" && KP.vientDetre(it.id) ? " vient" : "";
+    return editable ? `<button type="button" class="pill ${s.k}${pop}" data-act="row-st" data-id="${it.id}" aria-label="État : ${KP.h(s.nom)}. Changer">${inner}</button>` : `<span class="pill ${s.k}${pop}">${inner}</span>`;
   };
   KP.due = (r) => !r.pour ? "pour info" : !r.fait && r.pour < KP.TODAY ? `attendu ${KP.fmt.relatif(r.pour)}` : `pour ${KP.fmt.relatif(r.pour)}`;
   KP.kindName = (it) => it.variant === "sujet" ? "Sujet de la période" : it.variant === "classement" ? "Classement" : it.kind === "tf" ? "Temps fort" : it.variant === "partenariat" ? "Partenariat payant" : "Action";
@@ -148,7 +201,7 @@
     return `<div class="row ${it.kind === "tf" ? "tf" : ""}${it.annule ? " off" : ""}${KP.route && KP.route.fiche === it.id ? " sel" : ""}" data-act="open" data-id="${it.id}">
       <span class="d">${opt.date || KP.dateCell(it)}</span>
       <span class="t">${it.kind === "tf" && opt.slim ? '<i class="tfdot"></i>' : ""}<button type="button" class="open" data-act="open" data-id="${it.id}"><span class="tt">${KP.h(it.t)}</span></button>${it.variant === "classement" && it.rang ? `<span class="rang">${KP.h(it.rang)}</span>` : ""}${!it.annule && KP.recent(it.report) ? `<span class="badge">Reporté</span>` : ""}${it.variant === "partenariat" ? `<span class="badge">Payant</span>` : ""}${opt.sub ? `<small>${KP.h(opt.sub)}</small>` : par ? `<small>pour ${KP.h(par.t)}</small>` : it.variant === "classement" && it.cible ? `<small>objectif ${KP.h(it.cible)}</small>` : ""}</span>
-      ${opt.slim ? "" : `<span class="svc">${it.kind === "tf" ? '<i class="tag tf">Temps fort</i>' : KP.h(svc)}</span><span class="msg">${it.m.map((k) => (KP.message(k) || {}).nom).filter(Boolean).map((n) => `<i class="tag">${KP.h(n)}</i>`).join("")}</span>`}
+      ${opt.slim ? "" : `<span class="svc">${it.kind === "tf" ? '<i class="tag tf">Temps fort</i>' : `${it.variant === "partenariat" ? "" : KP.avatarsSvc(it.svc, "av-s")}<span class="svc-n">${KP.h(svc)}</span>`}</span><span class="msg">${it.m.map((k) => (KP.message(k) || {}).nom).filter(Boolean).map((n) => `<i class="tag">${KP.h(n)}</i>`).join("")}</span>`}
       ${opt.mid != null ? opt.mid : ""}
       <span class="st">${KP.pill(it, KP.store.canEdit(it))}</span>${opt.end || ""}
     </div>`;

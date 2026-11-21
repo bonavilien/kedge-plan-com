@@ -40,6 +40,18 @@
   const IMPOSSIBLE = "Ce chiffre n'est pas possible : un nombre entier, de 0 à un milliard";
   const IMPOSSIBLE_EUR = "Ce montant n'est pas possible : de 0 à 100 millions d'euros";
 
+  /* la première fois de la session, les chiffres marqués data-n montent de zéro à leur valeur (0,8 s) et les barres poussent (css : .compte) ;
+     ensuite ils s'affichent tout de suite, parce qu'on revient souvent sur cet écran */
+  KP.apresRendu = (main, entre) => {
+    if (!entre || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const els = [...main.querySelectorAll("[data-n]")].filter((e) => +e.dataset.n > 0); if (!els.length) return;
+    try { if (sessionStorage.getItem("kplan-compte")) return; sessionStorage.setItem("kplan-compte", "1"); } catch (e) { /* sans stockage : on anime */ }
+    main.classList.add("compte"); setTimeout(() => main.classList.remove("compte"), 1500);
+    const t0 = performance.now(), D = 800, ease = (x) => 1 - Math.pow(1 - x, 3);
+    const pas = (t) => { const x = Math.min(1, (t - t0) / D); els.forEach((e) => { if (e.isConnected) e.textContent = court(Math.round(+e.dataset.n * ease(x))); }); if (x < 1) requestAnimationFrame(pas); };
+    els.forEach((e) => (e.textContent = court(0))); requestAnimationFrame(pas);
+  };
+
   KP.views.resultats = () => {
     if (!store.resOk()) return `<div class="page res"><div class="head"><h1>Résultats</h1></div><div class="empty"><h3>Bientôt ici</h3><p>La base n'est pas encore à jour pour noter les résultats. ${KP.me().role === "pilote" ? "Colle 2.5_0030 puis 2.6_0031 dans Supabase (SQL Editor)." : "Un chef de projet doit la mettre à jour."}</p></div></div>`;
     const r = KP.route, chef = store.voitBudget(), tab = r.tab === "budget" && chef ? "budget" : "diffusions";
@@ -60,11 +72,15 @@
   /* ---------- Diffusions ---------- */
   function diffusions(p) {
     const all = diffusees(p);
-    if (!all.length) return `<div class="empty"><h3>Rien de diffusé sur ${h(p.nom)}</h3><p>Une action passée en « Diffusé » arrive ici.</p></div>`;
+    if (!all.length) return `<div class="empty">${KP.illu ? KP.illu() : ""}<h3>Rien de diffusé sur ${h(p.nom)}</h3><p>Une action passée en « Diffusé » arrive ici.</p></div>`;
     const todo = all.filter((i) => !aRes(i) && store.canEdit(i)).sort((a, b) => a.date.localeCompare(b.date));
     const done = all.filter((i) => !todo.includes(i)).sort((a, b) => score(b) - score(a) || b.date.localeCompare(a.date));
     const tiles = [["vues", "vues"], ["retombees", "retombées presse"], ["inscrits", "inscrits"], ["clics", "clics"]].filter(([k]) => k !== "clics" || somme(all, k) > 0);
-    const tuile = ([k, lib]) => { const n = somme(all, k); return `<div class="r-tile${n ? "" : " zero"}"><b>${court(n)}</b><span>${n <= 1 ? lib.replace(/s(\b|$)/g, "$1") : lib}</span></div>`; };
+    /* résultats vivants : le chiffre monte jusqu'à sa valeur, et cinq petites barres montrent chaque période */
+    const iCur = KP.PERIODS.findIndex((x) => x.k === curPer());
+    const mini = (k) => { const v = KP.PERIODS.map((x) => somme(diffusees(x), k)), mx = Math.max(1, ...v);
+      return `<span class="r-mini" role="img" aria-label="${h(KP.PERIODS.map((x, i) => `${x.nom} ${court(v[i])}`).join(", "))}">${KP.PERIODS.map((x, i) => `<i class="${x.k === p.k ? "on" : ""}${i > iCur ? " fut" : ""}" style="--h:${i > iCur ? 100 : Math.max(v[i] ? 8 : 3, Math.round((100 * v[i]) / mx))}%;--i:${i}" title="${h(x.nom)} : ${h(court(v[i]))}"></i>`).join("")}</span>`; };
+    const tuile = ([k, lib]) => { const n = somme(all, k); return `<div class="r-tile${n ? "" : " zero"}"><div class="r-tn"><b data-n="${n}">${court(n)}</b><span>${n <= 1 ? lib.replace(/s(\b|$)/g, "$1") : lib}</span></div>${n ? mini(k) : ""}</div>`; };
     /* par message : la barre suit les vues (la mesure commune) ; sans aucune vue, le poids des résultats */
     /* la barre suit le poids de tous les résultats (une retombée pèse mille vues…) : un message sans vues mais avec des inscrits a sa barre */
     const parM = KP.CLES.map((m) => { const l = all.filter((i) => i.m.includes(m.k)); return { m, l, v: somme(l, "vues"), s: l.reduce((a, i) => a + score(i), 0) }; });

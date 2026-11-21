@@ -2,7 +2,7 @@
 -- Plan de com : installation complète de la base, en une fois.
 -- Sur un projet Supabase NEUF : SQL Editor, New query, coller tout ce fichier, Run.
 -- Supabase peut prévenir d'opérations « destructives » : c'est normal, confirmer.
--- Fabriqué par scripts/installation.mjs à partir de supabase/migrations (32 scripts, dernier : 0032_correctifs_2_6_1.sql).
+-- Fabriqué par scripts/installation.mjs à partir de supabase/migrations (33 scripts, dernier : 0034_photo_profil.sql).
 -- Ne pas le modifier à la main.
 -- =====================================================================
 begin;
@@ -3140,6 +3140,18 @@ end $$;
 revoke execute on function public.set_res(uuid, jsonb, text[]) from public, anon;
 grant execute on function public.set_res(uuid, jsonb, text[]) to authenticated;
 insert into kplan_private.migrations (name) values ('0032_correctifs_2_6_1.sql');
+
+-- ---------------------------------------------------------------------
+-- 0034_photo_profil.sql
+-- ---------------------------------------------------------------------
+-- 2.7 : sa photo dans Réglages > Mon profil, visible sur tous les visages de l'appli.
+-- Un petit carré JPEG (160 px) en data URL, préparé par l'appli ; la base refuse tout le reste (taille, format).
+-- Chacun change sa propre photo (règle « moi » de 0022) ; les chefs de projet peuvent tout modifier.
+-- Numéro 0034 : 0033 est réservé à la mise à jour automatique des copies (2.7 installateur, pas encore publiée).
+alter table public.profiles
+  add column if not exists photo text
+    constraint profiles_photo_format check (photo is null or (char_length(photo) <= 60000 and photo ~ '^data:image/jpeg;base64,[A-Za-z0-9+/=]+$'));
+insert into kplan_private.migrations (name) values ('0034_photo_profil.sql');
 
 commit;
 -- Terminé. Étape suivante du guide : créer ton compte (Authentication > Add user). Le premier compte devient pilote.

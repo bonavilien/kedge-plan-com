@@ -39,6 +39,7 @@
     marketing: { k: "marketing", nom: "la Dir. marketing et recrutement", court: "Dir. marketing" }, programme: { k: "programme", nom: "la Direction du Programme", court: "Dir. Programme" } };
 
   /* ---------- lecture : tout, d'un coup (l'équipe est petite) ---------- */
+  let photoCol = false;
   async function load() {
     manque = {};
     const all = (t, order) => run(sb.from(t).select("*").order(order));
@@ -67,7 +68,9 @@
     ic.forEach((x) => (cts[x.item] = cts[x.item] || []).push(x.contact));
     blocks = {};
     blk.filter((b) => !b.leve && b.why.startsWith(TRANCHER)).forEach((b) => (blocks[b.item] = blocks[b.item] || []).push(b.id));
-    const people = prof.map((p) => ({ k: p.id, nom: p.nom || "Sans nom", fonction: p.fonction || "", role: p.visiteur ? "lecteur" : p.chef ? "pilote" : p.svc ? "service" : "lecteur", svc: p.svc || "" }));
+    /* la photo de chacun (2.7, script 0034) : une base sans la colonne n'affiche que les initiales et ne propose pas d'en ajouter */
+    photoCol = prof.some((p) => "photo" in p);
+    const people = prof.map((p) => ({ k: p.id, nom: p.nom || "Sans nom", fonction: p.fonction || "", role: p.visiteur ? "lecteur" : p.chef ? "pilote" : p.svc ? "service" : "lecteur", svc: p.svc || "", photo: KP.photoSure(p.photo) }));
     const prefs = {};
     prof.forEach((p) => { if (p.version) prefs[p.id] = { version: p.version }; });
     const mine = ans.find((a) => a.key === "v2");
@@ -239,7 +242,7 @@
     Object.keys(e0).forEach((k) => { if (!(k in e1) && perN(k) != null) ops.push(() => run(sb.from("enveloppes").delete().eq("per", perN(k)))); });
     /* équipe, services, médias */
     const p0 = Object.fromEntries(shadow.people.map((p) => [p.k, p]));
-    db.people.forEach((p) => { const o = p0[p.k]; if (o && !same(p, o)) ops.push(() => run(sb.from("profiles").update({ nom: p.nom, fonction: p.fonction, ...(p.role !== o.role || p.svc !== o.svc ? { chef: p.role === "pilote", visiteur: p.role === "lecteur", svc: p.svc || null } : {}) }).eq("id", p.k))); });
+    db.people.forEach((p) => { const o = p0[p.k]; if (o && !same(p, o)) ops.push(() => run(sb.from("profiles").update({ nom: p.nom, fonction: p.fonction, ...(photoCol && (p.photo || "") !== (o.photo || "") ? { photo: p.photo || null } : {}), ...(p.role !== o.role || p.svc !== o.svc ? { chef: p.role === "pilote", visiteur: p.role === "lecteur", svc: p.svc || null } : {}) }).eq("id", p.k))); });
     const s0 = Object.fromEntries(shadow.services.map((s) => [s.k, s])), s1 = Object.fromEntries(db.services.map((s) => [s.k, s]));
     db.services.forEach((s, i) => { if (!s0[s.k]) ops.push(() => run(sb.from("services").insert({ k: s.k, nom: s.nom, court: s.court, ordre: i + 1 }))); else if (!same(s, s0[s.k])) ops.push(() => run(sb.from("services").update({ nom: s.nom, court: s.court }).eq("k", s.k))); });
     shadow.services.forEach((s) => { if (!s1[s.k]) ops.push(() => run(sb.from("services").delete().eq("k", s.k))); });
@@ -294,7 +297,7 @@
   /* base sans les scripts 2.6 : pas d'écran Résultats ni de budget (la base les refuserait), et on dit quoi faire */
   let prevenu = false;
   function baseAJour() {
-    const ok = !manque.budget; KP.base = { resultats: ok };
+    const ok = !manque.budget; KP.base = { resultats: ok, photo: photoCol };
     if (!ok && !prevenu && KP.me().role === "pilote") { prevenu = true; setTimeout(() => KP.toast("La base n'est pas à jour : colle 2.5_0030 puis 2.6_0031 dans Supabase (SQL Editor)"), 1500); }
   }
   document.addEventListener("visibilitychange", () => { if (!document.hidden && horsLigne) sync(store._db()); });

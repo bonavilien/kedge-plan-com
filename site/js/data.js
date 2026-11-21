@@ -387,6 +387,7 @@
     /* le budget des partenariats payants et l'enveloppe de chaque période : vus et réglés par les chefs de projet seulement */
     /* la base pas encore à jour (scripts 2.6 non collés) : ni résultats ni budget, elle les refuserait */
     resOk: () => !(KP.base && KP.base.resultats === false),
+    photoOk: () => !(KP.base && KP.base.photo === false),
     voitBudget: () => me().role === "pilote" && store.resOk(),
     montant: (id) => (db.budget || {})[id],
     enveloppe: (k) => (db.env || {})[k],

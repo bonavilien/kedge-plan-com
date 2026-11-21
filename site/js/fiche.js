@@ -111,7 +111,9 @@
     "f-tf": (a) => { const it = cur(); const tfs = store.items().filter((i) => i.kind === "tf").sort((x, y) => x.date.localeCompare(y.date)); KP.menu(a, [{ v: "", nom: "Aucun" }, "-", ...tfs.map((x) => ({ v: x.id, nom: x.t, info: KP.dateLong(x) }))], (v) => v !== it.tf && KP.toast(v ? "Rattachée au temps fort" : "Détachée", store.update(it.id, { tf: v })), { selected: [it.tf] }); },
     "f-st": (a) => KP.setStatus(KP.route.fiche, a.dataset.k),
     "f-reunion": () => { const it = cur(); store.update(it.id, { reunion: !it.reunion }, it.reunion ? "" : "a mis à l'ordre du jour"); KP.toast(it.reunion ? "À l'ordre du jour de la prochaine réunion" : "Retiré de l'ordre du jour"); },
-    "f-pin": () => { const id = KP.route.fiche, was = store.pinned(id); store.togglePin(id); KP.toast(was ? "Retiré de ton accueil" : "Épinglé sur ton accueil"); },
+    "f-pin": () => { const id = KP.route.fiche, was = store.pinned(id); store.togglePin(id); KP.toast(was ? "Retiré de ton accueil" : "Épinglé sur ton accueil");
+      /* le marque-page tombe en place (css : g-pose) */
+      const b = !was && $("fiche").querySelector('[data-act="f-pin"]'); if (b) b.classList.add("vient"); },
     "f-link": async () => { try { await navigator.clipboard.writeText(location.href); KP.toast("Lien copié"); } catch (e) { KP.toast("Le lien est dans la barre d'adresse"); } },
     "all-act": () => { KP.ui.allAct = KP.route.fiche; KP.render(); },
     "f-more": (a) => {

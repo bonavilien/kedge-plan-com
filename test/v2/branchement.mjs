@@ -104,6 +104,11 @@ ok((await row(p, "reqs", "c0000000-0000-0000-0000-000000000001")).st === "recue"
 await p.evaluate((id) => KP.store.togglePin(id), I(1)); await settle(p);
 ok(JSON.parse(await p.evaluate(() => window.__fake.db.answers.find((a) => a.key === "v2").val)).pins.includes(I(1)), "épingle gardée dans mes préférences");
 ok(await p.evaluate(() => window.__fake.db.profiles[0].version) === await p.evaluate(() => KP.VERSION.n), "ma version est notée dans mon profil");
+await p.evaluate(() => KP.store.savePerson(KP.me().k, { photo: "data:image/jpeg;base64,/9j/4AAQSkZJRg==" })); await settle(p);
+ok(await p.evaluate(() => window.__fake.db.profiles[0].photo) === "data:image/jpeg;base64,/9j/4AAQSkZJRg==", "ma photo est enregistrée dans mon profil");
+ok(await p.evaluate(() => !!document.querySelector(".side-foot .avatar img")), "ma photo remplace mes initiales dans le menu");
+await p.evaluate(() => KP.store.savePerson(KP.me().k, { photo: "" })); await settle(p);
+ok(await p.evaluate(() => window.__fake.db.profiles[0].photo) === null, "retirer ma photo la retire de la base");
 await p.evaluate(() => KP.store.savePerson("a0000000-0000-0000-0000-000000000003", { role: "lecteur" })); await settle(p);
 ok(await p.evaluate(() => window.__fake.db.profiles[2].visiteur) === true, "passer quelqu'un en lecture seule");
 
