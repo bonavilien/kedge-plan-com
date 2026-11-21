@@ -79,7 +79,7 @@
     if (pk !== lastPj) { lastPj = pk; KP.couleur.appliquer(pj.couleur); KP.couleur.retenir(pj); }
     if (store.prefs().version !== KP.VERSION.n) { store.prefs().version = KP.VERSION.n; store.prefs().versionVue = Date.now(); }
     const t = store.prefs().theme; if (t === "light" || t === "dark") document.documentElement.dataset.theme = t; else delete document.documentElement.dataset.theme;
-    const main = $("main"), top = main.scrollTop, act = document.activeElement, fid = act && act.id, sel = act && act.selectionStart;
+    const main = $("main"), top = main.scrollTop, act = document.activeElement, fid = act && act.id, sel = act && act.selectionStart, selF = act && act.selectionEnd, selD = act && act.selectionDirection;
     const frow = act && act.classList && act.classList.contains("open") && act.closest(".row") ? act.dataset.id : "";
     const f0 = $("fiche"), fWas = f0.hidden ? "" : f0.dataset.id, inFiche = act && f0.contains(act);
     renderSide();
@@ -106,7 +106,7 @@
     /* la fiche qui s'ouvre prend le focus ; celle qui se ferme le rend à sa ligne */
     if (fNow && fNow !== fWas) $("fiche").focus({ preventScroll: true });
     else if (!fNow && fWas && (inFiche || !act || act === document.body)) { const x = main.querySelector(`.row[data-id="${fWas}"] .open, .g-i[data-id="${fWas}"]`); if (x) x.focus({ preventScroll: true, focusVisible: !KP.phone() }); }
-    else if (fid && $(fid)) { $(fid).focus({ preventScroll: true }); try { if (sel != null) $(fid).setSelectionRange(sel, sel); } catch (e) {} }
+    else if (fid && $(fid)) { $(fid).focus({ preventScroll: true }); try { if (sel != null) $(fid).setSelectionRange(sel, selF != null ? selF : sel, selD || "none"); } catch (e) {} }
     else if (frow) { const x = main.querySelector(`.row[data-id="${frow}"] .open`); if (x) x.focus({ preventScroll: true }); }
     ["side", "topbar", "fiche"].forEach((k) => KP.typo($(k))); KP.typo(main);
     /* le titre de l'onglet compte ce qui t'attend : « (2) Accueil · Road to 7th » se voit depuis un autre onglet */

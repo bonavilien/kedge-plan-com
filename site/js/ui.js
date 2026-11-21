@@ -30,7 +30,7 @@
   const TYPO = / [;:!?»%€]|« /;
   KP.typo = (root) => {
     if (!root) return;
-    const w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, { acceptNode: (n) => (TYPO.test(n.nodeValue) && !n.parentElement.closest("textarea, input, script, style, code, pre, [contenteditable]") ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_SKIP) });
+    const w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, { acceptNode: (n) => (TYPO.test(n.nodeValue) && !n.parentElement.closest("textarea, input, script, style, code, pre, [contenteditable], .cb-miroir") ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_SKIP) });
     const ns = []; while (w.nextNode()) ns.push(w.currentNode);
     ns.forEach((n) => { n.nodeValue = n.nodeValue.replace(/ ([;!?»%€])/g, "\u202f$1").replace(/« /g, "«\u202f").replace(/ :/g, "\u00a0:"); });
   };

@@ -14,7 +14,7 @@
 
   /* ---------- le texte d'une action : sans articles devant, sans préposition qui traîne derrière ---------- */
   const nettoie = (s) => { let t = String(s || "").trim(), a;
-    do { a = t; t = t.replace(/^(le|la|les|l['’]|un|une|des|du|de|d['’]|au|aux|mon|ma|mes|notre|nos|ce|cet|cette|ces|celle|celui|la fiche)\s*/i, ""); } while (t !== a);
+    do { a = t; t = t.replace(/^(?:(?:le|la|les|un|une|des|du|de|au|aux|mon|ma|mes|notre|nos|ce|cet|cette|ces|celle|celui|la fiche)\s+|[ld]['’]\s*)/i, ""); } while (t !== a);
     do { a = t; t = t.replace(/\s+(pour|de|du|des|d['’]|à|a|au|aux|avec|sur|le|la|les|et|en|par|chez)$/i, ""); } while (t !== a);
     return t.replace(/^[«"“\s]+|[»"”\s]+$/g, ""); };
   const majuscule = (s) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
@@ -23,9 +23,16 @@
 
   /* ---------- retrouver l'action dont on parle ---------- */
   function cible(txt, filtre = () => true, garde = () => true) {
-    const q = nettoie(txt), base = store.items().filter((it) => filtre(it) && garde(it));
+    const q = nettoie(txt); let base = store.items().filter((it) => filtre(it) && garde(it));
+    /* « l'action de jeudi » : un mot passe-partout + une date, on prend ce qui tombe ce jour-là */
+    if (/^(?:action|actions|truc|chose|fiche|ca|ça|celle|celui)$/i.test(q.trim())) { const j = base.filter((it) => it.variant !== "sujet").sort((a, b) => a.date.localeCompare(b.date)); if (j.length && j.length < store.items().filter(filtre).length) return j.length === 1 ? { it: j[0], q } : { cands: j.slice(0, 5), q }; }
+    const plein = (b) => C.trouver(q, b, { today: KP.TODAY, titre: titreDe }).some((x) => x.score >= 0.99);
+    if (!plein(base) && plein(store.items().filter(filtre))) base = store.items().filter(filtre); /* le filtre de date ne doit pas cacher l'action nommée */
+    else if (!C.trouver(q, base, { today: KP.TODAY, titre: titreDe }).length) base = store.items().filter(filtre);
     const list = C.trouver(q, base, { today: KP.TODAY, titre: titreDe });
-    const pleins = list.filter((x) => x.score >= 0.99);
+    let pleins = list.filter((x) => x.score >= 0.99);
+    /* « le gala » : le Gala lui-même passe avant les actions qui ne font que s'y rattacher */
+    if (pleins.length > 1) { const qw = C.mots(q), propres = pleins.filter((x) => C.note(qw, C.mots(x.it.t)) >= 0.99); if (propres.length) pleins = propres; }
     if (pleins.length === 1) return { it: pleins[0].it, q };
     if (pleins.length > 1) { const pile = pleins.find((x) => KP.norm(x.it.t) === KP.norm(q)); return pile ? { it: pile.it, q } : { cands: pleins.slice(0, 5).map((x) => x.it), q }; }
     return { cands: list.slice(0, 4).map((x) => x.it), approx: true, q };
@@ -50,13 +57,13 @@
     /* une action à toucher : retrouvée → on prépare ; plusieurs → on fait choisir ; rien → on le dit */
     const surUne = (res, prepare) => {
       if (res.it) { const p = prepare(res.it); if (p.refus === undefined) p.refus = droits(res.it); return Object.assign(vm, p, { it: res.it }); }
-      if (res.cands && res.cands.length) { vm.choisir = res.cands.map((it) => ({ it, ...prepare(it), refus: droits(it) })); vm.approx = res.approx; vm.q = res.q; return vm; }
+      if (res.cands && res.cands.length) { vm.choisir = res.cands.map((it) => { const p = prepare(it); return { it, danger: vm.danger, ...p, refus: p.refus === undefined ? droits(it) : p.refus }; }); vm.approx = res.approx; vm.q = res.q; return vm; }
       vm.introuvable = res.q; return vm;
     };
     const vivantes = (it) => !it.annule && it.variant !== "sujet";
     switch (b.k) {
       case "defaire": vm.titre = "Défaire"; if (!S.dernier) { vm.vide = "Rien à défaire pour l'instant."; return vm; }
-        vm.corps = `<p class="cb-l">${h(S.dernier.label)}</p>`; vm.bouton = "Défaire"; vm.faire = () => { S.dernier.undo(); const l = S.dernier.label; S.dernier = null; return { toast: `Défait : ${l}` }; }; return vm;
+        vm.corps = `<p class="cb-l">${h(S.dernier.label)}</p>`; vm.bouton = "Défaire"; vm.faire = () => { const l = S.dernier.label; S.dernier.undo(); S.dernier = null; return { toast: `Défait : ${l}` }; }; return vm;
 
       case "creer": {
         const tf = /temps fort/.test(b.tpl), part = /partenariat/.test(b.tpl);
@@ -65,14 +72,15 @@
         const z = zoneDate(s.date) || zoneDate(s.date2), svcZ = s.service && s.service.zones[0];
         const dv = deviner(KP.REGLES.DEVINER.service, t), mv = deviner(KP.REGLES.DEVINER.message, t).filter((k) => KP.message(k));
         const cle = t + "|" + (z ? z.iso : "");
-        if (S.choix.cle !== cle) S.choix = { cle, svc: svcZ ? svcZ.svc : dv[0] || u.svc || (KP.SERVICES[0] || {}).k, m: mv.slice(0, 1), devine: !svcZ && !!dv[0] };
+        if (S.choix.cle !== cle) { const g = S.choix.main || {}; S.choix = { cle, main: g, svc: svcZ ? svcZ.svc : g.svc || dv[0] || u.svc || (KP.SERVICES[0] || {}).k, m: g.m || mv.slice(0, 1), devine: !svcZ && !!dv[0] }; }
+        if (u.role !== "pilote" && u.svc) S.choix.svc = u.svc; /* un service crée pour lui-même (la base refuse le reste) */
         const ch = S.choix, d = z ? (z.mois ? { date: z.du, flou: true } : { date: z.du || z.iso, flou: false }) : null;
         vm.titre = tf ? "Nouveau temps fort" : part ? "Nouveau partenariat payant" : "Nouvelle action";
         vm.refus = !store.canCreate() ? "Ton compte est en lecture seule." : part && u.role !== "pilote" ? "Les partenariats payants sont réservés aux chefs de projet." : "";
         const heure = a.glob.heure ? a.glob.heure.txt : "";
         vm.corps = `<p class="cb-titre">${h(t)}</p><div class="cb-puces">
           <span class="cb-puce date">${ic("calendar")}${d ? h(d.flou ? `courant ${KP.fmt.mois(d.date)}` : jour(d.date)) + (heure ? ` · ${h(heure)}` : "") : "Date ?"}</span>
-          ${tf || part ? "" : `<label class="cb-puce sel">${ic("people")}<select id="cb-svc" aria-label="Service">${KP.SERVICES.map((x) => `<option value="${x.k}" ${x.k === ch.svc ? "selected" : ""}>${h(x.court)}</option>`).join("")}</select></label>`}
+          ${tf || part ? "" : u.role !== "pilote" ? `<span class="cb-puce">${ic("people")}${h(svcCourt(ch.svc))}</span>` : `<label class="cb-puce sel">${ic("people")}<select id="cb-svc" aria-label="Service">${KP.SERVICES.map((x) => `<option value="${x.k}" ${x.k === ch.svc ? "selected" : ""}>${h(x.court)}</option>`).join("")}</select></label>`}
           <label class="cb-puce sel">${ic("flag")}<select id="cb-msg" aria-label="Message"><option value="">Message ?</option>${KP.MESSAGES.map((m) => `<option value="${m.k}" ${ch.m[0] === m.k ? "selected" : ""}>${h(m.nom)}</option>`).join("")}</select></label>
           <span class="cb-puce etat">À confirmer</span></div>`;
         if (!d) { vm.manque = "date"; vm.aide = ["demain", "lundi", "la semaine prochaine", `courant ${KP.fmt.mois(KP.addDays(KP.monthEnd(KP.TODAY), 1))}`]; return vm; }
@@ -83,13 +91,18 @@
       }
 
       case "decaler": {
-        const avant = s.date2 ? zoneDate(s.date) : null, apres = zoneDate(s.date2) || zoneDate(s.date), dec = s.decalage && s.decalage.zones[0];
-        const tot = /avanc|plus tot|avant/.test(a.tok) && !/apres|plus tard/.test(a.tok), semApres = /apres|suivante/.test(a.tok) && !apres && !dec;
+        const z1 = zoneDate(s.date), seulDe = !s.date2 && z1 && /(?:^|\s)(de|du|d['’])\s*$/i.test(a.src.slice(0, z1.at));
+        const avant = s.date2 || seulDe ? z1 : null, apres0 = seulDe ? null : zoneDate(s.date2) || z1, dec = s.decalage && s.decalage.zones[0];
+        /* « la semaine d'après » : une semaine après l'action, pas la semaine prochaine */
+        const semRel = !!apres0 && /semaine\s+(?:d['’]\s*apr[eè]s|suivante)/i.test(a.src.slice(apres0.at, apres0.end)), apres = semRel ? null : apres0;
+        const hors = a.tok.replace(s.quoi.tok, " "), tot = /avanc|plus tot|avant/.test(hors) && !/apres|plus tard/.test(hors), semApres = semRel || (/apres|suivante/.test(hors) && !apres && !dec);
         vm.titre = "Décaler";
         return surUne(cible(s.quoi.txt, vivantes, (it) => memeJour(it, avant)), (it) => {
           if (!apres && !dec && !semApres) return { manque: "date", corps: `<div class="cb-l">${mini(it)}</div>`, aide: ["à demain", "à lundi prochain", "d'une semaine", `à courant ${KP.fmt.mois(KP.addDays(KP.monthEnd(KP.TODAY), 1))}`], refus: "" };
-          const n = apres ? nouvelle(it, apres) : { date: KP.addDays(it.date, (semApres ? 7 : dec.n) * (tot ? -1 : 1)), flou: false };
-          const rel = it.kind === "tf" ? store.relais(it.id).filter((r) => !r.flou && r.st !== "diffuse" && !r.annule && store.canEdit(r)).length : 0;
+          if (!apres && it.flou) return { manque: "date", corps: `<div class="cb-l">${mini(it)}</div>`, aide: ["à lundi prochain", "au 1er décembre", `à courant ${KP.fmt.mois(KP.addDays(KP.monthEnd(KP.TODAY), 1))}`], refus: "" };
+          const sg = tot ? -1 : 1, n = apres ? nouvelle(it, apres) : dec && dec.mois ? (() => { const d = KP.parse(it.date), x = new Date(d.getFullYear(), d.getMonth() + sg * dec.mois, 1), fin = new Date(x.getFullYear(), x.getMonth() + 1, 0).getDate(); return { date: KP.iso(new Date(x.getFullYear(), x.getMonth(), Math.min(d.getDate(), fin))), flou: false }; })() : { date: KP.addDays(it.date, (semApres ? 7 : dec.n) * sg), flou: false };
+          if (n.date === it.date && n.flou === !!it.flou) return { corps: `<div class="cb-l">${mini(it)}</div>`, refus: `Elle est déjà ${n.flou ? "en" : "au"} ${n.flou ? KP.fmt.mois(n.date) : jour(n.date)}.` };
+          const rel = it.kind === "tf" && !n.flou && !it.flou ? store.relais(it.id).filter((r) => !r.flou && r.st !== "diffuse" && !r.annule && store.canEdit(r)).length : 0;
           const passe = !n.flou && n.date < KP.TODAY, nom = n.flou ? `courant ${KP.fmt.mois(n.date)}` : jour(n.date);
           return { corps: `<div class="cb-l">${mini(it)}</div><p class="cb-fleche"><s>${h(quand(it))}</s>${ic("arrow")}<b>${h(nom)}</b>${passe ? `<span class="cb-alerte">déjà passé</span>` : ""}${rel ? `<span class="cb-plus">+ ${rel} relais suivent</span>` : ""}</p>${motif ? `<p class="cb-motif">${h(motif)}</p>` : ""}`,
             bouton: "Décaler", faire: () => ({ undo: store.setDate(it.id, n.date, n.flou, motif || null), toast: `Décalé ${n.flou ? "à" : "au"} ${nom}` }) };
@@ -97,7 +110,7 @@
       }
 
       case "annuler": vm.titre = "Laisser tomber";
-        return surUne(cible(s.quoi.txt, vivantes), (it) => ({ corps: `<div class="cb-l">${mini(it)}</div><p class="cb-sous">${ic("close")}Reste barrée dans le plan${motif ? ` : ${h(motif)}` : ", pour que les services sachent"}</p>`,
+        return surUne(cible(s.quoi.txt, vivantes, (it) => memeJour(it, zoneDate(s.date))), (it) => ({ corps: `<div class="cb-l">${mini(it)}</div><p class="cb-sous">${ic("close")}Reste barrée dans le plan${motif ? ` : ${h(motif)}` : ", pour que les services sachent"}</p>`,
           bouton: "Barrer", faire: () => ({ undo: store.cancel(it.id, motif), toast: `Barrée : ${it.t}` }) }));
 
       case "supprimer": vm.titre = "Supprimer"; vm.danger = true;
@@ -110,28 +123,30 @@
       case "diffuser": case "confirmer": case "aconfirmer": {
         const st = { diffuser: "diffuse", confirmer: "prevu", aconfirmer: "confirmer" }[b.k], nom = KP.STATUTS.find((x) => x.k === st).nom;
         vm.titre = nom;
-        return surUne(cible(s.quoi.txt, vivantes), (it) => ({ corps: `<div class="cb-l">${mini(it)}</div><p class="cb-fleche">${KP.pill(it)}${ic("arrow")}<span class="pill ${st}">${st === "diffuse" ? ic("check") : ""}${h(nom)}</span></p>`,
+        return surUne(cible(s.quoi.txt, vivantes, (it) => memeJour(it, zoneDate(s.date))), (it) => ({ corps: `<div class="cb-l">${mini(it)}</div><p class="cb-fleche">${KP.pill(it)}${ic("arrow")}<span class="pill ${st}">${st === "diffuse" ? ic("check") : ""}${h(nom)}</span></p>`,
           bouton: nom, refus: it.st === st ? `C'est déjà « ${nom} ».` : undefined, faire: () => ({ undo: store.update(it.id, { st }, `a passé l'état à « ${nom} »`), toast: `${it.t} : ${nom.toLowerCase()}` }) }));
       }
 
       case "resultats": {
         const res = {}; s.nombre.zones.forEach((z) => { if (z.unite) res[z.unite] = z.n; });
         vm.titre = "Résultats";
-        return surUne(cible(s.quoi.txt, (it) => !it.annule), (it) => ({ corps: `<div class="cb-l">${mini(it)}</div><p class="cb-chiffres">${Object.entries(res).map(([k, n]) => `<span><b>${KP.nb(n)}</b> ${h((KP.UNITES.find((x) => x.k === k) || {}).nom || k).toLowerCase()}</span>`).join("")}</p>`,
+        return surUne(cible(s.quoi.txt, (it) => !it.annule, (it) => memeJour(it, zoneDate(s.date))), (it) => ({ corps: `<div class="cb-l">${mini(it)}</div><p class="cb-chiffres">${Object.entries(res).map(([k, n]) => `<span><b>${KP.nb(n)}</b> ${h((KP.UNITES.find((x) => x.k === k) || {}).nom || k).toLowerCase()}</span>`).join("")}</p>`,
           bouton: "Noter", refus: store.resOk() ? undefined : "La base n'est pas encore prête pour les résultats.",
-          faire: () => { const undos = [store.setRes(it.id, res)]; if (it.st !== "diffuse") undos.push(store.update(it.id, { st: "diffuse" }, "a passé l'état à « Diffusé »")); return { undo: () => undos.reverse().forEach((f) => f && f()), toast: `Noté : ${KP.resTxt(res)}` }; } }));
+          faire: () => { const u0 = store.setRes(it.id, res); if (!u0) return { toast: "Chiffre impossible : rien n'a changé." }; const undos = [u0]; if (it.st !== "diffuse") undos.push(store.update(it.id, { st: "diffuse" }, "a passé l'état à « Diffusé »")); return { undo: () => undos.reverse().forEach((f) => f && f()), toast: `Noté : ${KP.resTxt(res)}` }; } }));
       }
 
       case "budget": { const n = s.montant.zones[0].n; vm.titre = "Budget";
         return surUne(cible(s.quoi.txt, (it) => it.variant === "partenariat"), (it) => ({ corps: `<div class="cb-l">${mini(it)}</div><p class="cb-chiffres"><span><b>${KP.nb(n)} €</b></span></p>`,
-          bouton: "Noter", refus: store.voitBudget() ? undefined : "Le budget est réservé aux chefs de projet.", faire: () => ({ undo: store.setMontant(it.id, n), toast: `Budget noté : ${KP.nb(n)} €` }) })); }
+          bouton: "Noter", refus: store.voitBudget() ? undefined : "Le budget est réservé aux chefs de projet.", faire: () => { const u0 = store.setMontant(it.id, n); return u0 ? { undo: u0, toast: `Budget noté : ${KP.nb(n)} €` } : { toast: "Montant impossible : rien n'a changé." }; } })); }
 
       case "service": { const k = s.service.zones[0].svc; vm.titre = "Changer de service";
         return surUne(cible(s.quoi.txt, (it) => vivantes(it) && it.kind === "action" && it.variant !== "partenariat"), (it) => ({ corps: `<div class="cb-l">${mini(it)}</div><p class="cb-fleche"><s>${h(svcCourt(it.svc))}</s>${ic("arrow")}<b>${h(svcCourt(k))}</b></p>`,
           bouton: "Confier", refus: it.svc === k ? `C'est déjà ${svcCourt(k)}.` : undefined, faire: () => ({ undo: store.update(it.id, { svc: k }, `a confié l'action à ${(KP.service(k) || {}).nom}`), toast: `Confiée à ${svcCourt(k)}` }) })); }
 
       case "lier": { const t = cible(s.texte.txt, (it) => it.kind === "tf" && !it.annule); vm.titre = "Rattacher à un temps fort";
-        if (!t.it) { vm.introuvable = nettoie(s.texte.txt); vm.quoiManque = "temps fort"; return vm; }
+        if (!t.it && !(t.cands && t.cands.length)) { vm.introuvable = nettoie(s.texte.txt); vm.quoiManque = "temps fort"; return vm; }
+        if (!t.it) { const a1 = cible(s.quoi.txt, (it) => vivantes(it) && it.kind === "action"); if (!a1.it) { vm.introuvable = nettoie(s.quoi.txt); return vm; }
+          return surUne({ cands: t.cands, approx: t.approx, q: t.q }, (tf) => ({ corps: `<div class="cb-l">${mini(tf)}</div>`, bouton: "Rattacher ici", refus: droits(a1.it), faire: () => ({ undo: store.update(a1.it.id, { tf: tf.id }, `a rattaché à « ${tf.t} »`), toast: `Rattachée à ${tf.t}` }) })); }
         return surUne(cible(s.quoi.txt, (it) => vivantes(it) && it.kind === "action"), (it) => ({ corps: `<div class="cb-l">${mini(it)}</div><p class="cb-fleche">${ic("link")}${mini(t.it)}</p>`,
           bouton: "Rattacher", faire: () => ({ undo: store.update(it.id, { tf: t.it.id }, `a rattaché à « ${t.it.t} »`), toast: `Rattachée à ${t.it.t}` }) })); }
 
@@ -140,13 +155,14 @@
 
       case "dupliquer": { const z = zoneDate(s.date); vm.titre = "Dupliquer";
         return surUne(cible(s.quoi.txt), (it) => { const n = z ? nouvelle(it, z) : null;
-          return { corps: `<div class="cb-l">${mini(it)}</div><p class="cb-fleche">${ic("copy")}<b>${h(n ? (n.flou ? `courant ${KP.fmt.mois(n.date)}` : jour(n.date)) : "même date")}</b></p>`, bouton: "Dupliquer", refus: store.canCreate() ? "" : "Ton compte est en lecture seule.",
-            faire: () => { const c = store.duplicate(it.id); if (n) store.setDate(c.id, n.date, n.flou); return { undo: () => store.unadd(c.id), toast: `Copie créée${n ? " pour " + jour(n.date) : ""}`, ouvre: c.id }; } }; }); }
+          return { corps: `<div class="cb-l">${mini(it)}</div><p class="cb-fleche">${ic("copy")}<b>${h(n ? (n.flou ? `courant ${KP.fmt.mois(n.date)}` : jour(n.date)) : "même date")}</b></p>`, bouton: "Dupliquer", refus: !store.canCreate() ? "Ton compte est en lecture seule." : u.role !== "pilote" && (it.svc !== u.svc || it.kind !== "action" || it.variant === "partenariat") ? "Tu peux dupliquer les actions de ton service." : "",
+            faire: () => { const c = store.duplicate(it.id); if (n) store.setDate(c.id, n.date, n.flou); return { undo: () => store.unadd(c.id), toast: `Copie créée${n ? (n.flou ? ` pour courant ${KP.fmt.mois(n.date)}` : " pour " + jour(n.date)) : ""}`, ouvre: c.id }; } }; }); }
 
       case "demander": case "rappel": {
         const t = s.texte, z = zoneDate(t) || zoneDate(s.texte2), qui = s.qui ? s.qui.zones[0].qui : u.k, p = KP.person(qui);
         /* l'action est en fin de phrase : « … pour le carrousel JPO Paris » ; on essaie chaque découpe et on garde la meilleure */
-        const brut = t.txt.replace(z && z.txt ? new RegExp("\\s*(avant|pour|d'ici|au plus tard)?\\s*" + z.txt.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "\\s*", "i") : /$^/, " ").trim();
+        const src = a.src, zt = z && z.at >= t.at && z.end <= t.end ? z : null;
+        const brut = (zt ? src.slice(t.at, zt.at).replace(/\s*(avant|pour|d'ici|d’ici|au plus tard|pour le|avant le)\s*$/i, "") + " " + src.slice(zt.end, t.end) : t.txt).replace(/\s+/g, " ").trim();
         let meilleur = null;
         const coupes = [...brut.matchAll(/\s(pour|du|de la|de l'|des|de|sur|concernant|au sujet de|à propos de|dans)\s/gi)].map((m) => m.index + m[0].length);
         for (const c of coupes) { const r = cible(brut.slice(c), vivantes); const sc = r.it ? 2 : r.cands && r.cands.length && !r.approx ? 1 : 0; if (sc && (!meilleur || sc > meilleur.sc)) meilleur = { sc, r, c }; }
@@ -156,7 +172,7 @@
         vm.titre = rappel ? "Rappel pour moi" : `Demander à ${p ? p.nom : ""}`;
         const pour = z ? z.iso : "";
         const prep = (it) => ({ corps: `<div class="cb-l">${mini(it)}</div><p class="cb-msg">${rappel ? ic("clock") : KP.avatar(p, "cb-av")}<span>${h(quoiTxt)}</span>${pour ? `<span class="cb-puce date">${ic("calendar")}${h(jour(pour))}</span>` : `<span class="cb-puce">pour info</span>`}</p>`,
-          bouton: rappel ? "Noter le rappel" : "Envoyer", refus: "",
+          bouton: rappel ? "Noter le rappel" : "Envoyer", refus: store.canCreate() ? "" : "Ton compte est en lecture seule.",
           faire: () => { const r = store.ask({ item: it.id, a: qui, quoi: rappel ? "Autre" : pour ? el : "Info", txt: quoiTxt, pour: pour || null }); return { undo: () => store.dropReq(r.id), toast: rappel ? `Rappel noté${pour ? " pour " + KP.fmt.relatif(pour) : ""}` : `Envoyé à ${p ? p.nom : ""}` }; } });
         if (!meilleur) { vm.manque = "fiche"; vm.corps = `<p class="cb-msg">${rappel ? ic("clock") : KP.avatar(p, "cb-av")}<span>${h(quoiTxt)}</span></p>`; vm.aide = store.items().filter((it) => vivantes(it) && it.date >= KP.TODAY).sort((x, y) => x.date.localeCompare(y.date)).slice(0, 3).map((it) => `pour ${nettoie(it.t).split(/\s+/).slice(0, 4).join(" ")}`); return vm; }
         return surUne(meilleur.r, prep);
@@ -168,10 +184,10 @@
 
       case "lieu": { const l = majuscule(nettoie(s.texte.txt)); vm.titre = "Lieu";
         return surUne(cible(s.quoi.txt), (it) => ({ corps: `<div class="cb-l">${mini(it)}</div><p class="cb-fleche">${ic("pin")}<b>${h(l)}</b></p>`, bouton: "Noter le lieu",
-          faire: () => { store.addLieu(l); return { undo: store.update(it.id, { lieu: l }, `a noté le lieu : ${l}`), toast: `Lieu : ${l}` }; } })); }
+          faire: () => { const avant = store.lieux().slice(), neuf = !avant.includes(l); store.addLieu(l); const u = store.update(it.id, { lieu: l }, `a noté le lieu : ${l}`); return { undo: () => { u(); if (neuf) { const L = store.lieux(); L.splice(0, L.length, ...avant); } }, toast: `Lieu : ${l}` }; } })); }
 
       case "epingler": case "desepingler": { const on = b.k === "epingler"; vm.titre = on ? "Épingler" : "Désépingler";
-        return surUne(cible(s.quoi.txt), (it) => ({ corps: `<div class="cb-l">${mini(it)}</div>`, bouton: on ? "Épingler" : "Désépingler", refus: store.pinned(it.id) === on ? (on ? "Déjà épinglée." : "Pas épinglée.") : "",
+        return surUne(cible(s.quoi.txt), (it) => ({ corps: `<div class="cb-l">${mini(it)}</div>`, bouton: on ? "Épingler" : "Désépingler", refus: !store.canCreate() ? "Ton compte est en lecture seule." : store.pinned(it.id) === on ? (on ? "Déjà épinglée." : "Pas épinglée.") : "",
           faire: () => { store.togglePin(it.id); return { undo: () => store.togglePin(it.id), toast: on ? "Épinglée" : "Désépinglée" }; } })); }
 
       case "ouvrir": vm.titre = "Ouvrir la fiche";
@@ -258,17 +274,18 @@
   let vmCourant = null;
   function maj(force) {
     const inp = document.getElementById("cb-in"), res = document.getElementById("cb-res"), mir = document.getElementById("cb-miroir"); if (!inp) return;
-    const texte = inp.value; if (texte !== S.texte) { S.texte = texte; S.cur = 0; }
+    const texte = inp.value; if (texte !== S.texte) { S.texte = texte; S.cur = 0; S.navigue = false; }
     document.getElementById("cb").classList.toggle("plein", !!texte.trim());
     if (!texte.trim()) { mir.innerHTML = ""; vmCourant = null; res.innerHTML = S.ouvert || force ? vide() : ""; return; }
     const vm = (vmCourant = comprendre(texte));
     mir.innerHTML = surligne(texte, vm.a); mir.scrollLeft = inp.scrollLeft;
-    res.innerHTML = carte(vm);
+    const cle = vm.k;
+    res.innerHTML = carte(vm); if (cle === S.cleCarte) res.querySelectorAll(".cb-carte").forEach((c) => c.classList.add("calme")); S.cleCarte = cle;
   }
   function vide() {
     return `<div class="cb-carte cb-ex"><p class="cb-k">Essaie</p><div class="cb-exs">${exemples().map((e) => `<button type="button" class="cb-e" data-act="cb-ex" data-t="${h(e.t)}">${ic(e.i)}<span>${h(e.t)}</span></button>`).join("")}</div></div>`;
   }
-  const btn = (vm, i, label) => `<button type="button" class="btn ${vm.danger ? "danger-bg" : "primary"} small cb-go${S.cur === i ? " cur" : ""}" data-act="cb-go" data-i="${i}">${h(label)}${S.cur === i ? `<kbd>Entrée</kbd>` : ""}</button>`;
+  const btn = (vm, i, label, sel = S.cur === i) => `<button type="button" class="btn ${vm.danger ? "danger-bg" : "primary"} small cb-go${sel ? " cur" : ""}" data-act="cb-go" data-i="${i}">${h(label)}${sel ? `<kbd>Entrée</kbd>` : ""}</button>`;
   function carte(vm) {
     const tete = vm.titre ? `<p class="cb-k">${ico(vm.icone)}${h(vm.titre)}</p>` : "";
     if (vm.vide) return `<div class="cb-carte">${tete}<p class="cb-sous">${h(vm.vide)}</p></div>`;
@@ -280,7 +297,7 @@
     }
     if (vm.introuvable != null) return `<div class="cb-carte">${tete}<p class="cb-sous">${ic("search")}Aucun${vm.quoiManque === "temps fort" ? " temps fort" : "e action"} ne ressemble à « ${h(vm.introuvable)} ».</p></div>`;
     if (vm.choisir) return `<div class="cb-carte">${tete}<p class="cb-sous">${vm.approx ? `Je ne trouve pas « ${h(vm.q)} » exactement. C'est l'une d'elles ?` : "Plusieurs correspondent. Laquelle ?"}</p>
-      <div class="cb-choix">${vm.choisir.map((c, i) => `<div class="cb-c${S.cur === i ? " cur" : ""}">${c.corps || mini(c.it)}${c.manque ? "" : c.refus ? `<p class="cb-refus">${ic("lock")}${h(c.refus)}</p>` : btn(c, i, c.bouton)}</div>`).join("")}</div>
+      <div class="cb-choix">${vm.choisir.map((c, i) => { const sel = S.cur === i && (!vm.approx || S.navigue); return `<div class="cb-c${sel ? " cur" : ""}">${c.corps || mini(c.it)}${c.manque ? "" : c.refus ? `<p class="cb-refus">${ic("lock")}${h(c.refus)}</p>` : btn(c, i, c.bouton, sel)}</div>`; }).join("")}</div>
       ${vm.choisir.some((c) => c.manque) ? aide(vm.choisir[0]) : ""}</div>`;
     return `<div class="cb-carte${vm.danger ? " danger" : ""}">${tete}${vm.corps || ""}${vm.manque ? aide(vm) : vm.refus ? `<p class="cb-refus">${ic("lock")}${h(vm.refus)}</p>` : vm.bouton ? `<div class="cb-pied">${btn(vm, 0, vm.bouton)}${vm.it && !/ouvrir/.test(vm.k) ? `<button type="button" class="link soft" data-act="open" data-id="${vm.it.id}">Voir la fiche</button>` : ""}</div>` : ""}</div>`;
   }
@@ -293,7 +310,7 @@
     const r = c.faire() || {};
     const texte = S.texte;
     if (!r.garde) { S.texte = ""; S.choix = {}; S.cur = 0; S.ouvert = false; }
-    if (r.undo) { S.dernier = { undo: r.undo, label: texte }; KP.toast(r.toast, r.undo); } else if (r.toast) KP.toast(r.toast);
+    if (r.undo) { const u0 = r.undo, une = () => { if (S.dernier && S.dernier.undo === une) S.dernier = null; u0(); setTimeout(() => { const i = document.getElementById("cb-in"); if (i && document.activeElement === document.body) i.focus({ preventScroll: true }); }); }; S.dernier = { undo: une, label: texte }; KP.toast(r.toast, une); } else if (r.toast) KP.toast(r.toast);
     if (r.ouvre) KP.go({ fiche: r.ouvre });
     KP.render();
     if (!r.garde) { const inp = document.getElementById("cb-in"); if (inp) { inp.value = ""; maj(); } }
@@ -323,8 +340,8 @@
 
   document.addEventListener("input", (e) => { if (e.target.id === "cb-in") maj(); });
   document.addEventListener("change", (e) => {
-    if (e.target.id === "cb-svc") { S.choix.svc = e.target.value; S.choix.devine = false; }
-    if (e.target.id === "cb-msg") { S.choix.m = [e.target.value]; }
+    if (e.target.id === "cb-svc") { S.choix.svc = e.target.value; S.choix.devine = false; (S.choix.main = S.choix.main || {}).svc = e.target.value; }
+    if (e.target.id === "cb-msg") { S.choix.m = [e.target.value]; (S.choix.main = S.choix.main || {}).m = [e.target.value]; }
   });
   document.addEventListener("focusin", (e) => { if (e.target.id === "cb-in") { S.ouvert = true; maj(); } });
   document.addEventListener("focusout", (e) => { if (e.target.id === "cb-in") setTimeout(() => { const c = document.getElementById("cb"); if (c && !c.contains(document.activeElement) && !S.texte.trim()) { S.ouvert = false; maj(); } }, 150); });
@@ -332,8 +349,8 @@
   document.addEventListener("keydown", (e) => {
     if (e.target.id !== "cb-in") return;
     const vm = vmCourant, n = vm ? (vm.choisir ? vm.choisir.length : vm.resultats ? Math.min(7, vm.resultats.length) : 1) : 0;
-    if (e.key === "Enter") { e.preventDefault(); appliquer(); }
-    else if ((e.key === "ArrowDown" || e.key === "ArrowUp") && n > 1) { e.preventDefault(); S.cur = (S.cur + (e.key === "ArrowDown" ? 1 : n - 1)) % n; document.getElementById("cb-res").innerHTML = carte(vm); }
+    if (e.key === "Enter") { e.preventDefault(); if (vm && vm.choisir && vm.approx && !S.navigue) { const r = document.querySelector(".cb-choix"); if (r) { r.classList.remove("secoue"); void r.offsetWidth; r.classList.add("secoue"); } return; } appliquer(); }
+    else if ((e.key === "ArrowDown" || e.key === "ArrowUp") && n >= 1) { e.preventDefault(); S.navigue = true; S.cur = (S.cur + (e.key === "ArrowDown" ? 1 : n - 1)) % n; document.getElementById("cb-res").innerHTML = carte(vm); }
     else if (e.key === "Escape" && e.target.value) { e.preventDefault(); e.stopPropagation(); e.target.value = ""; maj(); }
     setTimeout(() => { const m = document.getElementById("cb-miroir"); if (m) m.scrollLeft = e.target.scrollLeft; });
   }, true);
