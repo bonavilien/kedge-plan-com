@@ -137,6 +137,55 @@ code { font: 13px var(--mono); background: var(--fill); padding: 1px 5px; border
   .btn { justify-content: center; }
   .ui { white-space: normal; }
 }
+/* ---------- eye candy, comme l'appli (2.8) : le moment « Fait », le suivi sur une route, la bulle de fin ---------- */
+:root { --road: #333539; --road-line: #FFD452; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --road: #4A4C52; } }
+:root[data-theme="dark"] { --road: #4A4C52; }
+.num .ck { display: none; font-size: 18px; stroke-width: 2.8; }
+.card.ok .num b { display: none; }
+.card.ok .num .ck { display: block; }
+.pas { position: relative; }
+.pas::before, .pas::after { content: ""; position: absolute; left: 13px; top: 22px; width: 8px; margin-left: -4px; border-radius: 4px; }
+.pas::before { bottom: 22px; background: repeating-linear-gradient(180deg, var(--road-line) 0 6px, transparent 6px 13px) center / 2px 100% no-repeat, var(--road); }
+.pas::after { height: calc((100% - 44px) * var(--p, 0)); background: var(--ok); transition: height .6s cubic-bezier(.2,.7,.2,1); }
+.pas li { position: relative; z-index: 1; }
+.pas li .i { background: var(--card); border-color: var(--road); }
+.pas li.fait .i { box-shadow: 0 0 0 2px var(--card); }
+.pas li .i svg { stroke-width: 2.8; }
+.bulle { position: relative; width: fit-content; max-width: 100%; padding-left: 8px; color: var(--yellow-ink); font: 500 17px/1.4 var(--serif); text-wrap: pretty; }
+.bulle::before { content: ""; position: absolute; left: 0; bottom: 0; width: 16px; height: 14px; background: var(--yellow); clip-path: polygon(100% 0, 100% 100%, 0 100%); }
+.bulle .b { display: block; padding: 11px 18px; border-radius: 18px 18px 18px 4px; background: var(--yellow); box-shadow: 0 2px 10px rgba(0,0,0,.08); }
+.fin .bulle { font-size: 17px; }
+.pq-pts { display: none; }
+.bravo { display: flex; align-items: flex-end; gap: 14px; flex-wrap: wrap; }
+.illu { position: relative; width: 112px; height: 74px; flex: none; }
+.illu-route { position: absolute; left: 0; right: 0; bottom: 4px; height: 14px; border-radius: 7px; overflow: hidden;
+  background: repeating-linear-gradient(90deg, var(--road-line) 0 10px, transparent 10px 19px) center / 100% 2px no-repeat, var(--road); }
+.illu img { position: absolute; left: 50%; bottom: 11px; width: 54px; height: 54px; margin-left: -27px; border-radius: 13px; filter: drop-shadow(0 4px 10px rgba(0,0,0,.18)); transform: rotate(-6deg); }
+@media (prefers-reduced-motion: no-preference) {
+  .card { transition: box-shadow .25s ease; }
+  .card.ok.vient .num, .pas li.vient .i { animation: t-bond .45s cubic-bezier(.3,1.7,.5,1), t-onde .8s ease-out; }
+  .card.ok.vient .num .ck path, .pas li.vient .i path { stroke-dasharray: 22; stroke-dashoffset: 22; animation: t-trace .35s ease-out .12s forwards; }
+  .fin:not([hidden]) .illu-route { animation: t-flux 1.2s ease-out both; }
+  .fin:not([hidden]) .illu img { animation: t-pose .6s cubic-bezier(.2,.8,.2,1.3) .3s both; }
+  .bulle.ecrit { animation: t-arrive .3s cubic-bezier(.2,.8,.2,1.2) .7s both, t-ouvre .45s cubic-bezier(.2,.7,.2,1) 1.7s backwards; }
+  .bulle.ecrit .pq-pts { display: flex; position: absolute; left: 27px; top: 50%; margin-top: -3.5px; gap: 5px; animation: t-fin .2s ease 1.65s forwards; }
+  .bulle.ecrit .pq-pts i { width: 7px; height: 7px; border-radius: 50%; background: currentColor; opacity: .5; animation: t-saute .9s ease-in-out .7s infinite; }
+  .bulle.ecrit .pq-pts i:nth-child(2) { animation-delay: .85s; }
+  .bulle.ecrit .pq-pts i:nth-child(3) { animation-delay: 1s; }
+  .bulle.ecrit .b { animation: t-texte .35s ease 1.8s both; }
+  .fin:not([hidden]) > :not(.bravo) { animation: t-arrive .4s ease 2.1s both; }
+}
+@keyframes t-bond { 50% { transform: scale(1.14); } }
+@keyframes t-onde { from { box-shadow: 0 0 0 0 color-mix(in srgb, var(--ok) 50%, transparent); } to { box-shadow: 0 0 0 14px transparent; } }
+@keyframes t-trace { to { stroke-dashoffset: 0; } }
+@keyframes t-flux { from { background-position: -112px 50%, 0 0; } }
+@keyframes t-pose { from { opacity: 0; transform: translateY(-24px) rotate(-18deg); } }
+@keyframes t-arrive { from { opacity: 0; transform: translateY(6px) scale(.94); } }
+@keyframes t-ouvre { from { clip-path: inset(0 calc(100% - 86px) 0 0 round 0 18px 18px 0); } to { clip-path: inset(0 0 0 0 round 0 18px 18px 0); } }
+@keyframes t-saute { 0%, 60%, 100% { transform: none; opacity: .45; } 30% { transform: translateY(-4px); opacity: .9; } }
+@keyframes t-fin { to { opacity: 0; visibility: hidden; } }
+@keyframes t-texte { from { color: transparent; } }
 </style>
 </head>
 <body>
@@ -190,7 +239,7 @@ code { font: 13px var(--mono); background: var(--fill); padding: 1px 5px; border
       </section>
 
       <section class="card" id="c-gh">
-        <span class="num">1</span>
+        <span class="num"><b>1</b><svg class="ck" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span>
         <div class="body">
           <h2>Ta clé GitHub</h2>
           <p class="aide">Sur la page qui s'ouvre : <b>Expiration</b> sur <b>No expiration</b>, puis <b>Generate token</b> tout en bas. Copie la clé.</p>
@@ -215,7 +264,7 @@ code { font: 13px var(--mono); background: var(--fill); padding: 1px 5px; border
       </section>
 
       <section class="card" id="c-sb">
-        <span class="num">2</span>
+        <span class="num"><b>2</b><svg class="ck" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span>
         <div class="body">
           <h2>Ta clé Supabase</h2>
           <p class="aide"><b>Generate new token</b>, un nom (Plan de com), <b>Generate token</b>. Copie la clé.</p>
@@ -239,7 +288,7 @@ code { font: 13px var(--mono); background: var(--fill); padding: 1px 5px; border
       </section>
 
       <section class="card" id="c-app">
-        <span class="num">3</span>
+        <span class="num"><b>3</b><svg class="ck" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span>
         <div class="body">
           <h2>Ton appli</h2>
           <p class="aide">Ton e-mail et un mot de passe tout neuf : ce sera ta connexion à l'appli, rien à voir avec GitHub.</p>
@@ -268,6 +317,8 @@ code { font: 13px var(--mono); background: var(--fill); padding: 1px 5px; border
       <div class="act"><button type="button" class="btn" id="encore">Réessayer</button><a class="btn" id="detail" href="#" target="_blank" rel="noopener" hidden>Voir le détail sur GitHub</a></div>
     </div>
     <div class="fin" id="fin" hidden>
+      <div class="bravo"><div class="illu" aria-hidden="true"><span class="illu-route"></span><img src="assets/road-to-7th.png" alt=""></div>
+        <p class="bulle ecrit"><span class="pq-pts" aria-hidden="true"><i></i><i></i><i></i></span><span class="b">Ton équipe peut entrer.</span></p></div>
       <a class="go" id="ouvrir" href="#" target="_blank" rel="noopener">Ouvrir mon appli</a>
       <p class="adr" id="adr"></p>
       <p>Connecte-toi avec <b id="fin-mail"></b> et ton mot de passe. Garde l'adresse dans tes favoris.</p>
@@ -335,6 +386,11 @@ code { font: 13px var(--mono); background: var(--fill); padding: 1px 5px; border
   ["app", "nom", "prenom", "email", "mdp"].forEach((id) => $(id).addEventListener("input", pret));
   $("oeil").addEventListener("click", () => { const m = $("mdp"), vu = m.type === "password"; m.type = vu ? "text" : "password"; $("oeil").setAttribute("aria-pressed", vu); $("oeil").setAttribute("aria-label", vu ? "Cacher le mot de passe" : "Afficher le mot de passe"); });
 
+  /* une carte qui devient bonne : son rond se remplit et la coche se trace (le moment « Fait » de l'appli) */
+  if ("MutationObserver" in window) new MutationObserver((ms) => ms.forEach((m) => { const c = m.target; const ok = c.classList.contains("ok"), avant = (m.oldValue || "").split(" ").includes("ok");
+    if (ok && !avant) { c.classList.remove("vient"); void c.offsetWidth; c.classList.add("vient"); setTimeout(() => c.classList.remove("vient"), 1600); } }))
+    .observe(document.querySelector("form") || document.body, { subtree: true, attributes: true, attributeFilter: ["class"], attributeOldValue: true });
+
   /* ---------- le suivi ---------- */
   const PAS = [
     ["copie", "Copier l'appli dans ton GitHub"],
@@ -350,8 +406,10 @@ code { font: 13px var(--mono); background: var(--fill); padding: 1px 5px; border
   /* les étapes techniques de GitHub comptent dans « Mettre en ligne » */
   const groupe = (nom) => /^(Préparer le site|Run actions\/configure-pages|Run actions\/upload-pages-artifact|Mettre en ligne)/.test(nom) ? "Mettre en ligne" : nom;
   const ICONES = { fait: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.500l4.500 4.500L19 7.500"/></svg>', rate: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 7l10 10M17 7 7 17"/></svg>' };
+  const vusPas = {};
   function dessiner(etats, detail) {
-    $("pas").innerHTML = PAS.map(([k, nom, aide]) => { const s = etats[k] || ""; return `<li class="${s}" data-k="${esc(k)}"><span class="i">${ICONES[s] || ""}</span><span>${esc(nom)}${s === "en" && (detail[k] || aide) ? ` <small>· ${esc(detail[k] || aide)}</small>` : ""}</span><span class="sr">${s === "fait" ? "fait" : s === "en" ? "en cours" : s === "rate" ? "échec" : "à venir"}</span></li>`; }).join("");
+    $("pas").innerHTML = PAS.map(([k, nom, aide]) => { const s = etats[k] || ""; const vient = s === "fait" && vusPas[k] !== "fait"; vusPas[k] = s; return `<li class="${s}${vient ? " vient" : ""}" data-k="${esc(k)}"><span class="i">${ICONES[s] || ""}</span><span>${esc(nom)}${s === "en" && (detail[k] || aide) ? ` <small>· ${esc(detail[k] || aide)}</small>` : ""}</span><span class="sr">${s === "fait" ? "fait" : s === "en" ? "en cours" : s === "rate" ? "échec" : "à venir"}</span></li>`; }).join("");
+    const n = PAS.filter(([k]) => etats[k] === "fait").length; $("pas").style.setProperty("--p", n ? Math.min(1, n / (PAS.length - 1)) : 0);
   }
   let etats = {}, detail = {};
   const marquer = (k, s, d) => { etats[k] = s; if (d !== undefined) detail[k] = d; dessiner(etats, detail); };
