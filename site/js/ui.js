@@ -29,6 +29,8 @@
       left = Math.max(8, Math.min(left, innerWidth - w - 8));
       if (top + hh > innerHeight - 8) top = Math.max(8, r.top - hh - 6);
       el.style.left = left + "px"; el.style.top = top + "px";
+      /* il s'ouvre depuis le bouton qui l'a appelé (css : ec-pop) */
+      el.style.transformOrigin = `${opt.side || !opt.right ? "left" : "right"} ${opt.side || top < r.top ? "bottom" : "top"}`;
     };
     place();
     anchor.setAttribute("aria-expanded", "true");
