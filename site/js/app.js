@@ -16,7 +16,7 @@
     /* les anciennes adresses d'onglets mènent au nouvel onglet qui les regroupe */
     const ALIAS = { services: "equipe", periodes: "projet", messages: "projet", medias: "carnets", lieux: "carnets", contacts: "carnets" };
     const st = ALIAS[seg[1]] || seg[1];
-    r.set = r.screen === "reglages" && ["projet", "equipe", "carnets", "phrases", "apropos"].includes(st) ? st : "profil";
+    r.set = r.screen === "reglages" && ["projet", "equipe", "carnets", "suivi", "apropos"].includes(st) ? st : "profil";
     if (r.screen === "reunion") { r.tab = seg[1] === "bilan" ? "bilan" : "ordre"; if (KP.PERIODS.some((x) => x.k === p.get("per"))) r.per = p.get("per"); }
     if (r.screen === "resultats") { r.tab = seg[1] === "budget" ? "budget" : "diffusions"; if (KP.PERIODS.some((x) => x.k === p.get("per"))) r.per = p.get("per"); }
     return r;
@@ -302,6 +302,7 @@
     };
     const run = (i) => { const x = list[i]; if (!x) return; d.close(); if (x.it) KP.go({ screen: "plan", per: x.it.variant === "sujet" ? x.it.per : KP.periodOf(x.it.date).k, svc: "", msg: "", type: "", fiche: x.it.id }); else x.go(); };
     inp.addEventListener("input", () => { cur = 0; draw(); });
+    d.addEventListener("close", () => { const q = inp.value.trim(); if (q.length >= 3 && !list.length && store.tele) store.tele("recherche", q, { ou: "ctrlk" }); });
     d.addEventListener("keydown", (e) => {
       if (e.key === "ArrowDown") { e.preventDefault(); cur = Math.min(list.length - 1, cur + 1); draw(); }
       if (e.key === "ArrowUp") { e.preventDefault(); cur = Math.max(0, cur - 1); draw(); }

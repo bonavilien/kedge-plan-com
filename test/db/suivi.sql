@@ -1,5 +1,5 @@
--- Vérifie la migration 0035 (2.8, phrases non comprises par la barre) sur une base installée. Tout est annulé à la fin.
--- Usage : sh test/db/phrases-barre.sh
+-- Vérifie la migration 0035 (2.8, suivi de l'outil : phrases, erreurs, annulés, recherches, écrans) sur une base installée. Tout est annulé à la fin.
+-- Usage : sh test/db/suivi.sh
 \set ON_ERROR_STOP on
 set client_min_messages = warning;
 begin;
@@ -60,6 +60,28 @@ select pg_temp.check((select count(*) = 30 from public.phrases_barre where qui =
 delete from public.phrases_barre;
 select pg_temp.check((select count(*) = 0 from public.phrases_barre), 'l''admin vide la liste');
 
+-- le suivi : chacun dépose, l'admin seul lit ; les écrans partent sans nom
+select pg_temp.as_user(:RP);
+insert into public.suivi (type, txt, version) values ('erreur', 'TypeError: x is null', '2.8.0');
+insert into public.suivi (type, txt, detail) values ('annule', 'décale le teaser à lundi', '{"k":"decaler"}');
+insert into public.suivi (type, txt, qui) values ('ecran', 'accueil', null);
+select pg_temp.refus($q$insert into public.suivi (type, txt) values ('ecran', 'plan')$q$, 'un écran ne part pas avec un nom');
+select pg_temp.refus($q$insert into public.suivi (type, txt) values ('autre', 'x')$q$, 'type inconnu');
+select pg_temp.check((select count(*) = 0 from public.suivi), 'un service ne relit pas le suivi');
+select pg_temp.as_user(:ES);
+select pg_temp.check((select count(*) = 0 from public.suivi), 'Estelle ne lit pas le suivi');
+select pg_temp.as_user(:VIS);
+select pg_temp.refus($q$insert into public.suivi (type, txt) values ('erreur', 'x')$q$, 'le visiteur ne dépose rien dans le suivi');
+select pg_temp.as_user(:JU);
+select pg_temp.check((select count(*) = 3 from public.suivi), 'l''admin lit tout le suivi');
+select pg_temp.check((select qui is null from public.suivi where type = 'ecran'), 'l''écran est sans nom');
+select pg_temp.as_user(:RP);
+insert into public.suivi (type, txt) select 'recherche', 'r' || g from generate_series(1, 80) g;
+select pg_temp.as_user(:JU);
+select pg_temp.check((select count(*) = 60 from public.suivi where qui = :RP), 'limite de 60 lignes par heure');
+delete from public.suivi;
+select pg_temp.check((select count(*) = 0 from public.suivi), 'l''admin vide le suivi');
+
 select pg_temp.root();
-\echo 'phrases de la barre : bon'
+\echo 'suivi de l''outil : bon'
 rollback;

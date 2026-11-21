@@ -301,7 +301,7 @@
     if (!ok && !prevenu && KP.me().role === "pilote") { prevenu = true; setTimeout(() => KP.toast("La base n'est pas à jour : colle 2.5_0030 puis 2.6_0031 dans Supabase (SQL Editor)"), 1500); }
   }
   document.addEventListener("visibilitychange", () => { if (!document.hidden && horsLigne) sync(store._db()); });
-  const frErr = (e) => { const m = (e && e.message) || "";
+  const frErr = (e) => { const m = (e && e.message) || ""; try { if (store.tele && m && !/fetch|network|réseau/i.test(m)) store.tele("erreur", m.slice(0, 300), { ecran: KP.route && KP.route.screen, base: true }); } catch (x) {}
     if (/row-level security|permission denied/i.test(m)) return "tu n'as pas le droit de faire ce changement";
     if (/null value in column "pour"|column "res"|relation "public\.(budget|enveloppes)"|function public\.set_res|set_res/i.test(m) || absente(e)) return "la base n'est pas à jour (à coller dans Supabase : 2.5_0030 puis 2.6_0031)";
     if (/res_ok|budget_montant_check|enveloppes_montant_check/i.test(m)) return "ce chiffre n'est pas possible";
@@ -399,6 +399,9 @@
     store.logPhrase = (txt, raison = "rien") => { if (KP.me().role === "lecteur") return; sb.from("phrases_barre").insert({ txt: String(txt).slice(0, 300), raison, qui: user.id }).then(() => {}, () => {}); };
     store.listPhrases = async () => { const { data, error } = await sb.from("phrases_barre").select("id,txt,raison,qui,quand").order("quand", { ascending: false }).limit(500); if (error) throw error; return data.map((r) => ({ ...r, quand: Date.parse(r.quand) })); };
     store.clearPhrases = async () => { const { error } = await sb.from("phrases_barre").delete().gt("id", 0); if (error) throw error; };
+    store.tele = (type, txt, detail = {}) => { if (KP.me().role === "lecteur") return; sb.from("suivi").insert({ type, txt: String(txt).slice(0, 500), detail, version: String((KP.VERSION || {}).n || "").slice(0, 20), qui: type === "ecran" ? null : user.id }).then(() => {}, () => {}); };
+    store.listSuivi = async () => { const { data, error } = await sb.from("suivi").select("id,type,txt,detail,version,qui,quand").order("quand", { ascending: false }).limit(2000); if (error) throw error; return data.map((r) => ({ ...r, quand: Date.parse(r.quand) })); };
+    store.clearSuivi = async () => { const { error } = await sb.from("suivi").delete().gt("id", 0); if (error) throw error; };
     store.canEdit = (it) => { const u = KP.me(); return u.role === "pilote" || (u.role === "service" && !!it && it.variant !== "partenariat" && it.svc === u.svc); };
     /* l'écran de connexion s'efface par-dessus l'appli déjà affichée */
     const el = document.getElementById("login"); if (el) { el.classList.add("sort"); setTimeout(() => el.remove(), 380); }

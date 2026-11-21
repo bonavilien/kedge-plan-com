@@ -1,8 +1,10 @@
--- 2.8 : la barre de commandes garde les phrases qu'elle n'a pas comprises, pour compléter son catalogue.
--- Seul l'ADMIN les lit (Réglages > Phrases) : un seul compte, pas tous les chefs de projet.
+-- 2.8 : le suivi de l'outil, lu par l'ADMIN seul (Réglages > Suivi, export pour Claude) :
+--   phrases que la barre n'a pas comprises, erreurs de l'appli, « Annuler » juste après la barre,
+--   recherches sans résultat, écrans ouverts (comptés par semaine, sans nom).
+-- Un seul compte admin, pas tous les chefs de projet.
 -- L'admin = le tout premier chef de projet créé dans la base (sur une copie : celui qui l'a installée).
 -- Le droit ne se change pas depuis l'appli : seulement ici, dans Supabase (SQL Editor).
--- Les phrases s'effacent toutes seules au bout de 3 mois.
+-- Tout s'efface tout seul au bout de 3 mois.
 -- Numéro 0035 : 0033 est réservé à la mise à jour automatique des copies, 0034 = photos.
 
 alter table public.profiles add column if not exists admin boolean not null default false;
@@ -80,6 +82,47 @@ do $$ begin
   if exists (select 1 from pg_extension where extname = 'pg_cron') then
     perform cron.unschedule('phrases-barre-menage') where exists (select 1 from cron.job where jobname = 'phrases-barre-menage');
     perform cron.schedule('phrases-barre-menage', '0 3 * * *', $c$delete from public.phrases_barre where quand < now() - interval '3 months'$c$);
+  end if;
+end $$;
+
+-- le reste du suivi : une ligne par événement ; les écrans arrivent déjà comptés (n), sans nom
+create table if not exists public.suivi (
+  id bigint generated always as identity primary key,
+  type text not null check (type in ('erreur', 'annule', 'recherche', 'ecran')),
+  txt text not null check (char_length(txt) between 1 and 500),
+  detail jsonb not null default '{}'::jsonb check (pg_column_size(detail) <= 2000),
+  version text check (char_length(version) <= 20),
+  qui uuid default auth.uid() references public.profiles(id) on delete set null,
+  quand timestamptz not null default now()
+);
+alter table public.suivi enable row level security;
+drop policy if exists ecrire on public.suivi;
+drop policy if exists lire on public.suivi;
+drop policy if exists vider on public.suivi;
+-- chacun dépose à son nom, sauf les écrans qui partent sans nom ; le visiteur ne dépose rien
+create policy ecrire on public.suivi for insert to authenticated
+  with check (not public.is_visiteur() and ((type <> 'ecran' and qui = auth.uid()) or (type = 'ecran' and qui is null)));
+create policy lire on public.suivi for select to authenticated using (public.is_admin());
+create policy vider on public.suivi for delete to authenticated using (public.is_admin());
+grant select, insert, delete on public.suivi to authenticated;
+
+-- pas plus de 60 lignes par personne et par heure (et 200 lignes d'écrans par heure pour tout le monde)
+create or replace function public.limite_suivi() returns trigger
+language plpgsql security definer set search_path = public as $$
+begin
+  if new.type = 'ecran' then
+    if (select count(*) from public.suivi where type = 'ecran' and quand > now() - interval '1 hour') >= 200 then return null; end if;
+  elsif (select count(*) from public.suivi where qui = new.qui and quand > now() - interval '1 hour') >= 60 then return null;
+  end if;
+  return new;
+end $$;
+drop trigger if exists suivi_limite on public.suivi;
+create trigger suivi_limite before insert on public.suivi for each row execute function public.limite_suivi();
+
+do $$ begin
+  if exists (select 1 from pg_extension where extname = 'pg_cron') then
+    perform cron.unschedule('suivi-menage') where exists (select 1 from cron.job where jobname = 'suivi-menage');
+    perform cron.schedule('suivi-menage', '10 3 * * *', $c$delete from public.suivi where quand < now() - interval '3 months'$c$);
   end if;
 end $$;
 

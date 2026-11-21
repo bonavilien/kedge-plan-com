@@ -3,16 +3,16 @@
   const KP = window.KP, { h, ic, store } = KP;
   const ROLES = [["pilote", "Pilote", "modifie tout, administre"], ["service", "Service", "modifie ses actions"], ["lecteur", "Lecture seule", "consulte"]];
   /* cinq onglets : moi, le projet (ce qui le distingue : nom, couleur, périodes, messages), les gens, les carnets, la version */
-  const TABS = [["profil", "Mon profil"], ["projet", "Projet"], ["equipe", "Équipe"], ["carnets", "Carnets"], ["phrases", "Phrases"], ["apropos", "Version"]];
+  const TABS = [["profil", "Mon profil"], ["projet", "Projet"], ["equipe", "Équipe"], ["carnets", "Carnets"], ["suivi", "Suivi"], ["apropos", "Version"]];
   const svcSel = (id, v, attr = "") => `<select class="input" id="${id}" ${attr}><option value="">Aucun</option>${KP.SERVICES.map((s) => `<option value="${s.k}" ${s.k === v ? "selected" : ""}>${h(s.nom)}</option>`).join("")}</select>`;
   const field = (label, html) => `<label class="field"><span>${label}</span>${html}</label>`;
 
   KP.views.reglages = () => {
-    const u = KP.me(), admin = u.role === "pilote", t0 = admin || KP.route.set === "apropos" ? KP.route.set : "profil", tab = t0 === "phrases" && !(u.admin && KP.phrasesVue) ? "profil" : t0;
+    const u = KP.me(), admin = u.role === "pilote", t0 = admin || KP.route.set === "apropos" ? KP.route.set : "profil", tab = t0 === "suivi" && !(u.admin && KP.suiviVue) ? "profil" : t0;
     return `<div class="page narrow wide-set">
       <div class="head"><h1>Réglages</h1></div>
-      <div class="bar"><div class="seg" role="group" aria-label="Réglages">${TABS.filter(([k]) => k === "phrases" ? u.admin && KP.phrasesVue : admin || k === "profil" || k === "apropos").map(([k, n]) => `<button type="button" data-act="set-tab" data-k="${k}" class="${k === tab ? "on" : ""}" aria-pressed="${k === tab}">${n}</button>`).join("")}</div></div>
-      ${({ apropos, profil, phrases: () => KP.phrasesVue(),
+      <div class="bar"><div class="seg" role="group" aria-label="Réglages">${TABS.filter(([k]) => k === "suivi" ? u.admin && KP.suiviVue : admin || k === "profil" || k === "apropos").map(([k, n]) => `<button type="button" data-act="set-tab" data-k="${k}" class="${k === tab ? "on" : ""}" aria-pressed="${k === tab}">${n}</button>`).join("")}</div></div>
+      ${({ apropos, profil, suivi: () => KP.suiviVue(),
         projet: () => identite() + periodes() + messages(),
         equipe: () => equipe() + services(),
         carnets: () => liste("partners", "Médias partenaires", "Proposés quand une action est un partenariat payant.", "Nom du média") + liste("lieux", "Lieux", "Proposés dans le champ Lieu d'un temps fort.", "Nom du lieu") })[tab]()}

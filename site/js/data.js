@@ -291,6 +291,10 @@
     logPhrase(txt, raison = "rien") { (db.phrases = db.phrases || []).unshift({ id: nid("ph"), txt: String(txt).slice(0, 300), raison, qui: db.moi, quand: Date.now() }); db.phrases.length = Math.min(db.phrases.length, 300); },
     listPhrases: async () => (db.phrases || []).slice(),
     clearPhrases: async () => { db.phrases = []; },
+    /* le reste du suivi (erreurs, annulés, recherches vides, écrans) */
+    tele(type, txt, detail = {}) { (db.suivi = db.suivi || []).unshift({ id: nid("su"), type, txt: String(txt).slice(0, 500), detail, version: (KP.VERSION || {}).n || "", qui: type === "ecran" ? null : db.moi, quand: Date.now() }); db.suivi.length = Math.min(db.suivi.length, 500); },
+    listSuivi: async () => (db.suivi || []).slice(),
+    clearSuivi: async () => { db.suivi = []; },
     addLieu(n) { if (n && !db.lieux.includes(n)) { db.lieux.push(n); db.lieux.sort((a, b) => a.localeCompare(b)); } },
     contacts: () => db.contacts,
     contact: (id) => db.contacts.find((c) => c.id === id),

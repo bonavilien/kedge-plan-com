@@ -1492,3 +1492,22 @@ p.cb-motif::before { content: "« "; } p.cb-motif::after { content: " »"; }
 .ph-liste .tr.ph-l { display: flex; grid-template-columns: none; align-items: baseline; justify-content: space-between; gap: 12px; }
 .ph-t { overflow-wrap: anywhere; }
 .ph-m { flex: none; font-size: 13px; display: flex; gap: 8px; align-items: baseline; white-space: nowrap; }
+/* 2.8 Réglages > Suivi (admin) */
+.su-alerte { display: flex; gap: 8px; align-items: center; color: var(--text2); margin: 0 0 10px; }
+.su-sante { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; margin: 6px 0 18px; }
+.su-tuile { background: var(--bg2, rgba(127,127,127,.08)); border-radius: 12px; padding: 12px 14px; display: grid; gap: 2px; }
+.su-tuile b { font: 700 26px/1 var(--serif); }
+.su-tuile span { font-size: 13px; color: var(--text2); }
+.su-tuile.a b { color: var(--warn, #B5561E); }
+.su-b { margin-top: 18px; }
+.su-b h3 { display: flex; align-items: center; gap: 8px; font-size: 12.5px; font-weight: 600; color: var(--text2); text-transform: uppercase; letter-spacing: .03em; margin-bottom: 6px; }
+.su-n { margin-left: auto; font-variant-numeric: tabular-nums; }
+.tbl .tr.su-l { display: flex; grid-template-columns: none; align-items: baseline; justify-content: space-between; gap: 12px; }
+.su-t { overflow-wrap: anywhere; }
+.su-m { flex: none; font-size: 13px; display: flex; gap: 8px; align-items: baseline; white-space: nowrap; }
+.su-plus { padding: 8px 0; font-size: 13px; }
+.su-ec { display: grid; gap: 6px; }
+.su-e { display: grid; grid-template-columns: 170px 1fr 44px; align-items: center; gap: 10px; font-size: 14px; }
+.su-e i { height: 8px; border-radius: 4px; background: var(--text); opacity: .75; width: var(--w); }
+.su-e b { text-align: right; font-variant-numeric: tabular-nums; }
+@media (max-width: 600px) { .su-e { grid-template-columns: 110px 1fr 36px; } .tbl .tr.su-l { flex-direction: column; gap: 2px; } }
