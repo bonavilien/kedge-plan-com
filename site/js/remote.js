@@ -70,7 +70,7 @@
     blk.filter((b) => !b.leve && b.why.startsWith(TRANCHER)).forEach((b) => (blocks[b.item] = blocks[b.item] || []).push(b.id));
     /* la photo de chacun (2.7, script 0034) : une base sans la colonne n'affiche que les initiales et ne propose pas d'en ajouter */
     photoCol = prof.some((p) => "photo" in p);
-    const people = prof.map((p) => ({ k: p.id, nom: p.nom || "Sans nom", fonction: p.fonction || "", role: p.visiteur ? "lecteur" : p.chef ? "pilote" : p.svc ? "service" : "lecteur", svc: p.svc || "", photo: KP.photoSure(p.photo) }));
+    const people = prof.map((p) => ({ k: p.id, nom: p.nom || "Sans nom", fonction: p.fonction || "", role: p.visiteur ? "lecteur" : p.chef ? "pilote" : p.svc ? "service" : "lecteur", admin: !!p.admin, svc: p.svc || "", photo: KP.photoSure(p.photo) }));
     const prefs = {};
     prof.forEach((p) => { if (p.version) prefs[p.id] = { version: p.version }; });
     const mine = ans.find((a) => a.key === "v2");
@@ -395,6 +395,10 @@
     shadow = snapshot(data); baseAJour();
     store._attach({ sync, uuid, pseudo, relance: (id) => run(sb.rpc("relancer", { p_req: id })).then(() => true, (e) => { KP.toast("Relance non envoyée : " + frErr(e)); return false; }), prevenir: (id, svc) => run(sb.rpc("prevenir", { p_item: id, p_svc: svc })).then(() => true, (e) => { KP.toast("Non envoyé : " + frErr(e)); return false; }) }, data);
     /* mêmes droits que la base : un service modifie les fiches de son service, un pilote tout */
+    /* 2.8 : phrases non comprises par la barre (script 0035) ; sans la table, rien ne part et rien ne casse */
+    store.logPhrase = (txt, raison = "rien") => { if (KP.me().role === "lecteur") return; sb.from("phrases_barre").insert({ txt: String(txt).slice(0, 300), raison, qui: user.id }).then(() => {}, () => {}); };
+    store.listPhrases = async () => { const { data, error } = await sb.from("phrases_barre").select("id,txt,raison,qui,quand").order("quand", { ascending: false }).limit(500); if (error) throw error; return data.map((r) => ({ ...r, quand: Date.parse(r.quand) })); };
+    store.clearPhrases = async () => { const { error } = await sb.from("phrases_barre").delete().gt("id", 0); if (error) throw error; };
     store.canEdit = (it) => { const u = KP.me(); return u.role === "pilote" || (u.role === "service" && !!it && it.variant !== "partenariat" && it.svc === u.svc); };
     /* l'écran de connexion s'efface par-dessus l'appli déjà affichée */
     const el = document.getElementById("login"); if (el) { el.classList.add("sort"); setTimeout(() => el.remove(), 380); }

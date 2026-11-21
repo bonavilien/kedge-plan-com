@@ -274,12 +274,20 @@
       <div class="cb-res" id="cb-res" role="region" aria-live="polite"></div></section>`;
 
   let vmCourant = null;
+  /* 2.8 : une phrase de 3 mots ou plus que la barre ne comprend pas part (une seule fois) dans Réglages > Phrases, chez l'admin */
+  const notees = new Set();
+  const noter = (t, raison) => { const x = String(t || "").trim(); if (x.split(/\s+/).length < 3 || notees.has(x) || !store.logPhrase) return; notees.add(x); store.logPhrase(x, raison); };
+  const incomprise = (t, vm) => vm && vm.rien && String(t).trim().split(/\s+/).length >= 3;
+  let enSuspens = ""; /* la dernière phrase non comprise : si on l'efface pour réécrire, on la note */
   function maj(force) {
     const inp = document.getElementById("cb-in"), res = document.getElementById("cb-res"), mir = document.getElementById("cb-miroir"); if (!inp) return;
     const texte = inp.value; if (texte !== S.texte) { S.texte = texte; S.cur = 0; S.navigue = false; }
+    if (enSuspens && !texte.startsWith(enSuspens.slice(0, Math.max(3, enSuspens.length - 4))) && texte.trim().length < enSuspens.trim().length - 3) { noter(enSuspens, "reecrit"); enSuspens = ""; }
     document.getElementById("cb").classList.toggle("plein", !!texte.trim());
     if (!texte.trim()) { mir.innerHTML = ""; vmCourant = null; res.innerHTML = S.ouvert || force ? vide() : ""; return; }
     const vm = (vmCourant = comprendre(texte));
+    if (incomprise(texte, vm)) { if ([...notees].some((x) => x.startsWith(texte.trim()))) enSuspens = ""; /* un morceau d'une phrase déjà notée */ else if (!enSuspens || texte.startsWith(enSuspens) || !enSuspens.startsWith(texte)) enSuspens = texte; }
+    else if (enSuspens && texte.startsWith(enSuspens)) enSuspens = ""; /* en continuant d'écrire, elle est devenue claire */
     mir.innerHTML = surligne(texte, vm.a); mir.scrollLeft = inp.scrollLeft;
     const cle = vm.k;
     res.innerHTML = carte(vm); if (cle === S.cleCarte) res.querySelectorAll(".cb-carte").forEach((c) => c.classList.add("calme")); S.cleCarte = cle;
@@ -346,12 +354,12 @@
     if (e.target.id === "cb-msg") { S.choix.m = [e.target.value]; (S.choix.main = S.choix.main || {}).m = [e.target.value]; }
   });
   document.addEventListener("focusin", (e) => { if (e.target.id === "cb-in") { S.ouvert = true; maj(); } });
-  document.addEventListener("focusout", (e) => { if (e.target.id === "cb-in") setTimeout(() => { const c = document.getElementById("cb"); if (c && !c.contains(document.activeElement) && !S.texte.trim()) { S.ouvert = false; maj(); } }, 150); });
+  document.addEventListener("focusout", (e) => { if (e.target.id === "cb-in" && incomprise(e.target.value, vmCourant)) noter(e.target.value, "rien"); if (e.target.id === "cb-in") setTimeout(() => { const c = document.getElementById("cb"); if (c && !c.contains(document.activeElement) && !S.texte.trim()) { S.ouvert = false; maj(); } }, 150); });
   document.addEventListener("scroll", (e) => { if (e.target.id === "cb-in") { const m = document.getElementById("cb-miroir"); if (m) m.scrollLeft = e.target.scrollLeft; } }, true);
   document.addEventListener("keydown", (e) => {
     if (e.target.id !== "cb-in") return;
     const vm = vmCourant, n = vm ? (vm.choisir ? vm.choisir.length : vm.resultats ? Math.min(7, vm.resultats.length) : 1) : 0;
-    if (e.key === "Enter") { e.preventDefault(); if (vm && vm.choisir && vm.approx && !S.navigue) { const r = document.querySelector(".cb-choix"); if (r) { r.classList.remove("secoue"); void r.offsetWidth; r.classList.add("secoue"); } return; } appliquer(); }
+    if (e.key === "Enter") { e.preventDefault(); if (vm && vm.choisir && vm.approx && !S.navigue) { const r = document.querySelector(".cb-choix"); if (r) { r.classList.remove("secoue"); void r.offsetWidth; r.classList.add("secoue"); } return; } if (incomprise(e.target.value, vm)) noter(e.target.value, "rien"); appliquer(); }
     else if ((e.key === "ArrowDown" || e.key === "ArrowUp") && n >= 1) { e.preventDefault(); S.navigue = true; S.cur = (S.cur + (e.key === "ArrowDown" ? 1 : n - 1)) % n; document.getElementById("cb-res").innerHTML = carte(vm); }
     else if (e.key === "Escape" && e.target.value) { e.preventDefault(); e.stopPropagation(); e.target.value = ""; maj(); }
     setTimeout(() => { const m = document.getElementById("cb-miroir"); if (m) m.scrollLeft = e.target.scrollLeft; });
@@ -363,4 +371,25 @@
   const apres = KP.apresRendu;
   KP.apresRendu = (main, entre) => { if (apres) apres(main, entre); if (KP.route.screen === "accueil") maj(); };
   KP.comprendre = comprendre;
+
+  /* ---------- 2.8 : Réglages > Phrases (l'admin seul) ---------- */
+  const PH = { liste: null, erreur: "", vider: 0 };
+  KP.phrasesVue = () => `<section class="set"><h2>Phrases non comprises</h2>
+      <p class="muted" style="margin-top:-6px">Ce que la barre n'a pas compris. Copie la liste et colle-la à Claude. Effacé après 3 mois, visible par toi seul.</p>
+      <div class="ph-outils"><button type="button" class="btn" data-act="ph-copier">${ic("copy")}Tout copier</button><button type="button" class="btn quiet" data-act="ph-vider">${ic("trash")}${PH.vider ? "Sûr ? Tout effacer" : "Vider la liste"}</button></div>
+      <div class="tbl t-one ph-liste" id="ph-liste">${phLignes()}</div></section>`;
+  const phLignes = () => {
+    if (PH.erreur) return `<p class="muted">${h(PH.erreur)}</p>`;
+    if (!PH.liste) return `<p class="muted">Chargement…</p>`;
+    if (!PH.liste.length) return `<p class="muted">Aucune phrase pour l'instant. La barre a tout compris.</p>`;
+    return PH.liste.map((p) => { const q = KP.person(p.qui); return `<div class="tr ph-l"><span class="ph-t">${h(p.txt)}</span><span class="muted ph-m">${p.raison === "reecrit" ? `<span class="pill">réécrite</span>` : ""}${h(q ? q.nom.split(/\s+/)[0] : "")} · ${h(KP.fmt.moyen(KP.iso(new Date(p.quand))))}</span></div>`; }).join("");
+  };
+  const phCharge = async () => { try { PH.liste = await store.listPhrases(); PH.erreur = ""; } catch (e) { PH.liste = []; PH.erreur = "La liste n'est pas encore prête : il manque le script SQL 2.8 dans Supabase."; } const el = document.getElementById("ph-liste"); if (el) el.innerHTML = phLignes(); };
+  const apres2 = KP.apresRendu;
+  KP.apresRendu = (main, entre) => { if (apres2) apres2(main, entre); if (KP.route.screen === "reglages" && KP.route.set === "phrases" && KP.me().admin && (entre || !PH.liste)) phCharge(); };
+  Object.assign(KP.acts, {
+    "ph-copier": async () => { const t = (PH.liste || []).map((p) => p.txt).join("\n"); if (!t) return KP.toast("Rien à copier"); try { await navigator.clipboard.writeText(t); KP.toast(`${PH.liste.length} phrase${PH.liste.length > 1 ? "s" : ""} copiée${PH.liste.length > 1 ? "s" : ""}`); } catch (e) { KP.toast("Copie impossible ici : sélectionne la liste à la main"); } },
+    "ph-vider": async () => { if (!PH.vider) { PH.vider = 1; KP.render(); setTimeout(() => { if (PH.vider) { PH.vider = 0; KP.render(); } }, 4000); return; }
+      PH.vider = 0; try { await store.clearPhrases(); PH.liste = []; KP.toast("Liste vidée"); } catch (e) { KP.toast("Impossible de vider : " + (e.message || e)); } KP.render(); },
+  });
 })();

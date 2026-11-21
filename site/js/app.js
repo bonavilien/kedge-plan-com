@@ -16,7 +16,7 @@
     /* les anciennes adresses d'onglets mènent au nouvel onglet qui les regroupe */
     const ALIAS = { services: "equipe", periodes: "projet", messages: "projet", medias: "carnets", lieux: "carnets", contacts: "carnets" };
     const st = ALIAS[seg[1]] || seg[1];
-    r.set = r.screen === "reglages" && ["projet", "equipe", "carnets", "apropos"].includes(st) ? st : "profil";
+    r.set = r.screen === "reglages" && ["projet", "equipe", "carnets", "phrases", "apropos"].includes(st) ? st : "profil";
     if (r.screen === "reunion") { r.tab = seg[1] === "bilan" ? "bilan" : "ordre"; if (KP.PERIODS.some((x) => x.k === p.get("per"))) r.per = p.get("per"); }
     if (r.screen === "resultats") { r.tab = seg[1] === "budget" ? "budget" : "diffusions"; if (KP.PERIODS.some((x) => x.k === p.get("per"))) r.per = p.get("per"); }
     return r;
