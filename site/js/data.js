@@ -66,7 +66,7 @@
     { k: "diffuse", nom: "Diffusé" },
   ];
   const PEOPLE0 = [
-    { k: "julien", nom: "Julien", fonction: "Chef de projet com, Content", role: "pilote", svc: "content" },
+    { k: "julien", nom: "Julien", fonction: "Chef de projet com, Content", role: "pilote", svc: "content", admin: true },
     { k: "estelle", nom: "Estelle", fonction: "Responsable marketing de l'offre", role: "pilote", svc: "" },
     { k: "aurelie", nom: "Aurélie", fonction: "Relations presse", role: "service", svc: "rp" },
     { k: "stephane", nom: "Stéphane", fonction: "Réseaux sociaux", role: "service", svc: "rs" },
@@ -204,7 +204,7 @@
   /* la démonstration d'une version précédente (v7, avant les résultats et le budget) est gardée : on lui ajoute ce qui manque */
   const read = () => { try { const o = JSON.parse(localStorage.getItem(KEY)); if (o && o.v === 7 && Array.isArray(o.items)) { const s = seed(); o.budget = o.budget || s.budget; o.env = o.env || s.env;
     ["people", "services", "partners", "lieux", "contacts", "reqs", "journal"].forEach((k) => { if (!Array.isArray(o[k]) || (!o[k].length && (k === "people" || k === "services"))) o[k] = s[k]; });
-    o.prefs = o.prefs || {}; o.items.forEach((i) => { i.docs = i.docs || []; i.m = i.m || []; i.contacts = i.contacts || []; }); o.v = 8; } if (o && o.v === 8) return o; } catch (e) {} return null; };
+    o.prefs = o.prefs || {}; o.items.forEach((i) => { i.docs = i.docs || []; i.m = i.m || []; i.contacts = i.contacts || []; }); o.v = 8; } if (o && o.v === 8) { if (Array.isArray(o.people) && !o.people.some((p) => p.admin)) { const a = o.people.find((p) => p.role === "pilote"); if (a) a.admin = true; } return o; } } catch (e) {} return null; };
   /* distant : quand l'appli est branchée sur la base (js/remote.js), le magasin garde la même forme en mémoire
      et chaque changement part vers la base au lieu du navigateur */
   let remote = null;
@@ -287,6 +287,14 @@
     restore(id) { const it = store.get(id), b = it.annule; delete it.annule; log(id, "a rétabli"); emit(); return () => { const x = byId(id); if (!x) return; x.annule = b; emit(); }; },
     /* carnets : lieux, contacts, médias */
     lieux: () => db.lieux,
+    /* 2.8 : les phrases que la barre n'a pas comprises (l'admin seul les lit, Réglages > Phrases) */
+    logPhrase(txt, raison = "rien") { (db.phrases = db.phrases || []).unshift({ id: nid("ph"), txt: String(txt).slice(0, 300), raison, qui: db.moi, quand: Date.now() }); db.phrases.length = Math.min(db.phrases.length, 300); },
+    listPhrases: async () => (db.phrases || []).slice(),
+    clearPhrases: async () => { db.phrases = []; },
+    /* le reste du suivi (erreurs, annulés, recherches vides, écrans) */
+    tele(type, txt, detail = {}) { (db.suivi = db.suivi || []).unshift({ id: nid("su"), type, txt: String(txt).slice(0, 500), detail, version: (KP.VERSION || {}).n || "", qui: type === "ecran" ? null : db.moi, quand: Date.now() }); db.suivi.length = Math.min(db.suivi.length, 500); },
+    listSuivi: async () => (db.suivi || []).slice(),
+    clearSuivi: async () => { db.suivi = []; },
     addLieu(n) { if (n && !db.lieux.includes(n)) { db.lieux.push(n); db.lieux.sort((a, b) => a.localeCompare(b)); } },
     contacts: () => db.contacts,
     contact: (id) => db.contacts.find((c) => c.id === id),

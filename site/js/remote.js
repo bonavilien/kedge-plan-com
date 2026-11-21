@@ -70,7 +70,7 @@
     blk.filter((b) => !b.leve && b.why.startsWith(TRANCHER)).forEach((b) => (blocks[b.item] = blocks[b.item] || []).push(b.id));
     /* la photo de chacun (2.7, script 0034) : une base sans la colonne n'affiche que les initiales et ne propose pas d'en ajouter */
     photoCol = prof.some((p) => "photo" in p);
-    const people = prof.map((p) => ({ k: p.id, nom: p.nom || "Sans nom", fonction: p.fonction || "", role: p.visiteur ? "lecteur" : p.chef ? "pilote" : p.svc ? "service" : "lecteur", svc: p.svc || "", photo: KP.photoSure(p.photo) }));
+    const people = prof.map((p) => ({ k: p.id, nom: p.nom || "Sans nom", fonction: p.fonction || "", role: p.visiteur ? "lecteur" : p.chef ? "pilote" : p.svc ? "service" : "lecteur", admin: !!p.admin, svc: p.svc || "", photo: KP.photoSure(p.photo) }));
     const prefs = {};
     prof.forEach((p) => { if (p.version) prefs[p.id] = { version: p.version }; });
     const mine = ans.find((a) => a.key === "v2");
@@ -301,7 +301,7 @@
     if (!ok && !prevenu && KP.me().role === "pilote") { prevenu = true; setTimeout(() => KP.toast("La base n'est pas à jour : colle 2.5_0030 puis 2.6_0031 dans Supabase (SQL Editor)"), 1500); }
   }
   document.addEventListener("visibilitychange", () => { if (!document.hidden && horsLigne) sync(store._db()); });
-  const frErr = (e) => { const m = (e && e.message) || "";
+  const frErr = (e) => { const m = (e && e.message) || ""; try { if (store.tele && m && !/fetch|network|réseau/i.test(m)) store.tele("erreur", m.slice(0, 300), { ecran: KP.route && KP.route.screen, base: true }); } catch (x) {}
     if (/row-level security|permission denied/i.test(m)) return "tu n'as pas le droit de faire ce changement";
     if (/null value in column "pour"|column "res"|relation "public\.(budget|enveloppes)"|function public\.set_res|set_res/i.test(m) || absente(e)) return "la base n'est pas à jour (à coller dans Supabase : 2.5_0030 puis 2.6_0031)";
     if (/res_ok|budget_montant_check|enveloppes_montant_check/i.test(m)) return "ce chiffre n'est pas possible";
@@ -395,6 +395,13 @@
     shadow = snapshot(data); baseAJour();
     store._attach({ sync, uuid, pseudo, relance: (id) => run(sb.rpc("relancer", { p_req: id })).then(() => true, (e) => { KP.toast("Relance non envoyée : " + frErr(e)); return false; }), prevenir: (id, svc) => run(sb.rpc("prevenir", { p_item: id, p_svc: svc })).then(() => true, (e) => { KP.toast("Non envoyé : " + frErr(e)); return false; }) }, data);
     /* mêmes droits que la base : un service modifie les fiches de son service, un pilote tout */
+    /* 2.8 : phrases non comprises par la barre (script 0035) ; sans la table, rien ne part et rien ne casse */
+    store.logPhrase = (txt, raison = "rien") => { if (KP.me().role === "lecteur") return; sb.from("phrases_barre").insert({ txt: String(txt).slice(0, 300), raison, qui: user.id }).then(() => {}, () => {}); };
+    store.listPhrases = async () => { const { data, error } = await sb.from("phrases_barre").select("id,txt,raison,qui,quand").order("quand", { ascending: false }).limit(500); if (error) throw error; return data.map((r) => ({ ...r, quand: Date.parse(r.quand) })); };
+    store.clearPhrases = async () => { const { error } = await sb.from("phrases_barre").delete().gt("id", 0); if (error) throw error; };
+    store.tele = (type, txt, detail = {}) => { if (KP.me().role === "lecteur") return; sb.from("suivi").insert({ type, txt: String(txt).slice(0, 500), detail, version: String((KP.VERSION || {}).n || "").slice(0, 20), qui: type === "ecran" ? null : user.id }).then(() => {}, () => {}); };
+    store.listSuivi = async () => { const { data, error } = await sb.from("suivi").select("id,type,txt,detail,version,qui,quand").order("quand", { ascending: false }).limit(2000); if (error) throw error; return data.map((r) => ({ ...r, quand: Date.parse(r.quand) })); };
+    store.clearSuivi = async () => { const { error } = await sb.from("suivi").delete().gt("id", 0); if (error) throw error; };
     store.canEdit = (it) => { const u = KP.me(); return u.role === "pilote" || (u.role === "service" && !!it && it.variant !== "partenariat" && it.svc === u.svc); };
     /* l'écran de connexion s'efface par-dessus l'appli déjà affichée */
     const el = document.getElementById("login"); if (el) { el.classList.add("sort"); setTimeout(() => el.remove(), 380); }
