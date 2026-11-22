@@ -6,7 +6,8 @@
   const TYPES = [{ v: "tf", nom: "Temps forts" }, { v: "action", nom: "Actions" }, { v: "classement", nom: "Classements" }, { v: "partenariat", nom: "Partenariats payants" }];
   /* ce qui tombe avant la première période ou après la dernière va dans la période du bord : rien ne disparaît */
   const inPeriod = (it, p) => it.variant === "sujet" ? (it.pers ? it.pers.includes(p.k) : it.per === p.k)
-    : (it.date <= p.au || p === KP.PERIODS[KP.PERIODS.length - 1]) && ((it.flou ? it.date : it.fin || it.date) >= p.du || p === KP.PERIODS[0]);
+    : ((it.date <= p.au || p === KP.PERIODS[KP.PERIODS.length - 1]) && ((it.flou ? it.date : it.fin || it.date) >= p.du || p === KP.PERIODS[0]))
+      || (!KP.PERIODS.some((q) => it.date <= q.au && (it.flou ? it.date : it.fin || it.date) >= q.du) && KP.periodOf(it.date) === p); /* 2.8.2 : tombée entre deux périodes */
   /* un filtre inconnu dans l'adresse (vieux lien, service supprimé) est ignoré plutôt que de casser l'écran */
   const clean = (r) => ({ ...r, svc: r.svc && KP.service(r.svc) ? r.svc : "", msg: r.msg && KP.message(r.msg) ? r.msg : "", type: TYPES.some((t) => t.v === r.type) ? r.type : "" });
   const match = (it, r) =>

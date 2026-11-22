@@ -248,18 +248,20 @@
   function exemples() {
     if (KP.cmdExemples) return KP.cmdExemples();
     const its = store.items().filter((it) => !it.annule && it.variant !== "sujet" && !it.flou), T = KP.TODAY;
-    const court = (it) => nettoie(it.t).replace(/\s*[:,(].*$/, "").split(/\s+/).slice(0, 4).join(" ").toLowerCase();
+    /* 2.8.2 : quatre mots au plus, jamais terminés par un petit mot (« page web de la » → « page web ») */
+    const court = (it) => { const w = nettoie(it.t).replace(/\s*[:,(].*$/, "").split(/\s+/).slice(0, 4); while (w.length > 1 && /^(de|la|le|les|du|des|d'|d’|l'|l’|à|au|aux|et|en|pour|sur|un|une|avec)$/i.test(w[w.length - 1])) w.pop(); return w.join(" ").toLowerCase(); };
     const prochaine = its.filter((it) => it.kind === "action" && it.date > T && it.st !== "diffuse" && store.canEdit(it)).sort((a, b) => a.date.localeCompare(b.date))[0];
     const passee = its.filter((it) => it.kind === "action" && it.date < T && it.st === "diffuse").sort((a, b) => b.date.localeCompare(a.date))[0];
     const autre = its.filter((it) => it.kind === "action" && it.date > T && it !== prochaine && store.canEdit(it)).sort((a, b) => a.date.localeCompare(b.date))[1];
     const out = [];
-    if (prochaine) out.push({ i: "shift", t: `Décale ${court(prochaine)} à mardi prochain` });
+    if (prochaine) out.push({ i: "shift", t: `Décale ${court(prochaine)} ${KP.diff(prochaine.date, T) < 7 ? "d'une semaine" : "à demain"}` });
     out.push({ i: "search", t: "Qu'est-ce qui est prévu la semaine prochaine ?" });
     if (store.canCreate()) out.push({ i: "plus", t: "Ajoute un post LinkedIn JPO jeudi à 10 h" });
     if (passee) out.push({ i: "chart", t: `${majuscule(court(passee))} a fait 8 400 vues` });
     if (autre) out.push({ i: "close", t: `On laisse tomber ${court(autre)}` });
-    out.push({ i: "chat", t: "Demande à Estelle les visuels pour la JPO avant vendredi" });
-    return out;
+    if (!KP.me() || KP.me().role !== "lecteur") out.push({ i: "chat", t: "Demande à Estelle les visuels pour la JPO avant vendredi" });
+    /* 2.8.2 : on ne garde que les exemples que la barre comprend vraiment, sans refus, sans choix ni question */
+    return out.filter((e) => { try { const vm = comprendre(e.t); return vm && (vm.resultats || (vm.faire && !vm.refus && !vm.manque && !vm.choisir)); } catch (x) { return false; } });
   }
 
   /* ---------- l'affichage ---------- */

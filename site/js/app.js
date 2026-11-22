@@ -82,6 +82,8 @@
     const main = $("main"), top = main.scrollTop, act = document.activeElement, fid = act && act.id, sel = act && act.selectionStart, selF = act && act.selectionEnd, selD = act && act.selectionDirection;
     const frow = act && act.classList && act.classList.contains("open") && act.closest(".row") ? act.dataset.id : "";
     const f0 = $("fiche"), fWas = f0.hidden ? "" : f0.dataset.id, inFiche = act && f0.contains(act);
+    /* 2.8.2 : un champ de la fiche en cours d'écriture garde son texte et son curseur quand l'écran se redessine */
+    const fChamp = inFiche && act.matches && act.matches("input[data-f], textarea[data-f], textarea, input[type=text]") ? { f: act.dataset.f, nom: act.name, cls: act.className, v: act.value } : null;
     renderSide();
     /* transitions douces : un nouvel écran, une autre période ou une autre vue entre en fondu ; la période glisse dans son sens */
     const rt = KP.route, cle = [rt.screen, rt.per, rt.vue, rt.tab, rt.set].join("|"), entre = cle !== lastCle;
@@ -106,6 +108,9 @@
     /* la fiche qui s'ouvre prend le focus ; celle qui se ferme le rend à sa ligne */
     if (fNow && fNow !== fWas) $("fiche").focus({ preventScroll: true });
     else if (!fNow && fWas && (inFiche || !act || act === document.body)) { const x = main.querySelector(`.row[data-id="${fWas}"] .open, .g-i[data-id="${fWas}"]`); if (x) x.focus({ preventScroll: true, focusVisible: !KP.phone() }); }
+    else if (fChamp && fNow === fWas) { const sel0 = fChamp.f ? `[data-f="${fChamp.f}"]` : fChamp.nom ? `[name="${fChamp.nom}"]` : "";
+      const x = sel0 ? $("fiche").querySelector(sel0) : fid ? $(fid) : null;
+      if (x) { if (x.value !== fChamp.v) x.value = fChamp.v; x.focus({ preventScroll: true }); try { if (sel != null) x.setSelectionRange(sel, selF != null ? selF : sel, selD || "none"); } catch (e) {} } }
     else if (fid && $(fid)) { $(fid).focus({ preventScroll: true }); try { if (sel != null) $(fid).setSelectionRange(sel, selF != null ? selF : sel, selD || "none"); } catch (e) {} }
     else if (frow) { const x = main.querySelector(`.row[data-id="${frow}"] .open`); if (x) x.focus({ preventScroll: true }); }
     ["side", "topbar", "fiche"].forEach((k) => KP.typo($(k))); KP.typo(main);

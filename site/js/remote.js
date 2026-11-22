@@ -346,7 +346,10 @@
   function watch() {
     if (watching) return; watching = true;
     let t = 0;
-    const kick = () => { clearTimeout(t); t = setTimeout(() => (pending > 0 ? kick() : reload()), 600); };
+    /* 2.8.2 : pendant qu'on écrit dans un champ (fiche, ligne Messages, fenêtre), on attend qu'il soit quitté : le curseur ne saute plus */
+    let frappe = 0; document.addEventListener("input", () => (frappe = Date.now()), true);
+    const ecrit = () => { const a = document.activeElement; return Date.now() - frappe < 8000 && !!a && a.matches("textarea, input[type=text], input:not([type])") && !a.closest(".cb-zone, .cmdk"); };
+    const kick = () => { clearTimeout(t); t = setTimeout(() => (pending > 0 || ecrit() ? kick() : reload()), 600); };
     later = kick;
     try { sb.auth.onAuthStateChange((ev) => { if (ev === "SIGNED_OUT") loginScreen("Ta session a expiré, reconnecte-toi."); }); } catch (e) {}
     try { sb.channel("kplan").on("postgres_changes", { event: "*", schema: "public" }, kick).subscribe(); } catch (e) {}

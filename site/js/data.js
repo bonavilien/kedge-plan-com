@@ -108,7 +108,7 @@
     }
     if (hors) Object.assign(MESSAGES.find((m) => m.hors), { nom: hors.nom, info: hors.info || "" });
   };
-  const periodOf = (date) => PERIODS.find((p) => date >= p.du && date <= p.au) || (date < PERIODS[0].du ? PERIODS[0] : PERIODS[PERIODS.length - 1]);
+  const periodOf = (date) => PERIODS.find((p) => date >= p.du && date <= p.au) || PERIODS.find((p) => date < p.du) || PERIODS[PERIODS.length - 1]; /* 2.8.2 : entre deux périodes, la suivante */
 
   const store0 = (id, items) => items.find((i) => i.id === id);
   /* ---------- jeu de démonstration (dates relatives à aujourd'hui) ---------- */
@@ -304,7 +304,7 @@
     tele(type, txt, detail = {}) { (db.suivi = db.suivi || []).unshift({ id: nid("su"), type, txt: String(txt).slice(0, 500), detail, version: (KP.VERSION || {}).n || "", qui: type === "ecran" ? null : db.moi, quand: Date.now() }); db.suivi.length = Math.min(db.suivi.length, 500); },
     listSuivi: async () => (db.suivi || []).slice(),
     clearSuivi: async () => { db.suivi = []; },
-    addLieu(n) { if (n && !db.lieux.includes(n)) { db.lieux.push(n); db.lieux.sort((a, b) => a.localeCompare(b)); } },
+    addLieu(n) { n = String(n || "").trim().slice(0, 120); if (n && !db.lieux.some((x) => x.toLowerCase() === n.toLowerCase())) { db.lieux.push(n); db.lieux.sort((a, b) => a.localeCompare(b)); } },
     contacts: () => db.contacts,
     contact: (id) => db.contacts.find((c) => c.id === id),
     saveContact(o) { let c = o.id && store.contact(o.id); if (c) Object.assign(c, o); else { c = { id: nid("c"), nom: "", role: "", mail: "", tel: "", ...o }; db.contacts.push(c); } emit(); return c; },
@@ -343,7 +343,7 @@
     },
     messageUsed: (k) => db.items.filter((i) => i.m.includes(k)).length,
     removeMessage(k) { const i = MESSAGES.findIndex((x) => x.k === k && !x.hors); if (i < 0 || MESSAGES.filter((m) => !m.hors).length < 2) return null; const [m] = MESSAGES.splice(i, 1); emit(); return () => { MESSAGES.splice(i, 0, m); emit(); }; },
-    addPartner(n) { if (n && !db.partners.includes(n)) { db.partners.push(n); db.partners.sort((a, b) => a.localeCompare(b)); } },
+    addPartner(n) { n = String(n || "").trim().slice(0, 80); if (n && !db.partners.some((x) => x.toLowerCase() === n.toLowerCase())) { db.partners.push(n); db.partners.sort((a, b) => a.localeCompare(b)); } },
     /* fixe la date : un jour précis, ou tout un mois (flou) en attendant. Les relais suivent quand on passe d'un jour à un autre. */
     setDate(id, date, flou, motif) {
       const it = store.get(id), n = diff(date, it.date);

@@ -107,7 +107,7 @@
     return `<section class="set"><h2>Personnes${store.remote() ? "" : `<button type="button" class="btn quiet small" data-act="set-add" data-k="people">${ic("plus")}Ajouter une personne</button>`}</h2>
       ${store.remote() ? `<p class="muted">Un compte se crée dans Supabase (Authentication, Add user). Il apparaît ensuite ici pour régler son rôle et son service.</p>` : ""}
       <div class="tbl t-people"><div class="th"><span>Prénom</span><span>Fonction</span><span>Droits</span><span>Service</span><span>Version</span><span></span></div>
-      ${KP.PEOPLE.map((p) => `<div class="tr"><input class="input" id="p-${p.k}-nom" data-set="people:${p.k}:nom" value="${h(p.nom)}" aria-label="Prénom" autocomplete="off"><input class="input" id="p-${p.k}-fonction" data-set="people:${p.k}:fonction" value="${h(p.fonction)}" aria-label="Fonction" autocomplete="off">
+      ${KP.PEOPLE.map((p) => `<div class="tr"><input class="input" id="p-${p.k}-nom" data-set="people:${p.k}:nom" maxlength="60" value="${h(p.nom)}" aria-label="Prénom" autocomplete="off"><input class="input" id="p-${p.k}-fonction" data-set="people:${p.k}:fonction" maxlength="80" value="${h(p.fonction)}" aria-label="Fonction" autocomplete="off">
         <select class="input" id="p-${p.k}-role" data-set="people:${p.k}:role" aria-label="Droits">${ROLES.map(([k, n]) => `<option value="${k}" ${k === p.role ? "selected" : ""}>${n}</option>`).join("")}</select>
         ${svcSel(`p-${p.k}-svc`, p.svc, `data-set="people:${p.k}:svc" aria-label="Service"`)}
         ${(() => { const v = store.versionOf(p.k); return `<span class="pv${v && v !== KP.VERSION.n ? " late" : ""}">${v ? h(KP.versionLabel(v)) : "—"}</span>`; })()}
@@ -118,7 +118,7 @@
   function services() {
     return `<section class="set"><h2>Services<button type="button" class="btn quiet small" data-act="set-add" data-k="services">${ic("plus")}Ajouter un service</button></h2>
       <div class="tbl t-svc"><div class="th"><span>Nom</span><span>Nom court</span><span>Représenté par</span><span></span></div>
-      ${KP.SERVICES.map((s) => `<div class="tr"><input class="input" id="s-${s.k}-nom" data-set="services:${s.k}:nom" value="${h(s.nom)}" aria-label="Nom" autocomplete="off"><input class="input" id="s-${s.k}-court" data-set="services:${s.k}:court" value="${h(s.court)}" aria-label="Nom court" autocomplete="off">
+      ${KP.SERVICES.map((s) => `<div class="tr"><input class="input" id="s-${s.k}-nom" data-set="services:${s.k}:nom" maxlength="60" value="${h(s.nom)}" aria-label="Nom" autocomplete="off"><input class="input" id="s-${s.k}-court" data-set="services:${s.k}:court" maxlength="16" value="${h(s.court)}" aria-label="Nom court" autocomplete="off">
         <span class="muted">${h(KP.PEOPLE.filter((p) => p.svc === s.k).map((p) => p.nom).join(", ") || "Personne pour l'instant")}</span>${KP.ib("trash", "Retirer", "set-rm", `data-k="services" data-id="${s.k}"`)}</div>`).join("")}</div>
       <p class="muted">Chaque service a sa colonne dans la grille. On rattache une personne à un service juste au-dessus.</p></section>`;
   }
@@ -156,7 +156,7 @@
   function liste(k, titre, aide, ph) {
     const list = k === "partners" ? store.partners() : store.lieux();
     return `<section class="set"><h2>${titre}</h2><p class="muted" style="margin-top:-6px">${aide}</p>
-      <form class="add-line" data-add="${k}"><input class="input" id="add-${k}" placeholder="${ph}" autocomplete="off" aria-label="${ph}"><button class="btn quiet">${ic("plus")}Ajouter</button></form>
+      <form class="add-line" data-add="${k}"><input class="input" id="add-${k}" maxlength="${k === "lieux" ? 120 : 80}" placeholder="${ph}" autocomplete="off" aria-label="${ph}"><button class="btn quiet">${ic("plus")}Ajouter</button></form>
       <div class="tbl t-one">${list.map((x) => `<div class="tr"><span>${h(x)}</span>${KP.ib("trash", "Retirer", "set-rm", `data-k="${k}" data-id="${h(x)}"`)}</div>`).join("") || `<p class="muted">La liste est vide.</p>`}</div></section>`;
   }
 
@@ -166,17 +166,30 @@
     setTimeout(() => {
       if (k === "projet") { store.saveProjet({ [id]: v }); return KP.toast("Enregistré"); }
       if (k === "me") { if (id === "nom" && !v) return KP.render(); store.savePerson(KP.me().k, { [id]: v }); }
-      else if ((f === "nom") && !v) return KP.render();
-      else if (k === "people") { if (id === KP.me().k && f === "role" && v !== "pilote" && !KP.PEOPLE.some((p) => p.k !== id && p.role === "pilote")) { KP.toast("Il faut garder au moins un pilote"); return KP.render(); } store.savePerson(id, { [f]: v }); }
+      else if ((f === "nom" || f === "court") && !v) return KP.render(); /* 2.8.2 : un nom court ne se vide pas */
+      else if (k === "people") { if (id === KP.me().k && f === "role" && v !== "pilote" && !KP.PEOPLE.some((p) => p.k !== id && p.role === "pilote")) { KP.toast("Il faut garder au moins un pilote"); return KP.render(); } const pp = KP.PEOPLE.find((x) => x.k === id) || {};
+        /* 2.8.2 : des droits « Service » sans service = lecture seule pour la base : on le dit au lieu d'« Enregistré » */
+        if (id === KP.me().k && f === "role" && v !== "pilote" && store.remote()) { KP.toast("Demande à un autre pilote de changer tes droits"); return KP.render(); }
+        if (f === "role" && v === "service" && !pp.svc) { KP.toast("Choisis d'abord son service, à droite"); return KP.render(); }
+        if (f === "svc" && !v && pp.role === "service") { KP.toast("Un compte Service a besoin d'un service : passe-le d'abord en lecture seule"); return KP.render(); }
+        store.savePerson(id, { [f]: v }); }
       else if (k === "services") store.saveService(id, { [f]: v });
       else if (k === "messages") store.saveMessage(id, { [f]: v });
       else if (k === "periods") {
         const p = KP.PERIODS.find((x) => x.k === id); if (!p) return;
         const next = { ...p, [f]: v };
-        if (f !== "nom" && (!v || next.du > next.au)) { KP.toast("Le dernier jour vient après le premier"); return KP.render(); }
-        const hit = f !== "nom" && KP.PERIODS.find((x) => x.k !== id && x.du <= next.au && x.au >= next.du);
+        if (f !== "nom" && !v) { KP.toast("Choisis une date"); return KP.render(); }
+        if (f !== "nom" && next.du > next.au) { KP.toast("Le dernier jour vient après le premier"); return KP.render(); }
+        /* 2.8.2 : les périodes se suivent sans trou : la voisine bouge avec (une action ne tombe jamais entre deux périodes) */
+        const i = KP.PERIODS.indexOf(p), suiv = f === "au" && KP.PERIODS[i + 1], prec = f === "du" && i > 0 && KP.PERIODS[i - 1];
+        if (suiv && KP.addDays(v, 1) > suiv.au) { KP.toast(`Ça avalerait la période « ${suiv.nom} »`); return KP.render(); }
+        if (prec && KP.addDays(v, -1) < prec.du) { KP.toast(`Ça avalerait la période « ${prec.nom} »`); return KP.render(); }
+        const hit = f !== "nom" && KP.PERIODS.find((x) => x.k !== id && x !== suiv && x !== prec && x.du <= next.au && x.au >= next.du);
         if (hit) { KP.toast(`Chevauche la période « ${hit.nom} »`); return KP.render(); }
+        if (suiv) store.savePeriod(suiv.k, { du: KP.addDays(v, 1) });
+        if (prec) store.savePeriod(prec.k, { au: KP.addDays(v, -1) });
         store.savePeriod(id, { [f]: v });
+        if (suiv || prec) { KP.toast(`Enregistré, « ${(suiv || prec).nom} » suit`); return; }
       }
       KP.toast("Enregistré");
     }, 0);

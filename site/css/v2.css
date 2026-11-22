@@ -1546,3 +1546,7 @@ dialog.dlg.cb-dlg { width: min(720px, calc(100vw - 32px)); padding: 20px 22px 22
   .bar .seg, .bar .btn, .clore { display: none !important; }
   .stack i, .pill, .r-jauge i { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 }
+
+/* ---------- 2.8.2 ---------- */
+/* calendrier du plan à 1024 px : les noms se coupent entre les mots (ou avec un trait d'union), jamais au milieu d'une lettre */
+.g-hn, .g-i { overflow-wrap: break-word; word-break: normal; hyphens: auto; }
