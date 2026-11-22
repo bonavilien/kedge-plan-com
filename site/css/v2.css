@@ -604,6 +604,7 @@ html.offline body::before { content: "Hors connexion : tes modifications partiro
 .btn.danger-bg { background: var(--red); border-color: var(--red); color: #fff; }
 /* 2.0.2 : la fenêtre Nouveau défile sur un écran de portable peu haut ; la recherche se ferme au doigt */
 dialog.dlg { max-height: calc(100dvh - 32px); overflow: auto; }
+dialog.dlg:has(> .pop) { overflow: visible; } /* 2.8.1 : un calendrier ouvert dans la fenêtre n'est pas coupé */
 .cmdk-x { display: none; }
 @media (max-width: 767px) { .cmdk .q kbd { display: none; } .cmdk-x { display: inline-grid; } .toasts { left: 16px !important; right: 16px; transform: none !important; } }
 

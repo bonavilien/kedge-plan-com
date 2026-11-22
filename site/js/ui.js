@@ -149,7 +149,7 @@
       const m = e.target.closest("[data-m]"); if (m) { cur.setMonth(cur.getMonth() + +m.dataset.m); p.el.innerHTML = draw(); p.place(); return; }
       const d = e.target.closest("[data-d]"); if (d) { p.close(); onPick(d.dataset.d); }
     });
-    const on = p.el.querySelector(".on") || p.el.querySelector(".today"); if (on && !KP.phone()) on.focus();
+    const on = p.el.querySelector(".on") || p.el.querySelector(".today"); if (on && !KP.phone()) on.focus({ preventScroll: true });
     return p;
   };
 
