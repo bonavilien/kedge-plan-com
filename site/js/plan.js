@@ -66,7 +66,7 @@
     return out.sort((x, y) => x.ord.localeCompare(y.ord));
   }
   /* cette semaine : un trait jaune « aujourd'hui » entre ce qui est passé et ce qui vient */
-  const nowRows = (its) => { const i = its.findIndex((it) => (it.fin || it.date) >= KP.TODAY), at = i < 0 ? its.length : i, line = `<div class="today-line" aria-hidden="true"><span>Aujourd'hui</span></div>`;
+  const nowRows = (its) => { const i = its.findIndex((it) => it.date >= KP.TODAY), /* 2.8.2 : un temps fort commencé et en cours reste au-dessus du trait */ at = i < 0 ? its.length : i, line = `<div class="today-line" aria-hidden="true"><span>Aujourd'hui</span></div>`;
     /* tout est passé : le trait tombe sous la dernière ligne, avec la place pour son badge */
     return its.slice(0, at).map((it) => KP.row(it)).join("") + (at > 0 ? (at === its.length ? line.replace('class="today-line"', 'class="today-line fin"') : line) : "") + its.slice(at).map((it) => KP.row(it)).join(""); };
   /* une semaine dont toutes les actions sont diffusées prend une coche ; elle s'anime si elle vient de se compléter */

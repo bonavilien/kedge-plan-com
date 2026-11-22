@@ -1564,3 +1564,10 @@ dialog.dlg.cb-dlg { width: min(720px, calc(100vw - 32px)); padding: 20px 22px 22
   .cb-res:not(:empty) { z-index: 30; }
   .cb-res:not(:empty)::before { content: ""; position: absolute; left: -24px; right: -24px; top: -8px; height: calc(100% + 72px); background: linear-gradient(var(--bg) calc(100% - 56px), transparent); z-index: -1; pointer-events: none; }
 }
+/* plan en liste, fiche fermée, grand écran : la colonne Service prend la place du message (« Production vidéo » en entier) */
+@media (min-width: 1280px) { html:not(.fiche-open) .wk .row, html:not(.fiche-open) .wk .colh { grid-template-columns: 96px minmax(0, 1fr) 160px 162px 124px; } }
+/* fiche au téléphone : le libellé de l'état centré dans sa case */
+.f-meta .seg button { justify-content: center; }
+/* relais d'un temps fort : le service reste visible même avec un long titre */
+.mini:has(> .mini-s) { grid-template-columns: 62px minmax(0, 1fr) auto auto; }
+.mini .mini-s { font-size: 12.5px; font-weight: 600; white-space: nowrap; }

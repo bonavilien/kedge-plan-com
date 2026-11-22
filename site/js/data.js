@@ -284,7 +284,9 @@
       return () => { if (byId(id)) return; db.items.push(saved); if (prix != null) db.budget[id] = prix; rel.forEach((r) => { const x = byId(r); if (x && !x.tf) x.tf = id; }); db.reqs.push(...reqs); emit(); };
     },
     /* annuler une création : la fiche n'a encore ni demande ni relais */
-    unadd(id) { db.items = db.items.filter((i) => i.id !== id); emit(); },
+    /* 2.8.2 : la fiche se ferme d'abord (pas de « n'existe plus »), et ses demandes partent avec elle */
+    unadd(id) { if (typeof KP !== "undefined" && KP.route && KP.route.fiche === id && KP.go) KP.go({ fiche: "" }, true);
+      db.items = db.items.filter((i) => i.id !== id); db.items.forEach((i) => { if (i.tf === id) i.tf = ""; }); db.reqs = db.reqs.filter((r) => r.item !== id); if (db.budget) delete db.budget[id]; emit(); },
     duplicate(id) {
       const it = store.get(id); if (!it) return null;
       const { id: _id, annule, report, res, ...copie } = JSON.parse(JSON.stringify(it));
