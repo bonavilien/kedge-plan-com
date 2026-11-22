@@ -1248,7 +1248,7 @@ html.fiche-open .r-tot .r-eur { margin-right: 136px; }
 
   /* les fenêtres s'ouvrent en douceur : les menus depuis leur bouton, la recherche et les fenêtres glissent en place */
   .pop { animation: ec-pop var(--t-vite) var(--m-doux) both; }
-  dialog.dlg[open] { animation: ec-dlg var(--t-normal) var(--m-doux) both; }
+  dialog.dlg[open] { animation: ec-dlg var(--t-normal) var(--m-doux) backwards; } /* backwards : aucun transform ne reste après l'ouverture, sinon les calendriers (position: fixed) s'ouvrent décalés */
   dialog.dlg[open]::backdrop { animation: ec-fond var(--t-normal) var(--m-doux) both; }
   .scrim { animation: ec-fond var(--t-normal) var(--m-doux) both; }
   @media (max-width: 767px) { .pop, dialog.dlg[open] { animation-name: ec-feuille; animation-duration: var(--t-normal); } dialog.cmdk[open] { animation-name: ec-fond; } }
