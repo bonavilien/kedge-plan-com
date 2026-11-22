@@ -66,8 +66,8 @@
         <button type="button" data-act="profile" data-side="1"><span class="avatar">${KP.photoSure(u.photo) ? `<img src="${h(u.photo)}" alt="">` : h((u.nom || "?")[0])}</span><span class="who">${h(u.nom)}<small>${h(u.fonction)}</small></span></button>
         <a class="ver" href="#/reglages/apropos" data-tip="Voir les nouveautés">Version ${h(KP.versionLabel(KP.VERSION.n))}</a>
       </div>`;
-    $("topbar").innerHTML = `<b>${KP.marque.carre ? KP.logo() : ""}<span class="bt"><span>${h(KP.marque.app)}</span>${st ? `<small>${h(st)}</small>` : ""}</span></b>${KP.ib("search", "Rechercher", "search")}${KP.ib("bell", "Notifications", "notifs")}<button class="ib" type="button" data-act="profile" aria-label="Profil"><span class="avatar">${KP.photoSure(u.photo) ? `<img src="${h(u.photo)}" alt="">` : h((u.nom || "?")[0])}</span></button>`;
-    $("tabbar").innerHTML = SCREENS.map(([k, nom, i]) => `<a href="${KP.href({ screen: k })}" data-k="${k}" class="${r.screen === k ? "on" : ""}">${ic(i)}${nom}</a>`).join("") + (store.canCreate() ? `<button class="plus" type="button" data-act="new" aria-label="Nouveau">${ic("plus")}</button>` : "<span></span>");
+    $("topbar").innerHTML = `<b>${KP.marque.carre ? KP.logo() : ""}<span class="bt"><span>${h(KP.marque.app)}</span>${st ? `<small>${h(st)}</small>` : ""}</span></b>${KP.ib("search", "Rechercher", "search")}${KP.ib("bell", "Notifications", "notifs").replace(/<\/button>$/, news ? '<span class="dot" aria-label="Du nouveau"></span></button>' : "</button>")}<button class="ib" type="button" data-act="profile" aria-label="Profil"><span class="avatar">${KP.photoSure(u.photo) ? `<img src="${h(u.photo)}" alt="">` : h((u.nom || "?")[0])}</span></button>`;
+    $("tabbar").innerHTML = SCREENS.map(([k, nom, i]) => `<a href="${KP.href({ screen: k })}" data-k="${k}" class="${r.screen === k ? "on" : ""}">${ic(i)}${nom}${k === "accueil" && n ? `<span class="n tb-n" aria-label="${n} à traiter">${n}</span>` : ""}</a>`).join("") + (store.canCreate() ? `<button class="plus" type="button" data-act="new" aria-label="Nouveau">${ic("plus")}</button>` : "<span></span>");
     /* la surbrillance glisse de l'ancien écran vers le nouveau, et l'icône d'arrivée fait son geste */
     KP.glisser($("side").querySelector(".nav")); KP.glisser($("tabbar"));
   }
@@ -175,7 +175,7 @@
         const x = e.target.closest("[data-clear]");
         if (x) { const pr = store.prefs(); if (x.dataset.clear === "all") pr.nall = Date.now(); else pr.nx = [...(pr.nx || []), x.dataset.clear]; store.setPref("vu", Date.now()); p.el.innerHTML = draw(); return; }
         const b = e.target.closest("[data-id]"); if (b) { p.close(); KP.go({ fiche: b.dataset.id }); } });
-      store.prefs().vu = Date.now(); const d = a.querySelector(".dot"); if (d) d.remove();
+      store.setPref("vu", Date.now()); const d = a.querySelector(".dot"); if (d) d.remove(); /* 2.8.2 : enregistré, le point ne revient pas au rechargement */
     },
     profile: (a) => {
       const u = KP.me();
@@ -306,7 +306,7 @@
       const c = res.querySelector(".cur"); if (c) c.scrollIntoView({ block: "nearest" });
       if (c) inp.setAttribute("aria-activedescendant", c.id); else inp.removeAttribute("aria-activedescendant");
     };
-    const run = (i) => { const x = list[i]; if (!x) return; d.close(); if (x.it) KP.go({ screen: "plan", per: x.it.variant === "sujet" ? x.it.per : KP.periodOf(x.it.date).k, svc: "", msg: "", type: "", fiche: x.it.id }); else x.go(); };
+    const run = (i) => { const x = list[i]; if (!x) return; d.close(); document.querySelectorAll("dialog[open]").forEach((o) => o !== d && o.close()); /* 2.8.2 : la fenêtre « Nouveau » ne reste pas ouverte derrière */ if (x.it) KP.go({ screen: "plan", per: x.it.variant === "sujet" ? x.it.per : KP.periodOf(x.it.date).k, svc: "", msg: "", type: "", fiche: x.it.id }); else x.go(); };
     inp.addEventListener("input", () => { cur = 0; draw(); });
     d.addEventListener("close", () => { const q = inp.value.trim(); if (q.length >= 3 && !list.length && store.tele && !(KP.cmdkVides || (KP.cmdkVides = new Set())).has(q)) { KP.cmdkVides.add(q); store.tele("recherche", q, { ou: "ctrlk" }); } });
     d.addEventListener("keydown", (e) => {
@@ -331,6 +331,9 @@
   };
   KP.acts.reload = async () => { try { const reg = navigator.serviceWorker && await navigator.serviceWorker.getRegistration(); if (reg) await reg.update(); } catch (e) {} location.reload(); };
   document.addEventListener("visibilitychange", () => { if (!document.hidden) KP.checkVersion(); });
+  /* 2.8.2 : l'onglet resté ouvert passé minuit recharge pour prendre la nouvelle date (sauf si quelque chose attend d'être envoyé ou s'écrit) */
+  const nouveauJour = () => { const c = document.documentElement.classList; if (KP.iso(new Date()) !== KP.TODAY && !c.contains("saving") && !c.contains("offline") && !document.querySelector("dialog[open]") && !(document.activeElement && document.activeElement.matches("input, textarea"))) location.reload(); };
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) nouveauJour(); }); setInterval(nouveauJour, 30 * 60000);
   setInterval(() => KP.checkVersion(), 30 * 60 * 1000);
   if (!KP.embedded && "serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost")) window.addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));
 

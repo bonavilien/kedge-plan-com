@@ -385,7 +385,8 @@
     if (fond) fetch(fond.replace(/symbole\.png$/, "fond.svg")).then((r) => (r.ok ? r.text() : "")).then((t) => { const d = el.querySelector(".login-fond"); if (d && t.startsWith("<svg")) d.innerHTML = t; }).catch(() => {});
     const f = el.querySelector("form"), err = f.querySelector(".login-err"), go = f.querySelector("[type=submit]");
     const champMail = f.email.closest(".lc-champ");
-    const autre = () => { const c = f.querySelector(".lc-moi"); if (c) c.remove(); champMail.hidden = false; };
+    const autre = () => { const c = f.querySelector(".lc-moi"); if (c) c.remove(); champMail.hidden = false;
+      const t = f.querySelector(".lc-tete"); if (t) t.innerHTML = `<h1>${h(app)}</h1>${st ? `<p class="lc-app"><span>${h(st)}</span></p>` : ""}`; /* 2.8.2 : plus de « Bonjour Stéphane » pour une autre adresse */ };
     f.querySelector("[data-autre]")?.addEventListener("click", () => { autre(); f.email.value = ""; f.email.focus(); });
     f.querySelector("[data-visiteur]")?.addEventListener("click", () => { autre(); f.email.value = C.visiteur; f.password.focus(); });
     f.querySelector("[data-oeil]").addEventListener("click", (e) => {

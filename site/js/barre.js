@@ -53,7 +53,7 @@
     const vm = { a, k: b ? b.k : "rien", icone: b ? b.icone : "search" };
     if (!b) return rien(vm, texte);
     const s = b.slots, motif = a.glob.motif ? a.glob.motif.txt : "";
-    const droits = (it) => store.canEdit(it) ? "" : `Seuls les chefs de projet et ${svcCourt(it.svc) || "son service"} peuvent la modifier.`;
+    const droits = (it) => store.canEdit(it) ? "" : !store.canCreate() ? "Ton compte est en lecture seule." : it.kind === "tf" ? "Seuls les chefs de projet modifient un temps fort." : `Seuls les chefs de projet et ${svcCourt(it.svc) || "son service"} peuvent la modifier.`;
     /* une action à toucher : retrouvée → on prépare ; plusieurs → on fait choisir ; rien → on le dit */
     const surUne = (res, prepare) => {
       if (res.it) { const p = prepare(res.it); if (p.refus === undefined) p.refus = droits(res.it); return Object.assign(vm, p, { it: res.it }); }
@@ -62,7 +62,8 @@
     };
     const vivantes = (it) => !it.annule && it.variant !== "sujet";
     switch (b.k) {
-      case "defaire": vm.titre = "Défaire"; if (!S.dernier) { vm.vide = "Rien à défaire pour l'instant."; return vm; }
+      case "defaire": vm.titre = "Défaire"; if (S.dernier && Date.now() - (S.dernier.t || 0) > 10 * 60000) S.dernier = null; /* 2.8.2 : dix minutes au plus */
+        if (!S.dernier) { vm.vide = "Rien à défaire pour l'instant."; return vm; }
         vm.corps = `<p class="cb-l">${h(S.dernier.label)}</p>`; vm.bouton = "Défaire"; vm.faire = () => { const l = S.dernier.label; S.dernier.undo(); S.dernier = null; return { toast: `Défait : ${l}` }; }; return vm;
 
       case "creer": {
@@ -74,7 +75,7 @@
         const cle = t + "|" + (z ? z.iso : "");
         if (S.choix.cle !== cle) { const g = S.choix.main || {}; S.choix = { cle, main: g, svc: svcZ ? svcZ.svc : g.svc || dv[0] || u.svc || (KP.SERVICES[0] || {}).k, m: g.m || mv.slice(0, 1), devine: !svcZ && !!dv[0] }; }
         if (u.role !== "pilote" && u.svc) S.choix.svc = u.svc; /* un service crée pour lui-même (la base refuse le reste) */
-        const ch = S.choix, d = z ? (z.mois ? { date: z.du, flou: true } : { date: z.du || z.iso, flou: false }) : null;
+        const ch = S.choix, d = z ? (z.mois ? { date: z.du, flou: true } : { date: z.periode ? z.du : z.iso || z.du, flou: false }) : null; /* 2.8.2 : « fin décembre » = le 31, comme pour décaler */
         vm.titre = tf ? "Nouveau temps fort" : part ? "Nouveau partenariat payant" : "Nouvelle action";
         vm.refus = !store.canCreate() ? "Ton compte est en lecture seule." : part && u.role !== "pilote" ? "Les partenariats payants sont réservés aux chefs de projet." : "";
         const heure = a.glob.heure ? a.glob.heure.txt : "";
@@ -82,7 +83,7 @@
           <span class="cb-puce date">${ic("calendar")}${d ? h(d.flou ? `courant ${KP.fmt.mois(d.date)}` : jour(d.date)) + (heure ? ` · ${h(heure)}` : "") : "Date ?"}</span>
           ${tf || part ? "" : u.role !== "pilote" ? `<span class="cb-puce">${ic("people")}${h(svcCourt(ch.svc))}</span>` : `<label class="cb-puce sel">${ic("people")}<select id="cb-svc" aria-label="Service">${KP.SERVICES.map((x) => `<option value="${x.k}" ${x.k === ch.svc ? "selected" : ""}>${h(x.court)}</option>`).join("")}</select></label>`}
           <label class="cb-puce sel">${ic("flag")}<select id="cb-msg" aria-label="Message"><option value="">Message ?</option>${KP.MESSAGES.map((m) => `<option value="${m.k}" ${ch.m[0] === m.k ? "selected" : ""}>${h(m.nom)}</option>`).join("")}</select></label>
-          <span class="cb-puce etat">À confirmer</span></div>`;
+          <span class="cb-puce etat">À confirmer</span>${d && !d.flou && d.date < KP.TODAY ? `<span class="cb-alerte">${ic("info")}déjà passé</span>` : ""}</div>`;
         if (!d) { vm.manque = "date"; vm.aide = ["demain", "lundi", "la semaine prochaine", `courant ${KP.fmt.mois(KP.addDays(KP.monthEnd(KP.TODAY), 1))}`]; return vm; }
         vm.bouton = "Ajouter";
         vm.faire = () => { const it = store.add({ kind: tf ? "tf" : "action", variant: part ? "partenariat" : "", partner, t, date: d.date, flou: d.flou, svc: tf || part ? "" : ch.svc, m: ch.m.filter(Boolean), note: heure ? `À ${heure}` : "", st: tf ? "prevu" : "confirmer" });
@@ -130,12 +131,14 @@
       case "resultats": {
         const res = {}; s.nombre.zones.forEach((z) => { if (z.unite) res[z.unite] = z.n; });
         vm.titre = "Résultats";
-        return surUne(cible(s.quoi.txt, (it) => !it.annule, (it) => memeJour(it, zoneDate(s.date))), (it) => ({ corps: `<div class="cb-l">${mini(it)}</div><p class="cb-chiffres">${Object.entries(res).map(([k, n]) => `<span><b>${KP.nb(n)}</b> ${h((KP.UNITES.find((x) => x.k === k) || {}).nom || k).toLowerCase()}</span>`).join("")}</p>`,
+        return surUne(cible(s.quoi.txt, (it) => !it.annule, (it) => memeJour(it, zoneDate(s.date))), (it) => ({ corps: `<div class="cb-l">${mini(it)}</div><p class="cb-chiffres">${Object.entries(res).map(([k, n]) => `<span><b>${KP.nb(n)}</b> ${h((KP.UNITES.find((x) => x.k === k) || {}).nom || k).toLowerCase()}</span>`).join("")}${it.st !== "diffuse" ? `<span class="cb-alerte">${ic("check")}passe en Diffusé${it.date > KP.TODAY ? ` (prévue le ${h(jour(it.date))})` : ""}</span>` : ""}</p>`,
           bouton: "Noter", refus: store.resOk() ? undefined : "La base n'est pas encore prête pour les résultats.",
           faire: () => { const u0 = store.setRes(it.id, res); if (!u0) return { toast: "Chiffre impossible : rien n'a changé." }; const undos = [u0]; if (it.st !== "diffuse") undos.push(store.update(it.id, { st: "diffuse" }, "a passé l'état à « Diffusé »")); return { undo: () => undos.reverse().forEach((f) => f && f()), toast: `Noté : ${KP.resTxt(res)}` }; } }));
       }
 
       case "budget": { const n = s.montant.zones[0].n; vm.titre = "Budget";
+        /* 2.8.2 : sur une action ordinaire, on dit pourquoi au lieu de « aucune action ne ressemble » */
+        { const t0 = cible(s.quoi.txt, (it) => it.variant === "partenariat"), t1 = !t0.it && !(t0.cands && t0.cands.length) && cible(s.quoi.txt, vivantes); if (t1 && (t1.it || (t1.cands && t1.cands.length))) { vm.refus = "Le budget se note sur un partenariat payant."; vm.corps = `<div class="cb-l">${mini(t1.it || t1.cands[0])}</div>`; return vm; } }
         return surUne(cible(s.quoi.txt, (it) => it.variant === "partenariat"), (it) => ({ corps: `<div class="cb-l">${mini(it)}</div><p class="cb-chiffres"><span><b>${KP.nb(n)} €</b></span></p>`,
           bouton: "Noter", refus: store.voitBudget() ? undefined : "Le budget est réservé aux chefs de projet.", faire: () => { const u0 = store.setMontant(it.id, n); return u0 ? { undo: u0, toast: `Budget noté : ${KP.nb(n)} €` } : { toast: "Montant impossible : rien n'a changé." }; } })); }
 
@@ -249,7 +252,7 @@
     if (KP.cmdExemples) return KP.cmdExemples();
     const its = store.items().filter((it) => !it.annule && it.variant !== "sujet" && !it.flou), T = KP.TODAY;
     /* 2.8.2 : quatre mots au plus, jamais terminés par un petit mot (« page web de la » → « page web ») */
-    const court = (it) => { const w = nettoie(it.t).replace(/\s*[:,(].*$/, "").split(/\s+/).slice(0, 4); while (w.length > 1 && /^(de|la|le|les|du|des|d'|d’|l'|l’|à|au|aux|et|en|pour|sur|un|une|avec)$/i.test(w[w.length - 1])) w.pop(); return w.join(" ").toLowerCase(); };
+    const court = (it) => { const w = nettoie(it.t).replace(/\s*[:,(].*$/, "").split(/\s+/).slice(0, 4); while (w.length > 1 && /^(de|la|le|les|du|des|d'|d’|l'|l’|à|au|aux|et|en|pour|sur|un|une|avec)$/i.test(w[w.length - 1])) w.pop(); if (w[0] && !/^[A-ZÉ0-9]{2,}$/.test(w[0])) w[0] = w[0].toLowerCase(); return w.join(" "); }; /* la casse d'origine (« Sud Ouest », « JPO ») est gardée */
     const prochaine = its.filter((it) => it.kind === "action" && it.date > T && it.st !== "diffuse" && store.canEdit(it)).sort((a, b) => a.date.localeCompare(b.date))[0];
     const passee = its.filter((it) => it.kind === "action" && it.date < T && it.st === "diffuse").sort((a, b) => b.date.localeCompare(a.date))[0];
     const autre = its.filter((it) => it.kind === "action" && it.date > T && it !== prochaine && store.canEdit(it)).sort((a, b) => a.date.localeCompare(b.date))[1];
@@ -260,6 +263,7 @@
     if (passee) out.push({ i: "chart", t: `${majuscule(court(passee))} a fait 8 400 vues` });
     if (autre) out.push({ i: "close", t: `On laisse tomber ${court(autre)}` });
     if (!KP.me() || KP.me().role !== "lecteur") out.push({ i: "chat", t: "Demande à Estelle les visuels pour la JPO avant vendredi" });
+    if (!store.canCreate()) { out.length = 0; out.push({ i: "search", t: "Qu'est-ce qui est prévu la semaine prochaine ?" }, { i: "search", t: "C'est quand la JPO ?" }); } /* 2.8.2 : le visiteur cherche, il ne modifie rien */
     /* 2.8.2 : on ne garde que les exemples que la barre comprend vraiment, sans refus, sans choix ni question */
     return out.filter((e) => { try { const vm = comprendre(e.t); return vm && (vm.resultats || (vm.faire && !vm.refus && !vm.manque && !vm.choisir)); } catch (x) { return false; } });
   }
@@ -271,7 +275,7 @@
 
   KP.barre = () => `<section class="cb${S.texte ? " plein" : ""}" id="cb" aria-label="Barre de commandes">
       <div class="cb-champ">${ic("spark")}<div class="cb-zone"><div class="cb-miroir" id="cb-miroir" aria-hidden="true"></div>
-      <input id="cb-in" type="text" autocomplete="off" spellcheck="false" enterkeyhint="go" value="${h(S.texte)}" placeholder="Écris ce que tu veux faire : « décale le teaser à jeudi »" aria-label="Commande" aria-describedby="cb-res" aria-controls="cb-res"></div>
+      <input id="cb-in" type="text" autocomplete="off" spellcheck="false" enterkeyhint="go" value="${h(S.texte)}" placeholder="${store.canCreate() ? "Écris ce que tu veux faire : « décale le teaser à jeudi »" : "Cherche une action : « c'est quand la JPO ? »"}" aria-label="Commande" aria-describedby="cb-res" aria-controls="cb-res"></div>
       <button type="button" class="ib cb-aide" data-act="cb-aide" aria-label="Ce que la barre comprend" data-tip="Ce que je comprends">${ic("info")}</button></div>
       <div class="cb-res" id="cb-res" role="region" aria-live="polite"></div></section>`;
 
@@ -282,15 +286,15 @@
   const incomprise = (t, vm) => vm && vm.rien && String(t).trim().split(/\s+/).length >= 3;
   const vides = new Set(); /* une recherche sans résultat, notée une fois */
   const rechercheVide = (t, vm) => { const x = String(t || "").trim(); if (!vm || x.length < 3 || vides.has(x) || !store.tele) return; if ((vm.k === "chercher" || (vm.rien && !incomprise(x, vm))) && !(vm.resultats && vm.resultats.length)) { vides.add(x); store.tele("recherche", x, { ou: "barre" }); } };
-  let enSuspens = ""; /* la dernière phrase non comprise : si on l'efface pour réécrire, on la note */
+  let enSuspens = "", tSuspens = 0, tFrappe = 0; /* la dernière phrase non comprise : si on l'efface pour réécrire après s'y être arrêté (2 s), on la note */
   function maj(force) {
     const inp = document.getElementById("cb-in"), res = document.getElementById("cb-res"), mir = document.getElementById("cb-miroir"); if (!inp) return;
-    const texte = inp.value; if (texte !== S.texte) { S.texte = texte; S.cur = 0; S.navigue = false; }
-    if (enSuspens && !texte.startsWith(enSuspens.slice(0, Math.max(3, enSuspens.length - 4))) && texte.trim().length < enSuspens.trim().length - 3) { noter(enSuspens, "reecrit"); enSuspens = ""; }
+    const texte = inp.value; if (texte !== S.texte) { S.texte = texte; S.cur = 0; S.navigue = false; tFrappe = Date.now(); }
+    if (enSuspens && !texte.startsWith(enSuspens.slice(0, Math.max(3, enSuspens.length - 4))) && texte.trim().length < enSuspens.trim().length - 3) { if (Date.now() - tSuspens > 2000) noter(enSuspens, "reecrit"); enSuspens = ""; }
     document.getElementById("cb").classList.toggle("plein", !!texte.trim());
     if (!texte.trim()) { mir.innerHTML = ""; vmCourant = null; res.innerHTML = S.ouvert || force ? vide() : ""; return; }
     const vm = (vmCourant = comprendre(texte));
-    if (incomprise(texte, vm)) { if ([...notees].some((x) => x.startsWith(texte.trim()))) enSuspens = ""; /* un morceau d'une phrase déjà notée */ else if (!enSuspens || texte.startsWith(enSuspens) || !enSuspens.startsWith(texte)) enSuspens = texte; }
+    if (incomprise(texte, vm)) { if ([...notees].some((x) => x.startsWith(texte.trim()))) enSuspens = ""; /* un morceau d'une phrase déjà notée */ else if (!enSuspens || texte.startsWith(enSuspens) || !enSuspens.startsWith(texte)) { enSuspens = texte; tSuspens = Date.now(); } }
     else if (enSuspens && texte.startsWith(enSuspens)) enSuspens = ""; /* en continuant d'écrire, elle est devenue claire */
     mir.innerHTML = surligne(texte, vm.a); mir.scrollLeft = inp.scrollLeft;
     const cle = vm.k;
@@ -324,7 +328,7 @@
     const r = c.faire() || {};
     const texte = S.texte;
     if (!r.garde) { S.texte = ""; S.choix = {}; S.cur = 0; S.ouvert = false; }
-    if (r.undo) { const u0 = r.undo, t0 = Date.now(), k0 = vm.k, une = () => { if (S.dernier && S.dernier.undo === une) S.dernier = null; u0(); const sec = Math.round((Date.now() - t0) / 1000); if (sec <= 30 && store.tele) store.tele("annule", vm.prive ? "(rappel pour moi, texte privé)" : texte, { k: k0, sec }); setTimeout(() => { const i = document.getElementById("cb-in"); if (i && document.activeElement === document.body) i.focus({ preventScroll: true }); }); }; S.dernier = { undo: une, label: texte }; KP.toast(r.toast, une); } else if (r.toast) KP.toast(r.toast);
+    if (r.undo) { const u0 = r.undo, t0 = Date.now(), k0 = vm.k, une = () => { if (S.dernier && S.dernier.undo === une) S.dernier = null; u0(); const sec = Math.round((Date.now() - t0) / 1000); if (sec <= 30 && store.tele) store.tele("annule", vm.prive ? "(rappel pour moi, texte privé)" : texte, { k: k0, sec }); setTimeout(() => { const i = document.getElementById("cb-in"); if (i && document.activeElement === document.body) i.focus({ preventScroll: true }); }); }; S.dernier = { undo: une, label: texte, t: Date.now() }; KP.toast(r.toast, une); } else if (r.toast) KP.toast(r.toast);
     if (r.ouvre) KP.go({ fiche: r.ouvre });
     KP.render();
     if (!r.garde) { const inp = document.getElementById("cb-in"); if (inp) { inp.value = ""; maj(); } }
@@ -358,12 +362,12 @@
     if (e.target.id === "cb-msg") { S.choix.m = [e.target.value]; (S.choix.main = S.choix.main || {}).m = [e.target.value]; }
   });
   document.addEventListener("focusin", (e) => { if (e.target.id === "cb-in") { S.ouvert = true; maj(); } });
-  document.addEventListener("focusout", (e) => { if (e.target.id === "cb-in") rechercheVide(e.target.value, vmCourant); if (e.target.id === "cb-in" && incomprise(e.target.value, vmCourant)) noter(e.target.value, "rien"); if (e.target.id === "cb-in") setTimeout(() => { const c = document.getElementById("cb"); if (c && !c.contains(document.activeElement) && !S.texte.trim()) { S.ouvert = false; maj(); } }, 150); });
+  document.addEventListener("focusout", (e) => { const pose = Date.now() - tFrappe > 1500; /* 2.8.2 : pas une phrase à mi-frappe */ if (e.target.id === "cb-in" && pose) rechercheVide(e.target.value, vmCourant); if (e.target.id === "cb-in" && pose && incomprise(e.target.value, vmCourant)) noter(e.target.value, "rien"); if (e.target.id === "cb-in") setTimeout(() => { const c = document.getElementById("cb"); if (c && !c.contains(document.activeElement) && !S.texte.trim()) { S.ouvert = false; maj(); } }, 150); });
   document.addEventListener("scroll", (e) => { if (e.target.id === "cb-in") { const m = document.getElementById("cb-miroir"); if (m) m.scrollLeft = e.target.scrollLeft; } }, true);
   document.addEventListener("keydown", (e) => {
     if (e.target.id !== "cb-in") return;
     const vm = vmCourant, n = vm ? (vm.choisir ? vm.choisir.length : vm.resultats ? Math.min(7, vm.resultats.length) : 1) : 0;
-    if (e.key === "Enter") { e.preventDefault(); if (vm && vm.choisir && vm.approx && !S.navigue) { const r = document.querySelector(".cb-choix"); if (r) { r.classList.remove("secoue"); void r.offsetWidth; r.classList.add("secoue"); } return; } if (incomprise(e.target.value, vm)) noter(e.target.value, "rien"); rechercheVide(e.target.value, vm);
+    if (e.key === "Enter") { e.preventDefault(); if (vm && vm.choisir && vm.approx && !S.navigue) { const r = document.querySelector(".cb-choix"); if (r) { r.classList.remove("secoue"); void r.offsetWidth; r.classList.add("secoue"); } return; } if (incomprise(e.target.value, vm)) noter(e.target.value, "rien"); else if (vm && vm.introuvable) noter(e.target.value, "rien"); /* introuvable : aussi utile pour enrichir la barre */ rechercheVide(e.target.value, vm);
       /* 2.8.1 : une suppression ne part jamais sur Entrée, il faut cliquer sur son bouton rouge */
       if (vm && vm.danger) { const r = document.querySelector(".cb-carte.danger .cb-go"); if (r) { r.classList.remove("secoue"); void r.offsetWidth; r.classList.add("secoue"); r.focus({ preventScroll: true }); } return; }
       appliquer(); }

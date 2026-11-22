@@ -143,15 +143,16 @@
       d.querySelector("form").addEventListener("submit", (e) => { const f = new FormData(d.querySelector("form")); if (!/^https:\/\//i.test(f.get("url").trim())) { e.preventDefault(); const u2 = d.querySelector("[name=url]"); u2.value = ""; u2.placeholder = "Une adresse qui commence par https://"; u2.focus(); return; } KP.toast("Lien ajouté", store.update(it.id, { docs: [...it.docs, { t: f.get("t").trim(), url: f.get("url").trim() }] }, "a ajouté un document")); });
     },
     answer: (a) => {
-      const r = store.reqs().find((x) => x.id === a.dataset.id), it = store.get(r.item);
+      const r = store.reqs().find((x) => x.id === a.dataset.id), it = r && store.get(r.item);
+      if (!r || !it) return KP.toast("Cette demande n'existe plus."); /* 2.8.2 */
       const parle = ["Autre", "Info"].includes(r.quoi) || (r.txt && KP.phrase.plat(r.txt).includes(KP.phrase.plat(r.quoi)));
       const d = KP.dialog(`<form method="dialog"><h2>Répondre à ${h(KP.dest(r.de))}</h2><p class="muted rep-ctx" style="margin-top:-8px">${parle ? "" : h(r.quoi) + " pour "}« ${h(it.t)} »${r.txt ? " : " + h(r.txt) : ""}</p>
         <label class="field"><span>Ta réponse</span><textarea class="input" name="rep" placeholder="C'est ok, une phrase, un lien SharePoint…"></textarea></label>
         <div class="foot"><button type="button" class="btn quiet" data-close>Annuler</button><button class="btn primary">Envoyer</button></div></form>`);
       d.querySelector("textarea").focus();
-      d.querySelector("form").addEventListener("submit", () => KP.toast(`Réponse envoyée à ${KP.dest(r.de)}`, store.answer(r.id, new FormData(d.querySelector("form")).get("rep").trim())));
+      d.querySelector("form").addEventListener("submit", () => { const rep = String(new FormData(d.querySelector("form")).get("rep") || "").trim() || "C'est ok"; /* 2.8.2 : vide = « C'est ok » */ KP.toast(`Réponse envoyée à ${KP.dest(r.de)}`, store.answer(r.id, rep)); });
     },
-    "memo-fait": (a) => { store.answer(a.dataset.id, "Fait"); KP.toast("Rappel fait. Bravo, sincèrement."); },
+    "memo-fait": (a) => { const u = store.answer(a.dataset.id, "Fait"); KP.toast("Rappel fait. Bravo, sincèrement.", u); },
     /* noter un rappel pour moi, ou modifier le sien (texte et date) */
     memo: (a) => {
       const it = cur(), old = a && a.dataset.id && store.reqs().find((x) => x.id === a.dataset.id);

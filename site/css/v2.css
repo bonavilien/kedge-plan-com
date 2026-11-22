@@ -1550,3 +1550,17 @@ dialog.dlg.cb-dlg { width: min(720px, calc(100vw - 32px)); padding: 20px 22px 22
 /* ---------- 2.8.2 ---------- */
 /* calendrier du plan à 1024 px : les noms se coupent entre les mots (ou avec un trait d'union), jamais au milieu d'une lettre */
 .g-hn, .g-i { overflow-wrap: break-word; word-break: normal; hyphens: auto; }
+/* barre au téléphone : pas de repère « Entrée » (pas de touche Entrée visible) */
+@media (max-width: 767px) { .cb-go kbd { display: none; } }
+/* téléphone : le point de la cloche et le nombre « à traiter » sur l'onglet Accueil */
+.topbar .ib { position: relative; }
+.topbar .ib .dot { position: absolute; top: 6px; right: 6px; width: 8px; height: 8px; border-radius: 50%; background: var(--yellow); box-shadow: 0 0 0 2px var(--panel); }
+.tabbar a { position: relative; }
+.tabbar .tb-n { position: absolute; top: 2px; left: calc(50% + 6px); min-width: 16px; height: 16px; padding: 0 4px; border-radius: 8px; background: var(--yellow); color: var(--yellow-ink); font: 700 10px/16px var(--sans); text-align: center; }
+/* « À traiter » : un titre sans espace ne sort plus de sa carte */
+.todo .tx b, .todo .tx small { overflow-wrap: anywhere; }
+/* ordinateur : sous la carte de la barre, la page s'efface doucement (aucun texte coupé ne dépasse) */
+@media (min-width: 768px) {
+  .cb-res:not(:empty) { z-index: 30; }
+  .cb-res:not(:empty)::before { content: ""; position: absolute; left: -24px; right: -24px; top: -8px; height: calc(100% + 72px); background: linear-gradient(var(--bg) calc(100% - 56px), transparent); z-index: -1; pointer-events: none; }
+}
