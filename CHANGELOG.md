@@ -2,6 +2,18 @@
 
 Généré depuis `site/js/version.js` par `node scripts/version.mjs`. Ne pas modifier à la main.
 
+## 2.8.1 · 2026-11-22
+
+- Le calendrier pour changer la date d'un rappel (et celui de « Nouveau ») s'affiche entier sur ordinateur
+- Sans réseau, plus aucune modification ne se perd : elles partent toutes au retour, un refus de la base n'emporte plus la suivante, et fermer l'onglet demande confirmation
+- Annuler ne défait plus ce qu'un collègue a changé entre-temps
+- La barre ne supprime plus sur Entrée : il faut cliquer sur le bouton rouge
+- Un « Rappel pour moi » annulé reste privé : il n'apparaît plus dans le Suivi
+- « @Aurélie » tout seul n'envoie plus de message vide ; la date d'un rappel dit son mois
+- Supprimer une fiche garde son « Annuler »
+- Budget, Réunion et Résultats bien alignés à 1024 px et fiche ouverte, au téléphone et à l'impression
+- Les tuiles du Suivi comptent juste
+
 ## 2.8 · 2026-11-22
 
 - Une barre tout en haut de l'accueil : écris comme tu parles (« décale le carrousel JPO de vendredi à mardi prochain », « @Louise t'as des photos du gala ? », « on laisse tomber la relance PGE »). Elle surligne ce qu'elle a compris, montre l'avant et l'après, et tout se défait avec Annuler

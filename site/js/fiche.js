@@ -65,7 +65,7 @@
             ${ans.map((q) => `<p class="il rep-tf">${ic("chat")}<span><b>${h(["Autre", "Info"].includes(q.quoi) ? (q.txt || "Réponse").slice(0, 60) : q.quoi)}</b> · ${KP.ecrire.texte(q.rep, par)} <small class="muted">${h(KP.dest(q.a))}</small></span></p>`).join("")}</section>`; })() : ""}
         ${tf ? `<section class="f-sec"><h3>Relais${rel.length ? " · " + rel.length : ""}${store.canCreate() ? `<button type="button" class="link" data-act="new" data-tf="${it.id}" data-date="${it.variant === "sujet" ? KP.TODAY : it.date}">Ajouter</button>` : ""}</h3>
           ${rel.length ? rel.map((r) => `<button type="button" class="mini" data-act="open" data-id="${r.id}"><span class="d">${h(KP.dateShort(r))}</span><span class="tt">${h(r.t)} <small>· ${h((KP.service(r.svc) || {}).court || "")}</small></span>${KP.pill(r)}</button>`).join("") : `<p class="muted">Aucun service ne s'en est encore saisi.</p>`}</section>` : ""}
-        ${memos.length ? `<div class="memos">${memos.map((r) => `<div class="memo${r.pour < KP.TODAY ? " late" : ""}">${ic("clock")}<span class="tt">${h(r.txt || r.quoi)}</span><small>${h(KP.fmt.court(r.pour))}</small>${KP.ib("edit", "Modifier le rappel", "memo", `data-id="${r.id}"`)}${KP.ib("trash", "Effacer le rappel", "req-drop", `data-id="${r.id}"`)}<button type="button" class="ib" data-act="memo-fait" data-id="${r.id}" data-tip="C'est fait" aria-label="C'est fait">${ic("check")}</button></div>`).join("")}</div>` : ""}
+        ${memos.length ? `<div class="memos">${memos.map((r) => `<div class="memo${r.pour < KP.TODAY ? " late" : ""}">${ic("clock")}<span class="tt">${h(r.txt || r.quoi)}</span><small>${h(KP.fmt.courtMois(r.pour))}</small>${KP.ib("edit", "Modifier le rappel", "memo", `data-id="${r.id}"`)}${KP.ib("trash", "Effacer le rappel", "req-drop", `data-id="${r.id}"`)}<button type="button" class="ib" data-act="memo-fait" data-id="${r.id}" data-tip="C'est fait" aria-label="C'est fait">${ic("check")}</button></div>`).join("")}</div>` : ""}
         ${it.docs.length || can || rel.some((r) => r.docs.length) ? `<section class="f-sec"><h3>Documents${can ? `<button type="button" class="link" data-act="add-doc">Ajouter un lien</button>` : ""}</h3>
           ${it.docs.map((d, i) => `<div class="mini" style="grid-template-columns:minmax(0,1fr) auto"><a class="link" href="${h(d.url)}" target="_blank" rel="noopener">${h(d.t)}</a>${can ? `<button type="button" class="ib" data-act="rm-doc" data-i="${i}" data-tip="Retirer" aria-label="Retirer ${h(d.t)}">${ic("close")}</button>` : ""}</div>`).join("") || (rel.some((r) => r.docs.length) ? "" : `<p class="muted">Les liens SharePoint utiles à tous.</p>`)}
           ${rel.map((r) => r.docs.map((d) => `<div class="mini" style="grid-template-columns:minmax(0,1fr) auto"><a class="link" href="${h(d.url)}" target="_blank" rel="noopener">${h(d.t)}</a><small class="muted">${h((KP.service(r.svc) || {}).court || "")} · ${h(r.t)}</small></div>`).join("")).join("")}</section>` : ""}
@@ -94,8 +94,8 @@
       if (!d) return;
       const flou = d.length === 7, date = flou ? d + "-01" : d;
       if (date === it.date && flou === !!it.flou) return;
-      const n = it.kind === "tf" ? store.relais(it.id).length : 0, txt = flou ? `courant ${KP.fmt.mois(date)}` : `au ${KP.fmt.moyen(date)}`;
-      const apply = (motif) => { const moved = motif != null && !flou && !it.flou ? store.relais(it.id).filter((r) => !r.flou).length : 0;
+      const n = it.kind === "tf" ? store.relaisQuiSuivent(it.id).length : 0, txt = flou ? `courant ${KP.fmt.mois(date)}` : `au ${KP.fmt.moyen(date)}`;
+      const apply = (motif) => { const moved = motif != null && !flou && !it.flou ? store.relaisQuiSuivent(it.id).length : 0;
         KP.toast(motif != null ? `Reporté ${txt}${moved ? `, avec ${moved > 1 ? "ses " + moved + " relais" : "son relais"}` : ""}` : flou ? `Placé ${txt}, date à préciser` : `Date fixée ${txt}`, store.setDate(it.id, date, flou, motif)); };
       /* un temps fort déjà relayé ou déjà prévu : d'autres comptent dessus, on dit pourquoi */
       if (!it.flou && (n || it.st !== "confirmer")) KP.motif(`Reporter ${txt}`, n ? `${n} relais ${n > 1 ? "suivent" : "suit"} ce temps fort.` : `« ${it.t} »`, "Reporter", apply); else apply(null);
@@ -126,7 +126,7 @@
         if (v === "dup") { const n = store.duplicate(it.id); KP.go({ fiche: n.id }); KP.toast("Copie créée. L'original n'en saura rien.", () => { store.unadd(n.id); KP.go({ fiche: it.id }); }); }
         if (v === "ann") KP.motif(it.kind === "tf" ? "Annuler ce temps fort" : "Annuler cette action", `« ${it.t} » reste dans le plan, barré, avec le motif.`, "Annuler", (m) => KP.toast(`« ${it.t} » est annulé`, store.cancel(it.id, m)));
         if (v === "res") KP.toast("Rétabli", store.restore(it.id));
-        if (v === "del") { const go = () => { const undo = store.remove(it.id); KP.go({ fiche: "" }); KP.toast(`« ${it.t} » supprimé. Paix à son âme.`, undo); };
+        if (v === "del") { const go = () => { KP.go({ fiche: "" }, true); const undo = store.remove(it.id); /* 2.8.1 : fermée avant, l'« Annuler » reste */ KP.toast(`« ${it.t} » supprimé. Paix à son âme.`, undo); };
           /* branché, une suppression ne s'annule pas : on demande avant */
           if (!store.remote()) return go();
           const d = KP.dialog(`<form method="dialog"><h2>Supprimer « ${h(it.t)} » ?</h2><p class="muted">Ses demandes, ses liens et son historique partent aussi. Pour garder une trace, annule-la plutôt.</p><div class="foot"><button type="button" class="btn quiet" data-close>Garder</button><button class="btn primary danger-bg">Supprimer</button></div></form>`);
@@ -158,9 +158,9 @@
       const s = { pour: old ? old.pour : [KP.addDays(it.date, -7), KP.addDays(KP.TODAY, 1)].sort().pop() };
       const d = KP.dialog(`<form method="dialog"><h2>Rappel pour moi</h2>
         <input class="input" name="txt" placeholder="Me rappeler de…" aria-label="Me rappeler de" maxlength="200" required autocomplete="off" value="${h(old ? old.txt : "")}">
-        <div class="foot"><button type="button" class="input" data-pick style="width:auto;margin-right:auto">${ic("calendar")}<span>${h(KP.fmt.court(s.pour))}</span></button><button type="button" class="btn quiet" data-close>Annuler</button><button class="btn primary">${old ? "Enregistrer" : "Noter"}</button></div></form>`);
+        <div class="foot"><button type="button" class="input" data-pick style="width:auto;margin-right:auto">${ic("calendar")}<span>${h(KP.fmt.courtMois(s.pour))}</span></button><button type="button" class="btn quiet" data-close>Annuler</button><button class="btn primary">${old ? "Enregistrer" : "Noter"}</button></div></form>`);
       d.querySelector("[name=txt]").focus();
-      d.addEventListener("click", (e) => { const pk = e.target.closest("[data-pick]"); if (pk) KP.datepick(pk, s.pour, (v) => { if (v) { s.pour = v; pk.querySelector("span:last-child").textContent = KP.fmt.court(v); } }); });
+      d.addEventListener("click", (e) => { const pk = e.target.closest("[data-pick]"); if (pk) KP.datepick(pk, s.pour, (v) => { if (v) { s.pour = v; pk.querySelector("span:last-child").textContent = KP.fmt.courtMois(v); } }); });
       d.querySelector("form").addEventListener("submit", () => { const txt = new FormData(d.querySelector("form")).get("txt").trim(); if (!txt) return; if (old) { store.editReq(old.id, { txt, pour: s.pour }); KP.toast("Rappel modifié"); } else { store.ask({ item: it.id, a: KP.me().k, quoi: "Autre", txt, pour: s.pour }); KP.toast("Rappel noté"); } });
     },
     "req-date": (a) => { const r = store.reqs().find((x) => x.id === a.dataset.id); if (r) KP.datepick(a, r.pour, (v) => { if (v && v !== r.pour) { store.editReq(r.id, { pour: v }); KP.toast(`Pour le ${KP.fmt.moyen(v)}`); } }); },

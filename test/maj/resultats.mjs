@@ -42,7 +42,7 @@ const snap = (p, n, full) => shots && p.screenshot({ path: `${shots}/${n}.png`, 
   ok(await p.locator(".side .nav a", { hasText: "Résultats" }).count() === 1, "« Résultats » dans le menu, entre Le plan et Réunion");
   ok(JSON.stringify(await p.$$eval(".side .nav a", (e) => e.map((x) => x.textContent.replace(/\d+$/, "").trim()))) === JSON.stringify(["Accueil", "Le plan", "Résultats", "Réunion"]), "ordre du menu");
   ok(JSON.stringify(await tuiles(p)) === JSON.stringify(["19,3 k vues", "3 retombées presse", "140 inscrits", "96 clics"]), "les totaux de Considérer : " + (await tuiles(p)).join(" | "));
-  ok(JSON.stringify(await todo(p)) === JSON.stringify(["Brève : accord avec l'université de Séoul / Retombées", "Portrait d'un alumni entrepreneur / Vues", "Encart Sud Ouest : journée portes ouvertes / Retombées"]), "à compléter : diffusées sans chiffre, unité devinée par service : " + (await todo(p)).join(" | "));
+  ok(NB(JSON.stringify(await todo(p))) === JSON.stringify(["Brève : accord avec l'université de Séoul / Retombées", "Portrait d'un alumni entrepreneur / Vues", "Encart Sud Ouest : journée portes ouvertes / Retombées"]), "à compléter : diffusées sans chiffre, unité devinée par service : " + (await todo(p)).join(" | "));
   await snap(p, "1-diffusions");
   // saisir, Entrée : la ligne part, le curseur passe à la suivante
   const breve = await idOf(p, "Brève"), portrait = await idOf(p, "Portrait d'un alumni");
@@ -66,7 +66,7 @@ const snap = (p, n, full) => shots && p.screenshot({ path: `${shots}/${n}.png`, 
   ok(pm[0] === "Filières 14,2 k vues" && pm[4] === "Réputation rien de diffusé" && pm[2] === "International 5 100 vues · 96 clics · 4 retombées" && pm[3] === "Continuum 140 inscrits · 3 retombées", "par message : " + pm.join(" | "));
   // diffusées : la plus forte en haut ; corriger le chiffre
   const top = await p.$$eval(".r-row .tt", (e) => e.map((x) => x.textContent));
-  ok(top[0] === "Vidéo : une journée sur le campus de Bordeaux" && top.includes("Brève : accord avec l'université de Séoul"), "diffusées, la plus forte en haut : " + top.join(" | "));
+  ok(NB(top[0]) === "Vidéo : une journée sur le campus de Bordeaux" && top.map(NB).includes("Brève : accord avec l'université de Séoul"), "diffusées, la plus forte en haut : " + top.join(" | "));
   const video = await idOf(p, "Vidéo : une journée");
   await p.click(`.r-row[data-id="${video}"] .r-v`); await p.waitForSelector(".r-pop");
   ok(NB(await p.inputValue(".r-pop [name=vues]")) === "14 200", "la fenêtre reprend les chiffres");
@@ -106,7 +106,7 @@ const snap = (p, n, full) => shots && p.screenshot({ path: `${shots}/${n}.png`, 
   await p.click("#env-considerer"); await p.keyboard.press("Control+A"); await p.keyboard.press("Backspace"); await p.keyboard.press("Enter"); await p.waitForTimeout(80);
   ok(await p.evaluate(() => KP.store.enveloppe("considerer")) === undefined && !(await p.locator(".r-card.over").count()), "enveloppe effacée : plus de rouge");
   await p.click('[data-act=rper][data-k=preferer]'); await p.waitForTimeout(80);
-  ok((await p.$$eval(".r-b .tt", (e) => e.map((x) => x.textContent))).join() === "Salon L'Étudiant : le stand", "cliquer une période montre ses partenariats");
+  ok((await p.$$eval(".r-b .tt", (e) => e.map((x) => x.textContent))).map(NB).join() === "Salon L'Étudiant : le stand", "cliquer une période montre ses partenariats");
   // la fiche d'un partenariat : son budget, réglable
   const enc = await idOf(p, "Encart Sud Ouest");
   await p.evaluate((id) => KP.go({ fiche: id }), enc); await p.waitForSelector("#fiche:not([hidden])");

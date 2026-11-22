@@ -2,6 +2,7 @@
 -- Usage : sh test/db/une-phrase.sh
 \set ON_ERROR_STOP on
 set client_min_messages = warning;
+set timezone to 'Europe/Paris';
 begin;
 create function pg_temp.as_user(u text) returns void language plpgsql as $$
 begin perform set_config('request.jwt.claim.sub', u, true); execute 'set local role authenticated'; end $$;

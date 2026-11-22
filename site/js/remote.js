@@ -101,7 +101,7 @@
       }),
       reqs: reqs.filter((r) => r.st !== "annulee").map((r) => ({ id: r.id, item: r.item, de: r.asker || "", a: r.dest === "moi" || r.dest === "programme" ? r.asker || "" : r.dest,
         quoi: KP.ELEMENTS.includes(r.type) || r.type === "Info" ? r.type : "Autre", txt: r.quoi || (KP.ELEMENTS.includes(r.type) ? "" : r.type), pour: r.pour || "", fait: r.st === "recue", rep: r.reponse || "", quand: ms(r.at) })),
-      journal: journal.map((j) => ({ id: "j" + j.id, item: j.item, qui: j.author || "", quand: ms(j.at), txt: jtxt(j), ...(j.diff && j.diff.dest && /message|reponse|retrait|relance|deadline/.test(j.kind) ? { dest: j.diff.dest } : {}), ...(j.diff && j.diff.asker && j.kind === "reponse" ? { asker: j.diff.asker } : {}) })),
+      journal: journal.map((j) => ({ id: "j" + j.id, item: j.item, qui: j.author || "", quand: ms(j.at), txt: jtxt(j, people), ...(j.diff && j.diff.dest && /message|reponse|retrait|relance|deadline/.test(j.kind) ? { dest: j.diff.dest } : {}), ...(j.diff && j.diff.asker && j.kind === "reponse" ? { asker: j.diff.asker } : {}) })),
       lastMeeting: m.last_meeting || KP.TODAY,
       projet: { couleur: m.couleur || "", sousTitre: m.sous_titre || "" },
       budget: Object.fromEntries(prix.map((b) => [b.item, b.montant])),
@@ -111,11 +111,13 @@
   }
 
   /* une ligne d'historique de la base, dite en une phrase */
-  function jtxt(j) {
+  function jtxt(j, gens) {
     const d = j.diff || {}, k = Object.keys(d);
+    /* 2.8.1 : le prénom se cherche parmi les personnes qu'on vient de lire (pas celles de la démo, encore en place au premier chargement) */
+    const lu = gens && gens.find((p) => p.k === d.dest);
     if (j.kind === "creation") return "a créé la fiche";
     if (j.kind === "document") return "a ajouté un document";
-    if (j.kind === "message") { const a = KP.dest ? KP.dest(d.dest) : d.dest; return d.pour ? `a demandé ${KP.ASK[d.type] || "des éléments"} à ${a}` : `a écrit pour info à ${a}`; }
+    if (j.kind === "message") { const a = lu ? lu.nom : KP.dest ? KP.dest(d.dest) : d.dest; return d.pour ? `a demandé ${KP.ASK[d.type] || "des éléments"} à ${a}` : `a écrit pour info à ${a}`; }
     if (j.kind === "reponse") return "a répondu à une demande";
     if (j.kind === "retrait") return d.info ? "a retiré un message" : "a retiré une demande";
     if (j.kind === "prevenu") return d.svc ? "a prévenu " + ((KP.service(d.svc) || {}).nom || "un service") : "a prévenu d'un changement";
@@ -175,6 +177,8 @@
     if (it.reunion && !r0) { const id = uuid(); await run(sb.from("blocks").insert({ id, item: it.id, why: TRANCHER })); blocks[it.id] = [id]; }
     if (!it.reunion && r0) { for (const id of blocks[it.id] || []) await run(sb.from("blocks").update({ leve: true }).eq("id", id)); delete blocks[it.id]; }
   }
+  /* 2.8.1 : un envoi rejoué après une coupure réseau retrouve sa ligne déjà créée : ce n'est pas une erreur */
+  const deja = (e) => { if (e && (e.code === "23505" || /duplicate key/i.test(e.message || ""))) return null; throw e; };
   const changed = async (q) => { const rows = await run(q.select("id")); if (!rows || !rows.length) throw new Error("tu n'as pas le droit de modifier cette fiche, ou elle a changé entre-temps"); };
 
   function plan(db) {
@@ -204,7 +208,7 @@
       if (!old) return ops.push(async () => {
         await partnerFor(it.variant === "partenariat" ? it.partner : "");
         const row = cols(it, FIELDS.filter((k) => k !== "report"), true);
-        await run(sb.from("items").insert({ id: it.id, kind: it.variant === "classement" ? "classement" : it.kind, ...row }));
+        await run(sb.from("items").insert({ id: it.id, kind: it.variant === "classement" ? "classement" : it.kind, ...row })).catch(async (e) => { deja(e); await run(sb.from("items").update(row).eq("id", it.id)); }); /* déjà créée : on y remet ce qu'on a tapé depuis */
         (it.docs || []).forEach((d) => delete d.id); /* une copie reprend les documents : ce sont de nouveaux liens */
         await side(it, null);
       });
@@ -226,7 +230,7 @@
     db.reqs.forEach((r) => {
       const old = r0[r.id];
       /* un message à plusieurs personnes : le refus de l'une n'empêche pas les autres de partir */
-      if (!old) return ops.push(Object.assign(() => run(sb.from("reqs").insert({ id: r.id, item: r.item, dest: r.a === user.id ? "moi" : r.a, type: r.quoi || (r.pour ? "Autre" : "Info"), quoi: r.txt || "", pour: r.pour || null })), { seul: true }));
+      if (!old) return ops.push(Object.assign(() => run(sb.from("reqs").insert({ id: r.id, item: r.item, dest: r.a === user.id ? "moi" : r.a, type: r.quoi || (r.pour ? "Autre" : "Info"), quoi: r.txt || "", pour: r.pour || null })).catch(deja), { seul: true }));
       if (r.fait && !old.fait) ops.push(() => changed(sb.from("reqs").update({ st: "recue", reponse: r.rep || "" }).eq("id", r.id)));
       else if (!r.fait && old.fait) ops.push(async () => { throw new Error("une demande reçue reste reçue"); });
       else if (!r.fait && (r.txt !== old.txt || r.pour !== old.pour)) ops.push(() => changed(sb.from("reqs").update({ quoi: r.txt || "", pour: r.pour || null }).eq("id", r.id)));
@@ -269,20 +273,24 @@
     if (!ops.length) return;
     const g = gen; pending++; badge();
     const reseau = (e) => !navigator.onLine || /fetch|network|load failed|timed? ?out/i.test((e && e.message) || "");
+    /* 2.8.1 : une file sautée (le réseau est tombé avant elle) n'est pas un succès : ses modifications repartiront avec la reprise */
     queue = queue.then(async () => { let refus = null;
-        for (const op of ops) { if (g !== gen) return; if (!op.seul) { await op(); continue; } try { await op(); } catch (e) { if (reseau(e)) throw e; refus = refus || e; } }
+        for (const op of ops) { if (g !== gen) return "saute"; if (!op.seul) { await op(); continue; } try { await op(); } catch (e) { if (reseau(e)) throw e; refus = refus || e; } }
         if (refus) throw Object.assign(refus, { seul: true }); })
-      .then(() => { pending = Math.max(0, pending - 1); badge(); if (!pending) { fixDocs(); if (horsLigne) enLigne(); } },
+      .then((r) => { pending = Math.max(0, pending - 1); badge(); if (r === "saute") return; if (!pending) { fixDocs(); if (horsLigne) enLigne(); } },
         (e) => { pending = Math.max(0, pending - 1); badge(); if (g !== gen) return;
-          /* un message refusé (et seulement lui) : les écritures suivantes, indépendantes, partent quand même */
-          if (e && e.seul && !reseau(e)) return fail(e);
-          gen++; if (reseau(e)) { shadow = before; offline(); } else fail(e); });
+          /* un refus de la base (pas le réseau) : les écritures suivantes, indépendantes, partent quand même, on relit après elles */
+          if (!reseau(e)) return fail(e);
+          gen++; shadow = before; offline(); });
   }
   /* la base refuse : on le dit, et on revient à ce qu'elle contient vraiment */
   function fail(e) {
     console.error(e);
     KP.toast("Non enregistré : " + frErr(e));
-    Promise.resolve(reload()).then(() => document.dispatchEvent(new CustomEvent("kp:refus")));
+    /* 2.8.1 : on sort du mode hors ligne (sinon plus rien ne se relit), et on relit une fois les autres envois partis */
+    if (horsLigne) { horsLigne = false; clearTimeout(retente); document.documentElement.classList.remove("offline"); }
+    const relire = () => (pending ? queue.then(relire, relire) : Promise.resolve(reload()));
+    relire().then(() => document.dispatchEvent(new CustomEvent("kp:refus")));
   }
   /* hors connexion (ou serveur qui ne répond pas) : la modification reste à l'écran, aucun rechargement ne l'efface,
      et elle repart au retour du réseau, au retour sur l'onglet, et toutes les 30 secondes */
@@ -294,6 +302,8 @@
   }
   function enLigne() { horsLigne = false; clearTimeout(retente); document.documentElement.classList.remove("offline"); KP.toast("Connexion revenue : tout est parti"); later(); }
   window.addEventListener("online", () => { if (horsLigne) sync(store._db()); });
+  /* 2.8.1 : fermer l'onglet avec des modifications pas encore parties : le navigateur demande confirmation */
+  window.addEventListener("beforeunload", (e) => { if (pending || horsLigne) { e.preventDefault(); e.returnValue = ""; } });
   /* base sans les scripts 2.6 : pas d'écran Résultats ni de budget (la base les refuserait), et on dit quoi faire */
   let prevenu = false;
   function baseAJour() {
@@ -306,6 +316,8 @@
     if (/null value in column "pour"|column "res"|relation "public\.(budget|enveloppes)"|function public\.set_res|set_res/i.test(m) || absente(e)) return "la base n'est pas à jour (à coller dans Supabase : 2.5_0030 puis 2.6_0031)";
     if (/res_ok|budget_montant_check|enveloppes_montant_check/i.test(m)) return "ce chiffre n'est pas possible";
     if (/fetch|network/i.test(m)) return "le serveur ne répond pas";
+    if (/duplicate key|23505/i.test(m)) return "c'était déjà enregistré";
+    if (/violates|constraint|invalid input|does not exist|null value|out of range|syntax error|operator|JWT|PGRST/i.test(m)) return "la base a refusé ce changement"; /* message technique anglais : le détail va dans Réglages > Suivi */
     return m || "la base ne répond pas"; };
   const snapshot = (db) => clone({ periods: KP.PERIODS, messages: KP.MESSAGES.map((m) => ({ n: m.n, nom: m.nom, info: m.info })), items: db.items, reqs: db.reqs, people: db.people, services: db.services, partners: db.partners, lieux: db.lieux, contacts: db.contacts, prefs: { [user.id]: db.prefs[user.id] || {} }, lastMeeting: db.lastMeeting, projet: db.projet || {}, budget: db.budget || {}, env: db.env || {} });
   /* les documents ajoutés ont reçu leur identifiant de la base : la copie de référence le prend aussi */

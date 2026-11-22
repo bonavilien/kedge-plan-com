@@ -20,6 +20,7 @@
   const jour = (n) => (n === 1 ? "1er" : String(n));
   const fmt = {
     court: (s) => { const d = parse(s); return `${JOURS[d.getDay()]} ${jour(d.getDate())}`; },
+    courtMois: (s) => { const d = parse(s); return `${JOURS[d.getDay()]} ${jour(d.getDate())} ${MOIS_C[d.getMonth()]}`; },
     moyen: (s) => { const d = parse(s); return `${jour(d.getDate())} ${MOIS_C[d.getMonth()]}`; },
     long: (s) => { const d = parse(s); return `${JOURS_L[d.getDay()]} ${jour(d.getDate())} ${MOIS[d.getMonth()]}${d.getFullYear() !== parse(TODAY).getFullYear() ? " " + d.getFullYear() : ""}`; },
     plage: (a, b) => (!b || b === a ? fmt.long(a) : parse(a).getMonth() === parse(b).getMonth() ? `du ${jour(parse(a).getDate())} au ${jour(parse(b).getDate())} ${MOIS[parse(b).getMonth()]}` : `du ${fmt.moyen(a)} au ${fmt.moyen(b)}`),
@@ -219,7 +220,12 @@
   const byId = (id) => db.items.find((i) => i.id === id);
   /* ce qu'un geste touche, champ par champ : l'annuler ne remet que ces champs, sur la fiche telle qu'elle est maintenant */
   const keepOf = (list, keys) => list.map((x) => ({ id: x.id, v: Object.fromEntries(keys.map((k) => [k, x[k] === undefined ? undefined : JSON.parse(JSON.stringify(x[k]))])) }));
-  const putBack = (saved) => saved.forEach((s) => { const x = byId(s.id); if (x) Object.entries(s.v).forEach(([k, v]) => { if (v === undefined) delete x[k]; else x[k] = v; }); });
+  /* 2.8.1 : avec « pose » (ce qu'on avait posé), on ne défait que ce qui n'a pas changé depuis : la modification d'un collègue n'est jamais écrasée */
+  const meme = (a, b) => JSON.stringify(a === undefined ? null : a) === JSON.stringify(b === undefined ? null : b);
+  const putBack = (saved, pose) => { let n = 0; saved.forEach((s, i) => { const x = byId(s.id); if (!x) return; const p = pose && pose[i];
+    if (p && Object.keys(p.v).some((k) => !meme(x[k], p.v[k]))) return; n++; Object.entries(s.v).forEach(([k, v]) => { if (v === undefined) delete x[k]; else x[k] = v; }); });
+    if (pose && !n) toast("Un collègue l'a modifiée entre-temps : rien n'a été défait"); return n; };
+  const toast = (t) => { if (typeof KP !== "undefined" && KP.toast) setTimeout(() => KP.toast(t)); };
   const service = (k) => db.services.find((s) => s.k === k) || (remote && remote.pseudo[k]) || undefined;
   const message = (k) => MESSAGES.find((m) => m.k === k);
   const nid = (p) => remote ? remote.uuid() : p + (++db.seq);
@@ -260,7 +266,10 @@
       const it = store.get(id); if (!it) return () => {};
       const before = {}; Object.keys(patch).forEach((k) => (before[k] = it[k]));
       Object.assign(it, patch); if (txt) log(id, txt); emit();
-      return () => { const x = byId(id); if (!x) return; Object.assign(x, before); log(id, "a annulé une modification"); emit(); };
+      const pose = JSON.parse(JSON.stringify(patch));
+      return () => { const x = byId(id); if (!x) return; const ks = Object.keys(before).filter((k) => meme(x[k], pose[k]));
+        if (!ks.length) return toast("Un collègue l'a modifiée entre-temps : rien n'a été défait");
+        ks.forEach((k) => (x[k] = before[k])); log(id, "a annulé une modification"); emit(); };
     },
     /* branché, une suppression est définitive (la base efface aussi ses demandes et son historique) : pas d'« Annuler » */
     remove(id) {
@@ -339,25 +348,29 @@
     setDate(id, date, flou, motif) {
       const it = store.get(id), n = diff(date, it.date);
       /* les relais suivent, sauf ceux déjà diffusés et ceux qu'on n'a pas le droit de modifier */
-      const suit = it.kind === "tf" ? store.relais(id).filter((r) => !r.flou && r.st !== "diffuse" && !r.annule && store.canEdit(r)) : [];
+      const suit = it.kind === "tf" ? store.relaisQuiSuivent(id) : [];
       const saved = keepOf([it, ...suit], ["date", "fin", "flou", "report"]);
       if (motif != null) it.report = { de: it.flou ? `courant ${fmt.mois(it.date)}` : fmt.moyen(it.date), txt: motif, qui: db.moi, quand: Date.now() };
       if (!flou && !it.flou) { if (it.fin) it.fin = addDays(it.fin, n); suit.forEach((r) => { r.date = addDays(r.date, n); if (r.fin) r.fin = addDays(r.fin, n); }); }
       else it.fin = "";
       it.date = date; it.flou = !!flou;
+      const pose = keepOf([it, ...suit], ["date", "fin", "flou", "report"]);
       log(id, (motif != null ? `a reporté ${flou ? "à courant " + fmt.mois(date) : "au " + fmt.moyen(date)}` : flou ? `a placé courant ${fmt.mois(date)}, date à préciser` : `a fixé la date au ${fmt.moyen(date)}`) + (motif ? ` : ${motif}` : "")); emit();
-      return () => { putBack(saved); emit(); };
+      return () => { putBack(saved, pose); emit(); };
     },
+    /* 2.8.1 : les relais qui suivent un temps fort déplacé (pas les flous, diffusés, abandonnés, ni ceux qu'on ne peut pas modifier) */
+    relaisQuiSuivent(id) { return store.relais(id).filter((r) => !r.flou && r.st !== "diffuse" && !r.annule && store.canEdit(r)); },
     /* décale un temps fort et, si demandé, ses relais du même nombre de jours */
     shift(id, date, avecRelais) {
       const it = store.get(id); const n = diff(date, it.date);
-      const suit = avecRelais ? store.relais(id).filter((r) => !r.flou && r.st !== "diffuse" && !r.annule && store.canEdit(r)) : [];
+      const suit = avecRelais ? store.relaisQuiSuivent(id) : [];
       const saved = keepOf([it, ...suit], ["date", "fin"]);
       if (it.fin) it.fin = addDays(it.fin, n);
       it.date = date;
       suit.forEach((r) => { r.date = addDays(r.date, n); if (r.fin) r.fin = addDays(r.fin, n); });
+      const pose = keepOf([it, ...suit], ["date", "fin"]);
       log(id, `a déplacé au ${fmt.moyen(date)}`); emit();
-      return () => { putBack(saved); emit(); };
+      return () => { putBack(saved, pose); emit(); };
     },
     ask(o, plus = false) { const r = { id: nid("r"), de: db.moi, fait: false, rep: "", quand: Date.now(), ...o }; db.reqs.push(r); if (o.a !== db.moi) log(o.item, o.pour ? `a demandé ${ASK[o.quoi] || "des éléments"} à ${(person(o.a) || service(o.a) || { nom: "" }).nom}` : `a écrit pour info à ${(person(o.a) || service(o.a) || { nom: "" }).nom}`); if (!plus) emit(); return r; },
     /* le même message à plusieurs personnes : un seul envoi */

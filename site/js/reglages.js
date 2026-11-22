@@ -11,7 +11,7 @@
     const u = KP.me(), admin = u.role === "pilote", t0 = admin || KP.route.set === "apropos" ? KP.route.set : "profil", tab = t0 === "suivi" && !(u.admin && KP.suiviVue) ? "profil" : t0;
     return `<div class="page narrow wide-set">
       <div class="head"><h1>Réglages</h1></div>
-      <div class="bar"><div class="seg" role="group" aria-label="Réglages">${TABS.filter(([k]) => k === "suivi" ? u.admin && KP.suiviVue : admin || k === "profil" || k === "apropos").map(([k, n]) => `<button type="button" data-act="set-tab" data-k="${k}" class="${k === tab ? "on" : ""}" aria-pressed="${k === tab}">${n}</button>`).join("")}</div></div>
+      <div class="bar"><div class="seg" role="group" aria-label="Réglages">${TABS.filter(([k]) => k === "suivi" ? admin && u.admin && KP.suiviVue : admin || k === "profil" || k === "apropos").map(([k, n]) => `<button type="button" data-act="set-tab" data-k="${k}" class="${k === tab ? "on" : ""}" aria-pressed="${k === tab}">${n}</button>`).join("")}</div></div>
       ${({ apropos, profil, suivi: () => KP.suiviVue(),
         projet: () => identite() + periodes() + messages(),
         equipe: () => equipe() + services(),

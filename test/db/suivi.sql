@@ -64,8 +64,8 @@ select pg_temp.check((select count(*) = 0 from public.phrases_barre), 'l''admin 
 select pg_temp.as_user(:RP);
 insert into public.suivi (type, txt, version) values ('erreur', 'TypeError: x is null', '2.8.0');
 insert into public.suivi (type, txt, detail) values ('annule', 'décale le teaser à lundi', '{"k":"decaler"}');
-insert into public.suivi (type, txt, qui) values ('ecran', 'accueil', null);
-select pg_temp.refus($q$insert into public.suivi (type, txt) values ('ecran', 'plan')$q$, 'un écran ne part pas avec un nom');
+insert into public.suivi (type, txt, detail, qui) values ('ecran', 'accueil', '{"n":3}', null);
+select pg_temp.refus($q$insert into public.suivi (type, txt, detail) values ('ecran', 'plan', '{"n":1}')$q$, 'un écran ne part pas avec un nom');
 select pg_temp.refus($q$insert into public.suivi (type, txt) values ('autre', 'x')$q$, 'type inconnu');
 select pg_temp.check((select count(*) = 0 from public.suivi), 'un service ne relit pas le suivi');
 select pg_temp.as_user(:ES);
@@ -81,6 +81,25 @@ select pg_temp.as_user(:JU);
 select pg_temp.check((select count(*) = 60 from public.suivi where qui = :RP), 'limite de 60 lignes par heure');
 delete from public.suivi;
 select pg_temp.check((select count(*) = 0 from public.suivi), 'l''admin vide le suivi');
+
+-- 2.8.1 : forme de detail, heure forcée, limite des écrans par personne, photo du visiteur
+select pg_temp.as_user(:RP);
+select pg_temp.refus($q$insert into public.suivi (type, txt, detail, qui) values ('ecran', 'x', '{"n":"<img src=x onerror=alert(1)>"}', null)$q$, 'n doit être un nombre');
+select pg_temp.refus($q$insert into public.suivi (type, txt, detail, qui) values ('ecran', 'x', '{"n":1000000}', null)$q$, 'n borné à 1000');
+select pg_temp.refus($q$insert into public.suivi (type, txt, detail) values ('annule', 'x', '{"sec":"<b>"}')$q$, 'sec doit être un nombre');
+insert into public.suivi (type, txt, quand) values ('recherche', 'dans le passé', '2001-01-01');
+insert into public.phrases_barre (txt, quand) values ('phrase dans le futur', '2099-01-01');
+insert into public.suivi (type, txt, detail, qui) select 'ecran', 'e' || g, '{"n":1}', null from generate_series(1, 50) g;
+select pg_temp.as_user(:JU);
+select pg_temp.check((select quand > now() - interval '1 minute' from public.suivi where txt = 'dans le passé'), 'l''heure du suivi est celle du serveur');
+select pg_temp.check((select quand < now() + interval '1 minute' from public.phrases_barre where txt = 'phrase dans le futur'), 'l''heure d''une phrase est celle du serveur');
+select pg_temp.check((select count(*) between 38 and 40 from public.suivi where type = 'ecran' and txt like 'e%'), 'un seul compte ne garde que 40 écrans par heure');
+select pg_temp.as_user(:ES);
+insert into public.suivi (type, txt, detail, qui) values ('ecran', 'estelle', '{"n":1}', null);
+select pg_temp.as_user(:JU);
+select pg_temp.check((select count(*) = 1 from public.suivi where txt = 'estelle'), 'les écrans des autres passent encore');
+select pg_temp.as_user(:VIS);
+select pg_temp.refus($q$update public.profiles set photo = 'data:image/jpeg;base64,AAAA' where id = auth.uid()$q$, 'le visiteur ne change pas sa photo');
 
 select pg_temp.root();
 \echo 'suivi de l''outil : bon'
