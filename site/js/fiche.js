@@ -27,7 +27,7 @@
     else if (!tf) rows.push(["Service", u.role === "pilote" ? v("f-svc", h((KP.service(it.svc) || {}).nom || "")) : `<span class="val">${h((KP.service(it.svc) || {}).nom || "—")}</span>`]);
     rows.push(["Messages", v("f-msg", h(KP.msgNames(it)) || "Choisir", !it.m.length)]);
     if (!tf) rows.push(["Temps fort", v("f-tf", par ? `<i class="tfdot"></i>${h(par.t)}` : "Aucun", !par) + (par ? `<button type="button" class="ib" data-act="open" data-id="${par.id}" data-tip="Ouvrir le temps fort" aria-label="Ouvrir le temps fort">${ic("chevR")}</button>` : "")]);
-    if (tf && it.variant !== "sujet") rows.push(["Lieu", can ? `<input class="val" id="f-lieu" data-f="lieu" list="dl-lieux" value="${h(it.lieu || "")}" placeholder="Choisir ou écrire un lieu" autocomplete="off"><datalist id="dl-lieux">${store.lieux().map((l) => `<option value="${h(l)}"></option>`).join("")}</datalist>` : `<span class="val${it.lieu ? "" : " none"}">${h(it.lieu || "—")}</span>`]);
+    if (tf && it.variant !== "sujet") rows.push(["Lieu", can ? `<input class="val" id="f-lieu" data-f="lieu" maxlength="120" list="dl-lieux" value="${h(it.lieu || "")}" placeholder="Choisir ou écrire un lieu" autocomplete="off"><datalist id="dl-lieux">${store.lieux().map((l) => `<option value="${h(l)}"></option>`).join("")}</datalist>` : `<span class="val${it.lieu ? "" : " none"}">${h(it.lieu || "—")}</span>`]);
     if (it.variant === "classement") rows.push(["Rang", inp("rang", it.rang, "À la parution")], ["Objectif", inp("cible", it.cible, "Top…")]);
     rows.push(["État", it.annule ? KP.pill(it) : can ? `<div class="seg" role="group" aria-label="État">${KP.STATUTS.map((s) => `<button type="button" data-act="f-st" data-k="${s.k}" class="${it.st === s.k ? "on" : ""}" aria-pressed="${it.st === s.k}">${s.k === "diffuse" && it.st === s.k ? ic("check") : ""}${s.nom}</button>`).join("")}</div>` : KP.pill(it)]);
     /* résultats d'une diffusion ; budget d'un partenariat payant (chefs de projet seulement) */
@@ -64,7 +64,7 @@
             ${par.docs.map((d) => `<p class="il">${ic("doc")}<span><a class="link" href="${h(d.url)}" target="_blank" rel="noopener">${h(d.t)}</a></span></p>`).join("")}
             ${ans.map((q) => `<p class="il rep-tf">${ic("chat")}<span><b>${h(["Autre", "Info"].includes(q.quoi) ? (q.txt || "Réponse").slice(0, 60) : q.quoi)}</b> · ${KP.ecrire.texte(q.rep, par)} <small class="muted">${h(KP.dest(q.a))}</small></span></p>`).join("")}</section>`; })() : ""}
         ${tf ? `<section class="f-sec"><h3>Relais${rel.length ? " · " + rel.length : ""}${store.canCreate() ? `<button type="button" class="link" data-act="new" data-tf="${it.id}" data-date="${it.variant === "sujet" ? KP.TODAY : it.date}">Ajouter</button>` : ""}</h3>
-          ${rel.length ? rel.map((r) => `<button type="button" class="mini" data-act="open" data-id="${r.id}"><span class="d">${h(KP.dateShort(r))}</span><span class="tt">${h(r.t)} <small>· ${h((KP.service(r.svc) || {}).court || "")}</small></span>${KP.pill(r)}</button>`).join("") : `<p class="muted">Aucun service ne s'en est encore saisi.</p>`}</section>` : ""}
+          ${rel.length ? rel.map((r) => `<button type="button" class="mini" data-act="open" data-id="${r.id}"><span class="d">${h(KP.dateShort(r))}</span><span class="tt">${h(r.t)}</span><small class="mini-s">${h((KP.service(r.svc) || {}).court || "")}</small>${KP.pill(r)}</button>`).join("") : `<p class="muted">Aucun service ne s'en est encore saisi.</p>`}</section>` : ""}
         ${memos.length ? `<div class="memos">${memos.map((r) => `<div class="memo${r.pour < KP.TODAY ? " late" : ""}">${ic("clock")}<span class="tt">${h(r.txt || r.quoi)}</span><small>${h(KP.fmt.courtMois(r.pour))}</small>${KP.ib("edit", "Modifier le rappel", "memo", `data-id="${r.id}"`)}${KP.ib("trash", "Effacer le rappel", "req-drop", `data-id="${r.id}"`)}<button type="button" class="ib" data-act="memo-fait" data-id="${r.id}" data-tip="C'est fait" aria-label="C'est fait">${ic("check")}</button></div>`).join("")}</div>` : ""}
         ${it.docs.length || can || rel.some((r) => r.docs.length) ? `<section class="f-sec"><h3>Documents${can ? `<button type="button" class="link" data-act="add-doc">Ajouter un lien</button>` : ""}</h3>
           ${it.docs.map((d, i) => `<div class="mini" style="grid-template-columns:minmax(0,1fr) auto"><a class="link" href="${h(d.url)}" target="_blank" rel="noopener">${h(d.t)}</a>${can ? `<button type="button" class="ib" data-act="rm-doc" data-i="${i}" data-tip="Retirer" aria-label="Retirer ${h(d.t)}">${ic("close")}</button>` : ""}</div>`).join("") || (rel.some((r) => r.docs.length) ? "" : `<p class="muted">Les liens SharePoint utiles à tous.</p>`)}
@@ -140,18 +140,20 @@
         <label class="field"><span>Nom</span><input class="input" name="t" placeholder="Programme de la journée" required autocomplete="off"></label>
         <label class="field"><span>Adresse SharePoint</span><input class="input" name="url" type="url" placeholder="https://…" required autocomplete="off"></label>
         <div class="foot"><button type="button" class="btn quiet" data-close>Annuler</button><button class="btn primary">Ajouter</button></div></form>`);
-      d.querySelector("form").addEventListener("submit", (e) => { const f = new FormData(d.querySelector("form")); if (!/^https:\/\//i.test(f.get("url").trim())) { e.preventDefault(); const u2 = d.querySelector("[name=url]"); u2.value = ""; u2.placeholder = "Une adresse qui commence par https://"; u2.focus(); return; } KP.toast("Lien ajouté", store.update(it.id, { docs: [...it.docs, { t: f.get("t").trim(), url: f.get("url").trim() }] }, "a ajouté un document")); });
+      d.querySelector("form").addEventListener("submit", (e) => { const f = new FormData(d.querySelector("form")); if (!/^https:\/\//i.test(f.get("url").trim())) { e.preventDefault(); const u2 = d.querySelector("[name=url]"); u2.value = ""; u2.placeholder = "Une adresse qui commence par https://"; u2.focus(); return; }
+        if (!String(f.get("t") || "").trim()) { e.preventDefault(); const t2 = d.querySelector("[name=t]"); t2.value = ""; t2.placeholder = "Un nom, pour le reconnaître"; t2.focus(); return; } /* 2.8.2 */ KP.toast("Lien ajouté", store.update(it.id, { docs: [...it.docs, { t: f.get("t").trim(), url: f.get("url").trim() }] }, "a ajouté un document")); });
     },
     answer: (a) => {
-      const r = store.reqs().find((x) => x.id === a.dataset.id), it = store.get(r.item);
+      const r = store.reqs().find((x) => x.id === a.dataset.id), it = r && store.get(r.item);
+      if (!r || !it) return KP.toast("Cette demande n'existe plus."); /* 2.8.2 */
       const parle = ["Autre", "Info"].includes(r.quoi) || (r.txt && KP.phrase.plat(r.txt).includes(KP.phrase.plat(r.quoi)));
       const d = KP.dialog(`<form method="dialog"><h2>Répondre à ${h(KP.dest(r.de))}</h2><p class="muted rep-ctx" style="margin-top:-8px">${parle ? "" : h(r.quoi) + " pour "}« ${h(it.t)} »${r.txt ? " : " + h(r.txt) : ""}</p>
         <label class="field"><span>Ta réponse</span><textarea class="input" name="rep" placeholder="C'est ok, une phrase, un lien SharePoint…"></textarea></label>
         <div class="foot"><button type="button" class="btn quiet" data-close>Annuler</button><button class="btn primary">Envoyer</button></div></form>`);
       d.querySelector("textarea").focus();
-      d.querySelector("form").addEventListener("submit", () => KP.toast(`Réponse envoyée à ${KP.dest(r.de)}`, store.answer(r.id, new FormData(d.querySelector("form")).get("rep").trim())));
+      d.querySelector("form").addEventListener("submit", () => { const rep = String(new FormData(d.querySelector("form")).get("rep") || "").trim() || "C'est ok"; /* 2.8.2 : vide = « C'est ok » */ KP.toast(`Réponse envoyée à ${KP.dest(r.de)}`, store.answer(r.id, rep)); });
     },
-    "memo-fait": (a) => { store.answer(a.dataset.id, "Fait"); KP.toast("Rappel fait. Bravo, sincèrement."); },
+    "memo-fait": (a) => { const u = store.answer(a.dataset.id, "Fait"); KP.toast("Rappel fait. Bravo, sincèrement.", u); },
     /* noter un rappel pour moi, ou modifier le sien (texte et date) */
     memo: (a) => {
       const it = cur(), old = a && a.dataset.id && store.reqs().find((x) => x.id === a.dataset.id);
@@ -160,10 +162,10 @@
         <input class="input" name="txt" placeholder="Me rappeler de…" aria-label="Me rappeler de" maxlength="200" required autocomplete="off" value="${h(old ? old.txt : "")}">
         <div class="foot"><button type="button" class="input" data-pick style="width:auto;margin-right:auto">${ic("calendar")}<span>${h(KP.fmt.courtMois(s.pour))}</span></button><button type="button" class="btn quiet" data-close>Annuler</button><button class="btn primary">${old ? "Enregistrer" : "Noter"}</button></div></form>`);
       d.querySelector("[name=txt]").focus();
-      d.addEventListener("click", (e) => { const pk = e.target.closest("[data-pick]"); if (pk) KP.datepick(pk, s.pour, (v) => { if (v) { s.pour = v; pk.querySelector("span:last-child").textContent = KP.fmt.courtMois(v); } }); });
+      d.addEventListener("click", (e) => { const pk = e.target.closest("[data-pick]"); if (pk) KP.datepick(pk, s.pour, (v) => { if (v && v < KP.TODAY) return KP.toast("Cette date est passée"); if (v) { s.pour = v; pk.querySelector("span:last-child").textContent = KP.fmt.courtMois(v); } }); });
       d.querySelector("form").addEventListener("submit", () => { const txt = new FormData(d.querySelector("form")).get("txt").trim(); if (!txt) return; if (old) { store.editReq(old.id, { txt, pour: s.pour }); KP.toast("Rappel modifié"); } else { store.ask({ item: it.id, a: KP.me().k, quoi: "Autre", txt, pour: s.pour }); KP.toast("Rappel noté"); } });
     },
-    "req-date": (a) => { const r = store.reqs().find((x) => x.id === a.dataset.id); if (r) KP.datepick(a, r.pour, (v) => { if (v && v !== r.pour) { store.editReq(r.id, { pour: v }); KP.toast(`Pour le ${KP.fmt.moyen(v)}`); } }); },
+    "req-date": (a) => { const r = store.reqs().find((x) => x.id === a.dataset.id); if (r) KP.datepick(a, r.pour, (v) => { if (v && v < KP.TODAY) return KP.toast("Cette date est passée"); if (v && v !== r.pour) { store.editReq(r.id, { pour: v }); KP.toast(`Pour le ${KP.fmt.moyen(v)}`); } }); },
     "req-drop": (a) => { const r = store.reqs().find((x) => x.id === a.dataset.id); if (!r) return; store.dropReq(r.id); KP.toast(r.a === r.de ? "Rappel effacé" : r.pour ? `Demande à ${KP.dest(r.a)} retirée` : `Message à ${KP.dest(r.a)} retiré`); },
     relance: (a) => { const r = store.reqs().find((x) => x.id === a.dataset.id); if (r) store.relance(r.id); },
   });

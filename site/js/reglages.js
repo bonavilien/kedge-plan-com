@@ -60,11 +60,13 @@
       await KP.remote.maj("base"); M.step = 1; KP.render();
       const c = await KP.remote.maj("code"); M.step = 2; KP.render();
       /* GitHub Pages publie en une à trois minutes : on attend que le site serve la nouvelle version */
-      const want = cible || c.version, t0 = Date.now();
-      while (want && want !== KP.VERSION.n && Date.now() - t0 < 10 * 60 * 1000) {
-        try { const r = await fetch("version.json?t=" + Date.now(), { cache: "no-store" }); if (r.ok && (await r.json()).version === want) break; } catch (e) {}
+      const want = cible || c.version, t0 = Date.now(); let servie = !want || want === KP.VERSION.n;
+      while (!servie && Date.now() - t0 < 10 * 60 * 1000) {
+        try { const r = await fetch("version.json?t=" + Date.now(), { cache: "no-store" }); if (r.ok && (await r.json()).version === want) { servie = true; break; } } catch (e) {}
         await new Promise((ok) => setTimeout(ok, 5000));
       }
+      /* 2.8.2 : au bout de 10 minutes sans la nouvelle version, on ne crie pas victoire */
+      if (!servie) throw new Error("GitHub n'a pas encore publié la nouvelle version au bout de 10 minutes. Réessaie dans un moment ; rien n'est perdu.");
       M.step = 3; M.st = "fini"; KP.render();
       setTimeout(() => KP.acts.reload(), 1500);
     } catch (e) { M.st = "erreur"; M.msg = e.message; KP.render(); }
@@ -89,7 +91,7 @@
       origine: () => `<div class="maj-v"><span class="ok-dot">${ic("check")}</span><span class="vn">${lab()}</span><b class="maj-tag">Version d'origine</b></div>`,
     }[M.st] || (() => "");
     return `<section class="set maj maj-${M.st}" aria-live="polite"><h2>Mise à jour</h2>${body()}
-      ${e.fonctionAmont > e.fonction && M.st !== "absente" ? `<p class="muted maj-hint">${ic("info")}Le bouton lui-même a une nouvelle version : <a href="${GUIDE}#6-le-bouton-mettre-à-jour" target="_blank" rel="noopener">recolle-le</a>.</p>` : ""}</section>`;
+      ${e.fonctionAmont > e.fonction && M.st !== "absente" ? `<p class="muted maj-hint">${ic("info")}<span>Le bouton lui-même a une nouvelle version : <a href="${GUIDE}#6-le-bouton-mettre-à-jour" target="_blank" rel="noopener">recolle-le</a>.</span></p>` : ""}</section>`;
   }
 
   function apropos() {
@@ -107,7 +109,7 @@
     return `<section class="set"><h2>Personnes${store.remote() ? "" : `<button type="button" class="btn quiet small" data-act="set-add" data-k="people">${ic("plus")}Ajouter une personne</button>`}</h2>
       ${store.remote() ? `<p class="muted">Un compte se crée dans Supabase (Authentication, Add user). Il apparaît ensuite ici pour régler son rôle et son service.</p>` : ""}
       <div class="tbl t-people"><div class="th"><span>Prénom</span><span>Fonction</span><span>Droits</span><span>Service</span><span>Version</span><span></span></div>
-      ${KP.PEOPLE.map((p) => `<div class="tr"><input class="input" id="p-${p.k}-nom" data-set="people:${p.k}:nom" value="${h(p.nom)}" aria-label="Prénom" autocomplete="off"><input class="input" id="p-${p.k}-fonction" data-set="people:${p.k}:fonction" value="${h(p.fonction)}" aria-label="Fonction" autocomplete="off">
+      ${KP.PEOPLE.map((p) => `<div class="tr"><input class="input" id="p-${p.k}-nom" data-set="people:${p.k}:nom" maxlength="60" value="${h(p.nom)}" aria-label="Prénom" autocomplete="off"><input class="input" id="p-${p.k}-fonction" data-set="people:${p.k}:fonction" maxlength="80" value="${h(p.fonction)}" aria-label="Fonction" autocomplete="off">
         <select class="input" id="p-${p.k}-role" data-set="people:${p.k}:role" aria-label="Droits">${ROLES.map(([k, n]) => `<option value="${k}" ${k === p.role ? "selected" : ""}>${n}</option>`).join("")}</select>
         ${svcSel(`p-${p.k}-svc`, p.svc, `data-set="people:${p.k}:svc" aria-label="Service"`)}
         ${(() => { const v = store.versionOf(p.k); return `<span class="pv${v && v !== KP.VERSION.n ? " late" : ""}">${v ? h(KP.versionLabel(v)) : "—"}</span>`; })()}
@@ -118,7 +120,7 @@
   function services() {
     return `<section class="set"><h2>Services<button type="button" class="btn quiet small" data-act="set-add" data-k="services">${ic("plus")}Ajouter un service</button></h2>
       <div class="tbl t-svc"><div class="th"><span>Nom</span><span>Nom court</span><span>Représenté par</span><span></span></div>
-      ${KP.SERVICES.map((s) => `<div class="tr"><input class="input" id="s-${s.k}-nom" data-set="services:${s.k}:nom" value="${h(s.nom)}" aria-label="Nom" autocomplete="off"><input class="input" id="s-${s.k}-court" data-set="services:${s.k}:court" value="${h(s.court)}" aria-label="Nom court" autocomplete="off">
+      ${KP.SERVICES.map((s) => `<div class="tr"><input class="input" id="s-${s.k}-nom" data-set="services:${s.k}:nom" maxlength="60" value="${h(s.nom)}" aria-label="Nom" autocomplete="off"><input class="input" id="s-${s.k}-court" data-set="services:${s.k}:court" maxlength="16" value="${h(s.court)}" aria-label="Nom court" autocomplete="off">
         <span class="muted">${h(KP.PEOPLE.filter((p) => p.svc === s.k).map((p) => p.nom).join(", ") || "Personne pour l'instant")}</span>${KP.ib("trash", "Retirer", "set-rm", `data-k="services" data-id="${s.k}"`)}</div>`).join("")}</div>
       <p class="muted">Chaque service a sa colonne dans la grille. On rattache une personne à un service juste au-dessus.</p></section>`;
   }
@@ -139,7 +141,7 @@
     return `<section class="set"><h2>Périodes<button type="button" class="btn quiet small" data-act="set-add" data-k="periods">${ic("plus")}Ajouter une période</button></h2>
       <div class="tbl t-per"><div class="th"><span>Nom</span><span>Du</span><span>Au</span><span></span></div>
       ${KP.PERIODS.map((p) => `<div class="tr"><input class="input" id="pe-${p.k}-nom" data-set="periods:${p.k}:nom" value="${h(p.nom)}" aria-label="Nom" maxlength="40" autocomplete="off">
-        <input class="input" type="date" id="pe-${p.k}-du" data-set="periods:${p.k}:du" value="${p.du}" aria-label="Premier jour"><input class="input" type="date" id="pe-${p.k}-au" data-set="periods:${p.k}:au" value="${p.au}" aria-label="Dernier jour">
+        ${["du", "au"].map((f) => `<span class="pe-d"><input type="hidden" id="pe-${p.k}-${f}" data-set="periods:${p.k}:${f}" value="${p[f]}"><button type="button" class="input pe-b" data-act="pe-pick" data-for="pe-${p.k}-${f}" aria-label="${f === "du" ? "Premier jour" : "Dernier jour"}">${ic("calendar")}<span>${h(KP.fmt.moyen(p[f]))} ${p[f].slice(0, 4)}</span></button></span>`).join("")}
         ${one ? "<span></span>" : KP.ib("trash", "Retirer", "set-rm", `data-k="periods" data-id="${p.k}"`)}</div>`).join("")}</div>
       <p class="muted">Le plan se lit par période. Elles se suivent sans se chevaucher.</p></section>`;
   }
@@ -156,7 +158,7 @@
   function liste(k, titre, aide, ph) {
     const list = k === "partners" ? store.partners() : store.lieux();
     return `<section class="set"><h2>${titre}</h2><p class="muted" style="margin-top:-6px">${aide}</p>
-      <form class="add-line" data-add="${k}"><input class="input" id="add-${k}" placeholder="${ph}" autocomplete="off" aria-label="${ph}"><button class="btn quiet">${ic("plus")}Ajouter</button></form>
+      <form class="add-line" data-add="${k}"><input class="input" id="add-${k}" maxlength="${k === "lieux" ? 120 : 80}" placeholder="${ph}" autocomplete="off" aria-label="${ph}"><button class="btn quiet">${ic("plus")}Ajouter</button></form>
       <div class="tbl t-one">${list.map((x) => `<div class="tr"><span>${h(x)}</span>${KP.ib("trash", "Retirer", "set-rm", `data-k="${k}" data-id="${h(x)}"`)}</div>`).join("") || `<p class="muted">La liste est vide.</p>`}</div></section>`;
   }
 
@@ -166,27 +168,40 @@
     setTimeout(() => {
       if (k === "projet") { store.saveProjet({ [id]: v }); return KP.toast("Enregistré"); }
       if (k === "me") { if (id === "nom" && !v) return KP.render(); store.savePerson(KP.me().k, { [id]: v }); }
-      else if ((f === "nom") && !v) return KP.render();
-      else if (k === "people") { if (id === KP.me().k && f === "role" && v !== "pilote" && !KP.PEOPLE.some((p) => p.k !== id && p.role === "pilote")) { KP.toast("Il faut garder au moins un pilote"); return KP.render(); } store.savePerson(id, { [f]: v }); }
+      else if ((f === "nom" || f === "court") && !v) return KP.render(); /* 2.8.2 : un nom court ne se vide pas */
+      else if (k === "people") { if (id === KP.me().k && f === "role" && v !== "pilote" && !KP.PEOPLE.some((p) => p.k !== id && p.role === "pilote")) { KP.toast("Il faut garder au moins un pilote"); return KP.render(); } const pp = KP.PEOPLE.find((x) => x.k === id) || {};
+        /* 2.8.2 : des droits « Service » sans service = lecture seule pour la base : on le dit au lieu d'« Enregistré » */
+        if (id === KP.me().k && f === "role" && v !== "pilote" && store.remote()) { KP.toast("Demande à un autre pilote de changer tes droits"); return KP.render(); }
+        if (f === "role" && v === "service" && !pp.svc) { KP.toast("Choisis d'abord son service, à droite"); return KP.render(); }
+        if (f === "svc" && !v && pp.role === "service") { KP.toast("Un compte Service a besoin d'un service : passe-le d'abord en lecture seule"); return KP.render(); }
+        store.savePerson(id, { [f]: v }); }
       else if (k === "services") store.saveService(id, { [f]: v });
       else if (k === "messages") store.saveMessage(id, { [f]: v });
       else if (k === "periods") {
         const p = KP.PERIODS.find((x) => x.k === id); if (!p) return;
         const next = { ...p, [f]: v };
-        if (f !== "nom" && (!v || next.du > next.au)) { KP.toast("Le dernier jour vient après le premier"); return KP.render(); }
-        const hit = f !== "nom" && KP.PERIODS.find((x) => x.k !== id && x.du <= next.au && x.au >= next.du);
+        if (f !== "nom" && !v) { KP.toast("Choisis une date"); return KP.render(); }
+        if (f !== "nom" && next.du > next.au) { KP.toast("Le dernier jour vient après le premier"); return KP.render(); }
+        /* 2.8.2 : les périodes se suivent sans trou : la voisine bouge avec (une action ne tombe jamais entre deux périodes) */
+        const i = KP.PERIODS.indexOf(p), suiv = f === "au" && KP.PERIODS[i + 1], prec = f === "du" && i > 0 && KP.PERIODS[i - 1];
+        if (suiv && KP.addDays(v, 1) > suiv.au) { KP.toast(`Ça avalerait la période « ${suiv.nom} »`); return KP.render(); }
+        if (prec && KP.addDays(v, -1) < prec.du) { KP.toast(`Ça avalerait la période « ${prec.nom} »`); return KP.render(); }
+        const hit = f !== "nom" && KP.PERIODS.find((x) => x.k !== id && x !== suiv && x !== prec && x.du <= next.au && x.au >= next.du);
         if (hit) { KP.toast(`Chevauche la période « ${hit.nom} »`); return KP.render(); }
+        if (suiv) store.savePeriod(suiv.k, { du: KP.addDays(v, 1) });
+        if (prec) store.savePeriod(prec.k, { au: KP.addDays(v, -1) });
         store.savePeriod(id, { [f]: v });
+        if (suiv || prec) { KP.toast(`Enregistré, « ${(suiv || prec).nom} » suit`); return; }
       }
       KP.toast("Enregistré");
     }, 0);
   });
   /* ma photo : un carré de 160 px pris au centre (un peu vers le haut, là où est le visage), en JPEG léger */
   const photoDe = (file) => new Promise((ok, ko) => {
-    if (!file || !/^image\//.test(file.type)) return ko(new Error("type"));
+    if (!file || !/^image\/(jpeg|png|webp)$/.test(file.type)) return ko(new Error("type")); /* 2.8.2 : pas de SVG */
     const url = URL.createObjectURL(file), img = new Image();
     img.onload = () => { const S = 160, m = Math.min(img.naturalWidth, img.naturalHeight), c = document.createElement("canvas"); c.width = c.height = S;
-      c.getContext("2d").drawImage(img, (img.naturalWidth - m) / 2, (img.naturalHeight - m) * 0.3, m, m, 0, 0, S, S); URL.revokeObjectURL(url); ok(c.toDataURL("image/jpeg", 0.85)); };
+      const g = c.getContext("2d"); g.fillStyle = "#fff"; g.fillRect(0, 0, S, S); /* un PNG transparent sur fond blanc, pas noir */ g.drawImage(img, (img.naturalWidth - m) / 2, (img.naturalHeight - m) * 0.3, m, m, 0, 0, S, S); URL.revokeObjectURL(url); ok(c.toDataURL("image/jpeg", 0.85)); };
     img.onerror = () => { URL.revokeObjectURL(url); ko(new Error("lecture")); };
     img.src = url;
   });
@@ -196,9 +211,9 @@
   };
   document.addEventListener("change", (e) => { if (e.target.id === "me-photo" && e.target.files[0]) garderPhoto(e.target.files[0]); });
   /* on peut aussi glisser la photo sur le rond */
-  document.addEventListener("dragover", (e) => { const r = e.target.closest && e.target.closest(".mp-rond"); if (!r) return; e.preventDefault(); r.classList.add("survol"); });
-  document.addEventListener("dragleave", (e) => { const r = e.target.closest && e.target.closest(".mp-rond"); if (r) r.classList.remove("survol"); });
-  document.addEventListener("drop", (e) => { const r = e.target.closest && e.target.closest(".mp-rond"); if (!r) return; e.preventDefault(); r.classList.remove("survol"); if (e.dataTransfer.files[0]) garderPhoto(e.dataTransfer.files[0]); });
+  document.addEventListener("dragover", (e) => { if (e.dataTransfer && [...(e.dataTransfer.types || [])].includes("Files")) e.preventDefault(); /* 2.8.2 : une image lâchée à côté n'ouvre pas l'image à la place de l'appli */ const r = e.target.closest && e.target.closest(".mp-rond"); if (!r) return; r.classList.add("survol"); });
+  document.addEventListener("dragleave", (e) => { const r = e.target.closest && e.target.closest(".mp-rond"); if (r && !r.contains(e.relatedTarget)) r.classList.remove("survol"); });
+  document.addEventListener("drop", (e) => { if (e.dataTransfer && [...(e.dataTransfer.types || [])].includes("Files")) e.preventDefault(); const r = e.target.closest && e.target.closest(".mp-rond"); if (!r) return; r.classList.remove("survol"); if (e.dataTransfer.files[0]) garderPhoto(e.dataTransfer.files[0]); });
 
   document.addEventListener("submit", (e) => {
     const k = e.target.dataset && e.target.dataset.add; if (!k) return; e.preventDefault();
@@ -213,6 +228,8 @@
     "set-tab": (a) => KP.go({ set: a.dataset.k }),
     "set-couleur": (a) => { store.saveProjet({ couleur: a.dataset.k }); },
     "set-theme": (a) => KP.changerTheme(a.dataset.k, a),
+    /* 2.8.2 : les dates des périodes avec le même calendrier que partout ailleurs */
+    "pe-pick": (a) => { const i = document.getElementById(a.dataset.for); if (i) KP.datepick(a, i.value, (v) => { if (v && v !== i.value) { i.value = v; i.dispatchEvent(new Event("change", { bubbles: true })); } }); },
     "photo-choisir": () => { const i = document.getElementById("me-photo"); if (i) { i.value = ""; i.click(); } },
     "photo-retirer": () => { store.savePerson(KP.me().k, { photo: "" }); KP.toast("Photo retirée"); },
     "set-notif": (a) => { const on = { ...(store.prefs().notif || {}) }; on[a.dataset.k] = on[a.dataset.k] === false; store.setPref("notif", on); },
@@ -224,11 +241,22 @@
     },
     "set-rm": (a) => {
       const k = a.dataset.k, id = a.dataset.id;
-      if (k === "people") { if (store.remote()) return KP.toast("Un compte se retire dans Supabase. Ici, passe la personne en lecture seule."); if (store.personUsed(id)) return KP.toast("Cette personne a déjà agi dans le plan. Passe-la en lecture seule."); return KP.toast("Personne retirée", store.removePerson(id)); }
+      if (k === "people") { if (store.remote()) return KP.toast("Un compte se retire dans Supabase. Ici, passe la personne en lecture seule."); if (id === KP.me().k) return KP.toast("Tu ne peux pas te retirer toi-même."); if (store.personUsed(id)) return KP.toast("Cette personne a déjà agi dans le plan. Passe-la en lecture seule."); return KP.toast("Personne retirée", store.removePerson(id)); }
       if (k === "messages") { const n = store.messageUsed(id); if (n) return KP.toast(`${n} fiche${n > 1 ? "s citent" : " cite"} ce message. Retire-le d'abord de ${n > 1 ? "ces fiches" : "cette fiche"}.`); return KP.toast("Message retiré", store.removeMessage(id)); }
       if (k === "periods") { const n = store.periodUsed(id); if (n) return KP.toast(`${n} sujet${n > 1 ? "s couvrent" : " couvre"} cette période. Change-les d'abord.`); return KP.toast("Période retirée", store.removePeriod(id)); }
       if (k === "services") { const n = store.serviceUsed(id); if (n) return KP.toast(`Ce service est utilisé ${n} fois (actions, personnes). Vide-le d'abord.`); return KP.toast("Service retiré", store.removeService(id)); }
+      /* 2.8.2 : un média encore utilisé par un partenariat ne se retire pas (la base refuserait) */
+      if (k === "partners") { const n = store.items().filter((i) => i.partner === id).length; if (n) return KP.toast(`${n} partenariat${n > 1 ? "s utilisent" : " utilise"} ce média. Change-le d'abord.`); }
       KP.toast("Retiré", store.listRemove(k, id));
     },
   });
+})();
+
+/* 2.8.2 : au téléphone, l'onglet ouvert des Réglages reste visible dans sa rangée (Suivi, Version) */
+(() => {
+  const avant = KP.apresRendu;
+  KP.apresRendu = (main, entre) => { if (avant) avant(main, entre);
+    if (KP.route.screen !== "reglages" || !KP.phone()) return;
+    const g = main.querySelector('.seg[aria-label="Réglages"]'), on = g && g.querySelector(".on"); if (!on) return;
+    g.scrollLeft += on.getBoundingClientRect().left - g.getBoundingClientRect().left - (g.clientWidth - on.offsetWidth) / 2; };
 })();

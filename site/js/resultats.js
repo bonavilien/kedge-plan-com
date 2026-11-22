@@ -26,12 +26,13 @@
   };
   const brouillon = (it) => { KP.ui.rc = KP.ui.rc || {}; return KP.ui.rc[it.id] || (KP.ui.rc[it.id] = { n: "", u: devine(it) }); };
   /* un nombre tapé à la française : « 14 200 », « 1 650,50 », « 1,5 k », « 2 M » ; vide : null ; illisible ou négatif : NaN */
-  const valeur = (s) => {
+  const valeur = (s, entier) => { /* 2.8.2 : entier = un résultat (« 2,6 retombées » est refusé au lieu d'être arrondi) */
     let t = String(s == null ? "" : s).trim().toLowerCase().replace(/[\s\u00a0\u202f]/g, "").replace(/€|euros?/g, "");
     if (!t) return null;
     const m = /^(-?)([\d.,]+)(k|m|mille|millions?)?$/.exec(t); if (!m || m[1]) return NaN;
     t = m[2].replace(/\.(?=\d{3}(?!\d))/g, "").replace(",", ".");
     if (!/^\d+(\.\d+)?$/.test(t)) return NaN;
+    if (entier && !m[3] && /\./.test(t)) return NaN;
     let x = Number(t); if (/^k|^mille/.test(m[3] || "")) x *= 1e3; if (/^m/.test(m[3] || "")) x *= 1e6;
     return Math.round(x);
   };
@@ -163,7 +164,7 @@
   /* ---------- gestes ---------- */
   /* noter le résultat d'une ligne « À compléter », puis passer à la suivante */
   const noter = (id) => {
-    const it = store.get(id), b = brouillon(it), inp = $("rn-" + id), n = valeur(inp ? inp.value : b.n);
+    const it = store.get(id), b = brouillon(it), inp = $("rn-" + id), n = valeur(inp ? inp.value : b.n, true);
     if (n == null) { if (inp) inp.focus(); return; }
     if (!(n >= 0 && n <= 1e9)) { if (inp) inp.focus(); return KP.toast(IMPOSSIBLE); }
     const rows = [...document.querySelectorAll(".r-todo .r-l")], i = rows.findIndex((x) => x.dataset.id === id), next = (rows[i + 1] || rows[i - 1] || {}).dataset;
@@ -184,7 +185,7 @@
       if (bad) { const x = f.elements[bad[0]]; x.focus(); x.select(); return KP.toast(IMPOSSIBLE); }
       const u = store.setRes(id, Object.fromEntries(Object.entries(r).map(([k, v]) => [k, v == null ? "" : v])), true); if (!u) return KP.toast(IMPOSSIBLE);
       p.close(); const x = store.get(id); KP.toast(x && x.res ? `Noté : ${KP.resTxt(x.res)}` : "Résultats effacés", u); };
-    f.addEventListener("submit", (e) => { e.preventDefault(); done(Object.fromEntries(KP.UNITES.map((u) => [u.k, valeur(f.elements[u.k].value)]))); });
+    f.addEventListener("submit", (e) => { e.preventDefault(); done(Object.fromEntries(KP.UNITES.map((u) => [u.k, valeur(f.elements[u.k].value, true)]))); });
     p.el.addEventListener("click", (e) => { if (e.target.closest('[data-x="vider"]')) done(Object.fromEntries(KP.UNITES.map((u) => [u.k, null]))); });
   };
   /* le budget d'un partenariat, depuis sa fiche */

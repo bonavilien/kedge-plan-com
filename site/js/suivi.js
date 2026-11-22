@@ -58,6 +58,9 @@
   const nom = (k) => { const p = k && KP.person(k); return p ? p.nom.split(/\s+/)[0] : ""; };
   const date = (t) => KP.fmt.moyen(KP.iso(new Date(t)));
   const de = (type) => (T.suivi || []).filter((x) => x.type === type);
+  /* 2.8.2 : la même phrase (majuscules et accents mis à part) n'apparaît qu'une fois, avec le nombre de fois */
+  const groupe = (l) => { const m = new Map(); (l || []).forEach((x) => { const k = KP.norm(String(x.txt || "")).trim(); const g = m.get(k); if (g) g.n++; else m.set(k, { ...x, n: 1 }); }); return [...m.values()]; };
+  const fois = (x) => (x.n > 1 ? `<b>×${x.n}</b> · ` : "");
   const ecrans = () => { const o = {}; de("ecran").forEach((x) => { o[x.txt] = (o[x.txt] || 0) + Math.min(1000, Math.max(1, Math.round(Number(x.detail && x.detail.n)) || 1)); }); return Object.entries(o).sort((a, b) => b[1] - a[1]); };
   const NOMS = { accueil: "Accueil", "plan liste": "Le plan, liste", "plan grille": "Le plan, calendrier", plan: "Le plan", "resultats diffusions": "Résultats", "resultats budget": "Budget", resultats: "Résultats", "reunion ordre": "Réunion, ordre du jour", "reunion bilan": "Réunion, bilan", reunion: "Réunion", reglages: "Réglages" };
   const ligne = (txt, meta) => `<div class="tr su-l"><span class="su-t">${h(txt)}</span><span class="muted su-m">${meta}</span></div>`;
@@ -68,10 +71,10 @@
     const s = sante(), ec = ecrans(), max = Math.max(1, ...ec.map((x) => x[1]));
     return `${T.erreur ? `<p class="su-alerte">${ic("info")}${h(T.erreur)}</p>` : ""}
       <div class="su-sante">${s.map((x) => `<div class="su-tuile${x.n ? " a" : ""}"><b>${x.n}</b><span>${h(x.k)}</span></div>`).join("")}</div>
-      ${bloc("Phrases non comprises", "spark", T.phrases, "La barre a tout compris.", (p) => ligne(p.txt, `${p.raison === "reecrit" ? `<span class="pill">réécrite</span>` : ""}${h(nom(p.qui))} · ${date(p.quand)}`))}
-      ${bloc("Erreurs de l'appli", "alert", de("erreur"), "Aucune erreur. Ça ne durera pas.", (x) => ligne(x.txt, `${h((x.detail && x.detail.ecran) || "")} · ${h(x.version || "")} · ${date(x.quand)}`))}
+      ${bloc("Phrases non comprises", "spark", groupe(T.phrases), "La barre a tout compris.", (p) => ligne(p.txt, `${fois(p)}${p.raison === "reecrit" ? `<span class="pill">réécrite</span>` : ""}${h(nom(p.qui))} · ${date(p.quand)}`))}
+      ${bloc("Erreurs de l'appli", "info", de("erreur"), "Aucune erreur. Ça ne durera pas.", (x) => ligne(x.txt, `${h((x.detail && x.detail.ecran) || "")} · ${h(x.version || "")} · ${date(x.quand)}`))}
       ${bloc("Annulé juste après la barre", "undo", de("annule"), "Personne n'a dû défaire une commande.", (x) => ligne(x.txt, `${x.detail && Number.isFinite(Number(x.detail.sec)) && x.detail.sec !== null ? `${Math.round(Number(x.detail.sec))} s · ` : ""}${h(nom(x.qui))} · ${date(x.quand)}`))}
-      ${bloc("Recherches sans résultat", "search", de("recherche"), "Tout ce qui a été cherché a été trouvé.", (x) => ligne(x.txt, `${x.detail && x.detail.ou === "ctrlk" ? "Ctrl K" : "barre"} · ${date(x.quand)}`))}
+      ${bloc("Recherches sans résultat", "search", groupe(de("recherche")), "Tout ce qui a été cherché a été trouvé.", (x) => ligne(x.txt, `${fois(x)}${x.detail && x.detail.ou === "ctrlk" ? "Ctrl K" : "barre"} · ${date(x.quand)}`))}
       <section class="su-b"><h3>${ic("chart")}Écrans ouverts<span class="su-n">${ec.reduce((a, x) => a + x[1], 0)}</span></h3>
         ${ec.length ? `<div class="su-ec">${ec.map(([k, n]) => `<div class="su-e"><span>${h(NOMS[k] || k)}</span><i style="--w:${Math.round((n / max) * 100)}%"></i><b>${n}</b></div>`).join("")}</div>` : `<p class="muted">Rien encore : les écrans partent par paquets, quelques minutes après.</p>`}</section>`;
   };
@@ -87,9 +90,9 @@
     l.push(`# Suivi de l'outil — ${document.title.replace(/^\(\d+\)\s*/, "").split(" · ").pop()}`, "", `Exporté le ${KP.fmt.moyen(KP.TODAY)} · version ${(KP.VERSION || {}).n || "?"} · ${store.items().length} fiches dans le plan.`, "",
       "> Pour Claude : complète le catalogue de la barre (site/js/commandes-regles.js) avec les phrases non comprises et les annulations, corrige les erreurs, propose des réponses aux recherches vides. Ajoute chaque phrase traitée à test/commandes/phrases.mjs.", "");
     l.push("## Santé du plan", ""); table(["Point", "Nombre", "Exemples"], s.map((x) => [x.k, x.n, x.ex.slice(0, 5).map((i) => i.t).join(" ; ")]));
-    l.push(`## Phrases non comprises (${T.phrases.length})`, ""); table(["Phrase", "Comment", "Qui", "Quand"], T.phrases.map((p) => [p.txt, p.raison === "reecrit" ? "effacée pour réécrire" : "pas comprise", nom(p.qui), date(p.quand)]));
+    l.push(`## Phrases non comprises (${T.phrases.length})`, ""); table(["Phrase", "Fois", "Comment", "Qui (dernière)", "Quand (dernière)"], groupe(T.phrases).map((p) => [p.txt, p.n, p.raison === "reecrit" ? "effacée pour réécrire" : "pas comprise", nom(p.qui), date(p.quand)]));
     l.push(`## Annulé juste après la barre (${de("annule").length})`, ""); table(["Phrase", "Ce que la barre a fait", "Annulé après", "Qui", "Quand"], de("annule").map((x) => [x.txt, (x.detail || {}).k, (x.detail || {}).sec != null ? x.detail.sec + " s" : "", nom(x.qui), date(x.quand)]));
-    l.push(`## Recherches sans résultat (${de("recherche").length})`, ""); table(["Recherche", "Où", "Qui", "Quand"], de("recherche").map((x) => [x.txt, (x.detail || {}).ou === "ctrlk" ? "Ctrl K" : "barre", nom(x.qui), date(x.quand)]));
+    l.push(`## Recherches sans résultat (${de("recherche").length})`, ""); table(["Recherche", "Fois", "Où", "Qui (dernière)", "Quand (dernière)"], groupe(de("recherche")).map((x) => [x.txt, x.n, (x.detail || {}).ou === "ctrlk" ? "Ctrl K" : "barre", nom(x.qui), date(x.quand)]));
     l.push(`## Erreurs de l'appli (${de("erreur").length})`, ""); table(["Message", "Écran", "Où", "Version", "Quand"], de("erreur").map((x) => [x.txt, (x.detail || {}).ecran, (x.detail || {}).base ? "base" : (x.detail || {}).ou, x.version, date(x.quand)]));
     l.push("## Écrans ouverts (toute l'équipe, sans nom)", ""); table(["Écran", "Ouvertures"], ec.map(([k, n]) => [NOMS[k] || k, n]));
     return l.join("\n");

@@ -28,7 +28,7 @@
       <div class="home-cols"><div class="home-main">
 
       ${!inbox.length && !reader ? `<section class="block"><h2>À traiter</h2><div class="vide-todo">${KP.illu ? KP.illu("petit") : ""}<div><b>Rien à traiter.</b><span>Personne n'attend rien de toi.</span></div></div></section>` : ""}
-      ${inbox.length ? `<section class="block"><h2>À traiter${inbox.length > 3 && !KP.ui.allTodo ? `<button type="button" class="link" data-act="all-todo">Voir les ${inbox.length}</button>` : ""}</h2>
+      ${inbox.length ? `<section class="block"><h2>À traiter${inbox.length > 3 ? `<button type="button" class="link" data-act="all-todo">${KP.ui.allTodo ? "Réduire" : `Voir les ${inbox.length}`}</button>` : ""}</h2>
         ${todo.map((r) => { const it = store.get(r.item), late = r.pour && r.pour < T; if (r.de === r.a) return `<div class="todo"><div class="tx"><b>${h(r.txt || r.quoi)}</b><small>${h(it.t)} · <span class="${late ? "late" : ""}">${h(KP.due(r))}</span></small></div><button type="button" class="link soft" data-act="open" data-id="${it.id}">Voir</button><button type="button" class="ib" data-act="memo-fait" data-id="${r.id}" data-tip="C'est fait" aria-label="C'est fait">${KP.ic("check")}</button></div>`;
           return `<div class="todo">${KP.avatar(KP.person(r.de), "todo-av")}<div class="tx"><b>${r.txt ? `${h(KP.dest(r.de))} : ${KP.ecrire ? KP.ecrire.texte(r.txt, it) : h(r.txt)}` : `${h(KP.dest(r.de))} attend ${h(KP.ASK[r.quoi] || "des éléments")}`}</b><small>${h(it.t)} · <span class="${late ? "late" : ""}">${h(KP.due(r))}</span></small></div><button type="button" class="link soft" data-act="open" data-id="${it.id}">Voir</button><button type="button" class="btn primary small" data-act="answer" data-id="${r.id}">Répondre</button></div>`; }).join("")}</section>` : ""}
 
@@ -41,13 +41,13 @@
 
       </div>
       <aside class="home-side" aria-label="Épinglés"><section class="block"><h2>${ic("bookmark")}Épinglés${pins.length ? `<span class="cnt">${pins.length}</span>` : ""}</h2>
-        ${pins.length ? `<div class="pins">${pins.map((it) => `<button type="button" class="pin${it.kind === "tf" ? " tf" : ""}" data-act="open" data-id="${it.id}"><span class="pin-d">${it.flou ? h(KP.dateLong(it)) : h(KP.fmt.moyen(it.date))}</span><span class="pin-t">${h(it.t)}</span>${KP.pill(it)}</button>`).join("")}</div>` : `<p class="pin-empty">${ic("bookmark")}<span>Épingle une fiche pour la garder ici.</span></p>`}
+        ${pins.length ? `<div class="pins">${pins.map((it) => `<button type="button" class="pin${it.kind === "tf" ? " tf" : ""}" data-act="open" data-id="${it.id}"><span class="pin-d">${it.flou ? h(KP.dateLong(it)) : h(KP.fmt.moyen(it.date))}</span><span class="pin-t">${h(it.t)}</span>${KP.pill(it)}</button>`).join("")}</div>` : `<p class="pin-empty">${ic("bookmark")}<span>${store.canCreate() ? "Épingle une fiche pour la garder ici." : "Rien d'épinglé."}</span></p>`}
       </section></aside></div>
     </div>`;
   };
 
   Object.assign(KP.acts, {
-    "all-todo": () => { KP.ui.allTodo = true; KP.render(); },
+    "all-todo": () => { KP.ui.allTodo = !KP.ui.allTodo; KP.render(); },
     "sg-do": (a) => { const s = shown[+a.dataset.i]; if (s) s.actions[+a.dataset.j].run(); },
     "sg-skip": (a) => { const s = shown[+a.dataset.i]; if (s) { KP.skipSuggestion(s); KP.toast("Noté. Je te la ressors dans 3 jours."); } },
   });

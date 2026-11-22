@@ -6,7 +6,8 @@
   const TYPES = [{ v: "tf", nom: "Temps forts" }, { v: "action", nom: "Actions" }, { v: "classement", nom: "Classements" }, { v: "partenariat", nom: "Partenariats payants" }];
   /* ce qui tombe avant la première période ou après la dernière va dans la période du bord : rien ne disparaît */
   const inPeriod = (it, p) => it.variant === "sujet" ? (it.pers ? it.pers.includes(p.k) : it.per === p.k)
-    : (it.date <= p.au || p === KP.PERIODS[KP.PERIODS.length - 1]) && ((it.flou ? it.date : it.fin || it.date) >= p.du || p === KP.PERIODS[0]);
+    : ((it.date <= p.au || p === KP.PERIODS[KP.PERIODS.length - 1]) && ((it.flou ? it.date : it.fin || it.date) >= p.du || p === KP.PERIODS[0]))
+      || (!KP.PERIODS.some((q) => it.date <= q.au && (it.flou ? it.date : it.fin || it.date) >= q.du) && KP.periodOf(it.date) === p); /* 2.8.2 : tombée entre deux périodes */
   /* un filtre inconnu dans l'adresse (vieux lien, service supprimé) est ignoré plutôt que de casser l'écran */
   const clean = (r) => ({ ...r, svc: r.svc && KP.service(r.svc) ? r.svc : "", msg: r.msg && KP.message(r.msg) ? r.msg : "", type: TYPES.some((t) => t.v === r.type) ? r.type : "" });
   const match = (it, r) =>
@@ -65,7 +66,7 @@
     return out.sort((x, y) => x.ord.localeCompare(y.ord));
   }
   /* cette semaine : un trait jaune « aujourd'hui » entre ce qui est passé et ce qui vient */
-  const nowRows = (its) => { const i = its.findIndex((it) => (it.fin || it.date) >= KP.TODAY), at = i < 0 ? its.length : i, line = `<div class="today-line" aria-hidden="true"><span>Aujourd'hui</span></div>`;
+  const nowRows = (its) => { const i = its.findIndex((it) => it.date >= KP.TODAY), /* 2.8.2 : un temps fort commencé et en cours reste au-dessus du trait */ at = i < 0 ? its.length : i, line = `<div class="today-line" aria-hidden="true"><span>Aujourd'hui</span></div>`;
     /* tout est passé : le trait tombe sous la dernière ligne, avec la place pour son badge */
     return its.slice(0, at).map((it) => KP.row(it)).join("") + (at > 0 ? (at === its.length ? line.replace('class="today-line"', 'class="today-line fin"') : line) : "") + its.slice(at).map((it) => KP.row(it)).join(""); };
   /* une semaine dont toutes les actions sont diffusées prend une coche ; elle s'anime si elle vient de se compléter */

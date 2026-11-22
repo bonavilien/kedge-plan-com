@@ -42,9 +42,14 @@ await shot(p, "reglages-periodes");
 await p.fill("#pe-installer-nom", "Rentrée"); await p.locator("#pe-installer-nom").dispatchEvent("change"); await settle(p);
 ok((await fdb(p, "periods")).find((x) => x.n === 1).nom === "Rentrée", "renommer une période : enregistré dans la base");
 ok(await p.evaluate(() => KP.PERIODS[0].k) === "installer", "renommer garde l'adresse de la période pendant la session");
-await p.fill("#pe-considerer-du", "2026-10-15"); await p.waitForTimeout(150);
-ok((await p.locator("#toasts").innerText()).includes("Chevauche"), "dates qui chevauchent : refusées avec le nom de la période");
-ok((await fdb(p, "periods")).find((x) => x.n === 2).du === "2026-11-01", "rien n'est parti vers la base");
+/* 2.8.2 : les dates se choisissent au calendrier ; changer le début d'une période fait suivre la fin de la précédente (jamais de trou) */
+const au0 = await p.evaluate(() => KP.PERIODS[0].au);
+await p.evaluate(() => { const i = document.getElementById("pe-considerer-du"); i.value = KP.addDays(KP.PERIODS[1].du, -3); i.dispatchEvent(new Event("change", { bubbles: true })); }); await p.waitForTimeout(150);
+ok((await p.locator("#toasts").innerText()).includes("suit") && await p.evaluate(() => KP.addDays(KP.PERIODS[0].au, 1) === KP.PERIODS[1].du) && await p.evaluate((a) => KP.PERIODS[0].au !== a, au0), "changer le début : la période précédente suit, sans trou");
+await p.evaluate(() => { const i = document.getElementById("pe-considerer-du"); i.value = KP.PERIODS[0].du; i.dispatchEvent(new Event("change", { bubbles: true })); }); await p.waitForTimeout(150);
+ok((await p.locator("#toasts").innerText()).includes("avalerait"), "une date qui avalerait la période voisine : refusée avec son nom");
+await settle(p); { const db = await fdb(p, "periods"), P = await p.evaluate(() => KP.PERIODS.map((x) => [x.du, x.au]));
+  ok(db.find((x) => x.n === 2).du === P[1][0] && db.find((x) => x.n === 1).au === P[0][1], "la base reçoit les deux périodes, le refus n'envoie rien"); }
 await p.click('[data-act="set-add"][data-k="periods"]'); await settle(p);
 const added = (await fdb(p, "periods")).find((x) => x.n === 6);
 ok(!!added && added.du === "2027-07-16" && added.au === "2027-08-31", "ajouter une période : la suite de la dernière, enregistrée");

@@ -346,7 +346,10 @@
   function watch() {
     if (watching) return; watching = true;
     let t = 0;
-    const kick = () => { clearTimeout(t); t = setTimeout(() => (pending > 0 ? kick() : reload()), 600); };
+    /* 2.8.2 : pendant qu'on écrit dans un champ (fiche, ligne Messages, fenêtre), on attend qu'il soit quitté : le curseur ne saute plus */
+    let frappe = 0; document.addEventListener("input", () => (frappe = Date.now()), true);
+    const ecrit = () => { const a = document.activeElement; return Date.now() - frappe < 8000 && !!a && a.matches("textarea, input[type=text], input:not([type])") && !a.closest(".cb-zone, .cmdk"); };
+    const kick = () => { clearTimeout(t); t = setTimeout(() => (pending > 0 || ecrit() ? kick() : reload()), 600); };
     later = kick;
     try { sb.auth.onAuthStateChange((ev) => { if (ev === "SIGNED_OUT") loginScreen("Ta session a expiré, reconnecte-toi."); }); } catch (e) {}
     try { sb.channel("kplan").on("postgres_changes", { event: "*", schema: "public" }, kick).subscribe(); } catch (e) {}
@@ -382,7 +385,8 @@
     if (fond) fetch(fond.replace(/symbole\.png$/, "fond.svg")).then((r) => (r.ok ? r.text() : "")).then((t) => { const d = el.querySelector(".login-fond"); if (d && t.startsWith("<svg")) d.innerHTML = t; }).catch(() => {});
     const f = el.querySelector("form"), err = f.querySelector(".login-err"), go = f.querySelector("[type=submit]");
     const champMail = f.email.closest(".lc-champ");
-    const autre = () => { const c = f.querySelector(".lc-moi"); if (c) c.remove(); champMail.hidden = false; };
+    const autre = () => { const c = f.querySelector(".lc-moi"); if (c) c.remove(); champMail.hidden = false;
+      const t = f.querySelector(".lc-tete"); if (t) t.innerHTML = `<h1>${h(app)}</h1>${st ? `<p class="lc-app"><span>${h(st)}</span></p>` : ""}`; /* 2.8.2 : plus de « Bonjour Stéphane » pour une autre adresse */ };
     f.querySelector("[data-autre]")?.addEventListener("click", () => { autre(); f.email.value = ""; f.email.focus(); });
     f.querySelector("[data-visiteur]")?.addEventListener("click", () => { autre(); f.email.value = C.visiteur; f.password.focus(); });
     f.querySelector("[data-oeil]").addEventListener("click", (e) => {
