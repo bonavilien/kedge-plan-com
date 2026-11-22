@@ -3308,6 +3308,7 @@ update public.suivi set quand = now() where quand > now();
 update public.phrases_barre set quand = now() where quand > now();
 
 create table if not exists kplan_private.suivi_compteur (qui uuid not null, heure timestamptz not null, n int not null default 0, primary key (qui, heure));
+alter table kplan_private.suivi_compteur enable row level security; -- personne ne le lit : seule la fonction limite_suivi y écrit
 
 create or replace function public.limite_phrases() returns trigger
 language plpgsql security definer set search_path = public as $$
