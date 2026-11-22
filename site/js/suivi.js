@@ -58,7 +58,7 @@
   const nom = (k) => { const p = k && KP.person(k); return p ? p.nom.split(/\s+/)[0] : ""; };
   const date = (t) => KP.fmt.moyen(KP.iso(new Date(t)));
   const de = (type) => (T.suivi || []).filter((x) => x.type === type);
-  const ecrans = () => { const o = {}; de("ecran").forEach((x) => { o[x.txt] = (o[x.txt] || 0) + ((x.detail && x.detail.n) || 1); }); return Object.entries(o).sort((a, b) => b[1] - a[1]); };
+  const ecrans = () => { const o = {}; de("ecran").forEach((x) => { o[x.txt] = (o[x.txt] || 0) + Math.min(1000, Math.max(1, Math.round(Number(x.detail && x.detail.n)) || 1)); }); return Object.entries(o).sort((a, b) => b[1] - a[1]); };
   const NOMS = { accueil: "Accueil", "plan liste": "Le plan, liste", "plan grille": "Le plan, calendrier", plan: "Le plan", "resultats diffusions": "Résultats", "resultats budget": "Budget", resultats: "Résultats", "reunion ordre": "Réunion, ordre du jour", "reunion bilan": "Réunion, bilan", reunion: "Réunion", reglages: "Réglages" };
   const ligne = (txt, meta) => `<div class="tr su-l"><span class="su-t">${h(txt)}</span><span class="muted su-m">${meta}</span></div>`;
   const bloc = (titre, icone, l, vide, f) => `<section class="su-b"><h3>${ic(icone)}${titre}<span class="su-n">${l.length}</span></h3>
@@ -70,7 +70,7 @@
       <div class="su-sante">${s.map((x) => `<div class="su-tuile${x.n ? " a" : ""}"><b>${x.n}</b><span>${h(x.k)}</span></div>`).join("")}</div>
       ${bloc("Phrases non comprises", "spark", T.phrases, "La barre a tout compris.", (p) => ligne(p.txt, `${p.raison === "reecrit" ? `<span class="pill">réécrite</span>` : ""}${h(nom(p.qui))} · ${date(p.quand)}`))}
       ${bloc("Erreurs de l'appli", "alert", de("erreur"), "Aucune erreur. Ça ne durera pas.", (x) => ligne(x.txt, `${h((x.detail && x.detail.ecran) || "")} · ${h(x.version || "")} · ${date(x.quand)}`))}
-      ${bloc("Annulé juste après la barre", "undo", de("annule"), "Personne n'a dû défaire une commande.", (x) => ligne(x.txt, `${x.detail && x.detail.sec != null ? `${x.detail.sec} s · ` : ""}${h(nom(x.qui))} · ${date(x.quand)}`))}
+      ${bloc("Annulé juste après la barre", "undo", de("annule"), "Personne n'a dû défaire une commande.", (x) => ligne(x.txt, `${x.detail && Number.isFinite(Number(x.detail.sec)) && x.detail.sec !== null ? `${Math.round(Number(x.detail.sec))} s · ` : ""}${h(nom(x.qui))} · ${date(x.quand)}`))}
       ${bloc("Recherches sans résultat", "search", de("recherche"), "Tout ce qui a été cherché a été trouvé.", (x) => ligne(x.txt, `${x.detail && x.detail.ou === "ctrlk" ? "Ctrl K" : "barre"} · ${date(x.quand)}`))}
       <section class="su-b"><h3>${ic("chart")}Écrans ouverts<span class="su-n">${ec.reduce((a, x) => a + x[1], 0)}</span></h3>
         ${ec.length ? `<div class="su-ec">${ec.map(([k, n]) => `<div class="su-e"><span>${h(NOMS[k] || k)}</span><i style="--w:${Math.round((n / max) * 100)}%"></i><b>${n}</b></div>`).join("")}</div>` : `<p class="muted">Rien encore : les écrans partent par paquets, quelques minutes après.</p>`}</section>`;

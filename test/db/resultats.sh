@@ -11,4 +11,6 @@ $D -f test/db/supabase-stub.sql 2>/dev/null
 $D -f test/db/planif-stub.sql
 grep -v "^create extension" supabase/installation.sql | $D -f - > /dev/null
 $D -f test/db/v2-corrections.sql 2>&1 | grep -v "^psql.*NOTICE" | tail -1
-$D -f test/db/resultats.sql 2>&1 | grep -E "ÉCHEC|ATTENDU|ERROR|résultats et budget : bon"
+out=$($D -f test/db/resultats.sql 2>&1 || true)
+echo "$out" | grep -E "ÉCHEC|ATTENDU|ERROR|résultats et budget : bon"
+! echo "$out" | grep -qE "ÉCHEC|ATTENDU|ERROR"
