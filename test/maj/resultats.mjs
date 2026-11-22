@@ -180,7 +180,7 @@ const snap = (p, n, full) => shots && p.screenshot({ path: `${shots}/${n}.png`, 
 for (const hash of ["#/resultats/diffusions", "#/resultats/budget"]) {
   const [ctx, p] = await ouvrir({ brancher: false }, { hash, device: devices["iPhone 13"] });
   ok(await p.evaluate(() => document.documentElement.scrollWidth <= innerWidth), `téléphone ${hash} : rien ne dépasse sur le côté`);
-  ok((await p.$$eval("#tabbar a", (e) => e.map((x) => x.textContent))).join() === "Accueil,Le plan,Résultats,Réunion", "téléphone : Résultats dans la barre du bas");
+  ok((await p.$$eval("#tabbar a", (e) => e.map((x) => x.textContent.replace(/\d+/g, "")))).join() === "Accueil,Le plan,Résultats,Réunion", "téléphone : Résultats dans la barre du bas");
   ok(await p.evaluate(() => { const r = [...document.querySelectorAll("#tabbar > *")].map((x) => x.getBoundingClientRect()), pl = document.querySelector("#tabbar .plus").getBoundingClientRect();
     return r.every((x) => x.left >= -1 && x.right <= innerWidth + 1) && Math.abs(pl.left + pl.width / 2 - innerWidth / 2) < 4; }), "téléphone : la barre du bas tient, le + au milieu");
   await snap(p, "4-telephone-" + hash.split("/").pop());

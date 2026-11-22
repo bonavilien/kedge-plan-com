@@ -141,7 +141,7 @@
     return `<section class="set"><h2>Périodes<button type="button" class="btn quiet small" data-act="set-add" data-k="periods">${ic("plus")}Ajouter une période</button></h2>
       <div class="tbl t-per"><div class="th"><span>Nom</span><span>Du</span><span>Au</span><span></span></div>
       ${KP.PERIODS.map((p) => `<div class="tr"><input class="input" id="pe-${p.k}-nom" data-set="periods:${p.k}:nom" value="${h(p.nom)}" aria-label="Nom" maxlength="40" autocomplete="off">
-        <input class="input" type="date" id="pe-${p.k}-du" data-set="periods:${p.k}:du" value="${p.du}" aria-label="Premier jour"><input class="input" type="date" id="pe-${p.k}-au" data-set="periods:${p.k}:au" value="${p.au}" aria-label="Dernier jour">
+        ${["du", "au"].map((f) => `<span class="pe-d"><input type="hidden" id="pe-${p.k}-${f}" data-set="periods:${p.k}:${f}" value="${p[f]}"><button type="button" class="input pe-b" data-act="pe-pick" data-for="pe-${p.k}-${f}" aria-label="${f === "du" ? "Premier jour" : "Dernier jour"}">${ic("calendar")}<span>${h(KP.fmt.moyen(p[f]))} ${p[f].slice(0, 4)}</span></button></span>`).join("")}
         ${one ? "<span></span>" : KP.ib("trash", "Retirer", "set-rm", `data-k="periods" data-id="${p.k}"`)}</div>`).join("")}</div>
       <p class="muted">Le plan se lit par période. Elles se suivent sans se chevaucher.</p></section>`;
   }
@@ -228,6 +228,8 @@
     "set-tab": (a) => KP.go({ set: a.dataset.k }),
     "set-couleur": (a) => { store.saveProjet({ couleur: a.dataset.k }); },
     "set-theme": (a) => KP.changerTheme(a.dataset.k, a),
+    /* 2.8.2 : les dates des périodes avec le même calendrier que partout ailleurs */
+    "pe-pick": (a) => { const i = document.getElementById(a.dataset.for); if (i) KP.datepick(a, i.value, (v) => { if (v && v !== i.value) { i.value = v; i.dispatchEvent(new Event("change", { bubbles: true })); } }); },
     "photo-choisir": () => { const i = document.getElementById("me-photo"); if (i) { i.value = ""; i.click(); } },
     "photo-retirer": () => { store.savePerson(KP.me().k, { photo: "" }); KP.toast("Photo retirée"); },
     "set-notif": (a) => { const on = { ...(store.prefs().notif || {}) }; on[a.dataset.k] = on[a.dataset.k] === false; store.setPref("notif", on); },

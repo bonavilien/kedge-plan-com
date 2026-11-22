@@ -72,7 +72,7 @@
     return `${T.erreur ? `<p class="su-alerte">${ic("info")}${h(T.erreur)}</p>` : ""}
       <div class="su-sante">${s.map((x) => `<div class="su-tuile${x.n ? " a" : ""}"><b>${x.n}</b><span>${h(x.k)}</span></div>`).join("")}</div>
       ${bloc("Phrases non comprises", "spark", groupe(T.phrases), "La barre a tout compris.", (p) => ligne(p.txt, `${fois(p)}${p.raison === "reecrit" ? `<span class="pill">réécrite</span>` : ""}${h(nom(p.qui))} · ${date(p.quand)}`))}
-      ${bloc("Erreurs de l'appli", "alert", de("erreur"), "Aucune erreur. Ça ne durera pas.", (x) => ligne(x.txt, `${h((x.detail && x.detail.ecran) || "")} · ${h(x.version || "")} · ${date(x.quand)}`))}
+      ${bloc("Erreurs de l'appli", "info", de("erreur"), "Aucune erreur. Ça ne durera pas.", (x) => ligne(x.txt, `${h((x.detail && x.detail.ecran) || "")} · ${h(x.version || "")} · ${date(x.quand)}`))}
       ${bloc("Annulé juste après la barre", "undo", de("annule"), "Personne n'a dû défaire une commande.", (x) => ligne(x.txt, `${x.detail && Number.isFinite(Number(x.detail.sec)) && x.detail.sec !== null ? `${Math.round(Number(x.detail.sec))} s · ` : ""}${h(nom(x.qui))} · ${date(x.quand)}`))}
       ${bloc("Recherches sans résultat", "search", groupe(de("recherche")), "Tout ce qui a été cherché a été trouvé.", (x) => ligne(x.txt, `${fois(x)}${x.detail && x.detail.ou === "ctrlk" ? "Ctrl K" : "barre"} · ${date(x.quand)}`))}
       <section class="su-b"><h3>${ic("chart")}Écrans ouverts<span class="su-n">${ec.reduce((a, x) => a + x[1], 0)}</span></h3>

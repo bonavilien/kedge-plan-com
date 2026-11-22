@@ -2,6 +2,18 @@
 
 Généré depuis `site/js/version.js` par `node scripts/version.mjs`. Ne pas modifier à la main.
 
+## 2.8.2 · 2026-11-22
+
+- Écrire dans une fiche pendant qu'un collègue modifie le plan : le curseur ne saute plus
+- Les périodes se suivent toujours : changer la fin de l'une fait suivre le début de la suivante, aucune action ne tombe entre deux
+- Les dates des périodes se choisissent avec le même calendrier que partout
+- Réglages > Équipe : des droits « Service » demandent un service ; noms et lieux limités à leur longueur
+- La barre propose des exemples qui marchent, prévient d'une date passée, dit quand des résultats passent l'action en Diffusé, et ne propose au visiteur que de chercher
+- Le Suivi regroupe les phrases identiques avec leur nombre
+- Au téléphone : le point de la cloche, le nombre à traiter sur Accueil, l'onglet des Réglages toujours visible, le toast au-dessus des onglets
+- « Voir les N » se replie, une réponse vide devient « C'est ok », « C'est fait » sur un rappel s'annule
+- Tes droits d'admin sont protégés (script 0037)
+
 ## 2.8.1 · 2026-11-22
 
 - Le calendrier pour changer la date d'un rappel (et celui de « Nouveau ») s'affiche entier sur ordinateur

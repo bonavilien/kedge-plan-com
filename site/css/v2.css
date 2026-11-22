@@ -1574,3 +1574,23 @@ dialog.dlg.cb-dlg { width: min(720px, calc(100vw - 32px)); padding: 20px 22px 22
 /* bilan de la réunion en sombre : la part « prévue » se distingue du vide */
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .stack .s-p { background: #74767C; } }
 :root[data-theme="dark"] .stack .s-p { background: #74767C; }
+/* titres en phrase, pas en MAJUSCULES espacées (règle DESIGN.md) : Ctrl K, carte de la barre, sections du Suivi */
+.cmdk h4, .cb-k, .su-b h3 { text-transform: none; letter-spacing: 0; }
+/* le repère « Entrée » du bouton jaune lisible */
+.cb-go kbd { opacity: .85; }
+.pe-d { display: contents; }
+.pe-b { display: inline-flex; align-items: center; gap: 8px; text-align: left; cursor: pointer; white-space: nowrap; }
+.pe-b svg { width: 16px; height: 16px; color: var(--text2); flex: none; }
+/* téléphone : le toast au-dessus de la barre d'onglets, en tenant compte de la barre d'accueil de l'iPhone ; « Annuler » facile à toucher */
+@media (max-width: 767px) {
+  .toasts { bottom: calc(76px + env(safe-area-inset-bottom, 0px)); }
+  .toast button { min-height: 36px; padding: 0 10px; margin: -6px -8px -6px 0; }
+}
+/* téléphone en paysage : l'encoche ne cache ni le menu ni la croix de la fiche */
+@media (orientation: landscape) and (max-height: 500px) {
+  .side { padding-left: max(12px, env(safe-area-inset-left, 0px)); }
+  .fiche { padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+  .main { padding-right: env(safe-area-inset-right, 0px); }
+}
+/* tablette (768 à 900 px) : le menu de gauche plus étroit laisse de la place aux titres */
+@media (min-width: 768px) and (max-width: 900px) { :root { --side: 192px; } .side-foot kbd { display: none; } }

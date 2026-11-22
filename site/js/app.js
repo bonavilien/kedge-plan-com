@@ -83,7 +83,7 @@
     const frow = act && act.classList && act.classList.contains("open") && act.closest(".row") ? act.dataset.id : "";
     const f0 = $("fiche"), fWas = f0.hidden ? "" : f0.dataset.id, inFiche = act && f0.contains(act);
     /* 2.8.2 : un champ de la fiche en cours d'écriture garde son texte et son curseur quand l'écran se redessine */
-    const fChamp = inFiche && act.matches && act.matches("input[data-f], textarea[data-f], textarea, input[type=text]") ? { f: act.dataset.f, nom: act.name, cls: act.className, v: act.value } : null;
+    const fChamp = inFiche && act.matches && act.matches("input[data-f], textarea[data-f]") ? { f: act.dataset.f, nom: act.name, cls: act.className, v: act.value } : null;
     renderSide();
     /* transitions douces : un nouvel écran, une autre période ou une autre vue entre en fondu ; la période glisse dans son sens */
     const rt = KP.route, cle = [rt.screen, rt.per, rt.vue, rt.tab, rt.set].join("|"), entre = cle !== lastCle;
