@@ -1571,3 +1571,6 @@ dialog.dlg.cb-dlg { width: min(720px, calc(100vw - 32px)); padding: 20px 22px 22
 /* relais d'un temps fort : le service reste visible même avec un long titre */
 .mini:has(> .mini-s) { grid-template-columns: 62px minmax(0, 1fr) auto auto; }
 .mini .mini-s { font-size: 12.5px; font-weight: 600; white-space: nowrap; }
+/* bilan de la réunion en sombre : la part « prévue » se distingue du vide */
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .stack .s-p { background: #74767C; } }
+:root[data-theme="dark"] .stack .s-p { background: #74767C; }

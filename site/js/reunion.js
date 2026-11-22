@@ -49,7 +49,7 @@
       return `<a class="b-row" href="${KP.href({ screen: "plan", per: p.k, msg: m.k, svc: "", type: "", vue: "liste" })}" style="text-decoration:none"><b>${h(m.nom)}</b><div class="stack" role="img" aria-label="${a.length} actions">${d ? `<i class="s-d" style="${w(d)}"></i>` : ""}${pv ? `<i class="s-p" style="${w(pv)}"></i>` : ""}${c ? `<i class="s-c" style="${w(c)}"></i>` : ""}</div><span class="n">${txt}</span></a>`;
     }).join("");
     const late = acts.filter((i) => KP.endOf(i) < T && i.st !== "diffuse").sort((a, b) => a.date.localeCompare(b.date));
-    const cls = store.items().filter((i) => i.variant === "classement" && i.date >= p.du && i.date <= p.au);
+    const cls = store.items().filter((i) => i.variant === "classement" && !i.annule && i.date >= p.du && i.date <= p.au);
     return `<div class="bilan">${rows}</div>
       <div class="ag">
       ${late.length ? `<h2>Passé, pas encore diffusé<small>${late.length}</small></h2><div class="rows">${late.map((it) => KP.row(it, { end: "<span></span>" })).join("")}</div>` : ""}

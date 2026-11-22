@@ -60,11 +60,13 @@
       await KP.remote.maj("base"); M.step = 1; KP.render();
       const c = await KP.remote.maj("code"); M.step = 2; KP.render();
       /* GitHub Pages publie en une à trois minutes : on attend que le site serve la nouvelle version */
-      const want = cible || c.version, t0 = Date.now();
-      while (want && want !== KP.VERSION.n && Date.now() - t0 < 10 * 60 * 1000) {
-        try { const r = await fetch("version.json?t=" + Date.now(), { cache: "no-store" }); if (r.ok && (await r.json()).version === want) break; } catch (e) {}
+      const want = cible || c.version, t0 = Date.now(); let servie = !want || want === KP.VERSION.n;
+      while (!servie && Date.now() - t0 < 10 * 60 * 1000) {
+        try { const r = await fetch("version.json?t=" + Date.now(), { cache: "no-store" }); if (r.ok && (await r.json()).version === want) { servie = true; break; } } catch (e) {}
         await new Promise((ok) => setTimeout(ok, 5000));
       }
+      /* 2.8.2 : au bout de 10 minutes sans la nouvelle version, on ne crie pas victoire */
+      if (!servie) throw new Error("GitHub n'a pas encore publié la nouvelle version au bout de 10 minutes. Réessaie dans un moment ; rien n'est perdu.");
       M.step = 3; M.st = "fini"; KP.render();
       setTimeout(() => KP.acts.reload(), 1500);
     } catch (e) { M.st = "erreur"; M.msg = e.message; KP.render(); }
@@ -89,7 +91,7 @@
       origine: () => `<div class="maj-v"><span class="ok-dot">${ic("check")}</span><span class="vn">${lab()}</span><b class="maj-tag">Version d'origine</b></div>`,
     }[M.st] || (() => "");
     return `<section class="set maj maj-${M.st}" aria-live="polite"><h2>Mise à jour</h2>${body()}
-      ${e.fonctionAmont > e.fonction && M.st !== "absente" ? `<p class="muted maj-hint">${ic("info")}Le bouton lui-même a une nouvelle version : <a href="${GUIDE}#6-le-bouton-mettre-à-jour" target="_blank" rel="noopener">recolle-le</a>.</p>` : ""}</section>`;
+      ${e.fonctionAmont > e.fonction && M.st !== "absente" ? `<p class="muted maj-hint">${ic("info")}<span>Le bouton lui-même a une nouvelle version : <a href="${GUIDE}#6-le-bouton-mettre-à-jour" target="_blank" rel="noopener">recolle-le</a>.</span></p>` : ""}</section>`;
   }
 
   function apropos() {
@@ -196,10 +198,10 @@
   });
   /* ma photo : un carré de 160 px pris au centre (un peu vers le haut, là où est le visage), en JPEG léger */
   const photoDe = (file) => new Promise((ok, ko) => {
-    if (!file || !/^image\//.test(file.type)) return ko(new Error("type"));
+    if (!file || !/^image\/(jpeg|png|webp)$/.test(file.type)) return ko(new Error("type")); /* 2.8.2 : pas de SVG */
     const url = URL.createObjectURL(file), img = new Image();
     img.onload = () => { const S = 160, m = Math.min(img.naturalWidth, img.naturalHeight), c = document.createElement("canvas"); c.width = c.height = S;
-      c.getContext("2d").drawImage(img, (img.naturalWidth - m) / 2, (img.naturalHeight - m) * 0.3, m, m, 0, 0, S, S); URL.revokeObjectURL(url); ok(c.toDataURL("image/jpeg", 0.85)); };
+      const g = c.getContext("2d"); g.fillStyle = "#fff"; g.fillRect(0, 0, S, S); /* un PNG transparent sur fond blanc, pas noir */ g.drawImage(img, (img.naturalWidth - m) / 2, (img.naturalHeight - m) * 0.3, m, m, 0, 0, S, S); URL.revokeObjectURL(url); ok(c.toDataURL("image/jpeg", 0.85)); };
     img.onerror = () => { URL.revokeObjectURL(url); ko(new Error("lecture")); };
     img.src = url;
   });
@@ -209,9 +211,9 @@
   };
   document.addEventListener("change", (e) => { if (e.target.id === "me-photo" && e.target.files[0]) garderPhoto(e.target.files[0]); });
   /* on peut aussi glisser la photo sur le rond */
-  document.addEventListener("dragover", (e) => { const r = e.target.closest && e.target.closest(".mp-rond"); if (!r) return; e.preventDefault(); r.classList.add("survol"); });
-  document.addEventListener("dragleave", (e) => { const r = e.target.closest && e.target.closest(".mp-rond"); if (r) r.classList.remove("survol"); });
-  document.addEventListener("drop", (e) => { const r = e.target.closest && e.target.closest(".mp-rond"); if (!r) return; e.preventDefault(); r.classList.remove("survol"); if (e.dataTransfer.files[0]) garderPhoto(e.dataTransfer.files[0]); });
+  document.addEventListener("dragover", (e) => { if (e.dataTransfer && [...(e.dataTransfer.types || [])].includes("Files")) e.preventDefault(); /* 2.8.2 : une image lâchée à côté n'ouvre pas l'image à la place de l'appli */ const r = e.target.closest && e.target.closest(".mp-rond"); if (!r) return; r.classList.add("survol"); });
+  document.addEventListener("dragleave", (e) => { const r = e.target.closest && e.target.closest(".mp-rond"); if (r && !r.contains(e.relatedTarget)) r.classList.remove("survol"); });
+  document.addEventListener("drop", (e) => { if (e.dataTransfer && [...(e.dataTransfer.types || [])].includes("Files")) e.preventDefault(); const r = e.target.closest && e.target.closest(".mp-rond"); if (!r) return; r.classList.remove("survol"); if (e.dataTransfer.files[0]) garderPhoto(e.dataTransfer.files[0]); });
 
   document.addEventListener("submit", (e) => {
     const k = e.target.dataset && e.target.dataset.add; if (!k) return; e.preventDefault();
@@ -237,11 +239,22 @@
     },
     "set-rm": (a) => {
       const k = a.dataset.k, id = a.dataset.id;
-      if (k === "people") { if (store.remote()) return KP.toast("Un compte se retire dans Supabase. Ici, passe la personne en lecture seule."); if (store.personUsed(id)) return KP.toast("Cette personne a déjà agi dans le plan. Passe-la en lecture seule."); return KP.toast("Personne retirée", store.removePerson(id)); }
+      if (k === "people") { if (store.remote()) return KP.toast("Un compte se retire dans Supabase. Ici, passe la personne en lecture seule."); if (id === KP.me().k) return KP.toast("Tu ne peux pas te retirer toi-même."); if (store.personUsed(id)) return KP.toast("Cette personne a déjà agi dans le plan. Passe-la en lecture seule."); return KP.toast("Personne retirée", store.removePerson(id)); }
       if (k === "messages") { const n = store.messageUsed(id); if (n) return KP.toast(`${n} fiche${n > 1 ? "s citent" : " cite"} ce message. Retire-le d'abord de ${n > 1 ? "ces fiches" : "cette fiche"}.`); return KP.toast("Message retiré", store.removeMessage(id)); }
       if (k === "periods") { const n = store.periodUsed(id); if (n) return KP.toast(`${n} sujet${n > 1 ? "s couvrent" : " couvre"} cette période. Change-les d'abord.`); return KP.toast("Période retirée", store.removePeriod(id)); }
       if (k === "services") { const n = store.serviceUsed(id); if (n) return KP.toast(`Ce service est utilisé ${n} fois (actions, personnes). Vide-le d'abord.`); return KP.toast("Service retiré", store.removeService(id)); }
+      /* 2.8.2 : un média encore utilisé par un partenariat ne se retire pas (la base refuserait) */
+      if (k === "partners") { const n = store.items().filter((i) => i.partner === id).length; if (n) return KP.toast(`${n} partenariat${n > 1 ? "s utilisent" : " utilise"} ce média. Change-le d'abord.`); }
       KP.toast("Retiré", store.listRemove(k, id));
     },
   });
+})();
+
+/* 2.8.2 : au téléphone, l'onglet ouvert des Réglages reste visible dans sa rangée (Suivi, Version) */
+(() => {
+  const avant = KP.apresRendu;
+  KP.apresRendu = (main, entre) => { if (avant) avant(main, entre);
+    if (KP.route.screen !== "reglages" || !KP.phone()) return;
+    const g = main.querySelector('.seg[aria-label="Réglages"]'), on = g && g.querySelector(".on"); if (!on) return;
+    g.scrollLeft += on.getBoundingClientRect().left - g.getBoundingClientRect().left - (g.clientWidth - on.offsetWidth) / 2; };
 })();
