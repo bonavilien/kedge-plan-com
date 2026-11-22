@@ -141,7 +141,7 @@
 
       case "service": { const k = s.service.zones[0].svc; vm.titre = "Changer de service";
         return surUne(cible(s.quoi.txt, (it) => vivantes(it) && it.kind === "action" && it.variant !== "partenariat"), (it) => ({ corps: `<div class="cb-l">${mini(it)}</div><p class="cb-fleche"><s>${h(svcCourt(it.svc))}</s>${ic("arrow")}<b>${h(svcCourt(k))}</b></p>`,
-          bouton: "Confier", refus: it.svc === k ? `C'est déjà ${svcCourt(k)}.` : undefined, faire: () => ({ undo: store.update(it.id, { svc: k }, `a confié l'action à ${(KP.service(k) || {}).nom}`), toast: `Confiée à ${svcCourt(k)}` }) })); }
+          bouton: "Confier", refus: u.role !== "pilote" ? "Seuls les chefs de projet changent le service d'une action." : it.svc === k ? `C'est déjà ${svcCourt(k)}.` : undefined, faire: () => ({ undo: store.update(it.id, { svc: k }, `a confié l'action à ${(KP.service(k) || {}).nom}`), toast: `Confiée à ${svcCourt(k)}` }) })); }
 
       case "lier": { const t = cible(s.texte.txt, (it) => it.kind === "tf" && !it.annule); vm.titre = "Rattacher à un temps fort";
         if (!t.it && !(t.cands && t.cands.length)) { vm.introuvable = nettoie(s.texte.txt); vm.quoiManque = "temps fort"; return vm; }
@@ -169,7 +169,7 @@
         const el = (KP.ELEMENTS.find((e) => new RegExp(KP.norm(e).slice(0, 6)).test(KP.norm(brut))) || (/\b(photo|logo|image)/i.test(brut) ? "Visuels" : /\b(rush|vid)/i.test(brut) ? "Rushs" : /\b(brief|contexte)/i.test(brut) ? "Contexte" : "Autre"));
         const quoiTxt = majuscule((meilleur ? brut.slice(0, meilleur.c).replace(/\s(pour|du|de la|de l'|des|de|sur|concernant|au sujet de|à propos de|dans)\s*$/i, "").trim() : brut).replace(/[,\s]*\bpour (info|information)\b[,\s]*/i, " ").trim());
         const rappel = b.k === "rappel" || qui === u.k;
-        vm.titre = rappel ? "Rappel pour moi" : `Demander à ${p ? p.nom : ""}`;
+        vm.titre = rappel ? "Rappel pour moi" : `Demander à ${p ? p.nom : ""}`; if (rappel) vm.prive = true;
         /* sans date : une demande attend une réponse pour la veille de l'action (au plus tôt demain) ; « pour info » seulement si on le dit */
         const info = /\bpour (info|information)\b|\bfyi\b/i.test(src), demain = KP.addDays(KP.TODAY, 1);
         const echeance = (it) => z ? z.iso : rappel || info ? "" : (KP.addDays(it.date, -1) > demain ? KP.addDays(it.date, -1) : demain);
@@ -297,7 +297,7 @@
   function vide() {
     return `<div class="cb-carte cb-ex"><p class="cb-k">Essaie</p><div class="cb-exs">${exemples().map((e) => `<button type="button" class="cb-e" data-act="cb-ex" data-t="${h(e.t)}">${ic(e.i)}<span>${h(e.t)}</span></button>`).join("")}</div></div>`;
   }
-  const btn = (vm, i, label, sel = S.cur === i) => `<button type="button" class="btn ${vm.danger ? "danger-bg" : "primary"} small cb-go${sel ? " cur" : ""}" data-act="cb-go" data-i="${i}">${h(label)}${sel ? `<kbd>Entrée</kbd>` : ""}</button>`;
+  const btn = (vm, i, label, sel = S.cur === i) => `<button type="button" class="btn ${vm.danger ? "danger-bg" : "primary"} small cb-go${sel ? " cur" : ""}" data-act="cb-go" data-i="${i}">${h(label)}${sel && !vm.danger ? `<kbd>Entrée</kbd>` : ""}</button>`;
   function carte(vm) {
     const tete = vm.titre ? `<p class="cb-k">${ico(vm.icone)}${h(vm.titre)}</p>` : "";
     if (vm.vide) return `<div class="cb-carte">${tete}<p class="cb-sous">${h(vm.vide)}</p></div>`;
@@ -322,7 +322,7 @@
     const r = c.faire() || {};
     const texte = S.texte;
     if (!r.garde) { S.texte = ""; S.choix = {}; S.cur = 0; S.ouvert = false; }
-    if (r.undo) { const u0 = r.undo, t0 = Date.now(), k0 = vm.k, une = () => { if (S.dernier && S.dernier.undo === une) S.dernier = null; u0(); const sec = Math.round((Date.now() - t0) / 1000); if (sec <= 30 && store.tele) store.tele("annule", texte, { k: k0, sec }); setTimeout(() => { const i = document.getElementById("cb-in"); if (i && document.activeElement === document.body) i.focus({ preventScroll: true }); }); }; S.dernier = { undo: une, label: texte }; KP.toast(r.toast, une); } else if (r.toast) KP.toast(r.toast);
+    if (r.undo) { const u0 = r.undo, t0 = Date.now(), k0 = vm.k, une = () => { if (S.dernier && S.dernier.undo === une) S.dernier = null; u0(); const sec = Math.round((Date.now() - t0) / 1000); if (sec <= 30 && store.tele) store.tele("annule", vm.prive ? "(rappel pour moi, texte privé)" : texte, { k: k0, sec }); setTimeout(() => { const i = document.getElementById("cb-in"); if (i && document.activeElement === document.body) i.focus({ preventScroll: true }); }); }; S.dernier = { undo: une, label: texte }; KP.toast(r.toast, une); } else if (r.toast) KP.toast(r.toast);
     if (r.ouvre) KP.go({ fiche: r.ouvre });
     KP.render();
     if (!r.garde) { const inp = document.getElementById("cb-in"); if (inp) { inp.value = ""; maj(); } }
@@ -361,7 +361,10 @@
   document.addEventListener("keydown", (e) => {
     if (e.target.id !== "cb-in") return;
     const vm = vmCourant, n = vm ? (vm.choisir ? vm.choisir.length : vm.resultats ? Math.min(7, vm.resultats.length) : 1) : 0;
-    if (e.key === "Enter") { e.preventDefault(); if (vm && vm.choisir && vm.approx && !S.navigue) { const r = document.querySelector(".cb-choix"); if (r) { r.classList.remove("secoue"); void r.offsetWidth; r.classList.add("secoue"); } return; } if (incomprise(e.target.value, vm)) noter(e.target.value, "rien"); rechercheVide(e.target.value, vm); appliquer(); }
+    if (e.key === "Enter") { e.preventDefault(); if (vm && vm.choisir && vm.approx && !S.navigue) { const r = document.querySelector(".cb-choix"); if (r) { r.classList.remove("secoue"); void r.offsetWidth; r.classList.add("secoue"); } return; } if (incomprise(e.target.value, vm)) noter(e.target.value, "rien"); rechercheVide(e.target.value, vm);
+      /* 2.8.1 : une suppression ne part jamais sur Entrée, il faut cliquer sur son bouton rouge */
+      if (vm && vm.danger) { const r = document.querySelector(".cb-carte.danger .cb-go"); if (r) { r.classList.remove("secoue"); void r.offsetWidth; r.classList.add("secoue"); r.focus({ preventScroll: true }); } return; }
+      appliquer(); }
     else if ((e.key === "ArrowDown" || e.key === "ArrowUp") && n >= 1) { e.preventDefault(); S.navigue = true; S.cur = (S.cur + (e.key === "ArrowDown" ? 1 : n - 1)) % n; document.getElementById("cb-res").innerHTML = carte(vm); }
     else if (e.key === "Escape" && e.target.value) { e.preventDefault(); e.stopPropagation(); e.target.value = ""; maj(); }
     setTimeout(() => { const m = document.getElementById("cb-miroir"); if (m) m.scrollLeft = e.target.scrollLeft; });
@@ -369,7 +372,7 @@
 
   /* la barre se pose tout en haut de l'accueil */
   const accueil = KP.views.accueil;
-  KP.views.accueil = () => accueil().replace('<div class="page home">', '<div class="page home">' + KP.barre());
+  KP.views.accueil = () => accueil().replace('<div class="page home">', () => '<div class="page home">' + KP.barre()); /* une fonction : un « $ » tapé reste tel quel */
   const apres = KP.apresRendu;
   KP.apresRendu = (main, entre) => { if (apres) apres(main, entre); if (KP.route.screen === "accueil") maj(); };
   KP.comprendre = comprendre;

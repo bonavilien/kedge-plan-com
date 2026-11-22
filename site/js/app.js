@@ -211,7 +211,7 @@
     const u = KP.me();
     /* un filtre actif sur le plan pré-remplit le service et le message : la nouvelle fiche reste visible */
     const fl = KP.route.screen === "plan" ? KP.route : {};
-    const s = { kind: pre.kind === "tf" ? "tf" : "action", variant: "", t: "", date: pre.date || KP.TODAY, flou: false, fin: "", partner: "", svc: pre.svc || (fl.svc && KP.service(fl.svc) ? fl.svc : "") || u.svc || (KP.SERVICES[0] || {}).k || "", m: fl.msg && KP.message(fl.msg) ? [fl.msg] : [], tf: pre.tf || "", per: KP.route.screen === "plan" ? KP.route.per : curPer() };
+    const s = { kind: pre.kind === "tf" ? "tf" : "action", variant: "", t: "", date: pre.date || KP.TODAY, flou: false, fin: "", partner: "", svc: u.role === "service" && u.svc ? u.svc : pre.svc || (fl.svc && KP.service(fl.svc) ? fl.svc : "") || u.svc || (KP.SERVICES[0] || {}).k || "", m: fl.msg && KP.message(fl.msg) ? [fl.msg] : [], tf: pre.tf || "", per: KP.route.screen === "plan" ? KP.route.per : curPer() };
     if (s.tf) { const par = store.get(s.tf); if (par) s.m = [...par.m]; }
     /* tous les temps forts, passés compris : on relaie souvent après l'événement */
     const tfs = store.items().filter((i) => i.kind === "tf" && (!i.annule || i.id === s.tf)).sort((a, b) => a.date.localeCompare(b.date));
@@ -262,7 +262,8 @@
       if (s.variant === "sujet") { const p = KP.PERIODS.find((x) => x.k === s.per); Object.assign(o, { per: p.k, date: p.du, fin: p.au, flou: false, st: "prevu" }); }
       const it = store.add(o);
       const per = KP.periodOf(it.date).k;
-      KP.go(KP.route.screen === "plan" ? { per: it.variant === "sujet" ? s.per : per, fiche: it.id } : { fiche: it.id });
+      const R = KP.route, cache = R.screen === "plan" && ((R.svc && R.svc !== it.svc) || (R.msg && !(it.m || []).includes(R.msg))); /* 2.8.1 : la nouvelle fiche ne reste pas cachée par un filtre */
+      KP.go(R.screen === "plan" ? { per: it.variant === "sujet" ? s.per : per, fiche: it.id, ...(cache ? { svc: "", msg: "" } : {}) } : { fiche: it.id });
       KP.toast(it.kind === "tf" ? "Temps fort créé" : "Action créée", () => { store.unadd(it.id); KP.go({ fiche: "" }); });
     });
   };
@@ -302,7 +303,7 @@
     };
     const run = (i) => { const x = list[i]; if (!x) return; d.close(); if (x.it) KP.go({ screen: "plan", per: x.it.variant === "sujet" ? x.it.per : KP.periodOf(x.it.date).k, svc: "", msg: "", type: "", fiche: x.it.id }); else x.go(); };
     inp.addEventListener("input", () => { cur = 0; draw(); });
-    d.addEventListener("close", () => { const q = inp.value.trim(); if (q.length >= 3 && !list.length && store.tele) store.tele("recherche", q, { ou: "ctrlk" }); });
+    d.addEventListener("close", () => { const q = inp.value.trim(); if (q.length >= 3 && !list.length && store.tele && !(KP.cmdkVides || (KP.cmdkVides = new Set())).has(q)) { KP.cmdkVides.add(q); store.tele("recherche", q, { ou: "ctrlk" }); } });
     d.addEventListener("keydown", (e) => {
       if (e.key === "ArrowDown") { e.preventDefault(); cur = Math.min(list.length - 1, cur + 1); draw(); }
       if (e.key === "ArrowUp") { e.preventDefault(); cur = Math.max(0, cur - 1); draw(); }

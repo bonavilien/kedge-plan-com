@@ -13,7 +13,7 @@
     vues.add(m); store.tele("erreur", m, { ecran: KP.route && KP.route.screen, ou: ou || "" });
   };
   window.addEventListener("error", (e) => erreur(e.message, e.filename ? `${String(e.filename).split("/").pop()}:${e.lineno}` : ""));
-  window.addEventListener("unhandledrejection", (e) => erreur(e.reason && (e.reason.message || e.reason), "promesse"));
+  window.addEventListener("unhandledrejection", (e) => erreur(e.reason && (e.reason.message || (typeof e.reason === "object" ? (() => { try { return JSON.stringify(e.reason).slice(0, 200); } catch (_) { return "promesse refusée"; } })() : e.reason)) || "promesse refusée sans message", "promesse"));
 
   /* ---------- 2. les écrans ouverts : comptés sur l'appareil, envoyés en paquet, sans nom ---------- */
   const CLE = "kplan-ecrans";
@@ -37,9 +37,9 @@
   const sante = () => {
     const its = store.items().filter((i) => !i.annule), auj = KP.TODAY;
     const sansMsg = its.filter((i) => i.kind !== "tf" && i.variant !== "sujet" && i.date >= auj && !(i.m && i.m.length));
-    const sansChiffre = its.filter((i) => i.st === "diffuse" && !(i.res && Object.values(i.res).some((n) => n)));
+    const sansChiffre = its.filter((i) => i.kind !== "tf" && i.st === "diffuse" && !(i.res && Object.values(i.res).some((n) => n !== null && n !== undefined && n !== ""))); /* 0 est un chiffre */
     const enRetard = (store.reqs() || []).filter((r) => !r.fait && r.pour && r.pour < auj && r.a !== r.de);
-    const aConfirmer = its.filter((i) => i.st === "confirmer" && !i.flou && i.date < auj);
+    const aConfirmer = its.filter((i) => i.st === "confirmer" && !i.flou && (i.fin || i.date) < auj); /* sur plusieurs jours : seulement une fois finie */
     return [
       { k: "Actions à venir sans message", n: sansMsg.length, ex: sansMsg },
       { k: "Diffusées sans chiffre", n: sansChiffre.length, ex: sansChiffre },
@@ -102,7 +102,7 @@
       KP.toast(`${nomF} téléchargé : colle-le à Claude`);
     },
     "su-vider": async () => {
-      if (!T.vider) { T.vider = 1; KP.render(); setTimeout(() => { if (T.vider) { T.vider = 0; KP.render(); } }, 4000); return; }
+      if (!T.vider) { const n = T.vider = Date.now(); KP.render(); setTimeout(() => { if (T.vider === n) { T.vider = 0; KP.render(); } }, 4000); return; }
       T.vider = 0; try { await Promise.all([store.clearPhrases(), store.clearSuivi()]); T.phrases = []; T.suivi = []; KP.toast("Suivi effacé"); } catch (e) { KP.toast("Impossible d'effacer : " + (e.message || e)); } KP.render();
     },
   });

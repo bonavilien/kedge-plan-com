@@ -76,7 +76,7 @@
       else [["J-7", KP.addDays(it.date, -7)], ["J-3", KP.addDays(it.date, -3)], ["Demain", KP.addDays(KP.TODAY, 1)]].filter(([, v], i, l) => v > KP.TODAY && l.findIndex(([, w]) => w === v) === i)
         .forEach(([l, v]) => chips.push(`<button type="button" class="ph-c choix" data-act="ph-quick" data-v="${v}">${l} · ${h(date(v))}</button>`));
     }
-    if (a.decaler) { const n = it.kind === "tf" ? store.relais(it.id).filter((x) => !x.flou && x.st !== "diffuse" && !x.annule).length : 0;
+    if (a.decaler) { const n = it.kind === "tf" ? store.relaisQuiSuivent(it.id).length : 0;
       chips.push(`<button type="button" class="ph-c propose" data-act="ph-decaler">${ic("shift")}Déplacer ${it.kind === "tf" ? "le temps fort" : "l'action"} au ${h(date(a.decaler))}${n ? ` avec ${n > 1 ? `ses ${n} relais` : "son relais"}` : ""}</button>`); }
     if (a.docs.length) chips.push(`<button type="button" class="ph-c propose${s.sansDoc ? "" : " on"}" data-act="ph-doc" aria-pressed="${!s.sansDoc}">${ic("doc")}Ranger ${a.docs.length > 1 ? "les liens" : "le lien"} dans les documents</button>`);
     if (a.res) chips.push(`<button type="button" class="ph-c propose${a.noteRes ? " on" : ""}" data-act="ph-res" aria-pressed="${a.noteRes}">${ic("chart")}Noter ${h(KP.resTxt(a.res))}${it.st !== "diffuse" ? " et passer en Diffusé" : ""}</button>`);
@@ -155,7 +155,7 @@
     "ph-doc": () => { const it = cur(), s = etat(it.id); s.sansDoc = !s.sansDoc; peindre($("fiche"), it); $("ph-t").focus(); },
     "ph-decaler": () => {
       const it = cur(), a = analyse(it); if (!a.decaler) return;
-      const motif = P.propre(a.s.txt, a.r), moved = it.kind === "tf" ? store.relais(it.id).filter((x) => !x.flou && x.st !== "diffuse" && !x.annule).length : 0;
+      const motif = P.propre(a.s.txt, a.r), moved = it.kind === "tf" ? store.relaisQuiSuivent(it.id).length : 0;
       KP.toast(`Déplacé au ${KP.fmt.moyen(a.decaler)}${moved ? `, avec ${moved > 1 ? `ses ${moved} relais` : "son relais"}` : ""}`, store.setDate(it.id, a.decaler, false, it.flou || it.st === "confirmer" && !moved ? null : motif));
       setTimeout(() => { const ta = $("ph-t"); if (ta) { ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length); } }, 0);
     },
@@ -174,6 +174,8 @@
       /* le montant noté au budget ne part pas dans le message : seuls les chefs de projet le voient */
       const r2 = a.notePrix ? { ...r, zones: [...r.zones.filter((z) => z.k !== "montant"), ...(r.montant ? [{ k: "rappel", at: r.montant.at, end: r.montant.end }] : [])] } : r;
       const txt = P.propre(s.txt, r2, { sansDate: a.mode === "rappel" }) || (a.notePrix ? "" : s.txt.trim());
+      /* 2.8.1 : « @Aurélie » tout seul n'envoie rien (une notification vide) */
+      if (!a.notePrix && a.mode !== "rappel" && !P.propre(s.txt, r2, { sansDate: false }) && !(a.docs && a.docs.length)) { if (ta) ta.focus(); return KP.toast("Écris ton message après le nom"); }
       if (!txt && a.notePrix) { KP.ui.ph[it.id] = null; KP.render(); return KP.toast(`Noté : ${notes.join(", ")}`, annuler); }
       if (a.docs.length && !s.sansDoc) store.update(it.id, { docs: [...it.docs, ...a.docs.map((l) => ({ t: titreLien(l.url), url: l.url }))] }, "a ajouté un document");
       KP.ui.ph[it.id] = null;

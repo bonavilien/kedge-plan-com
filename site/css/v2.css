@@ -1512,3 +1512,37 @@ p.cb-motif::before { content: "« "; } p.cb-motif::after { content: " »"; }
 .su-e i { height: 8px; border-radius: 4px; background: var(--text); opacity: .75; width: var(--w); }
 .su-e b { text-align: right; font-variant-numeric: tabular-nums; }
 @media (max-width: 600px) { .su-e { grid-template-columns: 110px 1fr 36px; } .tbl .tr.su-l { flex-direction: column; gap: 2px; } }
+
+/* ---------- 2.8.1 : corrections de la campagne de tests du 22 novembre ---------- */
+/* Budget à 1024 px ou fiche ouverte : « Montant » garde son en-tête */
+@media (min-width: 1200px) { html.fiche-open .colh.r-bh span:nth-child(4) { display: block; } }
+@media (max-width: 1100px) and (min-width: 768px) { .colh.r-bh span:nth-child(4) { display: block; } }
+/* Réunion entre 768 et 1100 px : les colonnes suivent leurs en-têtes */
+@media (max-width: 1100px) and (min-width: 768px) {
+  .ag .row:not(.r-row):not(.r-b) { grid-template-columns: 84px minmax(0, 1fr) 120px 124px 34px; }
+  .ag .row:not(.r-row):not(.r-b) .msg { display: none; }
+}
+/* Résultats, fiche ouverte : le titre garde sa place, le chiffre à droite */
+@media (min-width: 768px) { @container (max-width: 720px) { html:root .ag .row.row.r-row { grid-template-columns: 84px minmax(0, 1fr) max-content; } } }
+/* téléphone : le service ne passe plus sous le chiffre ; les en-têtes du budget, inutiles, disparaissent */
+@media (max-width: 767px) {
+  html:root .ag .row.row.r-row .svc { display: none; }
+  html:root .colh.r-bh { display: none; }
+  /* l'iPhone ne zoome plus en entrant dans un champ */
+  html:root input:not([type=checkbox]):not([type=radio]), html:root select, html:root textarea { font-size: 16px; }
+}
+/* « 19,3 k » reste d'un seul tenant */
+.r-tn b { white-space: nowrap; }
+/* calendrier du plan à 1024 px : on coupe entre les mots, avec un trait d'union si besoin */
+.g-i { overflow-wrap: break-word; hyphens: auto; }
+/* l'aide de la barre : sa largeur et ses marges */
+dialog.dlg.cb-dlg { width: min(720px, calc(100vw - 32px)); padding: 20px 22px 22px; }
+/* impression : toujours en clair, titres entiers, sans les boutons, avec les couleurs des barres */
+@media print {
+  :root, :root[data-theme], :root:not([data-theme="light"]) {
+    --bg: #fff; --card: #fff; --text: #000; --text2: #444; --sep: #bbb; --fill: #eee; --hover: #eee;
+    --ok-bg: #DCEFE3; --ok-ink: #1C5A37; --st-conf: #EFEFEB; --st-prevu: #333539; --st-prevu-ink: #FFFFFF; --red: #C62828; color-scheme: light; }
+  .row .tt { white-space: normal; overflow: visible; }
+  .bar .seg, .bar .btn, .clore { display: none !important; }
+  .stack i, .pill, .r-jauge i { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+}
