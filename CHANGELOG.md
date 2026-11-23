@@ -8,6 +8,7 @@ Généré depuis `site/js/version.js` par `node scripts/version.mjs`. Ne pas mod
 - Dans le devis, une ligne qui paie plusieurs actions dit ce que coûte chacune
 - Une remise plus grande que le total des lignes est refusée
 - Annuler un geste sur un devis supprimé entre-temps ne le fait plus revenir
+- Budget : le TTC à côté du HT partout (année, états, devis, lignes, enveloppe, fiche de l'action)
 
 ## 2.9 · 2026-11-23
 

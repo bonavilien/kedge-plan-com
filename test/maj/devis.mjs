@@ -43,8 +43,8 @@ const calme = async (p) => { await p.waitForTimeout(150); await p.waitForFunctio
   const [ctx, p] = await ouvrir({ brancher: false }, { hash: "#/resultats/budget" });
   ok(await txt(p, ".dv-ans .on") === "2026-2027", "l'année scolaire en cours : 2026-2027");
   ok(await txt(p, ".dv-big") === "19 500 € HT · 23 400 € TTC", "le total de l'année, HT et TTC : " + await txt(p, ".dv-big"));
-  ok((await txt(p, ".dv-tot")).includes("engagés : 12 800 € sur 25 000 €, reste 12 200 €"), "engagé (signé, DA faite, facturé) face à l'enveloppe");
-  ok(await txt(p, ".dv-legs") === "Reçu 6 700 € Signé 11 000 € DA faite 0 € Facturé 1 800 € + 1 200 € offerts", "les quatre états et les offerts : " + await txt(p, ".dv-legs"));
+  ok((await txt(p, ".dv-tot")).includes("engagés : 12 800 € HT (15 360 € TTC) sur 25 000 € HT, reste 12 200 € HT (14 640 € TTC)"), "engagé (signé, DA faite, facturé) face à l'enveloppe");
+  ok(await txt(p, ".dv-legs") === "Reçu 6 700 € 8 040 € TTC Signé 11 000 € 13 200 € TTC DA faite 0 € 0 € TTC Facturé 1 800 € 2 160 € TTC + 1 200 € offerts", "les quatre états et les offerts : " + await txt(p, ".dv-legs"));
   ok(JSON.stringify(await lignes(p)) === JSON.stringify(["L'Étudiant", "Sud Ouest", "Studyrama"]), "les devis, le plus récent en haut");
   ok(await txt(p, '.dv-row:first-of-type .t small, .dv-rows .dv-row small') === "4 lignes · 2 à relier", "ce qui reste à relier se voit sur la ligne");
   ok(NB(await p.inputValue(".r-ea")) === "25 000", "l'enveloppe de l'année");
@@ -60,7 +60,7 @@ const calme = async (p) => { await p.waitForTimeout(150); await p.waitForFunctio
   ok(NB(await p.inputValue(".r-ea")) === "10 000", "le nombre se groupe pendant la frappe");
   await p.keyboard.press("Enter"); await p.waitForTimeout(100);
   ok(await p.evaluate(() => KP.store.envAn(2026)) === 10000 && await toast(p) === "Enveloppe 2026-2027 : 10 000 €", "enveloppe changée : 10 000 €");
-  ok(await p.locator(".dv-tot.over").count() === 1 && (await txt(p, ".dv-tot")).includes("l'enveloppe est dépassée de 2 800 €"), "dépassée : la carte le dit");
+  ok(await p.locator(".dv-tot.over").count() === 1 && (await txt(p, ".dv-tot")).includes("l'enveloppe est dépassée de 2 800 € HT (3 360 € TTC)"), "dépassée : la carte le dit");
   await p.click(".toast button"); await p.waitForTimeout(80);
   ok(await p.evaluate(() => KP.store.envAn(2026)) === 25000, "Annuler remet 25 000 €");
   // une autre année
@@ -73,7 +73,7 @@ const calme = async (p) => { await p.waitForTimeout(150); await p.waitForFunctio
   await p.click('.pop [data-v="da"]'); await p.waitForTimeout(80);
   const etu = await p.evaluate(() => KP.store.devisTous().find((d) => d.media === "L'Étudiant"));
   ok(etu.etat === "da" && await toast(p) === "Devis L'Étudiant : DA faite", "« DA faite » depuis la liste");
-  ok((await txt(p, ".dv-legs")).includes("DA faite 11 000 €"), "la légende suit");
+  ok((await txt(p, ".dv-legs")).includes("DA faite 11 000 € 13 200 € TTC"), "la légende suit");
   ok(!p.errs.length, "aucune erreur : " + p.errs.join(" | "));
   await ctx.close();
 }
@@ -104,7 +104,7 @@ const calme = async (p) => { await p.waitForTimeout(150); await p.waitForFunctio
   // la remise
   await p.fill("#fiche [data-dv=remise]", "800"); await p.keyboard.press("Enter"); await p.waitForTimeout(100);
   ok(await txt(p, "#fiche .dv-total") === "7 200 € HT 8 640 € TTC" && await toast(p) === "Remise : 800 €", "remise de 800 € : 7 200 € HT");
-  ok((await txt(p, "#fiche .dv-l:first-of-type .dv-lm")) === "8 000 € 2 000 € par action", "une ligne de 4 actions dit ce que coûte chacune");
+  ok((await txt(p, "#fiche .dv-l:first-of-type .dv-lm")) === "8 000 € 9 600 € TTC 2 000 € HT par action", "une ligne de 4 actions dit ce que coûte chacune");
   await p.fill("#fiche [data-dv=remise]", "9000"); await p.keyboard.press("Enter"); await p.waitForTimeout(100);
   ok(await toast(p) === "La remise dépasse le total des lignes" && await p.evaluate((id) => KP.store.devis(id).remise, dv.id) === 800, "une remise plus grande que les lignes est refusée");
   // relier un épisode à une action du plan
@@ -120,7 +120,7 @@ const calme = async (p) => { await p.waitForTimeout(150); await p.waitForFunctio
   // la fiche de l'action : sa part
   await p.click("#fiche .dv-chip-o"); await p.waitForSelector("#fiche .dv-part");
   const part = await txt(p, "#fiche .dv-part");
-  ok(part === "2 000 € HT Reçu 1 sur 4 de « Série vidéo » (8 000 €) 1 800 € après la remise du devis Le Figaro Étudiant · devis FE-77 ›", "l'action montre le chiffre du devis (un quart de la ligne), puis sa part après remise : " + part);
+  ok(part === "2 000 € HT 2 400 € TTC Reçu 1 sur 4 de « Série vidéo » (8 000 €) 1 800 € HT (2 160 € TTC) après la remise du devis Le Figaro Étudiant · devis FE-77 ›", "l'action montre le chiffre du devis (un quart de la ligne), puis sa part après remise : " + part);
   ok(await p.evaluate((id) => { const x = KP.store.partsDe(id)[0]; return x.brut === 2000 && x.part === 1800; }, chal), "part brute 2 000 €, après remise 1 800 €");
   ok(!(await p.locator('#fiche [data-act="r-prix"]').count()), "plus de montant à l'ancienne sur une action payée par un devis");
   await snap(p, "3-fiche-action");

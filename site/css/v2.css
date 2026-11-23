@@ -1707,3 +1707,8 @@ dialog.dlg.cb-dlg { width: min(720px, calc(100vw - 32px)); padding: 20px 22px 22
 .dv-cb .ic { width: 13px; height: 13px; }
 @media (max-width: 767px) { .dv-form .dv-2 { grid-template-columns: minmax(0, 1fr) 110px; } .pop-dv { width: auto; } }
 @media print { .dv-drop, .dv-relier, .dv-chip .ib { display: none; } }
+/* 2.9.1 : le TTC à côté du HT (KEDGE parle en TTC) */
+.dv-m small { display: block; font-size: 12px; color: var(--text2); white-space: nowrap; }
+.dv-leg small { color: var(--text2); font-size: 12px; font-variant-numeric: tabular-nums; }
+.dv-env-ttc { font-size: 12.5px; color: var(--text2); white-space: nowrap; }
+.dv-part-h small { color: var(--text2); font-size: 12.5px; }
