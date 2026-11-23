@@ -455,7 +455,7 @@
       const out = [];
       (db.devis || []).forEach((dv) => { const t = store.totalDevis(dv), k = t.paye ? t.ht / t.paye : 0;
         dv.lignes.forEach((l) => { if (!l.items.includes(itemId)) return; const sur = Math.max(l.qte || 1, l.items.length); /* « 1 épisode sur 4 » : un quart de la ligne, même si les 3 autres ne sont pas encore reliés */
-          out.push({ devis: dv, ligne: l, part: l.offert ? 0 : Math.round((l.montant * k) / sur), offert: l.offert, sur, rang: l.items.indexOf(itemId) + 1 }); }); });
+          out.push({ devis: dv, ligne: l, brut: Math.round(l.montant / sur), part: l.offert ? 0 : Math.round((l.montant * k) / sur), offert: l.offert, sur, rang: l.items.indexOf(itemId) + 1 }); }); });
       return out;
     },
     addDevis(o) {
@@ -470,13 +470,13 @@
       if (meme(avant, dv)) return () => {};
       const apres = JSON.parse(JSON.stringify(dv)); emit();
       return () => { const i = (db.devis || []).findIndex((x) => x.id === id);
-        if (i < 0) { db.devis.push(avant); return emit(); }
-        if (!meme(db.devis[i], apres)) return toast("Un collègue l'a modifié entre-temps : rien n'a été défait");
+        if (i < 0) return toast("Ce devis n'existe plus : rien n'a été défait");
+        if (!meme(db.devis[i], apres)) return toast("Le devis a changé depuis : rien n'a été défait");
         db.devis[i] = avant; emit(); };
     },
     setDevis(id, patch) {
       const p = { ...patch };
-      if ("remise" in p) { const n = Math.round(Number(p.remise || 0)); if (!Number.isFinite(n) || n < 0 || n > MAXEUR) return null; p.remise = n; }
+      if ("remise" in p) { const n = Math.round(Number(p.remise || 0)), dv = store.devis(id); if (!Number.isFinite(n) || n < 0 || n > MAXEUR || (dv && n > store.totalDevis(dv).paye)) return null; p.remise = n; }
       if ("etat" in p && !DEVIS_ETATS.some((e) => e.k === p.etat)) return null;
       if ("annee" in p) p.annee = +p.annee;
       return store._devis(id, (dv) => { Object.assign(dv, p); });
@@ -493,7 +493,7 @@
       return store._devis(id, (dv) => { const l = dv.lignes.find((x) => x.id === lid); if (!l) return false; Object.assign(l, p); }); },
     delLigne(id, lid) { return store._devis(id, (dv) => { const n = dv.lignes.length; dv.lignes = dv.lignes.filter((x) => x.id !== lid); if (dv.lignes.length === n) return false; }); },
     /* relier (ou délier) une action à une ligne */
-    lier(id, lid, itemId, on) { return store._devis(id, (dv) => { const l = dv.lignes.find((x) => x.id === lid); if (!l || (on && !byId(itemId))) return false;
+    lier(id, lid, itemId, on) { return store._devis(id, (dv) => { const l = dv.lignes.find((x) => x.id === lid); if (!l || (on && (!byId(itemId) || byId(itemId).variant !== "partenariat"))) return false; /* seules les actions média se relient à un devis */
       const a = l.items.includes(itemId); if (on === a) return false; l.items = on ? [...l.items, itemId] : l.items.filter((x) => x !== itemId); }); },
     envAn: (a) => (db.envAn || {})[a],
     setEnvAn(a, n) { return regle("envAn", String(a), n); },

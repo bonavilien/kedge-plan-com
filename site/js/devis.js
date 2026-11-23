@@ -5,7 +5,7 @@
 (() => {
   const KP = window.KP, { h, ic, store } = KP;
   const $ = (id) => document.getElementById(id);
-  const nb = KP.nb, eur = (n) => nb(Math.round(n || 0)) + " €";
+  const nb = KP.nb, eur = (n) => nb(Math.round(n || 0)) + " €", ttc = (n) => eur((n || 0) * 1.2); /* KEDGE parle en TTC : TVA 20 % */
   const IMPOSSIBLE_EUR = "Ce montant n'est pas possible : de 0 à 100 millions d'euros";
   const etat = (k) => KP.DEVIS_ETATS.find((e) => e.k === k) || KP.DEVIS_ETATS[0];
   const pill = (k, btn, id) => { const e = etat(k), inner = (e.k === "facture" ? ic("check") : "") + h(e.nom);
@@ -35,10 +35,10 @@
     const engage = ENGAGE.reduce((s, k) => s + par(k), 0), env = prog ? null : store.envAn(a);
     const base = Math.max(1, total, env || 0), w = (n) => Math.round((1000 * n) / base) / 10;
     const reste = env != null ? env - engage : null;
-    const sous = env != null ? (reste >= 0 ? `engagés : ${eur(engage)} sur ${eur(env)}, reste ${eur(reste)}` : `engagés : ${eur(engage)}, l'enveloppe est dépassée de ${eur(-reste)}`)
-      : total ? `dont ${eur(engage)} engagés (signés, DA faite ou facturés)` : "aucun devis cette année";
+    const sous = env != null ? (reste >= 0 ? `engagés : ${eur(engage)} HT (${ttc(engage)} TTC) sur ${eur(env)} HT, reste ${eur(reste)} HT (${ttc(reste)} TTC)` : `engagés : ${eur(engage)} HT (${ttc(engage)} TTC), l'enveloppe est dépassée de ${eur(-reste)} HT (${ttc(-reste)} TTC)`)
+      : total ? `dont ${eur(engage)} HT (${ttc(engage)} TTC) engagés : signés, DA faite ou facturés` : "aucun devis cette année";
     const seg = (k) => { const n = par(k), e = etat(k); return n ? `<i class="dv-s dv-s-${k}" style="width:${w(n)}%" title="${h(e.nom)} : ${h(eur(n))}"></i>` : ""; };
-    const leg = (k) => `<span class="dv-leg"><i class="dv-s-${k}" aria-hidden="true"></i>${h(etat(k).nom)} <b>${h(eur(par(k)))}</b></span>`;
+    const leg = (k) => `<span class="dv-leg"><i class="dv-s-${k}" aria-hidden="true"></i>${h(etat(k).nom)} <b>${h(eur(par(k)))}</b><small>${h(ttc(par(k)))} TTC</small></span>`;
     const cle = (d) => `devis-${d.id}`;
     const ligne = (d) => { const t = store.totalDevis(d), r = aRelier(d), sel = KP.route.fiche === cle(d);
       return `<div class="row dv-row${sel ? " sel" : ""}" data-act="open" data-id="${cle(d)}">
@@ -46,7 +46,7 @@
         <span class="t"><button type="button" class="open" data-act="open" data-id="${cle(d)}" title="${h(titreDe(d))}"><span class="tt">${h(titreDe(d))}</span></button><small>${d.lignes.length} ligne${d.lignes.length > 1 ? "s" : ""}${r ? ` · ${r} à relier` : ""}</small></span>
         <span class="svc">${h(d.prog || "—")}</span>
         <span class="msg dv-num">${h(d.num || "")}</span>
-        <span class="dv-m"><b>${h(eur(t.ht))}</b></span>
+        <span class="dv-m"><b>${h(eur(t.ht))}</b><small>${h(ttc(t.ht))} TTC</small></span>
         <span class="st">${pill(d.etat, true, d.id)}</span>
       </div>`; };
     /* les partenariats qui ont encore un montant noté à l'ancienne, action par action, et qu'aucun devis ne paie */
@@ -61,7 +61,7 @@
         <span class="st">${KP.pill(it)}</span>
       </div>`; }).join("");
     return `<div class="ag dv-h"><h2>L'année<small>${h(KP.anLib(a))}${prog ? " · " + h(prog) : ""}</small></h2>
-        ${prog ? "" : `<label class="r-env">Enveloppe <span class="r-eur"><input class="input r-ea" id="ea-${a}" data-an="${a}" data-v="${env != null ? nb(env) : ""}" value="${env != null ? nb(env) : ""}" inputmode="numeric" autocomplete="off" placeholder="—" aria-label="Enveloppe de l'année ${h(KP.anLib(a))}, en euros HT"><span aria-hidden="true">€ HT</span></span></label>`}</div>
+        ${prog ? "" : `<label class="r-env">Enveloppe <span class="r-eur"><input class="input r-ea" id="ea-${a}" data-an="${a}" data-v="${env != null ? nb(env) : ""}" value="${env != null ? nb(env) : ""}" inputmode="numeric" autocomplete="off" placeholder="—" aria-label="Enveloppe de l'année ${h(KP.anLib(a))}, en euros HT"><span aria-hidden="true">€ HT</span></span>${env != null ? `<small class="dv-env-ttc">${h(ttc(env))} TTC</small>` : ""}</label>`}</div>
       <section class="dv-tot${reste != null && reste < 0 ? " over" : ""}" aria-label="Où en est l'argent de l'année">
         <div class="dv-big"><b>${h(eur(total))}</b><span>HT · ${h(eur(total * 1.2))} TTC</span></div>
         <p class="dv-sous">${h(sous)}</p>
@@ -71,7 +71,7 @@
       <div class="ag dv-h"><h2>Devis<small>${liste.length}</small></h2>
         ${progs.length > 1 ? `<div class="seg dv-progs" role="group" aria-label="Programme"><button type="button" data-act="dv-prog" data-k="" class="${prog ? "" : "on"}" aria-pressed="${!prog}">Tous</button>${progs.map((p) => `<button type="button" data-act="dv-prog" data-k="${h(p)}" class="${prog === p ? "on" : ""}" aria-pressed="${prog === p}">${h(p)}</button>`).join("")}</div>` : ""}
         <button type="button" class="btn quiet small" data-act="dv-new">${ic("plus")}Nouveau devis</button></div>
-      ${liste.length ? `<div class="rows dv-rows"><div class="colh dv-colh" aria-hidden="true"><span>Reçu le</span><span>Média</span><span>Programme</span><span>N°</span><span>Total HT</span><span>État</span></div>${liste.map(ligne).join("")}</div>`
+      ${liste.length ? `<div class="rows dv-rows"><div class="colh dv-colh" aria-hidden="true"><span>Reçu le</span><span>Média</span><span>Programme</span><span>N°</span><span>Total HT · TTC</span><span>État</span></div>${liste.map(ligne).join("")}</div>`
         : `<div class="empty dv-vide">${KP.illu ? KP.illu() : ""}<h3>Aucun devis sur ${h(KP.anLib(a))}</h3><p>Ajoute le premier : son média, ses lignes, son PDF.</p><button type="button" class="btn primary" data-act="dv-new">${ic("plus")}Nouveau devis</button></div>`}
       ${sans.length ? `<div class="ag"><h2>Sans devis<small>montants notés action par action · ${h(eur(sansTot))}</small></h2></div>
         <div class="rows r-budget"><div class="colh r-bh" aria-hidden="true"><span>Date</span><span>Partenariat</span><span>Média</span><span>Montant</span><span>État</span></div>${sansL}</div>` : ""}`;
@@ -90,7 +90,7 @@
       const it = items(l), manque = Math.max(0, (l.qte || 1) - it.length);
       return `<div class="dv-l" data-l="${l.id}">
         <button type="button" class="dv-lt" data-act="dv-ligne" data-l="${l.id}" aria-label="Modifier la ligne « ${h(l.t || "sans nom")} »"><span class="tt">${h(l.t || "Ligne sans nom")}</span>${l.d ? `<small>${h(l.d)}</small>` : ""}</button>
-        <span class="dv-lm">${l.offert ? `<small>offert</small> ${h(eur(l.montant))}` : `<b>${h(eur(l.montant))}</b>`}</span>
+        <span class="dv-lm">${l.offert ? `<small>offert</small> ${h(eur(l.montant))}` : `<b>${h(eur(l.montant))}</b><small class="dv-pu">${h(ttc(l.montant))} TTC</small>`}${l.qte > 1 ? `<small class="dv-pu">${h(eur(l.montant / l.qte))} HT par action</small>` : ""}</span>
         <div class="dv-lk">${it.map((x) => `<span class="dv-chip"><button type="button" class="dv-chip-o" data-act="open" data-id="${x.id}" title="Ouvrir la fiche"><span class="d">${h(KP.dateShort(x))}</span><span class="tt">${h(x.t)}</span></button><button type="button" class="ib" data-act="dv-delier" data-l="${l.id}" data-i="${x.id}" aria-label="Délier « ${h(x.t)} »">${ic("close")}</button></span>`).join("")}
           <button type="button" class="dv-relier${manque ? "" : " plein"}" data-act="dv-lier" data-l="${l.id}">${ic("link")}${manque ? (l.qte > 1 ? `Relier ${manque === l.qte ? l.qte + " actions" : "encore " + manque}` : "Relier à une action") : "Relier"}</button></div>
       </div>`; }).join("");
@@ -117,7 +117,7 @@
         </dl>
         <section class="f-sec"><h3>Lignes${dv.lignes.length ? " · " + dv.lignes.length : ""}${r ? `<small class="dv-ar">${r} à relier</small>` : ""}<button type="button" class="link" data-act="dv-ligne-add">Ajouter</button></h3>
           ${lignes || `<p class="muted">Une ligne par prestation du devis : son libellé, son montant HT, combien d'actions elle paie.</p>`}
-          ${dv.remise ? `<div class="dv-l dv-rem"><span class="dv-lt muted">Remise, répartie sur les lignes</span><span class="dv-lm">− ${h(eur(dv.remise))}</span></div>` : ""}
+          ${dv.remise ? `<div class="dv-l dv-rem"><span class="dv-lt muted">Remise, répartie sur les lignes</span><span class="dv-lm">− ${h(eur(dv.remise))}<small class="dv-pu">− ${h(ttc(dv.remise))} TTC</small></span></div>` : ""}
           ${t.offert ? `<p class="muted dv-off">Lignes offertes : ${h(eur(t.offert))} de valeur, hors total.</p>` : ""}
         </section>
         <section class="f-sec"><h3>Le devis</h3>
@@ -157,13 +157,13 @@
   /* relier une ligne à des actions : les actions de l'année, celles du même média d'abord */
   const lierPop = (a, dv, l) => {
     const media = (dv.media || "").toLowerCase();
-    const cands = () => store.items().filter((i) => i.kind === "action" && !i.annule && (dansAn(i, dv.annee) || l.items.includes(i.id)))
+    const cands = () => store.items().filter((i) => l.items.includes(i.id) || (i.kind === "action" && i.variant === "partenariat" && !i.annule && dansAn(i, dv.annee))) /* seulement les actions média (partenariats payants) */
       .sort((x, y) => (l.items.includes(y.id) - l.items.includes(x.id)) || (((y.partner || "").toLowerCase() === media) - ((x.partner || "").toLowerCase() === media)) || x.date.localeCompare(y.date));
     let q = "";
     const liste = () => { const ll = (store.devis(dv.id) || dv).lignes.find((x) => x.id === l.id) || l, t = KP.norm ? KP.norm(q) : q.toLowerCase();
       const res = cands().filter((i) => !q || (KP.norm ? KP.norm(i.t + " " + (i.partner || "")) : (i.t + " " + (i.partner || "")).toLowerCase()).includes(t)).slice(0, 40);
       return res.length ? res.map((i) => { const on = ll.items.includes(i.id); return `<button type="button" class="pop-i dv-c" role="menuitemcheckbox" aria-checked="${on}" data-i="${i.id}"><span class="dv-cb${on ? " on" : ""}" aria-hidden="true">${on ? ic("check") : ""}</span><span>${h(i.t)}<small>${h(KP.dateShort(i))}${i.partner ? " · " + h(i.partner) : i.svc ? " · " + h((KP.service(i.svc) || {}).nom || "") : ""}</small></span></button>`; }).join("")
-        : `<p class="txt muted">Aucune action ${q ? "ne correspond" : "sur cette année"}.</p>`; };
+        : `<p class="txt muted">Aucune action média ${q ? "ne correspond" : "sur cette année"}.</p>`; };
     const p = KP.pop(a, `<h4 class="pop-h">Relier « ${h(l.t || "la ligne")} »</h4><div class="dv-q">${ic("search")}<input type="text" class="input" placeholder="Chercher une action" aria-label="Chercher une action" autocomplete="off" autofocus></div><div class="dv-cs" role="menu">${liste()}</div>`, { role: "dialog", label: "Relier à des actions", cls: "pop-dv", right: true });
     const inp = p.el.querySelector("input"), box = p.el.querySelector(".dv-cs");
     if (!KP.phone()) inp.focus();
@@ -203,7 +203,7 @@
     /* champs de la fiche du devis : enregistrés en quittant le champ */
     if (t.dataset && t.dataset.dv && t.closest("#fiche")) {
       const dv = curDv(); if (!dv) return; const f = t.dataset.dv;
-      if (f === "remise") { const n = valeur(t.value); setTimeout(() => { const u = n == null || !Number.isNaN(n) ? store.setDevis(dv.id, { remise: n || 0 }) : null; if (!u) { t.value = t.dataset.v || ""; return KP.toast(IMPOSSIBLE_EUR); } KP.toast(n ? `Remise : ${eur(n)}` : "Remise retirée", u); }, 0); return; }
+      if (f === "remise") { const n = valeur(t.value); setTimeout(() => { const u = n == null || !Number.isNaN(n) ? store.setDevis(dv.id, { remise: n || 0 }) : null; if (!u) { t.value = t.dataset.v || ""; return KP.toast(n > store.totalDevis(dv).paye ? "La remise dépasse le total des lignes" : IMPOSSIBLE_EUR); } KP.toast(n ? `Remise : ${eur(n)}` : "Remise retirée", u); }, 0); return; }
       const v = t.value.trim().slice(0, f === "paiement" ? 200 : f === "media" ? 120 : 60);
       if (v === (dv[f] || "")) return;
       const noms = { media: "Média", prog: "Programme", num: "N°", paiement: "Paiement" };
