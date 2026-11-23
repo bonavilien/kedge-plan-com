@@ -104,6 +104,9 @@ const calme = async (p) => { await p.waitForTimeout(150); await p.waitForFunctio
   // la remise
   await p.fill("#fiche [data-dv=remise]", "800"); await p.keyboard.press("Enter"); await p.waitForTimeout(100);
   ok(await txt(p, "#fiche .dv-total") === "7 200 € HT 8 640 € TTC" && await toast(p) === "Remise : 800 €", "remise de 800 € : 7 200 € HT");
+  ok((await txt(p, "#fiche .dv-l:first-of-type .dv-lm")) === "8 000 € 2 000 € par action", "une ligne de 4 actions dit ce que coûte chacune");
+  await p.fill("#fiche [data-dv=remise]", "9000"); await p.keyboard.press("Enter"); await p.waitForTimeout(100);
+  ok(await toast(p) === "La remise dépasse le total des lignes" && await p.evaluate((id) => KP.store.devis(id).remise, dv.id) === 800, "une remise plus grande que les lignes est refusée");
   // relier un épisode à une action du plan
   const chal = await idOf(p, "Interview dans Challenges");
   await p.click("#fiche .dv-l:first-of-type [data-act=dv-lier], #fiche [data-act=dv-lier]"); await p.waitForSelector(".pop-dv input");
@@ -117,7 +120,8 @@ const calme = async (p) => { await p.waitForTimeout(150); await p.waitForFunctio
   // la fiche de l'action : sa part
   await p.click("#fiche .dv-chip-o"); await p.waitForSelector("#fiche .dv-part");
   const part = await txt(p, "#fiche .dv-part");
-  ok(part === "1 800 € HT Reçu 1 sur 4 de « Série vidéo » Le Figaro Étudiant · devis FE-77 ›", "l'action montre sa part : un quart de la ligne, remise comprise : " + part);
+  ok(part === "2 000 € HT Reçu 1 sur 4 de « Série vidéo » (8 000 €) 1 800 € après la remise du devis Le Figaro Étudiant · devis FE-77 ›", "l'action montre le chiffre du devis (un quart de la ligne), puis sa part après remise : " + part);
+  ok(await p.evaluate((id) => { const x = KP.store.partsDe(id)[0]; return x.brut === 2000 && x.part === 1800; }, chal), "part brute 2 000 €, après remise 1 800 €");
   ok(!(await p.locator('#fiche [data-act="r-prix"]').count()), "plus de montant à l'ancienne sur une action payée par un devis");
   await snap(p, "3-fiche-action");
   await p.click("#fiche .dv-part"); await p.waitForSelector("#fiche .dv-etats");
@@ -135,6 +139,9 @@ const calme = async (p) => { await p.waitForTimeout(150); await p.waitForFunctio
   ok(!(await p.evaluate((id) => KP.store.partsDe(id).length, chal)), "déliée : l'action ne porte plus de part");
   await p.click(".toast button"); await p.waitForTimeout(60);
   ok(await p.evaluate((id) => KP.store.partsDe(id).length, chal) === 1, "Annuler la relie de nouveau");
+  // un Annuler trop tardif ne ressuscite pas un devis supprimé
+  ok(await p.evaluate((id) => { const r = KP.store.addLigne(id, { t: "tmp", montant: 1 }); const u = KP.store.delDevis(id); r.undo(); const back = !!KP.store.devis(id); u(); KP.store.delLigne(id, r.id); return back; }, dv.id) === false, "Annuler l'ajout d'une ligne après la suppression du devis ne le fait pas revenir");
+  await p.waitForTimeout(100); await p.evaluate((id) => KP.go({ fiche: "devis-" + id }), dv.id); await p.waitForSelector("#fiche .dv-etats");
   // une action supprimée quitte sa ligne ; Annuler la remet
   const u = await p.evaluate((id) => { window.__u = KP.store.remove(id); return KP.store.devisTous().some((d) => d.lignes.some((l) => l.items.includes(id))); }, chal);
   ok(!u, "action supprimée : son lien part avec elle");

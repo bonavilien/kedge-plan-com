@@ -2,6 +2,13 @@
 
 Généré depuis `site/js/version.js` par `node scripts/version.mjs`. Ne pas modifier à la main.
 
+## 2.9.1 · 2026-11-23
+
+- Sur la fiche d'une action payée par un devis, le chiffre est celui de la ligne du devis (divisé par le nombre d'actions qu'elle paie) ; la part après remise est écrite en dessous
+- Dans le devis, une ligne qui paie plusieurs actions dit ce que coûte chacune
+- Une remise plus grande que le total des lignes est refusée
+- Annuler un geste sur un devis supprimé entre-temps ne le fait plus revenir
+
 ## 2.9 · 2026-11-23
 
 - Budget, réservé aux chefs de projet : on compte à l'année scolaire, devis par devis, et plus par période. En haut, le total de l'année face à son enveloppe, et une barre par état

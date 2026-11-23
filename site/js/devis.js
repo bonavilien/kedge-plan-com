@@ -90,7 +90,7 @@
       const it = items(l), manque = Math.max(0, (l.qte || 1) - it.length);
       return `<div class="dv-l" data-l="${l.id}">
         <button type="button" class="dv-lt" data-act="dv-ligne" data-l="${l.id}" aria-label="Modifier la ligne « ${h(l.t || "sans nom")} »"><span class="tt">${h(l.t || "Ligne sans nom")}</span>${l.d ? `<small>${h(l.d)}</small>` : ""}</button>
-        <span class="dv-lm">${l.offert ? `<small>offert</small> ${h(eur(l.montant))}` : `<b>${h(eur(l.montant))}</b>`}</span>
+        <span class="dv-lm">${l.offert ? `<small>offert</small> ${h(eur(l.montant))}` : `<b>${h(eur(l.montant))}</b>`}${l.qte > 1 ? `<small class="dv-pu">${h(eur(l.montant / l.qte))} par action</small>` : ""}</span>
         <div class="dv-lk">${it.map((x) => `<span class="dv-chip"><button type="button" class="dv-chip-o" data-act="open" data-id="${x.id}" title="Ouvrir la fiche"><span class="d">${h(KP.dateShort(x))}</span><span class="tt">${h(x.t)}</span></button><button type="button" class="ib" data-act="dv-delier" data-l="${l.id}" data-i="${x.id}" aria-label="Délier « ${h(x.t)} »">${ic("close")}</button></span>`).join("")}
           <button type="button" class="dv-relier${manque ? "" : " plein"}" data-act="dv-lier" data-l="${l.id}">${ic("link")}${manque ? (l.qte > 1 ? `Relier ${manque === l.qte ? l.qte + " actions" : "encore " + manque}` : "Relier à une action") : "Relier"}</button></div>
       </div>`; }).join("");
@@ -203,7 +203,7 @@
     /* champs de la fiche du devis : enregistrés en quittant le champ */
     if (t.dataset && t.dataset.dv && t.closest("#fiche")) {
       const dv = curDv(); if (!dv) return; const f = t.dataset.dv;
-      if (f === "remise") { const n = valeur(t.value); setTimeout(() => { const u = n == null || !Number.isNaN(n) ? store.setDevis(dv.id, { remise: n || 0 }) : null; if (!u) { t.value = t.dataset.v || ""; return KP.toast(IMPOSSIBLE_EUR); } KP.toast(n ? `Remise : ${eur(n)}` : "Remise retirée", u); }, 0); return; }
+      if (f === "remise") { const n = valeur(t.value); setTimeout(() => { const u = n == null || !Number.isNaN(n) ? store.setDevis(dv.id, { remise: n || 0 }) : null; if (!u) { t.value = t.dataset.v || ""; return KP.toast(n > store.totalDevis(dv).paye ? "La remise dépasse le total des lignes" : IMPOSSIBLE_EUR); } KP.toast(n ? `Remise : ${eur(n)}` : "Remise retirée", u); }, 0); return; }
       const v = t.value.trim().slice(0, f === "paiement" ? 200 : f === "media" ? 120 : 60);
       if (v === (dv[f] || "")) return;
       const noms = { media: "Média", prog: "Programme", num: "N°", paiement: "Paiement" };
