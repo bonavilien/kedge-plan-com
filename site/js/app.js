@@ -18,7 +18,7 @@
     const st = ALIAS[seg[1]] || seg[1];
     r.set = r.screen === "reglages" && ["projet", "equipe", "carnets", "suivi", "apropos"].includes(st) ? st : "profil";
     if (r.screen === "reunion") { r.tab = seg[1] === "bilan" ? "bilan" : "ordre"; if (KP.PERIODS.some((x) => x.k === p.get("per"))) r.per = p.get("per"); }
-    if (r.screen === "resultats") { r.tab = seg[1] === "budget" ? "budget" : "diffusions"; if (KP.PERIODS.some((x) => x.k === p.get("per"))) r.per = p.get("per"); }
+    if (r.screen === "resultats") { r.tab = seg[1] === "budget" ? "budget" : "diffusions"; if (KP.PERIODS.some((x) => x.k === p.get("per"))) r.per = p.get("per"); const an = +p.get("an"); if (an >= 2000 && an <= 2100) r.an = an; }
     return r;
   };
   KP.parseRoute = parseHash;
@@ -26,6 +26,8 @@
     const p = new URLSearchParams();
     if (r.screen === "plan") { if (r.vue === "grille") p.set("vue", "grille"); ["svc", "msg", "type"].forEach((k) => r[k] && p.set(k, r[k])); }
     if ((r.screen === "reunion" && r.tab === "bilan" || r.screen === "resultats") && r.per !== curPer()) p.set("per", r.per);
+    /* 2.9 : l'année du budget par devis, quand ce n'est pas l'année en cours */
+    if (r.screen === "resultats" && r.tab === "budget" && r.an && r.an !== KP.anDe(KP.TODAY)) p.set("an", r.an);
     if (r.fiche) p.set("fiche", r.fiche);
     const path = r.screen === "plan" ? `/plan/${r.per}` : r.screen === "reunion" ? `/reunion/${r.tab === "bilan" ? "bilan" : "ordre"}` : r.screen === "resultats" ? `/resultats/${r.tab === "budget" ? "budget" : "diffusions"}` : r.screen === "reglages" ? `/reglages/${r.set || "profil"}` : "/accueil";
     const q = p.toString();

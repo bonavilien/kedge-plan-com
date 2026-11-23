@@ -40,6 +40,7 @@
   const groupe = (s) => (/^[\d\s\u00a0\u202f]*$/.test(s) ? (s.replace(/\D/g, "").slice(0, 12) ? nb(Number(s.replace(/\D/g, "").slice(0, 12))) : "") : s);
   const IMPOSSIBLE = "Ce chiffre n'est pas possible : un nombre entier, de 0 à un milliard";
   const IMPOSSIBLE_EUR = "Ce montant n'est pas possible : de 0 à 100 millions d'euros";
+  KP.valeur = valeur; KP.groupe = groupe; /* 2.9 : repris par js/devis.js */
 
   /* la première fois de la session, les chiffres marqués data-n montent de zéro à leur valeur (0,8 s) et les barres poussent (css : .compte) ;
      ensuite ils s'affichent tout de suite, parce qu'on revient souvent sur cet écran */
@@ -64,9 +65,9 @@
       <div class="head"><h1>Résultats</h1><span class="sub">${tab === "budget" ? "Partenariats payants" : `${h(p.nom)}, ${h(p.lib)}`}</span></div>
       <div class="bar">
         ${chef ? `<div class="seg" role="group" aria-label="Vue"><button type="button" data-act="rtab" data-k="diffusions" class="${tab === "diffusions" ? "on" : ""}" aria-pressed="${tab === "diffusions"}">Diffusions</button><button type="button" data-act="rtab" data-k="budget" class="${tab === "budget" ? "on" : ""}" aria-pressed="${tab === "budget"}">${ic("lock")}Budget</button></div>` : ""}
-        ${tab === "diffusions" ? pers : `<span class="muted r-prive">${ic("lock")}Visible seulement par ${h(qui)}</span>`}
+        ${tab === "diffusions" ? pers : `<span class="muted r-prive">${ic("lock")}Visible seulement par ${h(qui)}</span>${store.voitDevis() && KP.devisAns ? `<span class="sp"></span>${KP.devisAns()}` : ""}`}
       </div>
-      ${tab === "budget" ? budget(p) : diffusions(p)}
+      ${tab === "budget" ? (store.voitDevis() && KP.devisVue ? KP.devisVue() : budget(p)) : diffusions(p)}
     </div>`;
   };
 
@@ -150,7 +151,9 @@
         <span class="r-eur"><input class="input r-m" id="bm-${it.id}" data-id="${it.id}" data-v="${m != null ? nb(m) : ""}" value="${m != null ? nb(m) : ""}" inputmode="numeric" autocomplete="off" placeholder="—" aria-label="Montant de « ${h(it.t)} », en euros"><span aria-hidden="true">€</span></span>
         <span class="st">${KP.pill(it)}</span>
       </div>`; }).join("");
-    return `<div class="ag"><h2>L'année<small>${eur(an)}${anEnv ? ` sur ${eur(anEnv)}` : ""}</small></h2></div>
+    /* 2.9 : base sans le script des devis : l'ancien budget par période, et ce qu'il faut coller pour passer aux devis */
+    const avis = store.resOk() && !store.devisOk() ? `<p class="flag dv-avis">${ic("doc")}<span><b>Budget par devis</b> : colle 2.9_0038 dans Supabase (SQL Editor) pour compter à l'année, devis par devis, avec leur PDF.</span></p>` : "";
+    return `${avis}<div class="ag"><h2>L'année<small>${eur(an)}${anEnv ? ` sur ${eur(anEnv)}` : ""}</small></h2></div>
       <div class="r-cards">${cartes}</div>
       <div class="ag"><h2>${h(sel.nom)}<small>${h(sel.lib)}</small><span class="sp"></span>
         <label class="r-env">Enveloppe <span class="r-eur"><input class="input r-e" id="env-${sel.k}" data-k="${sel.k}" data-v="${e != null ? nb(e) : ""}" value="${e != null ? nb(e) : ""}" inputmode="numeric" autocomplete="off" placeholder="—" aria-label="Enveloppe de la période ${h(sel.nom)}, en euros"><span aria-hidden="true">€</span></span></label></h2></div>

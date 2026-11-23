@@ -1594,3 +1594,115 @@ dialog.dlg.cb-dlg { width: min(720px, calc(100vw - 32px)); padding: 20px 22px 22
 }
 /* tablette (768 à 900 px) : le menu de gauche plus étroit laisse de la place aux titres */
 @media (min-width: 768px) and (max-width: 900px) { :root { --side: 192px; } .side-foot kbd { display: none; } }
+
+/* ---------- 2.9 : le budget par devis, à l'année ---------- */
+/* les quatre états d'un devis reprennent les cases des actions : pointillés (reçu), gris (signé), anthracite (DA faite), vert (facturé) */
+.pill.dv-signe { background: var(--fill); color: var(--text); }
+.f-meta .dv-etats { flex-wrap: wrap; }
+.f-meta .dv-etats button.on[data-k="recu"] { background: var(--st-conf); box-shadow: none; outline: 1.5px dashed var(--text2); outline-offset: -1.5px; }
+.f-meta .dv-etats button.on[data-k="signe"] { background: var(--card); }
+.f-meta .dv-etats button.on[data-k="da"] { background: var(--st-prevu); color: var(--st-prevu-ink); }
+.f-meta .dv-etats button.on[data-k="facture"] { background: var(--ok-bg); color: var(--ok-ink); }
+.dv-ans button { min-width: 30px; justify-content: center; }
+.dv-ans button .ic { width: 15px; height: 15px; }
+.dv-h { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.dv-h h2 { flex: 1 1 auto; }
+.dv-h .btn .ic { width: 15px; height: 15px; }
+.dv-h .r-eur .input { width: 120px; }
+.dv-tot { background: var(--card); border-radius: var(--r3); box-shadow: var(--lift); padding: 18px 20px; display: grid; gap: 12px; }
+.dv-big { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.dv-big b { font: 700 32px/1.1 var(--serif); font-variant-numeric: tabular-nums; }
+.dv-big span, .dv-sous { color: var(--text2); font-size: 14px; }
+.dv-tot.over .dv-sous { color: var(--red); font-weight: 600; }
+.dv-barre { display: flex; height: 12px; border-radius: 6px; overflow: hidden; background: var(--fill); }
+.dv-barre .dv-s { display: block; height: 100%; }
+.dv-s-facture { background: var(--ok-ink); }
+.dv-s-da { background: var(--st-prevu); box-shadow: inset 0 0 0 1px var(--st-prevu-line); } /* en sombre, bordée comme la case Prévu */
+.dv-s-signe { background: var(--text2); }
+.dv-s-recu { background: var(--st-conf); box-shadow: inset 0 0 0 1px var(--text2); }
+.dv-legs { display: flex; flex-wrap: wrap; gap: 6px 22px; font-size: 13.5px; }
+.dv-leg { display: inline-flex; align-items: center; gap: 7px; }
+.dv-leg i { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
+.dv-leg b { font-variant-numeric: tabular-nums; }
+.dv-rows .row, .dv-colh { grid-template-columns: 84px minmax(0, 1fr) 120px 130px 110px 124px; }
+.dv-colh span:nth-child(5) { text-align: right; }
+.dv-rows .row .t { flex-wrap: wrap; row-gap: 0; }
+.dv-rows .row .t small { flex-basis: 100%; }
+.dv-num { font-variant-numeric: tabular-nums; }
+.dv-m { text-align: right; font-variant-numeric: tabular-nums; }
+.dv-rows .st .pill { min-width: 112px; }
+.dv-vide { background: var(--card); border-radius: var(--r3); }
+.dv-avis { margin: 0 0 6px; }
+@media (min-width: 1200px) { html.fiche-open .dv-rows .row, html.fiche-open .dv-colh { grid-template-columns: 84px minmax(0, 1fr) 110px 124px; } html.fiche-open .dv-rows .row .svc, html.fiche-open .dv-rows .row .dv-num, html.fiche-open .dv-colh span:nth-child(3), html.fiche-open .dv-colh span:nth-child(4) { display: none; } }
+@media (max-width: 1100px) and (min-width: 768px) { .dv-rows .row, .dv-colh { grid-template-columns: 84px minmax(0, 1fr) 110px 124px; } .dv-rows .row .svc, .dv-rows .row .dv-num, .dv-colh span:nth-child(3), .dv-colh span:nth-child(4) { display: none; } }
+@media (max-width: 767px) { .dv-colh { display: none; } .dv-rows .row { grid-template-columns: minmax(0, 1fr) auto; } .dv-rows .row .d, .dv-rows .row .svc, .dv-rows .row .dv-num, .dv-rows .row .st { display: none; } .dv-big b { font-size: 26px; } .bar .dv-ans { flex: none; } }
+/* la fiche du devis */
+.dv-total { gap: 10px; flex-wrap: wrap; }
+.dv-total small { font-size: 13px; }
+.dv-remise .input { width: 110px; text-align: right; }
+.dv-ar { text-transform: none; letter-spacing: 0; font-weight: 500; }
+.dv-l { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 12px; padding: 8px 0; border-bottom: 1px solid var(--sep); }
+.dv-l:last-of-type { border-bottom: 0; }
+.dv-lt { all: unset; cursor: pointer; display: grid; min-width: 0; border-radius: var(--r1); padding: 2px 6px; margin: -2px -6px; }
+.dv-lt:hover { background: var(--hover); }
+.dv-lt:focus-visible { outline: 2px solid var(--focus); }
+.dv-lt .tt { font-weight: 600; }
+.dv-lt small { color: var(--text2); font-size: 13px; }
+.dv-lm { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; padding-top: 2px; }
+.dv-lm small { color: var(--text2); }
+.dv-lk { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 6px; padding-top: 6px; }
+.dv-chip { display: inline-flex; align-items: center; max-width: 100%; background: var(--bg); border-radius: var(--r1); }
+.dv-chip-o { all: unset; cursor: pointer; display: inline-flex; gap: 6px; padding: 4px 4px 4px 9px; min-width: 0; font-size: 13.5px; }
+.dv-chip-o .d { color: var(--text2); white-space: nowrap; }
+.dv-chip-o .tt { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 220px; }
+.dv-chip-o:hover .tt { text-decoration: underline; }
+.dv-chip .ib { width: 28px; height: 28px; }
+.dv-chip .ib .ic { width: 14px; height: 14px; }
+.dv-relier { display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 10px; border: 1.5px dashed var(--text2); border-radius: var(--r1); font-size: 13.5px; color: var(--text); }
+.dv-relier.plein { border-style: solid; border-color: var(--sep); color: var(--text2); }
+.dv-relier .ic { width: 14px; height: 14px; }
+.dv-relier:hover { background: var(--hover); }
+.dv-rem .dv-lt { cursor: default; }
+.dv-rem .dv-lt:hover { background: none; }
+.dv-off { font-size: 13px; margin-top: 6px; }
+.dv-pdf { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; }
+.dv-pdf-o { all: unset; cursor: pointer; flex: 1; min-width: 0; display: flex; align-items: center; gap: 12px; padding: 8px 10px; border: 1px solid var(--sep); border-radius: var(--r2); }
+.dv-pdf-o:hover { background: var(--hover); }
+.dv-pdf-o:focus-visible { outline: 2px solid var(--focus); }
+.dv-pdf-i { width: 32px; height: 38px; border-radius: 5px; background: var(--fill); display: grid; place-items: center; font-size: 11px; font-weight: 700; color: var(--text2); flex: none; }
+.dv-pdf-t { display: grid; min-width: 0; }
+.dv-pdf-t .tt { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dv-pdf-t small { color: var(--text2); font-size: 13px; }
+.dv-drop { position: relative; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 14px; border: 1.5px dashed var(--text2); border-radius: var(--r2); color: var(--text2); font-size: 14px; cursor: pointer; text-align: center; }
+.dv-drop:hover, .dv-drop.sur { background: var(--hover); color: var(--text); }
+.dv-drop:focus-within { outline: 2px solid var(--focus); }
+.dv-drop .ic { width: 18px; height: 18px; flex: none; }
+.dv-file { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; }
+/* la part d'une action, sur sa fiche */
+.dv-parts { display: grid; gap: 6px; padding: 3px 0; }
+.dv-part { all: unset; cursor: pointer; display: grid; gap: 2px; padding: 9px 12px; border-radius: var(--r2); background: var(--bg); }
+.dv-part:hover { background: var(--hover); }
+.dv-part:focus-visible { outline: 2px solid var(--focus); }
+.dv-part-h { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
+.dv-part-h b { font-variant-numeric: tabular-nums; }
+.dv-part-h .ic { width: 13px; height: 13px; color: var(--text2); }
+.dv-part-h .pill { margin-left: auto; height: 24px; min-width: 0; padding: 0 9px; font-size: 12.5px; }
+.dv-part small { color: var(--text2); font-size: 13px; }
+/* fenêtres : ligne, nouveau devis ; relier à des actions */
+.dv-form .dv-2 { display: grid; grid-template-columns: minmax(0, 1fr) 140px; gap: 12px; }
+.dv-form .dv-off-c { margin: 4px 0 2px; color: var(--text); }
+.dv-form .dv-off-c input { width: 18px; height: 18px; }
+.dv-form .foot .sp { flex: 1; }
+.dv-form .r-eur { justify-content: flex-start; }
+.dv-form .r-eur .input { width: 100%; text-align: right; }
+.dv-an-n { font-size: 13px; }
+.pop-dv { width: 360px; max-height: min(480px, 80vh); display: flex; flex-direction: column; }
+.dv-q { display: flex; align-items: center; gap: 8px; padding: 4px 8px 8px; }
+.dv-q .ic { width: 16px; height: 16px; color: var(--text2); flex: none; }
+.dv-cs { overflow-y: auto; }
+.dv-c { align-items: flex-start; }
+.dv-cb { width: 18px; height: 18px; border-radius: 5px; border: 1.5px solid var(--text2); display: grid; place-items: center; flex: none; margin-top: 2px; }
+.dv-cb.on { background: var(--text); border-color: var(--text); color: var(--card); }
+.dv-cb .ic { width: 13px; height: 13px; }
+@media (max-width: 767px) { .dv-form .dv-2 { grid-template-columns: minmax(0, 1fr) 110px; } .pop-dv { width: auto; } }
+@media print { .dv-drop, .dv-relier, .dv-chip .ib { display: none; } }

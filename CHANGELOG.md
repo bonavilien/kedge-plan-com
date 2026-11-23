@@ -2,6 +2,16 @@
 
 Généré depuis `site/js/version.js` par `node scripts/version.mjs`. Ne pas modifier à la main.
 
+## 2.9 · 2026-11-23
+
+- Budget, réservé aux chefs de projet : on compte à l'année scolaire, devis par devis, et plus par période. En haut, le total de l'année face à son enveloppe, et une barre par état
+- Un devis : son média, son programme, son numéro, ses lignes (une ligne offerte garde sa valeur, hors total) et sa remise, répartie sur les lignes
+- Quatre états : Reçu, Signé, DA faite, Facturé
+- Le PDF du devis se dépose dans sa fiche et reste rangé dans l'appli, visible seulement par les chefs de projet
+- Chaque ligne se relie aux actions qu'elle paie : la fiche de l'action montre sa part (« 1 sur 4 de « Série vidéo » ») et ouvre le devis d'un clic
+- Les montants notés avant, action par action, restent dans « Sans devis »
+- Script 2.9_0038 à coller une fois dans Supabase ; sans lui, l'ancien Budget par période reste en place
+
 ## 2.8.2 · 2026-11-22
 
 - Écrire dans une fiche pendant qu'un collègue modifie le plan : le curseur ne saute plus

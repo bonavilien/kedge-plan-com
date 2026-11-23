@@ -8,17 +8,19 @@ const base = process.env.SITE || "http://localhost:8812/index.html";
 const shots = process.argv[2] || "";
 if (shots) fs.mkdirSync(shots, { recursive: true });
 const fake = fs.readFileSync(new URL("../v2/fake-supabase.js", import.meta.url), "utf8");
+/* une base d'avant 2.9 (sans le script 0038) : l'onglet Budget reste celui des périodes ; le budget par devis a ses tests dans test/maj/devis.mjs */
+const fakeAvant29 = fake.replace("absentes: [], fichiers", 'absentes: ["devis", "devis_lignes", "devis_liens", "enveloppes_annee"], fichiers');
 const b = await chromium.launch(); let bad = 0;
 const ok = (c, label) => { console.log((c ? "ok   " : "FAIL ") + label); if (!c) bad++; };
 const NOW = new Date("2026-11-19T10:00:00");
 const NB = (s) => String(s).replace(/[  ]/g, " ");
 
-async function ouvrir(cfg, { theme = "light", email = "", hash = "", device = null } = {}) {
+async function ouvrir(cfg, { theme = "light", email = "", hash = "", device = null, avant29 = false } = {}) {
   const ctx = await b.newContext({ ...(device || { viewport: { width: 1440, height: 900 } }), serviceWorkers: "block", deviceScaleFactor: shots ? 2 : device ? device.deviceScaleFactor : 1, colorScheme: theme, reducedMotion: "reduce" });
   const p = await ctx.newPage(); p.errs = [];
   p.on("pageerror", (e) => p.errs.push(e.message)); p.on("console", (m) => m.type() === "error" && p.errs.push(m.text()));
   await p.clock.setFixedTime(NOW);
-  await p.route("**/vendor/supabase-*.js", (r) => r.fulfill({ contentType: "text/javascript", body: fake }));
+  await p.route("**/vendor/supabase-*.js", (r) => r.fulfill({ contentType: "text/javascript", body: avant29 ? fakeAvant29 : fake }));
   await p.route("**/config.js", (r) => r.fulfill({ contentType: "text/javascript", body: `window.KPLAN_CONFIG = ${JSON.stringify(cfg)};` }));
   await p.goto(base + hash);
   if (email) {
@@ -88,9 +90,11 @@ const snap = (p, n, full) => shots && p.screenshot({ path: `${shots}/${n}.png`, 
   await ctx.close();
 }
 
-/* ---------- démo : Budget (chefs de projet) ---------- */
+/* ---------- démo, base d'avant 2.9 : Budget par période (chefs de projet) ---------- */
 {
   const [ctx, p] = await ouvrir({ brancher: false }, { hash: "#/resultats/budget" });
+  await p.evaluate(() => { KP.base = { resultats: true, photo: true, devis: false }; KP.render(); });
+  ok(await p.locator(".dv-avis").count() === 1 && !(await p.locator(".dv-tot").count()), "base sans 0038 : l'ancien onglet, et ce qu'il faut coller pour les devis");
   const cartes = () => p.$$eval(".r-card", (e) => e.map((x) => x.innerText.replace(/\s*\n\s*/g, " ").replace(/[  ]/g, " ")));
   ok((await cartes(p)).join(" | ") === "Installer 3 800 € sur 8 000 € | Considérer 9 800 € sur 10 000 € | Préférer 4 500 € sur 12 000 € | Convertir 0 € sur 10 000 € | Décider 0 € sur 6 000 €", "une case par période : " + (await cartes(p)).join(" | "));
   ok(NB(await p.$eval(".ag h2 small", (e) => e.textContent)) === "18 100 € sur 46 000 €", "l'année : total et enveloppes");
@@ -162,15 +166,18 @@ const snap = (p, n, full) => shots && p.screenshot({ path: `${shots}/${n}.png`, 
   ok(await apercu() === "Noter 3 200 vues et passer en Diffusé", "passée, pas diffusée : " + await apercu());
   await p.keyboard.press("Enter"); await p.waitForTimeout(80);
   ok(await p.evaluate((id) => KP.store.get(id).st, id) === "diffuse", "l'action passe en « Diffusé »");
-  // un partenariat : le montant va au budget, et le message part quand même
-  id = await fiche("Encart Sud Ouest");
+  // un partenariat payé par un devis : le montant se change dans le devis, pas ici
+  await fiche("Encart Sud Ouest"); await ecrire("@Aurélie facture reçue, 1 650 € au final");
+  ok(!(await apercu()).includes("Budget"), "payé par un devis : pas de budget proposé : " + await apercu());
+  // un partenariat sans devis : le montant va au budget, et le message part quand même
+  id = await fiche("Interview dans Challenges");
   await ecrire("@Aurélie facture reçue, 1 650 € au final");
-  ok(await apercu() === "Aurélie | pour info | Budget : 1 650 €", "« 1 650 € » sur un partenariat : le budget : " + await apercu());
+  ok(await apercu() === "Aurélie | pour info | Budget : 1 650 €", "« 1 650 € » sur un partenariat sans devis : le budget : " + await apercu());
   await p.keyboard.press("Enter"); await p.waitForTimeout(80);
   ok(await p.evaluate((id) => KP.store.montant(id), id) === 1650 && await p.evaluate((id) => KP.store.reqsOf(id).some((r) => r.txt.startsWith("Facture reçue") && !r.txt.includes("650")), id), "budget noté, et le message part sans le montant (réservé aux chefs de projet)");
   // Stéphane n'a pas de budget
   await p.evaluate(() => KP.store.switchUser("stephane"));
-  await fiche("Encart Sud Ouest"); await ecrire("@Aurélie 1 650 € au final");
+  await fiche("Interview dans Challenges"); await ecrire("@Aurélie 1 650 € au final");
   ok(!(await apercu()).includes("Budget"), "Stéphane : pas de budget proposé");
   ok(!p.errs.length, "aucune erreur : " + p.errs.join(" | "));
   await ctx.close();
@@ -196,7 +203,7 @@ for (const hash of ["#/resultats/diffusions", "#/resultats/budget"]) {
 
 /* ---------- branché (fausse base) ---------- */
 {
-  const [ctx, p] = await ouvrir({ brancher: true, supabaseUrl: "https://faux.supabase.co", supabaseKey: "faux" }, { email: "pilote@example.com", hash: "#/resultats/diffusions" });
+  const [ctx, p] = await ouvrir({ brancher: true, supabaseUrl: "https://faux.supabase.co", supabaseKey: "faux" }, { email: "pilote@example.com", hash: "#/resultats/diffusions", avant29: true });
   const breve = await p.evaluate(() => window.__fake.db.items.find((x) => x.t === "Brève accord Séoul").id);
   ok((await todo(p)).map((x) => x.split(" / ")[0]).join() === "Brève accord Séoul", "relu depuis la base : la brève diffusée est à compléter");
   await p.click(`#rn-${breve}`); await p.keyboard.type("5"); await p.keyboard.press("Enter");
@@ -229,7 +236,7 @@ for (const hash of ["#/resultats/diffusions", "#/resultats/budget"]) {
   const ctx = await b.newContext({ viewport: { width: 1440, height: 900 }, serviceWorkers: "block" });
   const p = await ctx.newPage(); p.errs = []; p.on("pageerror", (e) => p.errs.push(e.message));
   await p.clock.setFixedTime(NOW);
-  await p.route("**/vendor/supabase-*.js", (r) => r.fulfill({ contentType: "text/javascript", body: fake.replace("budget: [{ item: I(9), montant: 3200 }], enveloppes: [{ per: 2, montant: 10000 }],", "") }));
+  await p.route("**/vendor/supabase-*.js", (r) => r.fulfill({ contentType: "text/javascript", body: fakeAvant29.replace("budget: [{ item: I(9), montant: 3200 }], enveloppes: [{ per: 2, montant: 10000 }],", "") }));
   await p.route("**/config.js", (r) => r.fulfill({ contentType: "text/javascript", body: `window.KPLAN_CONFIG = ${JSON.stringify({ brancher: true, supabaseUrl: "https://faux.supabase.co", supabaseKey: "faux" })};` }));
   await p.goto(base + "#/resultats/budget"); await p.waitForSelector("#login form");
   await p.evaluate(() => { const db = window.__fake.db; delete db.budget; delete db.enveloppes; db.items.find((x) => x.t === "Brève accord Séoul").res = { retombees: 5 };

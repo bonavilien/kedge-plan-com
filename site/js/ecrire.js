@@ -32,7 +32,7 @@
     /* « 12 000 vues » sur une action diffusée (ou passée) : ses résultats ; « 1 500 € » sur un partenariat, écrit par un chef de projet : son budget */
     const ch = r.chiffres.filter((c, i, l) => l.findIndex((x) => x.unite === c.unite) === i);
     a.res = can && store.resOk() && ch.length && it.kind === "action" && !it.annule && (it.st === "diffuse" || (!it.flou && it.date <= KP.TODAY)) ? Object.fromEntries(ch.map((c) => [c.unite, c.n])) : null;
-    a.prix = r.montant && it.variant === "partenariat" && !it.annule && store.voitBudget() && r.montant.n >= 0 && r.montant.n <= 1e8 ? Math.round(r.montant.n) : null;
+    a.prix = r.montant && it.variant === "partenariat" && !it.annule && store.voitBudget() && !(store.voitDevis() && store.partsDe(it.id).length) && r.montant.n >= 0 && r.montant.n <= 1e8 ? Math.round(r.montant.n) : null;
     /* noter les chiffres : proposé coché seulement quand la phrase ne demande rien à personne (« 12 400 vues » tout seul) */
     a.noteRes = !!a.res && (s.res != null ? s.res : !r.qui.length && r.intention !== "rappel"); a.notePrix = a.prix != null && !s.sansPrix;
     const fin = it.variant === "sujet" ? KP.endOf(it) : it.date;
