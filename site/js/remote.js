@@ -43,13 +43,16 @@
   async function load() {
     manque = {};
     const all = (t, order) => run(sb.from(t).select("*").order(order));
-    const [per, svc, prt, prof, items, links, reqs, blk, ans, meta, journal, lieux, contacts, ic, msgs, prix, env] = await Promise.all([
+    const [per, svc, prt, prof, items, links, reqs, blk, ans, meta, journal, lieux, contacts, ic, msgs, prix, env, dvs, dvl, dvk, dva] = await Promise.all([
       all("periods", "du"), all("services", "ordre"), all("partners", "nom"), all("profiles", "nom"), all("items", "date"), all("links", "at"), all("reqs", "at"), all("blocks", "at"),
       run(sb.from("answers").select("key,val").eq("user_id", user.id)), all("meta", "k"), soft(sb.from("journal").select("*").order("id", { ascending: false }).limit(3000), []),
       soft(sb.from("lieux").select("*").order("nom"), []), soft(sb.from("contacts").select("*").order("nom"), []), soft(sb.from("item_contacts").select("*"), []),
       soft(sb.from("messages").select("*").order("n"), []),
       /* budget : la base ne le donne qu'aux chefs de projet ; les autres reçoivent des listes vides */
       softT("budget", sb.from("budget").select("item,montant")), softT("enveloppes", sb.from("enveloppes").select("per,montant")),
+      /* 2.9 : les devis (script 0038), chefs de projet seulement */
+      softT("devis", sb.from("devis").select("*").order("recu")), softT("devis", sb.from("devis_lignes").select("*").order("rang")),
+      softT("devis", sb.from("devis_liens").select("ligne,item")), softT("devis", sb.from("enveloppes_annee").select("annee,montant")),
     ]);
     /* sans session valable, la base renvoie des listes vides sans erreur : on ne remplace pas le plan par du vide */
     if (!prof.some((p) => p.id === user.id)) { const e = new Error("session expirée"); e.session = true; throw e; }
@@ -106,6 +109,9 @@
       projet: { couleur: m.couleur || "", sousTitre: m.sous_titre || "" },
       budget: Object.fromEntries(prix.map((b) => [b.item, b.montant])),
       env: Object.fromEntries(env.map((e) => [perK(e.per), e.montant]).filter(([k]) => k)),
+      devis: dvs.map((x) => ({ id: x.id, annee: x.annee, media: x.media || "", prog: x.programme || "", num: x.numero || "", recu: x.recu || "", remise: x.remise || 0, paiement: x.paiement || "", etat: x.etat || "recu", pdf: x.pdf || "", pdfNom: x.pdf_nom || "",
+        lignes: dvl.filter((l) => l.devis === x.id).map((l) => ({ id: l.id, t: l.t || "", d: l.detail || "", qte: l.qte || 1, montant: l.montant || 0, offert: !!l.offert, items: dvk.filter((k) => k.ligne === l.id).map((k) => k.item) })) })),
+      envAn: Object.fromEntries(dva.map((e) => [String(e.annee), e.montant])),
     };
     return data;
   }
@@ -244,6 +250,28 @@
     const e0 = shadow.env || {}, e1 = db.env || {}, perN = (k) => (KP.PERIODS.find((p) => p.k === k) || {}).n;
     Object.keys(e1).forEach((k) => { if (e1[k] !== e0[k] && perN(k) != null) ops.push(() => run(sb.from("enveloppes").upsert({ per: perN(k), montant: e1[k] }))); });
     Object.keys(e0).forEach((k) => { if (!(k in e1) && perN(k) != null) ops.push(() => run(sb.from("enveloppes").delete().eq("per", perN(k)))); });
+    /* 2.9 : devis, lignes, liens aux actions, enveloppe de l'année (chefs de projet) ; après les fiches, qu'une ligne puisse citer une fiche créée à l'instant */
+    const dvRow = (x) => ({ annee: x.annee, media: x.media || "", programme: x.prog || "", numero: x.num || "", recu: x.recu || null, remise: x.remise || 0, paiement: x.paiement || "", etat: x.etat, pdf: x.pdf || "", pdf_nom: x.pdfNom || "" });
+    const lgRow = (l, i, dv) => ({ devis: dv, rang: i + 1, t: l.t || "", detail: l.d || "", qte: l.qte || 1, montant: l.montant || 0, offert: !!l.offert });
+    const d0 = byId(shadow.devis || []), d1 = byId(db.devis || []);
+    (db.devis || []).forEach((dv) => {
+      const old = d0[dv.id], l0 = old ? byId(old.lignes) : {};
+      if (!old) ops.push(() => run(sb.from("devis").insert({ id: dv.id, ...dvRow(dv) })).catch(deja));
+      else if (!same(dvRow(dv), dvRow(old))) ops.push(() => changed(sb.from("devis").update(dvRow(dv)).eq("id", dv.id)));
+      dv.lignes.forEach((l, i) => {
+        const o = l0[l.id], oi = old ? old.lignes.indexOf(o) : -1;
+        if (!o) ops.push(() => run(sb.from("devis_lignes").insert({ id: l.id, ...lgRow(l, i, dv.id) })).catch(deja));
+        else if (!same(lgRow(l, i, dv.id), lgRow(o, oi, dv.id))) ops.push(() => changed(sb.from("devis_lignes").update(lgRow(l, i, dv.id)).eq("id", l.id)));
+        const k0 = o ? o.items : [];
+        l.items.filter((x) => !k0.includes(x)).forEach((x) => ops.push(() => run(sb.from("devis_liens").insert({ ligne: l.id, item: x })).catch(deja)));
+        k0.filter((x) => !l.items.includes(x) && !gone.has(x)).forEach((x) => ops.push(() => run(sb.from("devis_liens").delete().eq("ligne", l.id).eq("item", x))));
+      });
+      if (old) old.lignes.forEach((o) => { if (!dv.lignes.some((l) => l.id === o.id)) ops.push(() => run(sb.from("devis_lignes").delete().eq("id", o.id))); });
+    });
+    (shadow.devis || []).forEach((dv) => { if (!d1[dv.id]) ops.push(async () => { await run(sb.from("devis").delete().eq("id", dv.id)); if (dv.pdf) pdf.retirer(dv.pdf).catch(() => {}); }); });
+    const a0 = shadow.envAn || {}, a1 = db.envAn || {};
+    Object.keys(a1).forEach((k) => { if (a1[k] !== a0[k]) ops.push(() => run(sb.from("enveloppes_annee").upsert({ annee: +k, montant: a1[k] }))); });
+    Object.keys(a0).forEach((k) => { if (!(k in a1)) ops.push(() => run(sb.from("enveloppes_annee").delete().eq("annee", +k))); });
     /* équipe, services, médias */
     const p0 = Object.fromEntries(shadow.people.map((p) => [p.k, p]));
     db.people.forEach((p) => { const o = p0[p.k]; if (o && !same(p, o)) ops.push(() => run(sb.from("profiles").update({ nom: p.nom, fonction: p.fonction, ...(photoCol && (p.photo || "") !== (o.photo || "") ? { photo: p.photo || null } : {}), ...(p.role !== o.role || p.svc !== o.svc ? { chef: p.role === "pilote", visiteur: p.role === "lecteur", svc: p.svc || null } : {}) }).eq("id", p.k))); });
@@ -307,19 +335,20 @@
   /* base sans les scripts 2.6 : pas d'écran Résultats ni de budget (la base les refuserait), et on dit quoi faire */
   let prevenu = false;
   function baseAJour() {
-    const ok = !manque.budget; KP.base = { resultats: ok, photo: photoCol };
+    const ok = !manque.budget; KP.base = { resultats: ok, photo: photoCol, devis: ok && !manque.devis };
     if (!ok && !prevenu && KP.me().role === "pilote") { prevenu = true; setTimeout(() => KP.toast("La base n'est pas à jour : colle 2.5_0030 puis 2.6_0031 dans Supabase (SQL Editor)"), 1500); }
   }
   document.addEventListener("visibilitychange", () => { if (!document.hidden && horsLigne) sync(store._db()); });
   const frErr = (e) => { const m = (e && e.message) || ""; try { if (store.tele && m && !/fetch|network|réseau/i.test(m)) store.tele("erreur", m.slice(0, 300), { ecran: KP.route && KP.route.screen, base: true }); } catch (x) {}
     if (/row-level security|permission denied/i.test(m)) return "tu n'as pas le droit de faire ce changement";
     if (/null value in column "pour"|column "res"|relation "public\.(budget|enveloppes)"|function public\.set_res|set_res/i.test(m) || absente(e)) return "la base n'est pas à jour (à coller dans Supabase : 2.5_0030 puis 2.6_0031)";
-    if (/res_ok|budget_montant_check|enveloppes_montant_check/i.test(m)) return "ce chiffre n'est pas possible";
+    if (/relation "public\.(devis|devis_lignes|devis_liens|enveloppes_annee)"/i.test(m)) return "la base n'a pas encore les devis (à coller dans Supabase : 2.9_0038)";
+    if (/res_ok|budget_montant_check|enveloppes_montant_check|devis_\w*check|enveloppes_annee_\w*check/i.test(m)) return "ce chiffre n'est pas possible";
     if (/fetch|network/i.test(m)) return "le serveur ne répond pas";
     if (/duplicate key|23505/i.test(m)) return "c'était déjà enregistré";
     if (/violates|constraint|invalid input|does not exist|null value|out of range|syntax error|operator|JWT|PGRST/i.test(m)) return "la base a refusé ce changement"; /* message technique anglais : le détail va dans Réglages > Suivi */
     return m || "la base ne répond pas"; };
-  const snapshot = (db) => clone({ periods: KP.PERIODS, messages: KP.MESSAGES.map((m) => ({ n: m.n, nom: m.nom, info: m.info })), items: db.items, reqs: db.reqs, people: db.people, services: db.services, partners: db.partners, lieux: db.lieux, contacts: db.contacts, prefs: { [user.id]: db.prefs[user.id] || {} }, lastMeeting: db.lastMeeting, projet: db.projet || {}, budget: db.budget || {}, env: db.env || {} });
+  const snapshot = (db) => clone({ periods: KP.PERIODS, messages: KP.MESSAGES.map((m) => ({ n: m.n, nom: m.nom, info: m.info })), items: db.items, reqs: db.reqs, people: db.people, services: db.services, partners: db.partners, lieux: db.lieux, contacts: db.contacts, prefs: { [user.id]: db.prefs[user.id] || {} }, lastMeeting: db.lastMeeting, projet: db.projet || {}, budget: db.budget || {}, env: db.env || {}, devis: db.devis || [], envAn: db.envAn || {} });
   /* les documents ajoutés ont reçu leur identifiant de la base : la copie de référence le prend aussi */
   function fixDocs() { const cur = Object.fromEntries(store._db().items.map((i) => [i.id, i])); shadow.items.forEach((s) => { const i = cur[s.id]; if (i && i.docs && s.docs && i.docs.length === s.docs.length) s.docs = clone(i.docs); }); }
   function badge() { document.documentElement.classList.toggle("saving", pending > 0); }
@@ -471,7 +500,21 @@
     fn: (corps) => fn("export", corps, ["La fonction export ne répond pas : pas de réseau, ou pas encore installée.", "La fonction export n'est pas encore installée dans Supabase.", "L'envoi a échoué"]),
   };
 
+  /* 2.9 : le PDF d'un devis, rangé dans Supabase Storage (dossier privé « devis », chefs de projet seulement) */
+  const pdf = {
+    async deposer(devisId, file) {
+      const nom = (file.name || "devis.pdf").normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^\w.-]+/g, "-").slice(-80);
+      const chemin = `${devisId}/${Date.now()}-${nom}`;
+      const { error } = await sb.storage.from("devis").upload(chemin, file, { contentType: "application/pdf", upsert: false });
+      if (error) throw error;
+      return chemin;
+    },
+    async lien(chemin) { const { data, error } = await sb.storage.from("devis").createSignedUrl(chemin, 600); if (error) throw error; return data.signedUrl; },
+    async retirer(chemin) { const { error } = await sb.storage.from("devis").remove([chemin]); if (error) throw error; },
+  };
+
   KP.remote = {
+    pdf,
     maj,
     exporter,
     push,

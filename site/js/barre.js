@@ -140,7 +140,7 @@
         /* 2.8.2 : sur une action ordinaire, on dit pourquoi au lieu de « aucune action ne ressemble » */
         { const t0 = cible(s.quoi.txt, (it) => it.variant === "partenariat"), t1 = !t0.it && !(t0.cands && t0.cands.length) && cible(s.quoi.txt, vivantes); if (t1 && (t1.it || (t1.cands && t1.cands.length))) { vm.refus = "Le budget se note sur un partenariat payant."; vm.corps = `<div class="cb-l">${mini(t1.it || t1.cands[0])}</div>`; return vm; } }
         return surUne(cible(s.quoi.txt, (it) => it.variant === "partenariat"), (it) => ({ corps: `<div class="cb-l">${mini(it)}</div><p class="cb-chiffres"><span><b>${KP.nb(n)} €</b></span></p>`,
-          bouton: "Noter", refus: store.voitBudget() ? undefined : "Le budget est réservé aux chefs de projet.", faire: () => { const u0 = store.setMontant(it.id, n); return u0 ? { undo: u0, toast: `Budget noté : ${KP.nb(n)} €` } : { toast: "Montant impossible : rien n'a changé." }; } })); }
+          bouton: "Noter", refus: !store.voitBudget() ? "Le budget est réservé aux chefs de projet." : store.voitDevis() && store.partsDe(it.id).length ? "Cette action est payée par un devis : son montant se change dans le devis." : undefined, faire: () => { const u0 = store.setMontant(it.id, n); return u0 ? { undo: u0, toast: `Budget noté : ${KP.nb(n)} €` } : { toast: "Montant impossible : rien n'a changé." }; } })); }
 
       case "service": { const k = s.service.zones[0].svc; vm.titre = "Changer de service";
         return surUne(cible(s.quoi.txt, (it) => vivantes(it) && it.kind === "action" && it.variant !== "partenariat"), (it) => ({ corps: `<div class="cb-l">${mini(it)}</div><p class="cb-fleche"><s>${h(svcCourt(it.svc))}</s>${ic("arrow")}<b>${h(svcCourt(k))}</b></p>`,

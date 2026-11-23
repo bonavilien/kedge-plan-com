@@ -66,6 +66,13 @@
     { k: "prevu", nom: "Prévu" },
     { k: "diffuse", nom: "Diffusé" },
   ];
+  /* 2.9 : l'état d'un devis ; « DA faite » = la demande d'achat est passée. La pastille reprend les codes des états des actions */
+  const DEVIS_ETATS = [
+    { k: "recu", nom: "Reçu", pill: "confirmer" },
+    { k: "signe", nom: "Signé", pill: "dv-signe" },
+    { k: "da", nom: "DA faite", pill: "prevu" },
+    { k: "facture", nom: "Facturé", pill: "diffuse" },
+  ];
   const PEOPLE0 = [
     { k: "julien", nom: "Julien", fonction: "Chef de projet com, Content", role: "pilote", svc: "content", admin: true },
     { k: "estelle", nom: "Estelle", fonction: "Responsable marketing de l'offre", role: "pilote", svc: "" },
@@ -108,6 +115,9 @@
     }
     if (hors) Object.assign(MESSAGES.find((m) => m.hors), { nom: hors.nom, info: hors.info || "" });
   };
+  /* l'année scolaire d'une date : 2026 = septembre 2026 à août 2027 (le budget des devis se compte à l'année) */
+  const anDe = (date) => { const x = parse(date); return x.getMonth() >= 8 ? x.getFullYear() : x.getFullYear() - 1; };
+  const anLib = (a) => `${a}-${+a + 1}`;
   const periodOf = (date) => PERIODS.find((p) => date >= p.du && date <= p.au) || PERIODS.find((p) => date < p.du) || PERIODS[PERIODS.length - 1]; /* 2.8.2 : entre deux périodes, la suivante */
 
   const store0 = (id, items) => items.find((i) => i.id === id);
@@ -172,6 +182,17 @@
     const sudouest = ac("Encart Sud Ouest : journée portes ouvertes", d(-2), "rp", ["recrutement"], "diffuse", { variant: "partenariat", partner: "Sud Ouest", by: "julien", tf: jpo });
     const salon = ac("Salon L'Étudiant : le stand", d(60), "rp", ["filieres"], "confirmer", { variant: "partenariat", partner: "L'Étudiant", by: "julien" });
     const budget = { [etudiant]: 4800, [challenges]: 3200, [studyrama]: 3800, [sudouest]: 1800, [salon]: 4500 };
+    /* 2.9 : les devis de l'année (exemples inventés) ; chaque ligne se relie aux actions qu'elle paie */
+    const an = anDe(TODAY), L = (t, montant, items, o = {}) => ({ id: id(), t, d: o.d || "", qte: o.qte || 1, montant, offert: !!o.offert, items });
+    const devis = [
+      { id: id(), annee: an, media: "L'Étudiant", prog: "PGE", num: "DEV-2026-118", recu: d(-30), remise: 300, paiement: "30 % à la signature", etat: "signe", pdf: "", pdfNom: "",
+        lignes: [L("Dossier spécial écoles de commerce", 4800, [etudiant], { d: "1 double page" }), L("Stand au salon L'Étudiant", 4500, [salon]), L("Newsletter lycéens × 2", 2000, [], { d: "Décembre et février", qte: 2 }), L("Bannière web, une semaine", 1200, [], { offert: true })] },
+      { id: id(), annee: an, media: "Sud Ouest", prog: "PGE", num: "SO-5521", recu: d(-45), remise: 0, paiement: "À réception de facture", etat: "facture", pdf: "", pdfNom: "",
+        lignes: [L("Encart journée portes ouvertes", 1800, [sudouest], { d: "Quart de page, édition Gironde" })] },
+      { id: id(), annee: an, media: "Studyrama", prog: "Bachelor", num: "Q-0912", recu: d(-70), remise: 0, paiement: "50 % à la commande", etat: "recu", pdf: "", pdfNom: "",
+        lignes: [L("Guide des écoles", 3800, [studyrama]), L("Salon Studyrama de Bordeaux", 2900, [])] },
+    ];
+    const envAn = { [an]: 25000 };
     const env = Object.fromEntries(PERIODS.map((p, i) => [p.k, [8000, 10000, 12000, 10000, 6000][i] || 0]).filter(([, n]) => n));
 
     const reqs = [
@@ -195,7 +216,7 @@
     ];
     store0(jpo, items).contacts = ["c1", "c2"];
     return { v: 8, seq: 100, moi: "julien", people: JSON.parse(JSON.stringify(PEOPLE0)), services: JSON.parse(JSON.stringify(SERVICES0)), partners: [...PARTNERS],
-      lieux: ["Campus de Bordeaux", "Campus de Marseille", "Campus de Paris", "Campus de Toulon", "Campus de Bordeaux et Marseille", "Tous les campus", "Palais de la Bourse, Bordeaux"], contacts, items, reqs, journal, prefs, lastMeeting: d(-7), budget, env };
+      lieux: ["Campus de Bordeaux", "Campus de Marseille", "Campus de Paris", "Campus de Toulon", "Campus de Bordeaux et Marseille", "Tous les campus", "Palais de la Bourse, Bordeaux"], contacts, items, reqs, journal, prefs, lastMeeting: d(-7), budget, env, devis, envAn };
   }
 
   /* ---------- magasin ---------- */
@@ -205,7 +226,7 @@
   /* la démonstration d'une version précédente (v7, avant les résultats et le budget) est gardée : on lui ajoute ce qui manque */
   const read = () => { try { const o = JSON.parse(localStorage.getItem(KEY)); if (o && o.v === 7 && Array.isArray(o.items)) { const s = seed(); o.budget = o.budget || s.budget; o.env = o.env || s.env;
     ["people", "services", "partners", "lieux", "contacts", "reqs", "journal"].forEach((k) => { if (!Array.isArray(o[k]) || (!o[k].length && (k === "people" || k === "services"))) o[k] = s[k]; });
-    o.prefs = o.prefs || {}; o.items.forEach((i) => { i.docs = i.docs || []; i.m = i.m || []; i.contacts = i.contacts || []; }); o.v = 8; } if (o && o.v === 8) { if (Array.isArray(o.people) && !o.people.some((p) => p.admin)) { const a = o.people.find((p) => p.role === "pilote"); if (a) a.admin = true; } return o; } } catch (e) {} return null; };
+    o.prefs = o.prefs || {}; o.items.forEach((i) => { i.docs = i.docs || []; i.m = i.m || []; i.contacts = i.contacts || []; }); o.v = 8; } if (o && o.v === 8) { if (!Array.isArray(o.devis)) { o.devis = []; o.envAn = {}; } if (Array.isArray(o.people) && !o.people.some((p) => p.admin)) { const a = o.people.find((p) => p.role === "pilote"); if (a) a.admin = true; } return o; } } catch (e) {} return null; };
   /* distant : quand l'appli est branchée sur la base (js/remote.js), le magasin garde la même forme en mémoire
      et chaque changement part vers la base au lieu du navigateur */
   let remote = null;
@@ -279,14 +300,17 @@
       db.items.forEach((i) => { if (i.tf === id) i.tf = ""; });
       db.reqs = db.reqs.filter((r) => r.item !== id);
       const prix = (db.budget || {})[id]; if (prix != null) delete db.budget[id];
+      const liens = []; (db.devis || []).forEach((dv) => dv.lignes.forEach((l) => { if (l.items.includes(id)) { liens.push([dv.id, l.id]); l.items = l.items.filter((x) => x !== id); } }));
       emit();
       if (remote) return null;
-      return () => { if (byId(id)) return; db.items.push(saved); if (prix != null) db.budget[id] = prix; rel.forEach((r) => { const x = byId(r); if (x && !x.tf) x.tf = id; }); db.reqs.push(...reqs); emit(); };
+      return () => { if (byId(id)) return; db.items.push(saved); if (prix != null) db.budget[id] = prix; rel.forEach((r) => { const x = byId(r); if (x && !x.tf) x.tf = id; }); db.reqs.push(...reqs);
+        liens.forEach(([d, l]) => { const dv = store.devis(d), li = dv && dv.lignes.find((x) => x.id === l); if (li && !li.items.includes(id)) li.items.push(id); }); emit(); };
     },
     /* annuler une création : la fiche n'a encore ni demande ni relais */
     /* 2.8.2 : la fiche se ferme d'abord (pas de « n'existe plus »), et ses demandes partent avec elle */
     unadd(id) { if (typeof KP !== "undefined" && KP.route && KP.route.fiche === id && KP.go) KP.go({ fiche: "" }, true);
-      db.items = db.items.filter((i) => i.id !== id); db.items.forEach((i) => { if (i.tf === id) i.tf = ""; }); db.reqs = db.reqs.filter((r) => r.item !== id); if (db.budget) delete db.budget[id]; emit(); },
+      db.items = db.items.filter((i) => i.id !== id); db.items.forEach((i) => { if (i.tf === id) i.tf = ""; }); db.reqs = db.reqs.filter((r) => r.item !== id); if (db.budget) delete db.budget[id];
+      (db.devis || []).forEach((dv) => dv.lignes.forEach((l) => { l.items = l.items.filter((x) => x !== id); })); emit(); },
     duplicate(id) {
       const it = store.get(id); if (!it) return null;
       const { id: _id, annule, report, res, ...copie } = JSON.parse(JSON.stringify(it));
@@ -416,6 +440,63 @@
     enveloppe: (k) => (db.env || {})[k],
     setMontant(id, n) { return regle("budget", id, n); },
     setEnveloppe(k, n) { return regle("env", k, n); },
+    /* ---------- 2.9 : les devis, à l'année (chefs de projet seulement) ---------- */
+    /* la base pas encore à jour (script 2.9_0038 non collé) : l'onglet Budget reste l'ancien, par période */
+    devisOk: () => !(KP.base && KP.base.devis === false),
+    voitDevis: () => store.voitBudget() && store.devisOk(),
+    devisTous: () => db.devis || [],
+    devisDe: (a) => (db.devis || []).filter((x) => x.annee === +a),
+    devis: (id) => (db.devis || []).find((x) => x.id === id),
+    /* le total HT : les lignes payantes moins la remise ; les lignes offertes comptent à part, pour leur valeur */
+    totalDevis(dv) { const paye = dv.lignes.filter((l) => !l.offert).reduce((a, l) => a + l.montant, 0);
+      return { paye, offert: dv.lignes.filter((l) => l.offert).reduce((a, l) => a + l.montant, 0), ht: Math.max(0, paye - (dv.remise || 0)) }; },
+    /* ce qu'une action coûte : sa part de chaque ligne qui la paie (la remise répartie au prorata, la ligne partagée entre ses actions) */
+    partsDe(itemId) {
+      const out = [];
+      (db.devis || []).forEach((dv) => { const t = store.totalDevis(dv), k = t.paye ? t.ht / t.paye : 0;
+        dv.lignes.forEach((l) => { if (!l.items.includes(itemId)) return; const sur = Math.max(l.qte || 1, l.items.length); /* « 1 épisode sur 4 » : un quart de la ligne, même si les 3 autres ne sont pas encore reliés */
+          out.push({ devis: dv, ligne: l, part: l.offert ? 0 : Math.round((l.montant * k) / sur), offert: l.offert, sur, rang: l.items.indexOf(itemId) + 1 }); }); });
+      return out;
+    },
+    addDevis(o) {
+      const dv = { id: nid("d"), annee: anDe(TODAY), media: "", prog: "", num: "", recu: TODAY, remise: 0, paiement: "", etat: "recu", pdf: "", pdfNom: "", lignes: [], ...o };
+      (db.devis = db.devis || []).push(dv); emit();
+      return { id: dv.id, undo: () => { db.devis = db.devis.filter((x) => x.id !== dv.id); if (KP.route && KP.route.fiche === "devis-" + dv.id && KP.go) KP.go({ fiche: "" }, true); emit(); } };
+    },
+    /* un geste sur un devis : annuler remet le devis d'avant, seulement si personne ne l'a changé depuis */
+    _devis(id, f) {
+      const dv = store.devis(id); if (!dv) return null;
+      const avant = JSON.parse(JSON.stringify(dv)); if (f(dv) === false) return null;
+      if (meme(avant, dv)) return () => {};
+      const apres = JSON.parse(JSON.stringify(dv)); emit();
+      return () => { const i = (db.devis || []).findIndex((x) => x.id === id);
+        if (i < 0) { db.devis.push(avant); return emit(); }
+        if (!meme(db.devis[i], apres)) return toast("Un collègue l'a modifié entre-temps : rien n'a été défait");
+        db.devis[i] = avant; emit(); };
+    },
+    setDevis(id, patch) {
+      const p = { ...patch };
+      if ("remise" in p) { const n = Math.round(Number(p.remise || 0)); if (!Number.isFinite(n) || n < 0 || n > MAXEUR) return null; p.remise = n; }
+      if ("etat" in p && !DEVIS_ETATS.some((e) => e.k === p.etat)) return null;
+      if ("annee" in p) p.annee = +p.annee;
+      return store._devis(id, (dv) => { Object.assign(dv, p); });
+    },
+    delDevis(id) {
+      const dv = store.devis(id); if (!dv) return null;
+      const avant = JSON.parse(JSON.stringify(dv)); db.devis = db.devis.filter((x) => x.id !== id); emit();
+      return () => { if (store.devis(id)) return; db.devis.push(avant); emit(); };
+    },
+    ligneOk: (o) => { const n = Number(o.montant), q = Number(o.qte || 1); return Number.isFinite(n) && n >= 0 && n <= MAXEUR && Number.isInteger(q) && q >= 1 && q <= 99; },
+    addLigne(id, o) { if (!store.ligneOk(o)) return null; const l = { id: nid("l"), t: "", d: "", qte: 1, montant: 0, offert: false, items: [], ...o, montant: Math.round(Number(o.montant)) };
+      const u = store._devis(id, (dv) => { dv.lignes.push(l); }); return u && { id: l.id, undo: u }; },
+    setLigne(id, lid, patch) { const p = { ...patch }; if ("montant" in p || "qte" in p) { const dv = store.devis(id), l = dv && dv.lignes.find((x) => x.id === lid); if (!l || !store.ligneOk({ ...l, ...p })) return null; if ("montant" in p) p.montant = Math.round(Number(p.montant)); if ("qte" in p) p.qte = +p.qte; }
+      return store._devis(id, (dv) => { const l = dv.lignes.find((x) => x.id === lid); if (!l) return false; Object.assign(l, p); }); },
+    delLigne(id, lid) { return store._devis(id, (dv) => { const n = dv.lignes.length; dv.lignes = dv.lignes.filter((x) => x.id !== lid); if (dv.lignes.length === n) return false; }); },
+    /* relier (ou délier) une action à une ligne */
+    lier(id, lid, itemId, on) { return store._devis(id, (dv) => { const l = dv.lignes.find((x) => x.id === lid); if (!l || (on && !byId(itemId))) return false;
+      const a = l.items.includes(itemId); if (on === a) return false; l.items = on ? [...l.items, itemId] : l.items.filter((x) => x !== itemId); }); },
+    envAn: (a) => (db.envAn || {})[a],
+    setEnvAn(a, n) { return regle("envAn", String(a), n); },
     /* l'heure compte : ce qui a été créé ou annulé le matin de la réunion ne revient pas à l'ordre du jour */
     meetingDone() { const b = db.lastMeeting; db.lastMeeting = new Date().toISOString(); const flagged = db.items.filter((i) => i.reunion).map((i) => i.id); flagged.forEach((id) => (byId(id).reunion = false)); emit(); return () => { db.lastMeeting = b; flagged.forEach((id) => { const x = byId(id); if (x) x.reunion = true; }); emit(); }; },
     /* préférences par compte : épingles, thème, suggestions écartées */
@@ -436,5 +517,5 @@
   Object.defineProperty(KP, "SERVICES", { get: () => db.services });
   /* les messages clés, sans l'étiquette hors messages : relu à chaque fois, la liste se règle */
   Object.defineProperty(KP, "CLES", { get: () => MESSAGES.filter((m) => !m.hors) });
-  Object.assign(KP, { TODAY, PERIODS, MESSAGES, msgKey, STATUTS, ELEMENTS, UNITES, resPropre, resTxt, nb, ASK, MOIS, libOf, slug, setRefs, endOf, monthEnd, fmt, iso, parse, addDays, diff, monday, periodOf, me, person, nomDe, service, message, store });
+  Object.assign(KP, { anDe, anLib, DEVIS_ETATS, TODAY, PERIODS, MESSAGES, msgKey, STATUTS, ELEMENTS, UNITES, resPropre, resTxt, nb, ASK, MOIS, libOf, slug, setRefs, endOf, monthEnd, fmt, iso, parse, addDays, diff, monday, periodOf, me, person, nomDe, service, message, store });
 })();

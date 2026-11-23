@@ -7,6 +7,8 @@
   KP.reqMine = mine;
 
   KP.renderFiche = () => {
+    /* 2.9 : la fiche d'un devis prend le même panneau (js/devis.js) */
+    if (/^devis-/.test(KP.route.fiche || "") && KP.devisFiche) return KP.devisFiche($("fiche"), KP.route.fiche.slice(6));
     const el = $("fiche"), it = KP.route.fiche && store.get(KP.route.fiche);
     if (!it) { el.hidden = true; el.innerHTML = ""; if (KP.route.fiche && !KP.hold) { setTimeout(() => { KP.toast("Cette fiche n'existe plus. Je n'y suis pour rien."); KP.go({ fiche: "" }, true); }, 0); } return; }
     const body = el.querySelector(".f-body"), top = body && el.dataset.id === it.id ? body.scrollTop : 0;
@@ -32,7 +34,11 @@
     rows.push(["État", it.annule ? KP.pill(it) : can ? `<div class="seg" role="group" aria-label="État">${KP.STATUTS.map((s) => `<button type="button" data-act="f-st" data-k="${s.k}" class="${it.st === s.k ? "on" : ""}" aria-pressed="${it.st === s.k}">${s.k === "diffuse" && it.st === s.k ? ic("check") : ""}${s.nom}</button>`).join("")}</div>` : KP.pill(it)]);
     /* résultats d'une diffusion ; budget d'un partenariat payant (chefs de projet seulement) */
     if (!tf && !it.annule && it.st === "diffuse" && (it.res || can) && store.resOk()) rows.push(["Résultat", can ? `<button type="button" class="val r-fv${it.res ? "" : " none"}" data-act="r-edit" data-id="${it.id}">${it.res ? h(KP.resTxt(it.res)) : "Ajouter les chiffres"}</button>` : `<span class="val r-fv">${h(KP.resTxt(it.res))}</span>`]);
-    if (it.variant === "partenariat" && store.voitBudget()) { const m = store.montant(it.id); rows.push(["Budget", `<button type="button" class="val${m != null ? "" : " none"}" data-act="r-prix" data-id="${it.id}">${m != null ? h(KP.nb(m)) + " €" : "Ajouter le montant"}${ic("lock")}</button>`]); }
+    /* 2.9 : une action reliée à un devis montre sa part (le devis s'ouvre d'un clic) ; sinon, le montant noté à l'ancienne */
+    const parts = store.voitDevis() ? store.partsDe(it.id) : [];
+    if (parts.length) rows.push(["Budget", `<div class="dv-parts">${parts.map((x) => { const e = KP.DEVIS_ETATS.find((s) => s.k === x.devis.etat) || KP.DEVIS_ETATS[0];
+      return `<button type="button" class="dv-part" data-act="open" data-id="devis-${x.devis.id}" aria-label="Ouvrir le devis ${h(x.devis.media)}"><span class="dv-part-h"><b>${x.offert ? "Offert" : h(KP.nb(x.part)) + " € HT"}</b>${ic("lock")}<span class="pill ${e.pill}">${e.k === "facture" ? ic("check") : ""}${h(e.nom)}</span></span><small>${x.sur > 1 ? `${x.rang} sur ${x.sur} de « ${h(x.ligne.t)} »` : `« ${h(x.ligne.t)} »`}</small><small>${h(x.devis.media || "Devis")}${x.devis.num ? " · devis " + h(x.devis.num) : ""} ›</small></button>`; }).join("")}</div>`]);
+    else if (it.variant === "partenariat" && store.voitBudget()) { const m = store.montant(it.id); rows.push(["Budget", `<button type="button" class="val${m != null ? "" : " none"}" data-act="r-prix" data-id="${it.id}">${m != null ? h(KP.nb(m)) + " €" : "Ajouter le montant"}${ic("lock")}</button>`]); }
 
     const showAct = KP.ui.allAct === it.id ? acts : acts.slice(0, 3);
 

@@ -2,6 +2,8 @@
 // les données en mémoire dans la page, à la façon de la base APRÈS les migrations 0019 à 0023.
 // Il vérifie la traduction entre l'appli et la base ; les droits (RLS) sont vérifiés par test/db/v2.sql.
 // window.__fake.db = les tables ; window.__fake.calls = les écritures faites ; window.__fake.failNext = message d'erreur à renvoyer.
+// window.__fake.absentes = tables qu'une base pas à jour n'a pas encore (lire l'une d'elles répond « does not exist ») ;
+// window.__fake.fichiers = le stockage des PDF (chemin → { nom, taille }).
 (() => {
   const U = (n) => `a0000000-0000-0000-0000-00000000000${n}`, I = (n) => `b0000000-0000-0000-0000-00000000000${n}`;
   const d = (n) => { const x = new Date(); x.setDate(x.getDate() + n); return `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, "0")}-${String(x.getDate()).padStart(2, "0")}`; };
@@ -41,12 +43,16 @@
     lieux: [{ id: "f0000000-0000-0000-0000-000000000001", nom: "Campus de Bordeaux" }], contacts: [], item_contacts: [],
     /* 0031 : budget des partenariats et enveloppes des périodes (la vraie base ne les montre qu'aux chefs de projet) */
     budget: [{ item: I(9), montant: 3200 }], enveloppes: [{ per: 2, montant: 10000 }],
+    /* 0038 : les devis à l'année, leurs lignes, les liens aux actions, l'enveloppe de l'année ; vides au départ */
+    devis: [], devis_lignes: [], devis_liens: [], enveloppes_annee: [],
     users: [{ id: U(1), email: "pilote@example.com" }, { id: U(2), email: "presse@example.com" }, { id: U(3), email: "reseaux@example.com" }, { id: U(4), email: "lecteur@example.com" }],
   };
+  /* un test peut garder les tables d'un chargement de page au suivant : sessionStorage « fake-db » (relire après un rechargement) */
+  try { const garde = JSON.parse(sessionStorage.getItem("fake-db") || "null"); if (garde) Object.assign(db, garde); } catch (e) {}
   let session = null;
   try { session = JSON.parse(sessionStorage.getItem("fake-session") || "null"); } catch (e) {}
-  const F = (window.__fake = { db, calls: [], failNext: null });
-  const PK = { answers: ["user_id", "key"], meta: ["k"], messages: ["n"], budget: ["item"], enveloppes: ["per"] };
+  const F = (window.__fake = { db, calls: [], failNext: null, absentes: [], fichiers: {} });
+  const PK = { answers: ["user_id", "key"], meta: ["k"], messages: ["n"], budget: ["item"], enveloppes: ["per"], devis_liens: ["ligne", "item"], enveloppes_annee: ["annee"] };
   const uid = () => (session ? session.user.id : null);
   const DEF = { items: (r) => item({ author: uid(), ...r }), links: (r) => ({ id: crypto.randomUUID(), author: uid(), at: new Date().toISOString(), ...r }), reqs: (r) => ({ asker: uid(), st: "ouverte", reponse: "", at: new Date().toISOString(), ...r }),
     blocks: (r) => ({ author: uid(), leve: false, at: new Date().toISOString(), ...r }), answers: (r) => ({ user_id: uid(), ...r }), partners: (r) => ({ k: r.nom.toLowerCase().replace(/[^a-z0-9]+/g, "-"), ...r }),
@@ -56,6 +62,7 @@
     const q = { op: "select", filters: [], rows: null, patch: null, ret: false, one: false, sort: null };
     const match = (r) => q.filters.every(([k, v]) => String(r[k]) === String(v));
     const exec = () => {
+      if (F.absentes.includes(t)) return { data: null, error: { code: "42P01", message: `relation "public.${t}" does not exist` } };
       const tbl = (db[t] = db[t] || []);
       if (q.op !== "select") { F.calls.push({ t, op: q.op, rows: q.rows, patch: q.patch, filters: q.filters }); if (F.failNext) { const m = F.failNext; F.failNext = null; return { data: null, error: { message: m } }; } }
       if (q.op === "select") { let out = tbl.filter(match); if (q.sort) out = [...out].sort((a, b) => String(a[q.sort]).localeCompare(String(b[q.sort]))); return { data: JSON.parse(JSON.stringify(out)), error: null }; }
@@ -75,7 +82,9 @@
         });
         return { data: q.ret ? hit.map((r) => ({ id: r.id })) : null, error: null };
       }
-      if (q.op === "delete") { const gone = t === "items" ? hit.filter((r) => r.st === "retire") : hit; db[t] = tbl.filter((r) => !gone.includes(r)); if (t === "items") { const ids = gone.map((g) => g.id); ["links", "reqs", "blocks", "item_contacts", "budget"].forEach((k) => (db[k] = db[k].filter((x) => !ids.includes(x.item)))); db.items.forEach((x) => { if (ids.includes(x.tf)) x.tf = null; }); } return { data: q.ret ? gone.map((r) => ({ id: r.id })) : null, error: null }; }
+      if (q.op === "delete") { const gone = t === "items" ? hit.filter((r) => r.st === "retire") : hit; db[t] = tbl.filter((r) => !gone.includes(r));
+        if (t === "devis") { const ids = gone.map((g) => g.id); const lg = db.devis_lignes.filter((l) => ids.includes(l.devis)).map((l) => l.id); db.devis_lignes = db.devis_lignes.filter((l) => !ids.includes(l.devis)); db.devis_liens = db.devis_liens.filter((k) => !lg.includes(k.ligne)); }
+        if (t === "devis_lignes") { const ids = gone.map((g) => g.id); db.devis_liens = db.devis_liens.filter((k) => !ids.includes(k.ligne)); } if (t === "items") { const ids = gone.map((g) => g.id); ["links", "reqs", "blocks", "item_contacts", "budget", "devis_liens"].forEach((k) => (db[k] = db[k].filter((x) => !ids.includes(x.item)))); db.items.forEach((x) => { if (ids.includes(x.tf)) x.tf = null; }); } return { data: q.ret ? gone.map((r) => ({ id: r.id })) : null, error: null }; }
     };
     const api = {
       select: () => { if (q.op !== "select") q.ret = true; return api; }, order: (k) => { q.sort = k; return api; }, limit: () => api, eq: (k, v) => { q.filters.push([k, v]); return api; },
@@ -93,6 +102,12 @@
       signInWithPassword: async ({ email, password }) => { const u = db.users.find((x) => x.email === email); if (!u || password !== "test") return { data: {}, error: { message: "Invalid login credentials" } }; session = { user: u }; sessionStorage.setItem("fake-session", JSON.stringify(session)); return { data: { user: u }, error: null }; },
       signOut: async () => { session = null; sessionStorage.removeItem("fake-session"); return {}; },
     },
+    /* Supabase Storage : le dossier « devis » des PDF */
+    storage: { from: (bucket) => ({
+      upload: async (chemin, file) => { F.calls.push({ t: "storage", op: "upload", bucket, chemin }); if (F.failNext) { const m = F.failNext; F.failNext = null; return { data: null, error: { message: m } }; } F.fichiers[chemin] = { nom: file.name, taille: file.size }; return { data: { path: chemin }, error: null }; },
+      createSignedUrl: async (chemin) => F.fichiers[chemin] ? { data: { signedUrl: `https://faux.supabase.co/storage/v1/object/sign/${bucket}/${chemin}?token=faux` }, error: null } : { data: null, error: { message: "Object not found" } },
+      remove: async (chemins) => { F.calls.push({ t: "storage", op: "remove", bucket, chemins }); chemins.forEach((c) => delete F.fichiers[c]); return { data: [], error: null }; },
+    }) },
     channel: () => ({ on() { return this; }, subscribe() { return this; } }),
     /* fonctions de la base : window.__fakeRpc = { nom: (args) => réponse } ; sinon « inconnue », comme une migration pas faite */
     rpc: async (n, a) => { const f = (window.__fakeRpc || {})[n] || (n === "set_res" ? (x) => { const it = db.items.find((i) => i.id === x.p_item); if (!it) throw new Error("fiche inconnue"); const r = { ...(it.res || {}), ...(x.p_pose || {}) }; (x.p_retire || []).forEach((k) => delete r[k]); it.res = r; (window.__fake.calls || []).push({ t: "rpc", op: "set_res", v: x }); return r; } : null); return f ? { data: f(a), error: null } : { data: null, error: { message: "fonction inconnue : " + n } }; },
