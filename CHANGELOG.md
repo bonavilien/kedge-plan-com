@@ -9,6 +9,7 @@ Généré depuis `site/js/version.js` par `node scripts/version.mjs`. Ne pas mod
 - Une remise plus grande que le total des lignes est refusée
 - Annuler un geste sur un devis supprimé entre-temps ne le fait plus revenir
 - Budget : le TTC à côté du HT partout (année, états, devis, lignes, enveloppe, fiche de l'action)
+- Seules les actions média (partenariats payants) se relient à une ligne de devis
 
 ## 2.9 · 2026-11-23
 

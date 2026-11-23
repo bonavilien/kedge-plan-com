@@ -112,6 +112,10 @@ const calme = async (p) => { await p.waitForTimeout(150); await p.waitForFunctio
   await p.click("#fiche .dv-l:first-of-type [data-act=dv-lier], #fiche [data-act=dv-lier]"); await p.waitForSelector(".pop-dv input");
   await p.fill(".pop-dv input", "challenges"); await p.waitForTimeout(60);
   ok(await p.locator(".pop-dv .dv-c").count() === 1, "chercher une action dans la fenêtre");
+  await p.fill(".pop-dv input", "portrait"); await p.waitForTimeout(60);
+  ok(!(await p.locator(".pop-dv .dv-c").count()), "une action qui n'est pas média n'est pas proposée");
+  ok(await p.evaluate((id) => { const d = KP.store.devis(id), x = KP.store.items().find((i) => i.kind === "action" && i.variant !== "partenariat"); return KP.store.lier(id, d.lignes[0].id, x.id, true); }, dv.id) === null, "et ne peut pas être reliée");
+  await p.fill(".pop-dv input", "challenges"); await p.waitForTimeout(60);
   await p.click(`.pop-dv [data-i="${chal}"]`); await p.waitForTimeout(60);
   ok(await p.locator(`.pop-dv [data-i="${chal}"][aria-checked=true]`).count() === 1 && await toast(p) === "Reliée à « Interview dans Challenges »", "reliée, la case se coche");
   await p.keyboard.press("Escape"); await p.waitForTimeout(60);

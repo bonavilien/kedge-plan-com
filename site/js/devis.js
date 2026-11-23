@@ -157,13 +157,13 @@
   /* relier une ligne à des actions : les actions de l'année, celles du même média d'abord */
   const lierPop = (a, dv, l) => {
     const media = (dv.media || "").toLowerCase();
-    const cands = () => store.items().filter((i) => i.kind === "action" && !i.annule && (dansAn(i, dv.annee) || l.items.includes(i.id)))
+    const cands = () => store.items().filter((i) => l.items.includes(i.id) || (i.kind === "action" && i.variant === "partenariat" && !i.annule && dansAn(i, dv.annee))) /* seulement les actions média (partenariats payants) */
       .sort((x, y) => (l.items.includes(y.id) - l.items.includes(x.id)) || (((y.partner || "").toLowerCase() === media) - ((x.partner || "").toLowerCase() === media)) || x.date.localeCompare(y.date));
     let q = "";
     const liste = () => { const ll = (store.devis(dv.id) || dv).lignes.find((x) => x.id === l.id) || l, t = KP.norm ? KP.norm(q) : q.toLowerCase();
       const res = cands().filter((i) => !q || (KP.norm ? KP.norm(i.t + " " + (i.partner || "")) : (i.t + " " + (i.partner || "")).toLowerCase()).includes(t)).slice(0, 40);
       return res.length ? res.map((i) => { const on = ll.items.includes(i.id); return `<button type="button" class="pop-i dv-c" role="menuitemcheckbox" aria-checked="${on}" data-i="${i.id}"><span class="dv-cb${on ? " on" : ""}" aria-hidden="true">${on ? ic("check") : ""}</span><span>${h(i.t)}<small>${h(KP.dateShort(i))}${i.partner ? " · " + h(i.partner) : i.svc ? " · " + h((KP.service(i.svc) || {}).nom || "") : ""}</small></span></button>`; }).join("")
-        : `<p class="txt muted">Aucune action ${q ? "ne correspond" : "sur cette année"}.</p>`; };
+        : `<p class="txt muted">Aucune action média ${q ? "ne correspond" : "sur cette année"}.</p>`; };
     const p = KP.pop(a, `<h4 class="pop-h">Relier « ${h(l.t || "la ligne")} »</h4><div class="dv-q">${ic("search")}<input type="text" class="input" placeholder="Chercher une action" aria-label="Chercher une action" autocomplete="off" autofocus></div><div class="dv-cs" role="menu">${liste()}</div>`, { role: "dialog", label: "Relier à des actions", cls: "pop-dv", right: true });
     const inp = p.el.querySelector("input"), box = p.el.querySelector(".dv-cs");
     if (!KP.phone()) inp.focus();

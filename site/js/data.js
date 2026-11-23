@@ -493,7 +493,7 @@
       return store._devis(id, (dv) => { const l = dv.lignes.find((x) => x.id === lid); if (!l) return false; Object.assign(l, p); }); },
     delLigne(id, lid) { return store._devis(id, (dv) => { const n = dv.lignes.length; dv.lignes = dv.lignes.filter((x) => x.id !== lid); if (dv.lignes.length === n) return false; }); },
     /* relier (ou délier) une action à une ligne */
-    lier(id, lid, itemId, on) { return store._devis(id, (dv) => { const l = dv.lignes.find((x) => x.id === lid); if (!l || (on && !byId(itemId))) return false;
+    lier(id, lid, itemId, on) { return store._devis(id, (dv) => { const l = dv.lignes.find((x) => x.id === lid); if (!l || (on && (!byId(itemId) || byId(itemId).variant !== "partenariat"))) return false; /* seules les actions média se relient à un devis */
       const a = l.items.includes(itemId); if (on === a) return false; l.items = on ? [...l.items, itemId] : l.items.filter((x) => x !== itemId); }); },
     envAn: (a) => (db.envAn || {})[a],
     setEnvAn(a, n) { return regle("envAn", String(a), n); },
