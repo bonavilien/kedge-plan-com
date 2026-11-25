@@ -4,7 +4,7 @@ Généré depuis `site/js/version.js` par `node scripts/version.mjs`. Ne pas mod
 
 ## 2.9.2 · 2026-11-25
 
-- « À voir en réunion » demande à nouveau pourquoi : une raison toute faite d'un clic (une date à fixer, un budget à valider…) ou quelques mots
+- « À voir en réunion » demande à nouveau pourquoi, en quelques mots
 - La raison s'affiche à côté de la case sur la fiche (un clic pour la changer) et sous le sujet dans la Réunion, rubrique « À voir ensemble »
 - Les raisons données en V1 réapparaissent
 

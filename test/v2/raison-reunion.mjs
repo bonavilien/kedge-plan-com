@@ -12,13 +12,14 @@ await p.goto(base); await p.waitForFunction(() => window.KP && KP.store && KP.st
 const id = await p.evaluate(() => KP.store.items().find((i) => i.kind === "action" && !i.annule && !i.reunion && KP.store.canEdit(i)).id);
 await p.evaluate((id) => KP.go({ fiche: id }), id); await p.waitForSelector("#fiche [data-act=f-reunion]");
 await p.click("#fiche [data-act=f-reunion]");
-await p.waitForSelector("dialog.dlg .pq-vite");
+await p.waitForSelector("dialog.dlg input[name=m]");
+ok(await p.locator("dialog.dlg .chip").count() === 0, "la fenêtre ne propose rien, juste un champ");
+await p.fill("dialog.dlg input[name=m]", "Un budget à valider");
 if (shots) await p.waitForTimeout(700), await p.screenshot({ path: `${shots}/1-pourquoi.png` });
-ok(await p.locator("dialog.dlg .pq-vite .chip").count() === 4, "la fenêtre propose 4 raisons toutes faites");
-await p.click("dialog.dlg .chip >> text=Un budget à valider");
+await p.click("dialog.dlg .btn.primary");
 await p.waitForSelector("dialog.dlg", { state: "detached" });
 let it = await p.evaluate((id) => KP.store.get(id), id);
-ok(it.reunion === true && it.pourquoi === "Un budget à valider", "un clic sur une raison : à l'ordre du jour avec sa raison");
+ok(it.reunion === true && it.pourquoi === "Un budget à valider", "à l'ordre du jour avec sa raison");
 ok((await p.locator("#fiche .f-pq").innerText()).includes("Un budget à valider"), "la fiche montre la raison à côté de la case");
 if (shots) await p.waitForTimeout(700), await p.screenshot({ path: `${shots}/2-fiche.png` });
 await p.click("#fiche .f-pq"); await p.waitForSelector("dialog.dlg input[name=m]");
@@ -37,7 +38,7 @@ ok(!it.reunion && !it.pourquoi && await p.locator("dialog.dlg").count() === 0, "
 await p.click("#fiche [data-act=f-reunion]"); await p.waitForSelector("dialog.dlg"); await p.click("dialog.dlg .btn.primary"); await p.waitForSelector("dialog.dlg", { state: "detached" });
 it = await p.evaluate((id) => KP.store.get(id), id);
 ok(it.reunion && it.pourquoi === "" && (await p.locator("#fiche .f-pq.none").count()) === 1, "sans raison, ça marche quand même et « Pourquoi ? » reste à portée");
-await p.setViewportSize({ width: 390, height: 844 }); await p.click("#fiche .f-pq"); await p.waitForSelector("dialog.dlg .pq-vite");
+await p.setViewportSize({ width: 390, height: 844 }); await p.click("#fiche .f-pq"); await p.waitForSelector("dialog.dlg input[name=m]");
 if (shots) await p.waitForTimeout(700), await p.screenshot({ path: `${shots}/4-telephone.png` });
 ok(errs.length === 0, "aucune erreur" + (errs.length ? " : " + errs.join(" | ") : ""));
 await b.close();

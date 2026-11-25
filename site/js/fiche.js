@@ -95,17 +95,13 @@
   document.addEventListener("keydown", (e) => { if (e.target.id === "f-t" && e.key === "Enter") { e.preventDefault(); e.target.blur(); } if (e.key === "Enter" && e.target.matches && e.target.matches("#fiche input.val")) e.target.blur(); });
 
   const cur = () => store.get(KP.route.fiche);
-  /* la petite fenêtre « Pourquoi ? » : un clic sur une raison toute faite suffit */
-  const RAISONS = ["Une date à fixer", "Un budget à valider", "Un choix à faire", "Qui s'en charge ?"];
+  /* la petite fenêtre « Pourquoi ? » : quelques mots, rien de proposé */
   function pourquoi(it, cb) {
     const d = KP.dialog(`<form method="dialog" class="pq"><h2>À voir en réunion</h2><p class="muted" style="margin-top:-8px">${h(it.t)}</p>
-      <div class="pq-vite">${RAISONS.map((r) => `<button type="button" class="chip${r === it.pourquoi ? " picked" : ""}" data-r="${h(r)}">${h(r)}</button>`).join("")}</div>
-      <label class="field"><span>Pourquoi ?</span><input class="input" name="m" maxlength="140" value="${h(it.pourquoi || "")}" placeholder="Ou en quelques mots" autocomplete="off"></label>
+      <label class="field"><span>Pourquoi ?</span><input class="input" name="m" maxlength="140" value="${h(it.pourquoi || "")}" autocomplete="off"></label>
       <div class="foot"><button type="button" class="btn quiet" data-close>Annuler</button><button class="btn primary">${it.reunion ? "Enregistrer" : "Ajouter"}</button></div></form>`);
     const f = d.querySelector("form"), inp = f.querySelector("input");
-    let fait = false; const go = (r) => { if (fait) return; fait = true; cb(String(r || "").trim().slice(0, 140)); };
-    f.querySelectorAll("[data-r]").forEach((b) => b.addEventListener("click", () => { go(b.dataset.r); d.close(); }));
-    f.addEventListener("submit", () => go(inp.value));
+    f.addEventListener("submit", () => cb(String(inp.value || "").trim().slice(0, 140)));
     inp.focus();
   }
   Object.assign(KP.acts, {
@@ -129,7 +125,7 @@
     "f-msg": (a) => { const it = cur(); KP.menu(a, KP.MESSAGES.map((m) => ({ v: m.k, nom: m.nom, info: m.info })), (m) => { const next = KP.MESSAGES.map((x) => x.k).filter((k) => m.includes(k)); if (next.join() !== it.m.join()) KP.toast("Messages enregistrés", store.update(it.id, { m: next })); }, { selected: it.m, multi: true }); },
     "f-tf": (a) => { const it = cur(); const tfs = store.items().filter((i) => i.kind === "tf").sort((x, y) => x.date.localeCompare(y.date)); KP.menu(a, [{ v: "", nom: "Aucun" }, "-", ...tfs.map((x) => ({ v: x.id, nom: x.t, info: KP.dateLong(x) }))], (v) => v !== it.tf && KP.toast(v ? "Rattachée au temps fort" : "Détachée", store.update(it.id, { tf: v })), { selected: [it.tf] }); },
     "f-st": (a) => KP.setStatus(KP.route.fiche, a.dataset.k),
-    /* 2.9.2 : comme en V1, on dit pourquoi en le mettant à l'ordre du jour (une raison toute faite d'un clic, ou quelques mots) */
+    /* 2.9.2 : comme en V1, on dit pourquoi en le mettant à l'ordre du jour */
     "f-reunion": () => { const it = cur(); if (it.reunion) return KP.toast("Retiré de l'ordre du jour", store.update(it.id, { reunion: false, pourquoi: "" }));
       pourquoi(it, (r) => KP.toast("À l'ordre du jour de la prochaine réunion", store.update(it.id, { reunion: true, pourquoi: r }, "a mis à l'ordre du jour" + (r ? ` : ${r}` : "")))); },
     "f-pourquoi": () => { const it = cur(); pourquoi(it, (r) => r !== (it.pourquoi || "") && KP.toast("Raison enregistrée", store.update(it.id, { pourquoi: r }, r ? `a donné la raison : ${r}` : ""))); },

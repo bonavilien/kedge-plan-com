@@ -209,7 +209,6 @@ input.val:focus { background: var(--bg); outline: 2px solid var(--focus); }
 .f-pq .ic { width: 14px; height: 14px; flex: none; color: var(--text2); }
 .f-pq.none { background: none; border: 1px dashed var(--sep); color: var(--text2); }
 .f-pq:hover { color: var(--text); }
-.pq-vite { display: flex; flex-wrap: wrap; gap: 8px; }
 .f-sec { border-top: 1px solid var(--sep); padding: 14px 0 6px; margin-top: 12px; }
 .f-sec h3 { font-size: 12.5px; font-weight: 600; color: var(--text2); text-transform: uppercase; letter-spacing: .03em; display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
 .f-sec h3 .link { margin-left: auto; text-transform: none; letter-spacing: 0; font-size: 13.5px; }
