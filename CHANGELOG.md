@@ -2,6 +2,12 @@
 
 Généré depuis `site/js/version.js` par `node scripts/version.mjs`. Ne pas modifier à la main.
 
+## 2.9.2 · 2026-11-25
+
+- « À voir en réunion » demande à nouveau pourquoi : une raison toute faite d'un clic (une date à fixer, un budget à valider…) ou quelques mots
+- La raison s'affiche à côté de la case sur la fiche (un clic pour la changer) et sous le sujet dans la Réunion, rubrique « À voir ensemble »
+- Les raisons données en V1 réapparaissent
+
 ## 2.9.1 · 2026-11-23
 
 - Sur la fiche d'une action payée par un devis, le chiffre est celui de la ligne du devis (divisé par le nombre d'actions qu'elle paie) ; la part après remise est écrite en dessous

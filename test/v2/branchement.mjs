@@ -38,6 +38,7 @@ const jpo = await it(p, I(1));
 ok(jpo.kind === "tf" && jpo.m[0] === "recrutement" && jpo.svc === "" && jpo.st === "prevu" && jpo.docs.length === 1, "temps fort : Recrutement, porté par les pilotes, Prévu, son document");
 ok((await it(p, I(2))).st === "confirmer" && (await it(p, I(3))).st === "prevu" && (await it(p, I(4))).st === "diffuse", "6 statuts lus en 3 : idée = à confirmer, en production = prévu");
 ok((await it(p, I(3))).reunion === true, "« à trancher en réunion » devient « à voir en réunion »");
+ok((await it(p, I(3))).pourquoi === "budget du teaser", "la raison donnée en V1 se relit (2.9.2)");
 const ann = await it(p, I(5)); ok(ann.annule && ann.annule.txt === "Plus d'actualité", "fiche retirée : annulée avec son motif");
 ok((await it(p, I(6))).flou === true, "date connue au mois");
 const suj = await it(p, I(7)); ok(suj.variant === "sujet" && suj.pers.join() === "considerer,preferer" && suj.fin === "2027-03-31", "sujet sur deux périodes");
@@ -81,6 +82,8 @@ ok((await row(p, "items", I(2))).st === "planifie" && (await row(p, "items", I(2
 
 await p.evaluate((id) => KP.store.update(id, { reunion: true }), I(4)); await settle(p);
 ok(await p.evaluate((id) => window.__fake.db.blocks.some((x) => x.item === id && !x.leve && x.why === "à trancher en réunion"), I(4)), "« à voir en réunion » crée le sujet à trancher");
+await p.evaluate((id) => KP.store.update(id, { pourquoi: "Une date à fixer" }), I(4)); await settle(p);
+ok(await p.evaluate((id) => { const b = window.__fake.db.blocks.filter((x) => x.item === id); return b.filter((x) => !x.leve).length === 1 && b.some((x) => !x.leve && x.why === "à trancher en réunion : Une date à fixer") && b.some((x) => x.leve && x.why === "à trancher en réunion"); }, I(4)), "raison changée : l'ancien motif est levé, le neuf porte la raison");
 await p.evaluate(() => KP.store.meetingDone()); await settle(p);
 ok(await p.evaluate(() => window.__fake.db.blocks.every((x) => x.leve)) && Math.abs(Date.now() - Date.parse(await p.evaluate(() => window.__fake.db.meta[0].v))) < 60000, "réunion terminée : sujets levés, heure notée");
 

@@ -30,7 +30,7 @@
     const colh = `<div class="colh ag-h" aria-hidden="true"><span>Date</span><span>Action</span><span>Service</span><span>Message</span><span>État</span><span></span></div>`;
     const sec = (t, sub, html) => html ? `<h2>${t}<small>${sub}</small></h2><div class="rows">${colh}${html}</div>` : "";
     const out =
-      sec("À voir ensemble", `${flagged.length} point${flagged.length > 1 ? "s" : ""}`, flagged.map((it) => KP.row(it, { end: vu(it) })).join("")) +
+      sec("À voir ensemble", `${flagged.length} point${flagged.length > 1 ? "s" : ""}`, flagged.map((it) => KP.row(it, { end: vu(it), sub: it.pourquoi ? `« ${it.pourquoi} »` : "" })).join("")) +
       sec("Reportés ou annulés", `${moved.length}`, moved.map((it) => KP.row(it, { end: "<span></span>", sub: (it.annule || it.report).txt || (it.annule ? "sans motif" : `c'était ${it.report.de}`) })).join("")) +
       sec("Demandes en retard", `${lateReq.length}`, lateReq.map((q) => { const it = store.get(q.item); return KP.row(it, { date: `<b class="late">${h(KP.fmt.moyen(q.pour))}</b>`, end: "<span></span>", sub: `${KP.dest(q.de)} attend ${KP.ASK[q.quoi] || "des éléments"} de ${KP.dest(q.a)}` }); }).join("")) +
       sec("À confirmer dans les quinze jours", `${conf.length}`, conf.map((it) => KP.row(it, { end: "<span></span>" })).join("")) +
@@ -60,7 +60,7 @@
   Object.assign(KP.acts, {
     tab: (a) => KP.go({ tab: a.dataset.k, fiche: "" }),
     bper: (a) => KP.go({ per: a.dataset.k }),
-    vu: (a, e) => { e.stopPropagation(); const it = store.get(a.dataset.id); KP.toast(`« ${it.t} » : vu`, store.update(it.id, { reunion: false })); },
+    vu: (a, e) => { e.stopPropagation(); const it = store.get(a.dataset.id); KP.toast(`« ${it.t} » : vu`, store.update(it.id, { reunion: false, pourquoi: "" })); },
     "close-meeting": () => KP.toast("Réunion close, l'ordre du jour repart de zéro", store.meetingDone()),
   });
 })();

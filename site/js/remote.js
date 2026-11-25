@@ -25,6 +25,8 @@
   const h = (s) => String(s == null ? "" : s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
   const uuid = () => (crypto.randomUUID ? crypto.randomUUID() : "10000000-1000-4000-8000-100000000000".replace(/[018]/g, (c) => (+c ^ (crypto.getRandomValues(new Uint8Array(1))[0] & (15 >> (+c / 4)))).toString(16)));
   const TRANCHER = "à trancher en réunion";
+  const raisonDe = (why) => why.slice(TRANCHER.length).replace(/^\s*:\s*/, "").trim();
+  const motifDe = (it) => { const r = String(it.pourquoi || "").trim().slice(0, 140); return r ? `${TRANCHER} : ${r}` : TRANCHER; };
   /* messages : '1' à '9' dans la base, une clé par message dans l'appli ; 'REC' = l'étiquette hors messages */
   const mIn = (x) => (x === "REC" || x === "INC" ? "recrutement" : +x > 0 ? KP.msgKey(+x) : "");
   const mOut = (k) => { const m = KP.MESSAGES.find((x) => x.k === k); return !m ? "0" : m.hors ? "REC" : String(m.n); };
@@ -69,8 +71,9 @@
     const docs = {}, cts = {};
     links.forEach((l) => (docs[l.item] = docs[l.item] || []).push({ id: l.id, t: l.nom, url: l.url }));
     ic.forEach((x) => (cts[x.item] = cts[x.item] || []).push(x.contact));
-    blocks = {};
-    blk.filter((b) => !b.leve && b.why.startsWith(TRANCHER)).forEach((b) => (blocks[b.item] = blocks[b.item] || []).push(b.id));
+    blocks = {}; const raisons = {};
+    /* la raison suit le motif : « à trancher en réunion : <raison> » (la plus récente l'emporte) */
+    blk.filter((b) => !b.leve && b.why.startsWith(TRANCHER)).forEach((b) => { (blocks[b.item] = blocks[b.item] || []).push(b.id); raisons[b.item] = raisonDe(b.why); });
     /* la photo de chacun (2.7, script 0034) : une base sans la colonne n'affiche que les initiales et ne propose pas d'en ajouter */
     photoCol = prof.some((p) => "photo" in p);
     const people = prof.map((p) => ({ k: p.id, nom: p.nom || "Sans nom", fonction: p.fonction || "", role: p.visiteur ? "lecteur" : p.chef ? "pilote" : p.svc ? "service" : "lecteur", admin: !!p.admin, svc: p.svc || "", photo: KP.photoSure(p.photo) }));
@@ -92,7 +95,7 @@
         const it = {
           id: r.id, kind: r.kind === "classement" ? "tf" : r.kind, variant: r.kind === "classement" ? "classement" : sujet ? "sujet" : r.partner ? "partenariat" : "",
           t: r.t, date: r.date, flou: !!r.flou && !/^\d/.test(r.flou), fin: r.fin || "", svc: r.svc === "chef" ? "" : r.svc, m: r.m.map(mIn).filter(Boolean), st: stIn[r.st] || "confirmer",
-          tf: r.tf || "", lieu: r.lieu || "", note: r.note || "", docs: docs[r.id] || [], contacts: cts[r.id] || [], reunion: !!blocks[r.id], by: r.author || "",
+          tf: r.tf || "", lieu: r.lieu || "", note: r.note || "", docs: docs[r.id] || [], contacts: cts[r.id] || [], reunion: !!blocks[r.id], pourquoi: raisons[r.id] || "", by: r.author || "",
         };
         if (r.partner) it.partner = partnerNom[r.partner] || "";
         if (r.res && typeof r.res === "object" && Object.keys(r.res).length) it.res = KP.resPropre(r.res);
@@ -180,8 +183,10 @@
     for (const x of c0) if (!c.includes(x)) await run(sb.from("item_contacts").delete().eq("item", it.id).eq("contact", x));
     for (const x of c) if (!c0.includes(x)) await run(sb.from("item_contacts").insert({ item: it.id, contact: x }));
     const r0 = !!(old && old.reunion);
-    if (it.reunion && !r0) { const id = uuid(); await run(sb.from("blocks").insert({ id, item: it.id, why: TRANCHER })); blocks[it.id] = [id]; }
-    if (!it.reunion && r0) { for (const id of blocks[it.id] || []) await run(sb.from("blocks").update({ leve: true }).eq("id", id)); delete blocks[it.id]; }
+    /* une raison changée : la base ne réécrit pas un motif, on lève l'ancien et on en pose un neuf */
+    const neuve = it.reunion && r0 && motifDe(it) !== motifDe(old);
+    if (neuve || (!it.reunion && r0)) { for (const id of blocks[it.id] || []) await run(sb.from("blocks").update({ leve: true }).eq("id", id)); delete blocks[it.id]; }
+    if (it.reunion && (!r0 || neuve)) { const id = uuid(); await run(sb.from("blocks").insert({ id, item: it.id, why: motifDe(it) })); blocks[it.id] = [id]; }
   }
   /* 2.8.1 : un envoi rejoué après une coupure réseau retrouve sa ligne déjà créée : ce n'est pas une erreur */
   const deja = (e) => { if (e && (e.code === "23505" || /duplicate key/i.test(e.message || ""))) return null; throw e; };
@@ -220,7 +225,7 @@
       });
       /* le temps fort supprimé : la base détache elle-même ses relais, inutile (et parfois interdit) de les modifier */
       let keys = FIELDS.filter((k) => !same(it[k], old[k]) && !(k === "tf" && !it.tf && gone.has(old.tf)));
-      const sides = !same(it.docs, old.docs) || !same(it.contacts, old.contacts) || !!it.reunion !== !!old.reunion;
+      const sides = !same(it.docs, old.docs) || !same(it.contacts, old.contacts) || !!it.reunion !== !!old.reunion || (!!it.reunion && motifDe(it) !== motifDe(old));
       /* les résultats : seules les unités changées partent, la base les fusionne (deux personnes qui notent en même temps ne s'effacent pas) ;
          avant l'état, pour qu'un « Diffusé » ne parte pas sans ses chiffres refusés */
       if (keys.includes("res")) { keys = keys.filter((k) => k !== "res"); const a = it.res || {}, b = old.res || {};
