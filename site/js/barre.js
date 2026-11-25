@@ -124,8 +124,8 @@
       case "diffuser": case "confirmer": case "aconfirmer": {
         const st = { diffuser: "diffuse", confirmer: "prevu", aconfirmer: "confirmer" }[b.k], nom = KP.STATUTS.find((x) => x.k === st).nom;
         vm.titre = nom;
-        return surUne(cible(s.quoi.txt, vivantes, (it) => memeJour(it, zoneDate(s.date))), (it) => ({ corps: `<div class="cb-l">${mini(it)}</div><p class="cb-fleche">${KP.pill(it)}${ic("arrow")}<span class="pill ${st}">${st === "diffuse" ? ic("check") : ""}${h(nom)}</span></p>`,
-          bouton: nom, refus: it.st === st ? `C'est déjà « ${nom} ».` : undefined, faire: () => ({ undo: store.update(it.id, { st }, `a passé l'état à « ${nom} »`), toast: `${it.t} : ${nom.toLowerCase()}` }) }));
+        return surUne(cible(s.quoi.txt, vivantes, (it) => memeJour(it, zoneDate(s.date))), (it) => ({ titre: KP.stNom(st, it), corps: `<div class="cb-l">${mini(it)}</div><p class="cb-fleche">${KP.pill(it)}${ic("arrow")}<span class="pill ${st}">${st === "diffuse" ? ic("check") : ""}${h(KP.stNom(st, it))}</span></p>`,
+          bouton: KP.stNom(st, it), refus: it.st === st ? `C'est déjà « ${KP.stNom(st, it)} ».` : undefined, faire: () => ({ undo: store.update(it.id, { st }, `a passé l'état à « ${KP.stNom(st, it)} »`), toast: `${it.t} : ${KP.stNom(st, it).toLowerCase()}` }) }));
       }
 
       case "resultats": {

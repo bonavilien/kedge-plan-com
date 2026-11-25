@@ -66,6 +66,8 @@
     { k: "prevu", nom: "Prévu" },
     { k: "diffuse", nom: "Diffusé" },
   ];
+  /* 2.9.3 : un temps fort (sujet, classement) ne se diffuse pas, il se termine ; même état en base, autre nom */
+  const stNom = (k, it) => k === "diffuse" && it && it.kind === "tf" ? "Terminé" : (STATUTS.find((s) => s.k === k) || STATUTS[0]).nom;
   /* 2.9 : l'état d'un devis ; « DA faite » = la demande d'achat est passée. La pastille reprend les codes des états des actions */
   const DEVIS_ETATS = [
     { k: "recu", nom: "Reçu", pill: "confirmer" },
@@ -517,5 +519,5 @@
   Object.defineProperty(KP, "SERVICES", { get: () => db.services });
   /* les messages clés, sans l'étiquette hors messages : relu à chaque fois, la liste se règle */
   Object.defineProperty(KP, "CLES", { get: () => MESSAGES.filter((m) => !m.hors) });
-  Object.assign(KP, { anDe, anLib, DEVIS_ETATS, TODAY, PERIODS, MESSAGES, msgKey, STATUTS, ELEMENTS, UNITES, resPropre, resTxt, nb, ASK, MOIS, libOf, slug, setRefs, endOf, monthEnd, fmt, iso, parse, addDays, diff, monday, periodOf, me, person, nomDe, service, message, store });
+  Object.assign(KP, { anDe, anLib, DEVIS_ETATS, TODAY, PERIODS, MESSAGES, msgKey, STATUTS, stNom, ELEMENTS, UNITES, resPropre, resTxt, nb, ASK, MOIS, libOf, slug, setRefs, endOf, monthEnd, fmt, iso, parse, addDays, diff, monday, periodOf, me, person, nomDe, service, message, store });
 })();

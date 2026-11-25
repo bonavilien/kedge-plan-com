@@ -136,6 +136,20 @@
   /* un clic à côté de la fiche posée par-dessus la ferme (le plan derrière est inerte) */
   document.addEventListener("click", (e) => { if ($("shell").inert && (e.target === document.body || e.target === document.documentElement)) KP.acts["close-fiche"](); });
   store.on(render);
+  /* 2.9.3 : un temps fort dont la date est passée passe tout seul en « Terminé », une seule fois ;
+     si quelqu'un a changé son état après la fin (par exemple remis « Prévu »), on n'y touche plus */
+  const essaye = new Set();
+  KP.terminerPasses = () => {
+    if ((window.KPLAN_CONFIG || {}).brancher && !store.remote()) return; /* la base n'est pas encore lue */
+    const T = KP.TODAY, apres = (it) => KP.parse(KP.addDays(KP.endOf(it), 1)).getTime();
+    store.items().filter((it) => it.kind === "tf" && !it.annule && it.st !== "diffuse" && KP.endOf(it) < T && !essaye.has(it.id) && store.canEdit(it)).forEach((it) => {
+      essaye.add(it.id);
+      if (store.journalOf(it.id).some((j) => j.quand >= apres(it) && /a marqué «|a passé l'état/.test(j.txt || ""))) return;
+      store.update(it.id, { st: "diffuse" }, "a passé l'état à « Terminé » (date passée)");
+    });
+  };
+  store.on(() => setTimeout(KP.terminerPasses, 0));
+  setTimeout(KP.terminerPasses, 0);
 
   /* ---------- clics : un seul écouteur, des actions nommées ---------- */
   document.addEventListener("click", (e) => {
@@ -167,7 +181,7 @@
     print: () => window.print(),
     "row-st": (a, e) => {
       e.stopPropagation(); const it = store.get(a.dataset.id);
-      KP.menu(a, KP.STATUTS.map((s) => ({ v: s.k, nom: s.nom, pill: s.k })), (v) => { KP.setStatus(it.id, v); /* le focus revient sur la case d'état de la même ligne */ requestAnimationFrame(() => { const x = $("main").querySelector(`.row[data-id="${it.id}"] [data-act="row-st"]`); if (x) x.focus({ preventScroll: true }); }); }, { selected: [it.st], right: true, title: "État" });
+      KP.menu(a, KP.STATUTS.map((s) => ({ v: s.k, nom: KP.stNom(s.k, it), pill: s.k })), (v) => { KP.setStatus(it.id, v); /* le focus revient sur la case d'état de la même ligne */ requestAnimationFrame(() => { const x = $("main").querySelector(`.row[data-id="${it.id}"] [data-act="row-st"]`); if (x) x.focus({ preventScroll: true }); }); }, { selected: [it.st], right: true, title: "État" });
     },
     notifs: (a) => {
       const draw = () => { const list = KP.notifs().slice(0, 12);
@@ -197,7 +211,7 @@
   KP.setStatus = (id, v) => {
     const it = store.get(id); if (!it || it.st === v) return;
     if (v === "diffuse") KP.fx = { id, t: Date.now() }; /* le moment « Diffusé » (ui.js, KP.pill) */
-    const nom = KP.STATUTS.find((s) => s.k === v).nom;
+    const nom = KP.stNom(v, it);
     KP.toast(`« ${it.t} » : ${nom.toLowerCase()}`, store.update(id, { st: v }, `a passé l'état à « ${nom} »`));
   };
   /* ce qui s'est passé récemment et qui me concerne (les pilotes voient tout) */

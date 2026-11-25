@@ -107,7 +107,7 @@
       }),
       reqs: reqs.filter((r) => r.st !== "annulee").map((r) => ({ id: r.id, item: r.item, de: r.asker || "", a: r.dest === "moi" || r.dest === "programme" ? r.asker || "" : r.dest,
         quoi: KP.ELEMENTS.includes(r.type) || r.type === "Info" ? r.type : "Autre", txt: r.quoi || (KP.ELEMENTS.includes(r.type) ? "" : r.type), pour: r.pour || "", fait: r.st === "recue", rep: r.reponse || "", quand: ms(r.at) })),
-      journal: journal.map((j) => ({ id: "j" + j.id, item: j.item, qui: j.author || "", quand: ms(j.at), txt: jtxt(j, people), ...(j.diff && j.diff.dest && /message|reponse|retrait|relance|deadline/.test(j.kind) ? { dest: j.diff.dest } : {}), ...(j.diff && j.diff.asker && j.kind === "reponse" ? { asker: j.diff.asker } : {}) })),
+      journal: journal.map((j) => ({ id: "j" + j.id, item: j.item, qui: j.author || "", quand: ms(j.at), txt: jtxt(j, people, items.find((r) => r.id === j.item)), ...(j.diff && j.diff.dest && /message|reponse|retrait|relance|deadline/.test(j.kind) ? { dest: j.diff.dest } : {}), ...(j.diff && j.diff.asker && j.kind === "reponse" ? { asker: j.diff.asker } : {}) })),
       lastMeeting: m.last_meeting || KP.TODAY,
       projet: { couleur: m.couleur || "", sousTitre: m.sous_titre || "" },
       budget: Object.fromEntries(prix.map((b) => [b.item, b.montant])),
@@ -120,7 +120,7 @@
   }
 
   /* une ligne d'historique de la base, dite en une phrase */
-  function jtxt(j, gens) {
+  function jtxt(j, gens, ligne) {
     const d = j.diff || {}, k = Object.keys(d);
     /* 2.8.1 : le prénom se cherche parmi les personnes qu'on vient de lire (pas celles de la démo, encore en place au premier chargement) */
     const lu = gens && gens.find((p) => p.k === d.dest);
@@ -137,7 +137,7 @@
     if (d.st && d.st[0] === "retire") return "a rétabli";
     if (d.report_motif && d.report_motif[1]) return "a reporté" + (d.date ? " au " + KP.fmt.moyen(d.date[1]) : "") + " : " + d.report_motif[1];
     if (d.date) return "a déplacé au " + KP.fmt.moyen(d.date[1]);
-    if (d.st) return "a marqué « " + ((KP.STATUTS.find((s) => s.k === stIn[d.st[1]]) || {}).nom || d.st[1]) + " »";
+    if (d.st) return "a marqué « " + (stIn[d.st[1]] ? KP.stNom(stIn[d.st[1]], { kind: ligne && ligne.kind !== "action" ? "tf" : "action" }) : d.st[1]) + " »";
     const noms = { t: "le titre", fin: "le dernier jour", flou: "la date", per: "les périodes", svc: "le service", m: "les messages", tf: "le temps fort lié", partner: "le média", lieu: "le lieu", note: "la note", rang: "le rang", cible: "l'objectif", cc: "les services prévenus", res: "les résultats" };
     const l = k.map((x) => noms[x]).filter(Boolean);
     return l.length ? "a modifié " + l.join(", ") : "a modifié la fiche";
