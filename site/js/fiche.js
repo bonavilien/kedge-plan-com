@@ -59,7 +59,7 @@
         <textarea class="f-title" id="f-t" data-f="t" data-auto rows="1" aria-label="Titre" ${can ? "" : "readonly"}>${h(it.t)}</textarea>
         ${flag(it)}
         <dl class="f-meta">${rows.map(([k, x]) => `<dt>${k}</dt><dd>${x}</dd>`).join("")}</dl>
-        ${!reader && !it.annule && (can || u.role === "pilote") ? `<div class="f-actions"><button type="button" class="check" data-act="f-reunion" aria-pressed="${!!it.reunion}"><span class="box">${ic("check")}</span>À voir en réunion</button></div>` : ""}
+        ${!reader && !it.annule && (can || u.role === "pilote") ? `<div class="f-actions"><button type="button" class="check" data-act="f-reunion" aria-pressed="${!!it.reunion}"><span class="box">${ic("check")}</span>À voir en réunion</button>${it.reunion ? `<button type="button" class="f-pq${it.pourquoi ? "" : " none"}" data-act="f-pourquoi" aria-label="${it.pourquoi ? "Changer la raison" : "Dire pourquoi"}">${ic("chat")}<span>${it.pourquoi ? h(it.pourquoi) : "Pourquoi ?"}</span></button>` : ""}</div>` : ""}
         ${reader || it.annule ? (reqs.length ? `<section class="f-sec msgs"><h3>Messages · ${reqs.length}</h3>${reqs.map((r) => KP.ecrire.carte(r, it)).join("")}</section>` : "")
           : `<section class="f-sec msgs"><h3>Messages${reqs.length ? " · " + reqs.length : ""}</h3>${reqs.map((r) => KP.ecrire.carte(r, it)).join("")}${KP.ecrire.html(it)}</section>`}
         ${par ? (() => { const ans = store.reqsOf(par.id).filter((q) => q.fait && q.rep && q.de !== q.a);   /* pas les rappels privés */
@@ -95,6 +95,15 @@
   document.addEventListener("keydown", (e) => { if (e.target.id === "f-t" && e.key === "Enter") { e.preventDefault(); e.target.blur(); } if (e.key === "Enter" && e.target.matches && e.target.matches("#fiche input.val")) e.target.blur(); });
 
   const cur = () => store.get(KP.route.fiche);
+  /* la petite fenêtre « Pourquoi ? » : quelques mots, rien de proposé */
+  function pourquoi(it, cb) {
+    const d = KP.dialog(`<form method="dialog" class="pq"><h2>À voir en réunion</h2><p class="muted" style="margin-top:-8px">${h(it.t)}</p>
+      <label class="field"><span>Pourquoi ?</span><input class="input" name="m" maxlength="140" value="${h(it.pourquoi || "")}" autocomplete="off"></label>
+      <div class="foot"><button type="button" class="btn quiet" data-close>Annuler</button><button class="btn primary">${it.reunion ? "Enregistrer" : "Ajouter"}</button></div></form>`);
+    const f = d.querySelector("form"), inp = f.querySelector("input");
+    f.addEventListener("submit", () => cb(String(inp.value || "").trim().slice(0, 140)));
+    inp.focus();
+  }
   Object.assign(KP.acts, {
     "f-date": (a) => { const it = cur(); KP.datepick(a, it.flou ? (it.date < KP.TODAY && KP.monthEnd(it.date) >= KP.TODAY ? KP.TODAY : it.date) : it.date, (d) => {
       if (!d) return;
@@ -116,7 +125,10 @@
     "f-msg": (a) => { const it = cur(); KP.menu(a, KP.MESSAGES.map((m) => ({ v: m.k, nom: m.nom, info: m.info })), (m) => { const next = KP.MESSAGES.map((x) => x.k).filter((k) => m.includes(k)); if (next.join() !== it.m.join()) KP.toast("Messages enregistrés", store.update(it.id, { m: next })); }, { selected: it.m, multi: true }); },
     "f-tf": (a) => { const it = cur(); const tfs = store.items().filter((i) => i.kind === "tf").sort((x, y) => x.date.localeCompare(y.date)); KP.menu(a, [{ v: "", nom: "Aucun" }, "-", ...tfs.map((x) => ({ v: x.id, nom: x.t, info: KP.dateLong(x) }))], (v) => v !== it.tf && KP.toast(v ? "Rattachée au temps fort" : "Détachée", store.update(it.id, { tf: v })), { selected: [it.tf] }); },
     "f-st": (a) => KP.setStatus(KP.route.fiche, a.dataset.k),
-    "f-reunion": () => { const it = cur(); store.update(it.id, { reunion: !it.reunion }, it.reunion ? "" : "a mis à l'ordre du jour"); KP.toast(it.reunion ? "À l'ordre du jour de la prochaine réunion" : "Retiré de l'ordre du jour"); },
+    /* 2.9.2 : comme en V1, on dit pourquoi en le mettant à l'ordre du jour */
+    "f-reunion": () => { const it = cur(); if (it.reunion) return KP.toast("Retiré de l'ordre du jour", store.update(it.id, { reunion: false, pourquoi: "" }));
+      pourquoi(it, (r) => KP.toast("À l'ordre du jour de la prochaine réunion", store.update(it.id, { reunion: true, pourquoi: r }, "a mis à l'ordre du jour" + (r ? ` : ${r}` : "")))); },
+    "f-pourquoi": () => { const it = cur(); pourquoi(it, (r) => r !== (it.pourquoi || "") && KP.toast("Raison enregistrée", store.update(it.id, { pourquoi: r }, r ? `a donné la raison : ${r}` : ""))); },
     "f-pin": () => { const id = KP.route.fiche, was = store.pinned(id); store.togglePin(id); KP.toast(was ? "Retiré de ton accueil" : "Épinglé sur ton accueil");
       /* le marque-page tombe en place (css : g-pose) */
       const b = !was && $("fiche").querySelector('[data-act="f-pin"]'); if (b) b.classList.add("vient"); },

@@ -1,0 +1,45 @@
+// 2.9.2 : « À voir en réunion » demande pourquoi, la raison se lit sur la fiche et dans la Réunion (démonstration, sans base).
+// Usage : (cd site && python3 -m http.server 8812) puis node test/v2/raison-reunion.mjs [dossier-captures]
+import { createRequire } from "node:module";
+const { chromium } = createRequire(import.meta.url)("playwright");
+const base = process.env.SITE || "http://localhost:8812/index.html", shots = process.argv[2];
+const b = await chromium.launch(); let bad = 0;
+const ok = (c, label) => { console.log((c ? "ok   " : "FAIL ") + label); if (!c) bad++; };
+const ctx = await b.newContext({ viewport: { width: 1440, height: 900 }, serviceWorkers: "block" });
+const p = await ctx.newPage(); const errs = []; p.on("pageerror", (e) => errs.push(e.message));
+await p.route("**/config.js", (r) => r.fulfill({ contentType: "text/javascript", body: `window.KPLAN_CONFIG = { brancher: false };` }));
+await p.goto(base); await p.waitForFunction(() => window.KP && KP.store && KP.store.items().length > 0); await p.waitForTimeout(3000); /* l'ouverture animée */
+const id = await p.evaluate(() => KP.store.items().find((i) => i.kind === "action" && !i.annule && !i.reunion && KP.store.canEdit(i)).id);
+await p.evaluate((id) => KP.go({ fiche: id }), id); await p.waitForSelector("#fiche [data-act=f-reunion]");
+await p.click("#fiche [data-act=f-reunion]");
+await p.waitForSelector("dialog.dlg input[name=m]");
+ok(await p.locator("dialog.dlg .chip").count() === 0, "la fenêtre ne propose rien, juste un champ");
+await p.fill("dialog.dlg input[name=m]", "Un budget à valider");
+if (shots) await p.waitForTimeout(700), await p.screenshot({ path: `${shots}/1-pourquoi.png` });
+await p.click("dialog.dlg .btn.primary");
+await p.waitForSelector("dialog.dlg", { state: "detached" });
+let it = await p.evaluate((id) => KP.store.get(id), id);
+ok(it.reunion === true && it.pourquoi === "Un budget à valider", "à l'ordre du jour avec sa raison");
+ok((await p.locator("#fiche .f-pq").innerText()).includes("Un budget à valider"), "la fiche montre la raison à côté de la case");
+if (shots) await p.waitForTimeout(700), await p.screenshot({ path: `${shots}/2-fiche.png` });
+await p.click("#fiche .f-pq"); await p.waitForSelector("dialog.dlg input[name=m]");
+await p.fill("dialog.dlg input[name=m]", "Choisir entre Ouest-France et Sud Ouest"); await p.click("dialog.dlg .btn.primary");
+await p.waitForSelector("dialog.dlg", { state: "detached" });
+ok((await p.evaluate((id) => KP.store.get(id).pourquoi, id)) === "Choisir entre Ouest-France et Sud Ouest", "la raison se change en quelques mots");
+await p.evaluate(() => KP.go({ screen: "reunion", tab: "ordre", fiche: "" })); await p.waitForSelector(".ag h2");
+const row = p.locator(`.ag .row[data-id="${id}"]`);
+const txt = await row.innerText(); if (!txt.includes("«")) console.log(txt);
+ok(txt.replace(/\s+/g, " ").includes("« Choisir entre Ouest-France et Sud Ouest »"), "Réunion : la raison s'affiche sous le sujet");
+if (shots) await p.waitForTimeout(700), await p.screenshot({ path: `${shots}/3-reunion.png` });
+await p.evaluate((id) => KP.go({ screen: "accueil", fiche: id }), id); await p.waitForSelector("#fiche [data-act=f-reunion]");
+await p.click("#fiche [data-act=f-reunion]");
+it = await p.evaluate((id) => KP.store.get(id), id);
+ok(!it.reunion && !it.pourquoi && await p.locator("dialog.dlg").count() === 0, "décocher retire tout de suite, sans fenêtre");
+await p.click("#fiche [data-act=f-reunion]"); await p.waitForSelector("dialog.dlg"); await p.click("dialog.dlg .btn.primary"); await p.waitForSelector("dialog.dlg", { state: "detached" });
+it = await p.evaluate((id) => KP.store.get(id), id);
+ok(it.reunion && it.pourquoi === "" && (await p.locator("#fiche .f-pq.none").count()) === 1, "sans raison, ça marche quand même et « Pourquoi ? » reste à portée");
+await p.setViewportSize({ width: 390, height: 844 }); await p.click("#fiche .f-pq"); await p.waitForSelector("dialog.dlg input[name=m]");
+if (shots) await p.waitForTimeout(700), await p.screenshot({ path: `${shots}/4-telephone.png` });
+ok(errs.length === 0, "aucune erreur" + (errs.length ? " : " + errs.join(" | ") : ""));
+await b.close();
+console.log(bad ? `Raison en réunion : ${bad} échec(s)` : "Raison en réunion : tout est bon"); process.exit(bad ? 1 : 0);
