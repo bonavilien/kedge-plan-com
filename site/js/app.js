@@ -167,7 +167,7 @@
     print: () => window.print(),
     "row-st": (a, e) => {
       e.stopPropagation(); const it = store.get(a.dataset.id);
-      KP.menu(a, KP.STATUTS.map((s) => ({ v: s.k, nom: s.nom, pill: s.k })), (v) => { KP.setStatus(it.id, v); /* le focus revient sur la case d'état de la même ligne */ requestAnimationFrame(() => { const x = $("main").querySelector(`.row[data-id="${it.id}"] [data-act="row-st"]`); if (x) x.focus({ preventScroll: true }); }); }, { selected: [it.st], right: true, title: "État" });
+      KP.menu(a, KP.STATUTS.map((s) => ({ v: s.k, nom: KP.stNom(s.k, it), pill: s.k })), (v) => { KP.setStatus(it.id, v); /* le focus revient sur la case d'état de la même ligne */ requestAnimationFrame(() => { const x = $("main").querySelector(`.row[data-id="${it.id}"] [data-act="row-st"]`); if (x) x.focus({ preventScroll: true }); }); }, { selected: [it.st], right: true, title: "État" });
     },
     notifs: (a) => {
       const draw = () => { const list = KP.notifs().slice(0, 12);
@@ -197,7 +197,7 @@
   KP.setStatus = (id, v) => {
     const it = store.get(id); if (!it || it.st === v) return;
     if (v === "diffuse") KP.fx = { id, t: Date.now() }; /* le moment « Diffusé » (ui.js, KP.pill) */
-    const nom = KP.STATUTS.find((s) => s.k === v).nom;
+    const nom = KP.stNom(v, it);
     KP.toast(`« ${it.t} » : ${nom.toLowerCase()}`, store.update(id, { st: v }, `a passé l'état à « ${nom} »`));
   };
   /* ce qui s'est passé récemment et qui me concerne (les pilotes voient tout) */

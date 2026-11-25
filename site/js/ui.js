@@ -183,10 +183,10 @@
   KP.vientDetre = (id) => KP.fx.id === id && Date.now() - KP.fx.t < 1600;
   KP.pill = (it, editable) => {
     if (it.annule) return `<span class="pill annule">Annulé</span>`;
-    const s = KP.STATUTS.find((x) => x.k === it.st) || KP.STATUTS[0];
-    const inner = (it.st === "diffuse" ? KP.ic("check") : "") + KP.h(s.nom);
+    const s = KP.STATUTS.find((x) => x.k === it.st) || KP.STATUTS[0], nom = KP.stNom(s.k, it);
+    const inner = (it.st === "diffuse" ? KP.ic("check") : "") + KP.h(nom);
     const pop = it.st === "diffuse" && KP.vientDetre(it.id) ? " vient" : "";
-    return editable ? `<button type="button" class="pill ${s.k}${pop}" data-act="row-st" data-id="${it.id}" aria-label="État : ${KP.h(s.nom)}. Changer">${inner}</button>` : `<span class="pill ${s.k}${pop}">${inner}</span>`;
+    return editable ? `<button type="button" class="pill ${s.k}${pop}" data-act="row-st" data-id="${it.id}" aria-label="État : ${KP.h(nom)}. Changer">${inner}</button>` : `<span class="pill ${s.k}${pop}">${inner}</span>`;
   };
   KP.due = (r) => !r.pour ? "pour info" : !r.fait && r.pour < KP.TODAY ? `attendu ${KP.fmt.relatif(r.pour)}` : `pour ${KP.fmt.relatif(r.pour)}`;
   KP.kindName = (it) => it.variant === "sujet" ? "Sujet de la période" : it.variant === "classement" ? "Classement" : it.kind === "tf" ? "Temps fort" : it.variant === "partenariat" ? "Partenariat payant" : "Action";

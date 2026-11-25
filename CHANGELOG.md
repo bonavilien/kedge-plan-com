@@ -2,6 +2,10 @@
 
 Généré depuis `site/js/version.js` par `node scripts/version.mjs`. Ne pas modifier à la main.
 
+## 2.9.3 · 2026-11-25
+
+- Un temps fort ne se diffuse pas : son dernier état s'appelle « Terminé » (les actions gardent « Diffusé »)
+
 ## 2.9.2 · 2026-11-25
 
 - « À voir en réunion » demande à nouveau pourquoi, en quelques mots
