@@ -25,5 +25,25 @@ const ed = p.locator(`.row[data-id="${tf}"] [data-act=row-st]`);
 if (await ed.count()) { await ed.first().click(); await p.waitForTimeout(300); const m = await p.locator(".pop .pop-i").allInnerTexts(); ok(m.some((x) => x.includes("Terminé")) && !m.some((x) => x.includes("Diffusé")), "menu d'état : « Terminé »"); if (shots) await p.screenshot({ path: `${shots}/2-menu.png` }); await p.keyboard.press("Escape"); }
 ok(await p.evaluate((id) => KP.pill(KP.store.get(id)).includes("Terminé"), tf), "pastille d'un temps fort");
 ok(await p.evaluate((id) => KP.pill(KP.store.get(id)).includes("Diffusé"), ac), "pastille d'une action");
+/* passé tout seul en « Terminé », et ça reste modifiable */
+const auto = await p.evaluate(() => { const its = KP.store.items().filter((i) => i.kind === "tf" && !i.annule && KP.endOf(i) < KP.TODAY); return { n: its.length, pas: its.filter((i) => i.st !== "diffuse").map((i) => i.t) }; });
+ok(auto.n > 0 && auto.pas.length === 0, `temps forts passés tous « Terminé » (${auto.n})` + (auto.pas.length ? " sauf " + auto.pas.join(", ") : ""));
+const nouveau = await p.evaluate(() => { const it = KP.store.add({ kind: "tf", t: "Salon test", date: KP.addDays(KP.TODAY, -3), st: "prevu" }); return it.id; });
+await p.waitForTimeout(200);
+ok(await p.evaluate((id) => KP.store.get(id).st === "diffuse", nouveau), "un temps fort ajouté dans le passé passe en « Terminé »");
+await p.evaluate((id) => KP.setStatus(id, "prevu"), nouveau); await p.waitForTimeout(200);
+ok(await p.evaluate((id) => { KP.terminerPasses(); return KP.store.get(id).st === "prevu"; }, nouveau), "remis à « Prévu » à la main, il le reste");
+const futur = await p.evaluate(() => KP.store.add({ kind: "tf", t: "Salon futur", date: KP.addDays(KP.TODAY, 3), st: "prevu" }).id);
+await p.waitForTimeout(200);
+ok(await p.evaluate((id) => KP.store.get(id).st === "prevu", futur), "un temps fort à venir ne bouge pas");
+const actPassee = await p.evaluate(() => KP.store.items().some((i) => i.kind === "action" && !i.annule && KP.endOf(i) < KP.TODAY && i.st !== "diffuse"));
+ok(actPassee, "les actions passées ne sont pas touchées");
+/* la Réunion, Bilan : les temps forts n'y comptent pas comme diffusés */
+await p.evaluate(() => KP.go({ screen: "reunion", tab: "bilan", fiche: "" })); await p.waitForTimeout(500);
+const bil = await p.locator("main").innerText();
+const nAct = await p.evaluate(() => { const per = KP.PERIODS.find((x) => x.k === KP.route.per); return KP.store.items().filter((i) => !i.annule && i.kind === "action" && i.st === "diffuse" && i.date >= per.du && i.date <= per.au).length; });
+const somme = [...bil.matchAll(/(\d+) diffusées?/g)].reduce((a, m) => a + +m[1], 0);
+ok(somme <= nAct && !/Salon test/.test(bil), `Bilan : ${somme} diffusées, seulement des actions (${nAct} au plus)`);
+if (shots) await p.screenshot({ path: `${shots}/3-bilan.png` });
 ok(errs.length === 0, "aucune erreur JavaScript" + (errs.length ? " : " + errs.join(" | ") : ""));
 await b.close(); process.exit(bad ? 1 : 0);

@@ -136,6 +136,20 @@
   /* un clic à côté de la fiche posée par-dessus la ferme (le plan derrière est inerte) */
   document.addEventListener("click", (e) => { if ($("shell").inert && (e.target === document.body || e.target === document.documentElement)) KP.acts["close-fiche"](); });
   store.on(render);
+  /* 2.9.3 : un temps fort dont la date est passée passe tout seul en « Terminé », une seule fois ;
+     si quelqu'un a changé son état après la fin (par exemple remis « Prévu »), on n'y touche plus */
+  const essaye = new Set();
+  KP.terminerPasses = () => {
+    if ((window.KPLAN_CONFIG || {}).brancher && !store.remote()) return; /* la base n'est pas encore lue */
+    const T = KP.TODAY, apres = (it) => KP.parse(KP.addDays(KP.endOf(it), 1)).getTime();
+    store.items().filter((it) => it.kind === "tf" && !it.annule && it.st !== "diffuse" && KP.endOf(it) < T && !essaye.has(it.id) && store.canEdit(it)).forEach((it) => {
+      essaye.add(it.id);
+      if (store.journalOf(it.id).some((j) => j.quand >= apres(it) && /a marqué «|a passé l'état/.test(j.txt || ""))) return;
+      store.update(it.id, { st: "diffuse" }, "a passé l'état à « Terminé » (date passée)");
+    });
+  };
+  store.on(() => setTimeout(KP.terminerPasses, 0));
+  setTimeout(KP.terminerPasses, 0);
 
   /* ---------- clics : un seul écouteur, des actions nommées ---------- */
   document.addEventListener("click", (e) => {
