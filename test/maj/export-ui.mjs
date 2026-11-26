@@ -61,7 +61,7 @@ await p.click("dialog [data-go]");
 ok(await p.locator("dialog [data-err]").isVisible() && (await p.locator("dialog [data-err]").innerText()).includes("La clé"), "sans clé : on le dit");
 await p.fill("dialog [name=pat]", "faux"); await p.click("dialog [data-go]"); await p.waitForTimeout(100);
 ok((await p.locator("dialog [data-err]").innerText()).includes("Asana refuse la clé"), "clé refusée : message de la fonction");
-await p.fill("dialog [name=pat]", "2/1234"); await shot(p, "2-relier-cle", "dialog"); await p.click("dialog [data-go]");
+await p.fill("dialog [name=pat]", "2/1234"); await p.evaluate(() => { document.querySelector("dialog [data-err]").hidden = true; }); await shot(p, "2-relier-cle", "dialog"); await p.click("dialog [data-go]");
 await p.waitForSelector('dialog [data-etape="2"]:not([hidden])');
 ok(await p.locator("dialog [name=cible] option").count() === 2, "étape 2 : les projets Asana");
 await shot(p, "3-relier-projet", "dialog");
@@ -129,7 +129,7 @@ ok((await p.locator(".t-outils >> xpath=..").innerText()).includes("0029"), "san
 await p.click('.t-outils [data-act="outil-relier"][data-k="trello"]');
 await p.fill("dialog [name=key]", "a".repeat(32));
 ok(await p.locator("dialog [data-jeton]").isVisible(), "Trello : lien « Mon jeton » dès que la clé est collée");
-await p.fill("dialog [name=token]", "ATTA1"); await p.click("dialog [data-go]"); await p.waitForTimeout(150);
+await p.fill("dialog [name=token]", "ATTA1"); await shot(p, "2b-trello-cle", "dialog"); await p.click("dialog [data-go]"); await p.waitForTimeout(150);
 ok((await p.locator("dialog [data-err]").innerText()).includes("pas encore installée"), "fonction absente : message clair");
 
 // ---------- beaucoup de projets : une case pour chercher ----------
@@ -177,6 +177,25 @@ ok((await p.locator("#fiche .f-vient").innerText()).includes("Vient de l'Asana d
 await shot(p, "11-fiche-origine", "#fiche");
 ok(await p.locator(btn).count() === 0, "pilote sans outil relié : pas de bouton, mais il voit d'où vient la fiche");
 ok(!p.errs.length, "aucune erreur dans la page" + (p.errs.length ? " : " + p.errs[0] : ""));
+
+// ---------- Trello : les mêmes écrans, pour le tutoriel ----------
+p = await open("presse@example.com", { lignes: [{ item: I(3), user_id: U(2), outil: "trello", ext_id: "c9", url: "https://trello.com/c/c9", erreur: "", origine: "outil" }] });
+await p.evaluate(() => KP.go({ screen: "reglages", set: "profil", fiche: "" })); await p.waitForSelector(".t-outils");
+await p.click('.t-outils [data-act="outil-relier"][data-k="trello"]');
+await p.fill("dialog [name=key]", "a".repeat(32)); await p.fill("dialog [name=token]", "ATTA1"); await p.click("dialog [data-go]");
+await p.waitForSelector('dialog [data-etape="2"]:not([hidden])');
+await shot(p, "t3-trello-liste", "dialog");
+await p.click("dialog [data-go]"); await p.waitForSelector("dialog", { state: "detached" });
+ok(await p.locator(".t-outils .o-retour").count() === 1, "Trello relié : pastille « Plan de com »");
+await p.locator(".t-outils").scrollIntoViewIfNeeded();
+await shot(p, "t4-trello-relie", ".t-outils >> xpath=..");
+await p.evaluate(() => KP.go({ screen: "plan", fiche: "" })); await p.waitForTimeout(200);
+ok((await p.locator(".o-vient").first().getAttribute("data-tip")) === "Vient du Trello d'Aurélie", "Trello : « Vient du Trello d'Aurélie »");
+await p.locator(".o-vient").first().scrollIntoViewIfNeeded(); await p.locator(".o-vient").first().hover(); await p.waitForTimeout(600);
+await shot(p, "t10-trello-plan", "#main");
+await fiche(p, I(3));
+ok((await p.locator("#fiche .f-vient").innerText()).includes("Vient du Trello d'Aurélie"), "fiche : « Vient du Trello d'Aurélie »");
+await shot(p, "t11-trello-fiche", "#fiche");
 
 await b.close();
 console.log(bad ? `${bad} échec(s)` : "Asana et Trello dans l'appli : tout est bon");

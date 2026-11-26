@@ -39,12 +39,15 @@
 
   /* ---------- d'où vient la fiche : l'Asana ou le Trello de quelqu'un ---------- */
   O.venue = (id) => (S.venues || []).find((v) => v.item === id) || null;
-  const deQui = (v) => `${NOMS[v.outil]} de ${(KP.person(v.user_id) || { nom: "quelqu'un" }).nom}`;
+  /* « Vient de l'Asana de Stéphane », « Vient du Trello d'Aurélie » */
+  const DU = { asana: "de l'Asana", trello: "du Trello" };
+  const de = (nom) => (/^[aeiouyhàâéèêëîïôûü]/i.test(nom) ? "d'" : "de ") + nom;
+  const qui = (v) => (KP.person(v.user_id) || { nom: "quelqu'un" }).nom;
   /* dans les listes : le petit repère de l'outil, son nom au survol */
-  O.marque = (it) => { const v = O.venue(it.id); if (!v) return ""; const t = "Vient de l'" + deQui(v); return `<span class="o-vient" data-tip="${h(t)}" aria-label="${h(t)}" role="img">${ic(v.outil)}</span>`; };
+  O.marque = (it) => { const v = O.venue(it.id); if (!v) return ""; const t = `Vient ${DU[v.outil]} ${de(qui(v))}`; return `<span class="o-vient" data-tip="${h(t)}" aria-label="${h(t)}" role="img">${ic(v.outil)}</span>`; };
   /* sur la fiche : une ligne sous le titre */
-  O.origine = (it) => { const v = O.venue(it.id); if (!v) return "";
-    return `<p class="f-vient">${ic(v.outil)}<span>Vient de l'${h(NOMS[v.outil])} de <b>${h((KP.person(v.user_id) || { nom: "quelqu'un" }).nom)}</b></span>${v.url ? `<a class="link" href="${h(v.url)}" target="_blank" rel="noopener">Ouvrir</a>` : ""}</p>`; };
+  O.origine = (it) => { const v = O.venue(it.id); if (!v) return ""; const n = qui(v), d = de(n);
+    return `<p class="f-vient">${ic(v.outil)}<span>Vient ${DU[v.outil]} ${h(d.slice(0, d.length - n.length))}<b>${h(n)}</b></span>${v.url ? `<a class="link" href="${h(v.url)}" target="_blank" rel="noopener">Ouvrir</a>` : ""}</p>`; };
 
   /* ---------- sur la fiche : le bouton de la barre du haut ---------- */
   O.bouton = (it) => {
