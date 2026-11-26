@@ -16,7 +16,7 @@ async function open(email, version, theme = "light", vp = { width: 1440, height:
   p.on("pageerror", (e) => p.errs.push(e.message));
   await ctx.addInitScript(([email, version]) => {
     window.__fakeRpc = { outils_actifs: () => [] };
-    const t = setInterval(() => { if (window.__fake) { if (version !== null) { const pr = window.__fake.db.profiles.find((x) => email.startsWith("pilote") ? x.chef : email.startsWith("presse") ? x.svc === "rp" : false); if (pr) pr.version = version; } clearInterval(t); } }, 1);
+    const t = setInterval(() => { if (window.__fake) { if (version !== null) { const pr = window.__fake.db.profiles.find((x) => email.startsWith("pilote") ? x.chef : email.startsWith("presse") ? x.svc === "rp" : email.startsWith("lecteur") ? x.visiteur : false); if (pr) pr.version = version; } clearInterval(t); } }, 1);
   }, [email, version]);
   await p.route("**/vendor/supabase-*.js", (r) => r.fulfill({ contentType: "text/javascript", body: fake }));
   await p.route("**/config.js", (r) => r.fulfill({ contentType: "text/javascript", body: `window.KPLAN_CONFIG = ${JSON.stringify({ brancher: true, supabaseUrl: "https://faux.supabase.co", supabaseKey: "faux" })};` }));
@@ -73,7 +73,7 @@ await shot(p, "4-guide-trello", "dialog.gd");
 await p.click("dialog.gd .gd-x"); await p.waitForTimeout(500);
 ok(await p.locator("dialog.gd").count() === 0, "la croix ferme le guide");
 await p.evaluate(() => KP.go({ screen: "reglages", set: "apropos" })); await p.waitForTimeout(200);
-ok(await p.locator(".qn-set .qn-c").count() === 2, "Réglages, Nouveautés et version : « À découvrir »");
+ok(await p.locator(".qn-set .qn-c").count() === 6, "Réglages, Nouveautés et version : « À découvrir », les 6 dernières");
 await shot(p, "5-a-propos", ".qn-set");
 ok(!p.errs.length, "aucune erreur" + (p.errs[0] ? " : " + p.errs[0] : ""));
 
@@ -84,6 +84,22 @@ await shot(p, "6-quoi-de-neuf-tel", "dialog.qn");
 await p.click('dialog.qn [data-act="guide"]'); await p.waitForSelector("dialog.gd");
 ok(await p.locator("dialog.gd").evaluate((d) => d.getBoundingClientRect().width <= 390), "téléphone : le guide tient en largeur");
 await shot(p, "7-guide-tel", "dialog.gd");
+
+// ---------- selon la personne : le budget pour les chefs, rien à modifier pour un visiteur ----------
+const titres = async (p) => p.locator("dialog.qn .qn-tx b").allInnerTexts();
+p = await open("pilote@example.com", "2.4.0");
+let t = await titres(p);
+ok(t.length === 5 && t.includes("Budget par devis") && t[0] === "Synchronisation avec Asana et Trello", "chef revenu de la 2.4 : les 5 plus récentes, dont le budget");
+await shot(p, "8-chef-depuis-2-4", "dialog.qn");
+await p.click('dialog.qn [data-act="qn-go"] >> nth=1'); await p.waitForTimeout(300);
+p = await open("presse@example.com", "2.4.0");
+t = await titres(p);
+ok(t.length === 5 && !t.includes("Budget par devis") && !t.includes("Suivi de l'outil") && t.includes("Barre de saisie sur l'accueil"), "service revenu de la 2.4 : pas de budget ni de suivi");
+await shot(p, "9-service-depuis-2-4", "dialog.qn");
+p = await open("lecteur@example.com", "2.4.0");
+t = await titres(p);
+ok(t.length >= 1 && !t.some((x) => /Asana|Barre|Photo|Demandes|Budget|Suivi/.test(x)) && t.includes("Partenariats médias payants"), "visiteur : seulement ce qu'il peut consulter");
+await shot(p, "10-visiteur-depuis-2-4", "dialog.qn");
 
 await b.close();
 console.log(bad ? `${bad} échec(s)` : "Quoi de neuf et guides : tout est bon");

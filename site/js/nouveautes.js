@@ -8,10 +8,14 @@
   const num = (v) => String(v || "").split(".").map((x) => parseInt(x, 10) || 0);
   const apres = (a, b) => { const x = num(a), y = num(b); for (let i = 0; i < 3; i++) if (x[i] !== y[i]) return x[i] > y[i]; return false; };
 
-  /* ce qui est nouveau depuis la version « avant » (les plus récentes d'abord) */
-  N.depuis = (avant) => KP.VERSIONS.filter((v) => v.nouveau && apres(v.n, avant)).flatMap((v) => v.nouveau.map((x) => ({ ...x, n: v.n })));
+  /* à qui s'adresse une nouveauté : tout le monde, ceux qui modifient le plan, les chefs de projet, les administrateurs */
+  const pourMoi = (x) => { const u = KP.me() || {};
+    return !x.pour || (x.pour === "edition" ? u.role !== "lecteur" : x.pour === "chef" ? u.role === "pilote" : x.pour === "admin" ? !!u.admin : false); };
+  const toutes = () => KP.VERSIONS.filter((v) => v.nouveau).flatMap((v) => v.nouveau.map((x) => ({ ...x, n: v.n }))).filter(pourMoi);
+  /* ce qui est nouveau depuis la version « avant », pour cette personne (les plus récentes d'abord) */
+  N.depuis = (avant) => toutes().filter((x) => apres(x.n, avant));
   /* les dernières, pour Réglages, Nouveautés et version */
-  N.dernieres = (k = 4) => KP.VERSIONS.filter((v) => v.nouveau).flatMap((v) => v.nouveau.map((x) => ({ ...x, n: v.n }))).slice(0, k);
+  N.dernieres = (k = 6) => toutes().slice(0, k);
 
   const carte = (x) => `<li class="qn-c">
       <span class="qn-ic">${ic(x.ic || "spark")}</span>
@@ -24,7 +28,7 @@
   /* la fenêtre, une fois par nouvelle version (même famille : une refonte aura sa propre présentation) */
   N.verifier = (avant) => {
     if (!avant || num(avant)[0] !== num(KP.VERSION.n)[0] || !apres(KP.VERSION.n, avant)) return;
-    const l = N.depuis(avant); if (!l.length) return;
+    const l = N.depuis(avant).slice(0, 5); if (!l.length) return;
     setTimeout(() => N.montrer(l), 400);
   };
   N.montrer = (l) => {
