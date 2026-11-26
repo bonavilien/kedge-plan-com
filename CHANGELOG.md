@@ -2,6 +2,12 @@
 
 Généré depuis `site/js/version.js` par `node scripts/version.mjs`. Ne pas modifier à la main.
 
+## 2.10 · 2026-11-26
+
+- Dans ton Asana ou ton Trello, mets l'étiquette « Plan de com » sur une tâche : elle arrive dans le plan, « À confirmer », dans ton service
+- Ensuite, cocher la tâche passe l'action en « Diffusé », changer son échéance change la date, la renommer renomme l'action
+- Une tâche venue d'Asana ou de Trello garde sa description : l'appli n'y change que le titre, l'échéance et la coche
+
 ## 2.9.3 · 2026-11-25
 
 - Un temps fort ne se diffuse pas : son dernier état s'appelle « Terminé » (les actions gardent « Diffusé »)

@@ -10,14 +10,17 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..")
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "kplan-export-"));
 const f = path.join(tmp, "index.mts");
 fs.copyFileSync(path.join(ROOT, "supabase/functions/export/index.ts"), f);
-const { createHandler, description, lienApp } = await import(pathToFileURL(f));
+const { createHandler, description, lienApp, estEtiquette, jourParis } = await import(pathToFileURL(f));
+import crypto from "crypto";
+const signe = (secret, corps) => crypto.createHmac("sha256", secret).update(corps).digest("hex");
 
 let ok = 0;
 const check = (c, m) => { assert.ok(c, m); ok++; };
 
 /* faux outils : ils notent chaque appel et gardent leurs tâches */
 function outils() {
-  const calls = [], taches = {}, cartes = {};
+  const calls = [], taches = {}, cartes = {}, hooks = {}, verifs = [];
+  const box = { handler: null, poignee: "" };
   let n = 0;
   const res = (status, body) => new Response(body == null ? "" : JSON.stringify(body), { status });
   const fetch = async (url, init = {}) => {
@@ -34,6 +37,16 @@ function outils() {
       if (t && !taches[t[1]]) return res(404, { errors: [{ message: "Not found" }] });
       if (t && m === "PUT") { Object.assign(taches[t[1]], body.data); return res(200, { data: { gid: t[1], permalink_url: "https://app.asana.com/0/p1/" + t[1] } }); }
       if (t && m === "DELETE") { delete taches[t[1]]; return res(200, { data: {} }); }
+      if (t && m === "GET") { const x = taches[t[1]]; return res(200, { data: { gid: t[1], name: x.name, due_on: x.due_on || null, completed: !!x.completed, tags: x.tags || [], permalink_url: "https://app.asana.com/0/p1/" + t[1] } }); }
+      /* création d'un webhook : Asana appelle l'adresse tout de suite pour la poignée de main, avant de répondre */
+      if (u.pathname === "/api/1.0/webhooks" && m === "POST") {
+        const r = await box.handler(new Request(body.data.target, { method: "POST", headers: { "x-hook-secret": "hs-1" } }));
+        box.poignee = r.headers.get("x-hook-secret") || "";
+        if (box.poignee !== "hs-1") return res(400, { errors: [{ message: "handshake failed" }] });
+        const gid = "wh" + ++n; hooks[gid] = body.data; return res(201, { data: { gid } });
+      }
+      const wh = /^\/api\/1\.0\/webhooks\/(\w+)$/.exec(u.pathname);
+      if (wh && m === "DELETE") { delete hooks[wh[1]]; return res(200, { data: {} }); }
     }
     if (u.host === "api.trello.com") {
       if (u.searchParams.get("key") !== "k" || u.searchParams.get("token") !== "tok") return res(401, "invalid key");
@@ -42,10 +55,21 @@ function outils() {
       const c = /^\/1\/cards\/(\w+)$/.exec(u.pathname);
       if (c && !cartes[c[1]]) return res(404, "not found");
       if (c && m === "PUT") { Object.assign(cartes[c[1]], body); return res(200, { id: c[1], shortUrl: "https://trello.com/c/" + c[1] }); }
+      if (c && m === "GET") { const x = cartes[c[1]]; return res(200, { id: c[1], name: x.name, due: x.due || null, dueComplete: !!x.dueComplete, closed: !!x.closed, labels: x.labels || [], shortUrl: "https://trello.com/c/" + c[1] }); }
+      if (u.pathname === "/1/lists/l1") return res(200, { id: "l1", idBoard: "b1" });
+      /* création d'un webhook : Trello vérifie l'adresse par un HEAD */
+      if (u.pathname === "/1/webhooks" && m === "POST") {
+        const cb = u.searchParams.get("callbackURL"), r = await box.handler(new Request(cb, { method: "HEAD" }));
+        verifs.push(r.status);
+        if (r.status !== 200) return res(400, "callback failed");
+        const id = "tw" + ++n; hooks[id] = { callbackURL: cb, idModel: u.searchParams.get("idModel") }; return res(200, { id });
+      }
+      const tw = /^\/1\/webhooks\/(\w+)$/.exec(u.pathname);
+      if (tw && m === "DELETE") { delete hooks[tw[1]]; return res(200, {}); }
     }
     return res(404, { message: "?" });
   };
-  return { fetch, calls, taches, cartes };
+  return { fetch, calls, taches, cartes, hooks, verifs, box };
 }
 
 function monde() {
@@ -75,8 +99,30 @@ function monde() {
       exports: async (item) => db.exports.filter((e) => e.item === item),
       noter: async (e) => { db.exports = [...db.exports.filter((x) => !(x.item === e.item && x.user_id === e.user_id && x.outil === e.outil)), { ...e }]; },
       oublier: async (item, u, k) => { db.exports = db.exports.filter((e) => !(e.item === item && e.user_id === u && e.outil === k)); },
+      majReglage: async (u, k, patch) => { if (db.outils[K(u, k)]) Object.assign(db.outils[K(u, k)], patch); },
+      exportExt: async (u, k, x) => db.exports.find((e) => e.user_id === u && e.outil === k && e.ext_id === x) || null,
+      importer: async (u, k, x, url, t, date) => {
+        if (db.exports.some((e) => e.user_id === u && e.outil === k && e.ext_id === x)) return null;
+        const p = Object.values(comptes).find((c) => c.id === u); if (!p || p.visiteur) return null;
+        const id = "n" + (++db.n);
+        db.fiches[id] = { id, kind: "action", t, date, flou: "", svc: p.svc || "chef", m: [], st: "confirmer", partner: null, lieu: "", note: "", service: "", messages: [], tf: "", docs: [], author: u };
+        db.exports.push({ item: id, user_id: u, outil: k, ext_id: x, url, erreur: "", origine: "outil" });
+        return id;
+      },
+      majFiche: async (u, item, t, date, st) => { const f = db.fiches[item]; if (!f || f.st === "retire") return; db.maj.push({ u, item, t, date, st }); if (t) f.t = t; if (date) { f.date = date; f.flou = ""; } if (st) f.st = st; },
     },
   });
+  o.box.handler = handler;
+  db.n = 0; db.maj = [];
+  /* un appel de webhook : Asana signe le corps, Trello non */
+  const webhook = async (outil, u, corps, o2 = {}) => {
+    const r = db.outils[K(u, outil)], brut = JSON.stringify(corps), headers = { "content-type": "application/json" };
+    if (outil === "asana") headers["x-hook-signature"] = o2.signature ?? signe(r.hook_secret, brut);
+    const k = o2.k ?? r.crochet;
+    const res = await handler(new Request(`https://ref.supabase.co/functions/v1/export?retour=${outil}&u=${u}&k=${k}`, { method: "POST", headers, body: brut }));
+    let j = {}; try { j = await res.json(); } catch {}
+    return { status: res.status, o: j };
+  };
   const appel = async (corps, qui, secret) => {
     const headers = { "content-type": "application/json" };
     if (qui) headers.authorization = "Bearer " + qui;
@@ -84,7 +130,7 @@ function monde() {
     const r = await handler(new Request("https://ref.supabase.co/functions/v1/export", { method: "POST", headers, body: JSON.stringify(corps) }));
     return { status: r.status, o: await r.json() };
   };
-  return { o, db, appel };
+  return { o, db, appel, webhook };
 }
 
 /* description et lien de retour */
@@ -186,6 +232,98 @@ check(description(w0.db.fiches.a1, { site: "", app: "" }, true).includes("**Serv
   check(w.db.exports.filter((x) => x.item === "a2").map((x) => x.user_id).join() === "u3", "arrêter : seulement chez soi");
   await w.appel({ action: "delier", outil: "trello" }, "louise");
   check(!w.db.outils["u3:trello"] && w.db.outils["u2:asana"] && !w.db.exports.some((x) => x.user_id === "u3"), "délier : seulement son outil");
+}
+
+/* ---------- le retour : Asana et Trello vers le plan ---------- */
+check(estEtiquette("Plan de com") && estEtiquette("plan-de-COM") && estEtiquette(" Plan dé com ") && !estEtiquette("Plan com"), "l'étiquette se reconnaît sans souci de majuscules ni d'accents");
+check(jourParis("2026-12-05T23:30:00.000Z") === "2026-12-06" && jourParis("2026-12-05T09:00:00.000Z") === "2026-12-05", "échéance Trello : le jour à Paris");
+{
+  const w = monde();
+  const r = await w.appel({ action: "relier", outil: "asana", jeton: "pat-ok", cible: "p1", site: "https://site.io/app/", app: "Road to 7th" }, "stephane");
+  const reg = w.db.outils["u2:asana"];
+  check(r.o.retour === true && reg.hook_id && reg.crochet && reg.hook_secret === "hs-1" && w.o.box.poignee === "hs-1", "relier Asana : webhook créé sur son projet, poignée de main faite");
+  check(w.o.hooks[reg.hook_id].resource === "p1" && w.o.hooks[reg.hook_id].target.includes("retour=asana&u=u2&k=" + reg.crochet), "le webhook vise son projet, à son adresse secrète");
+
+  /* Stéphane étiquette une tâche dans Asana */
+  w.o.taches.x1 = { name: "Vidéo du campus", due_on: "2026-12-12", completed: false, tags: [{ name: "Urgent" }, { name: "Plan de com" }] };
+  const ev = { events: [{ action: "added", resource: { gid: "x1", resource_type: "task" }, parent: { gid: "p1", resource_type: "project" } }] };
+  check((await w.webhook("asana", "u2", ev, { k: "faux" })).status === 401, "adresse sans le bon jeton : refusée");
+  check((await w.webhook("asana", "u2", ev, { signature: "bad" })).status === 401, "signature Asana fausse : refusée");
+  const a = await w.webhook("asana", "u2", ev);
+  const nf = Object.values(w.db.fiches).find((x) => x.t === "Vidéo du campus");
+  check(a.o.fait.join() === "creee" && nf && nf.st === "confirmer" && nf.svc === "rs" && nf.date === "2026-12-12" && nf.author === "u2", "tâche étiquetée : fiche « À confirmer » dans son service, à sa date");
+  check(w.db.exports.some((e) => e.item === nf.id && e.origine === "outil" && e.user_id === "u2"), "suivie, marquée « venue de l'outil »");
+  await w.webhook("asana", "u2", { events: [ev.events[0], { action: "changed", resource: { gid: "x1", resource_type: "task" } }] });
+  check(Object.values(w.db.fiches).filter((x) => x.t === "Vidéo du campus").length === 1, "prévenu plusieurs fois : une seule fiche");
+  w.o.taches.x2 = { name: "Perso", due_on: "2026-12-01", completed: false, tags: [] };
+  check((await w.webhook("asana", "u2", { events: [{ action: "added", resource: { gid: "x2", resource_type: "task" } }] })).o.fait.join() === "rien", "tâche sans l'étiquette : rien ne bouge");
+
+  /* il la coche, change l'échéance, la renomme */
+  Object.assign(w.o.taches.x1, { completed: true, due_on: "2026-12-14", name: "Vidéo du campus, version longue" });
+  await w.webhook("asana", "u2", { events: [{ action: "changed", resource: { gid: "x1", resource_type: "task" } }] });
+  check(nf.st === "diffuse" && nf.date === "2026-12-14" && nf.t === "Vidéo du campus, version longue" && w.db.maj.at(-1).u === "u2", "cochée, déplacée, renommée : la fiche suit, au nom de Stéphane");
+  w.o.taches.x1.completed = false;
+  await w.webhook("asana", "u2", { events: [{ action: "changed", resource: { gid: "x1", resource_type: "task" } }] });
+  check(nf.st === "planifie", "décochée : « Prévu »");
+
+  /* Julien change la fiche dans l'appli : la tâche suit, sans toucher à sa description */
+  w.o.taches.x1.notes = "Les notes de Stéphane";
+  nf.date = "2026-12-20"; nf.st = "diffuse";
+  await w.appel({ item: nf.id }, null, w.db.conf ? w.db.conf.secret : "secret-1");
+  const put = w.o.calls.filter((c) => c.m === "PUT" && c.p === "/api/1.0/tasks/x1").at(-1);
+  check(put && !("notes" in put.body.data) && w.o.taches.x1.notes === "Les notes de Stéphane" && w.o.taches.x1.due_on === "2026-12-20" && w.o.taches.x1.completed === true, "tâche venue d'Asana : échéance et coche mises à jour, ses notes intactes");
+  const n0 = w.db.maj.length;
+  const echo = await w.webhook("asana", "u2", { events: [{ action: "changed", resource: { gid: "x1", resource_type: "task" } }] });
+  check(echo.o.fait.join() === "rien" && w.db.maj.length === n0, "l'écho de notre propre changement ne relance rien");
+
+  /* une fiche envoyée depuis l'appli : cocher dans Asana la passe aussi en Diffusé */
+  const e = await w.appel({ action: "envoyer", outil: "asana", item: "a2" }, "stephane");
+  w.o.taches[e.o.ext_id].completed = true;
+  await w.webhook("asana", "u2", { events: [{ action: "changed", resource: { gid: e.o.ext_id, resource_type: "task" } }] });
+  check(w.db.fiches.a2.st === "diffuse", "fiche envoyée depuis l'appli : cochée dans Asana = Diffusé");
+  w.db.fiches.a2.st = "retire";
+  w.o.taches[e.o.ext_id].completed = false; w.o.taches[e.o.ext_id].name = "Autre";
+  await w.webhook("asana", "u2", { events: [{ action: "changed", resource: { gid: e.o.ext_id, resource_type: "task" } }] });
+  check(w.db.fiches.a2.st === "retire" && w.db.fiches.a2.t === "Communiqué", "fiche annulée : l'outil ne la change plus");
+
+  /* tâche effacée dans Asana : plus suivie */
+  delete w.o.taches.x1;
+  await w.webhook("asana", "u2", { events: [{ action: "deleted", resource: { gid: "x1", resource_type: "task" } }] });
+  check(!w.db.exports.some((x) => x.ext_id === "x1"), "tâche effacée dans Asana : plus suivie (la fiche reste)");
+
+  /* changer de projet : l'ancien webhook part, un nouveau arrive */
+  const ancien = reg.hook_id;
+  await w.appel({ action: "relier", outil: "asana", jeton: "", cible: "p2" }, "stephane");
+  check(!w.o.hooks[ancien] && w.o.hooks[w.db.outils["u2:asana"].hook_id].resource === "p2", "changer de projet : webhook déplacé");
+  /* délier : le webhook part */
+  const h = w.db.outils["u2:asana"].hook_id;
+  await w.appel({ action: "delier", outil: "asana" }, "stephane");
+  check(!w.o.hooks[h], "délier : plus de webhook");
+
+  /* outil relié avant cette version : l'état branche le retour */
+  w.db.outils["u2:asana"] = { user_id: "u2", outil: "asana", jeton: "pat-ok", cible: "p1", cible_nom: "KEDGE · Plan de com", site: "", app: "" };
+  const et = await w.appel({ action: "etat" }, "stephane");
+  check(et.o.outils[0].retour === true && w.db.outils["u2:asana"].hook_id, "outil relié avant : le retour se branche tout seul");
+}
+{
+  /* Trello, chez Louise */
+  const w = monde();
+  const r = await w.appel({ action: "relier", outil: "trello", jeton: "k:tok", cible: "l1", site: "https://site.io/app", app: "Road to 7th" }, "louise");
+  const reg = w.db.outils["u3:trello"];
+  check(r.o.retour === true && w.o.verifs.join() === "200" && w.o.hooks[reg.hook_id].idModel === "b1", "relier Trello : adresse vérifiée, webhook sur le tableau de sa liste");
+  w.o.cartes.y1 = { name: "Newsletter alumni", due: "2026-12-05T23:30:00.000Z", labels: [{ name: "plan de com" }] };
+  const a = await w.webhook("trello", "u3", { action: { type: "addLabelToCard", data: { card: { id: "y1" } } } });
+  const nf = Object.values(w.db.fiches).find((x) => x.t === "Newsletter alumni");
+  check(a.o.fait.join() === "creee" && nf.svc === "rp" && nf.date === "2026-12-06", "carte étiquetée : fiche dans son service, au bon jour");
+  w.o.cartes.y1.dueComplete = true;
+  await w.webhook("trello", "u3", { action: { type: "updateCard", data: { card: { id: "y1" } } } });
+  check(nf.st === "diffuse", "échéance cochée dans Trello : Diffusé");
+  w.o.cartes.y2 = { name: "Archivée", labels: [{ name: "Plan de com" }], closed: true };
+  check((await w.webhook("trello", "u3", { action: { type: "updateCard", data: { card: { id: "y2" } } } })).o.fait.join() === "rien", "carte archivée : pas importée");
+  check((await w.webhook("trello", "u3", { action: { type: "updateCard", data: { card: { id: "y1" } } } }, { k: "x" })).status === 401, "Trello : adresse sans le bon jeton refusée");
+  const h = reg.hook_id;
+  await w.appel({ action: "delier", outil: "trello" }, "louise");
+  check(!w.o.hooks[h], "délier Trello : plus de webhook");
 }
 
 console.log(`fonction export : ${ok} vérifications passées`);

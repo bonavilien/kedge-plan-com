@@ -11,6 +11,10 @@
 //     { item }       la fiche a changé : la tâche ou la carte est réécrite
 //     { item }       (suite) chaque personne qui l'a envoyée voit sa tâche ou sa carte réécrite
 //     { supprimer }  la fiche a été supprimée : tâche à la corbeille d'Asana, carte aux archives de Trello
+//   Depuis Asana ou Trello (webhook de chaque personne, adresse « ?retour=asana&u=…&k=… », créé quand elle relie son outil) :
+//     une tâche porte l'étiquette « Plan de com » : elle arrive dans le plan, « À confirmer », dans le service de la personne
+//     une tâche suivie change : cochée = « Diffusé », décochée = « Prévu », échéance = date, nom = titre
+//     Rien n'est cru sur parole : la fonction relit la tâche dans l'outil avec la clé de la personne.
 //
 // Aucun secret à ranger dans Supabase : chacun se règle dans l'appli (Réglages, Mon profil).
 // Fournis par Supabase sans rien faire : SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY.
@@ -18,13 +22,14 @@
 //
 // Ce fichier tient seul (aucun autre fichier à copier) : il se colle tel quel dans l'éditeur de Supabase.
 
-export const FONCTION = 2;
+export const FONCTION = 3; // 3 : le retour d'Asana et de Trello vers le plan (étiquette « Plan de com »)
 
 type Outil = "asana" | "trello";
 type Qui = { id: string; chef: boolean; svc: string; visiteur: boolean };
-type Reglage = { user_id: string; outil: Outil; jeton: string; cible: string; cible_nom: string; site: string; app: string };
+type Reglage = { user_id: string; outil: Outil; jeton: string; cible: string; cible_nom: string; site: string; app: string; crochet?: string; hook_id?: string; hook_secret?: string };
 type Conf = { adresse: string; secret: string };
-type Export = { item: string; user_id: string; outil: Outil; ext_id: string; url: string; erreur?: string };
+type Export = { item: string; user_id: string; outil: Outil; ext_id: string; url: string; erreur?: string; origine?: "appli" | "outil" };
+type Tache = { nom: string; due: string; fait: boolean; etiquette: boolean; ferme: boolean; url: string };
 type Fiche = {
   id: string; kind: string; t: string; date: string; flou: string | boolean; svc: string; m: string[]; st: string; partner: string | null;
   lieu: string; note: string; annule_motif?: string; fin?: string | null;
@@ -45,6 +50,10 @@ type Deps = {
     exports: (item: string) => Promise<Export[]>;
     noter: (e: Export) => Promise<void>;
     oublier: (item: string, user: string, o: Outil) => Promise<void>;
+    majReglage: (user: string, o: Outil, patch: Partial<Reglage>) => Promise<void>;
+    exportExt: (user: string, o: Outil, ext_id: string) => Promise<Export | null>;
+    importer: (user: string, o: Outil, ext_id: string, url: string, t: string, date: string | null) => Promise<string | null>;
+    majFiche: (user: string, item: string, t: string | null, date: string | null, st: string | null) => Promise<void>;
   };
   secret: () => string;
 };
@@ -59,6 +68,14 @@ class Refus extends Error { code: string; status: number; constructor(code: stri
 const NOMS: Record<Outil, string> = { asana: "Asana", trello: "Trello" };
 const ETATS: Record<string, string> = { confirmer: "À confirmer", idee: "À confirmer", prevu: "Prévu", planifie: "Prévu", production: "Prévu", diffuse: "Diffusé", retire: "Annulé" };
 const fini = (f: Fiche) => f.st === "diffuse" || f.st === "retire";
+/* « Plan de com », « plan de com », « Plan-de-Com »… : la même étiquette */
+export const estEtiquette = (x: string) => String(x || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]/g, "") === "plandecom";
+/* le jour à Paris d'une échéance Trello (« 2026-12-05T23:00:00.000Z » = le 6 à Paris) */
+export const jourParis = (iso: string) => { const t = Date.parse(iso); return isNaN(t) ? "" : new Date(t).toLocaleDateString("sv-SE", { timeZone: "Europe/Paris" }); };
+async function hmac256(cle: string, texte: string) {
+  const k = await crypto.subtle.importKey("raw", new TextEncoder().encode(cle), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+  return [...new Uint8Array(await crypto.subtle.sign("HMAC", k, new TextEncoder().encode(texte)))].map((b) => b.toString(16).padStart(2, "0")).join("");
+}
 
 /* la description de la tâche : l'essentiel de la fiche, puis le lien pour l'ouvrir dans l'appli */
 export function description(f: Fiche, r: Pick<Reglage, "site" | "app">, md = false): string {
@@ -130,7 +147,8 @@ export function createHandler(d: Deps) {
   /* créer ou réécrire la tâche d'une fiche ; renvoie son identifiant et son adresse */
   async function ecrire(r: Reglage, f: Fiche, ext: Export | null): Promise<{ ext_id: string; url: string } | null> {
     if (r.outil === "asana") {
-      const data: Record<string, unknown> = { name: titre(f), notes: description(f, r), due_on: f.date, completed: fini(f) };
+      /* une tâche venue de l'outil garde sa description : seuls le titre, l'échéance et la coche suivent la fiche */
+      const data: Record<string, unknown> = { name: titre(f), due_on: f.date, completed: fini(f), ...(ext && ext.origine === "outil" ? {} : { notes: description(f, r) }) };
       if (ext) {
         const u = await asana(r.jeton, `/tasks/${ext.ext_id}?opt_fields=permalink_url`, { method: "PUT", body: JSON.stringify({ data }) });
         if (u.status === 404) return null; /* effacée dans Asana : on arrête de la suivre */
@@ -141,7 +159,7 @@ export function createHandler(d: Deps) {
       if (!c.ok) throw new Refus("asana", `Asana n'a pas créé la tâche (${c.status}) : ${c.message}`, 502);
       return { ext_id: c.data.gid, url: c.data.permalink_url || "" };
     }
-    const body = { name: titre(f), desc: description(f, r, true), due: f.date ? `${f.date}T09:00:00.000Z` : null, dueComplete: fini(f), closed: f.st === "retire" };
+    const body: Record<string, unknown> = { name: titre(f), due: f.date ? `${f.date}T09:00:00.000Z` : null, dueComplete: fini(f), closed: f.st === "retire", ...(ext && ext.origine === "outil" ? {} : { desc: description(f, r, true) }) };
     if (ext) {
       const u = await trello(r.jeton, `/cards/${ext.ext_id}`, { method: "PUT", body: JSON.stringify(body) });
       if (u.status === 404) return null;
@@ -167,16 +185,104 @@ export function createHandler(d: Deps) {
       try {
         const w = await ecrire(r, f, e);
         if (!w) { await d.db.oublier(item, e.user_id, e.outil); continue; }
-        await d.db.noter({ item, user_id: e.user_id, outil: e.outil, ext_id: w.ext_id, url: w.url, erreur: "" }); fait.push(e.outil);
+        await d.db.noter({ item, user_id: e.user_id, outil: e.outil, ext_id: w.ext_id, url: w.url, erreur: "", origine: e.origine || "appli" }); fait.push(e.outil);
       } catch (x) { await d.db.noter({ ...e, erreur: (x as Error).message.slice(0, 300) }); }
     }
     return { fait };
+  }
+
+  /* ---------- le retour : le webhook de chaque personne ---------- */
+  const base = () => d.env("SUPABASE_URL").replace(/\/+$/, "") + "/functions/v1/export";
+  async function debrancher(r: Reglage) {
+    if (!r.hook_id) return;
+    if (r.outil === "asana") await asana(r.jeton, `/webhooks/${r.hook_id}`, { method: "DELETE" }).catch(() => {});
+    else await trello(r.jeton, `/webhooks/${r.hook_id}`, { method: "DELETE" }).catch(() => {});
+  }
+  /* crée le webhook de la personne sur son projet Asana ou le tableau de sa liste Trello ; renvoie vrai s'il est en place */
+  async function brancher(r: Reglage): Promise<boolean> {
+    await debrancher(r);
+    const crochet = d.secret().replace(/-/g, "").slice(0, 40);
+    /* le crochet est rangé AVANT la création : Asana appelle l'adresse pendant la création pour la poignée de main */
+    await d.db.majReglage(r.user_id, r.outil, { crochet, hook_id: "", hook_secret: "" });
+    const cible = `${base()}?retour=${r.outil}&u=${encodeURIComponent(r.user_id)}&k=${crochet}`;
+    if (r.outil === "asana") {
+      const w = await asana(r.jeton, "/webhooks", { method: "POST", body: JSON.stringify({ data: { resource: r.cible, target: cible, filters: [{ resource_type: "task" }] } }) });
+      if (!w.ok || !w.data) return false;
+      await d.db.majReglage(r.user_id, r.outil, { hook_id: String(w.data.gid) });
+      return true;
+    }
+    const l = await trello(r.jeton, `/lists/${r.cible}`, {}, { fields: "idBoard" });
+    if (!l.ok || !l.data.idBoard) return false;
+    const w = await trello(r.jeton, "/webhooks", { method: "POST" }, { callbackURL: cible, idModel: l.data.idBoard, description: "Plan de com" });
+    if (!w.ok || !w.data.id) return false;
+    await d.db.majReglage(r.user_id, r.outil, { hook_id: String(w.data.id) });
+    return true;
+  }
+  /* la tâche telle que l'outil la voit (null : elle n'existe plus) */
+  async function lire(r: Reglage, id: string): Promise<Tache | null> {
+    if (r.outil === "asana") {
+      const t = await asana(r.jeton, `/tasks/${id}?opt_fields=name,due_on,completed,tags.name,permalink_url`);
+      if (t.status === 404 || t.status === 403) return null;
+      if (!t.ok || !t.data) throw new Refus("asana", `Asana ne répond pas (${t.status})`, 502);
+      return { nom: t.data.name || "", due: t.data.due_on || "", fait: !!t.data.completed, etiquette: (t.data.tags || []).some((x: any) => estEtiquette(x.name)), ferme: false, url: t.data.permalink_url || "" };
+    }
+    const c = await trello(r.jeton, `/cards/${id}`, {}, { fields: "name,due,dueComplete,closed,labels,shortUrl" });
+    if (c.status === 404) return null;
+    if (!c.ok) throw new Refus("trello", `Trello ne répond pas (${c.status})`, 502);
+    return { nom: c.data.name || "", due: c.data.due ? jourParis(c.data.due) : "", fait: !!c.data.dueComplete, etiquette: (c.data.labels || []).some((x: any) => estEtiquette(x.name)), ferme: !!c.data.closed, url: c.data.shortUrl || "" };
+  }
+  const aujourdhui = () => new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/Paris" });
+  /* une tâche a bougé dans l'outil : on la relit, puis on crée la fiche (étiquette) ou on reporte ses changements */
+  async function recevoir(r: Reglage, id: string): Promise<string> {
+    const ex = await d.db.exportExt(r.user_id, r.outil, id);
+    const t = await lire(r, id);
+    if (!t) { if (ex) await d.db.oublier(ex.item, r.user_id, r.outil); return "partie"; }
+    if (ex) {
+      const f = await d.db.fiche(ex.item);
+      if (!f || f.st === "retire") return "rien";
+      const nom = t.nom.replace(/^Annulé · /, "").trim();
+      const date = t.due && (t.due !== f.date || !!f.flou) ? t.due : null;
+      const st = t.fait && f.st !== "diffuse" ? "diffuse" : !t.fait && f.st === "diffuse" ? "planifie" : null;
+      const nt = nom && nom !== f.t ? nom : null;
+      if (!nt && !date && !st) return "rien"; /* l'écho de nos propres changements : on s'arrête là */
+      await d.db.majFiche(r.user_id, f.id, nt, date, st);
+      return "maj";
+    }
+    if (!t.etiquette || t.ferme) return "rien";
+    const n = await d.db.importer(r.user_id, r.outil, id, t.url, t.nom, t.due || aujourdhui());
+    return n ? "creee" : "rien";
+  }
+  async function retour(req: Request, url: URL): Promise<Response> {
+    const outil = outilDe(url.searchParams.get("retour")), u = url.searchParams.get("u") || "", k = url.searchParams.get("k") || "";
+    /* Trello vérifie l'adresse par un HEAD à la création du webhook */
+    if (req.method === "HEAD" || req.method === "GET") return new Response("ok");
+    const r = u ? await d.db.reglage(u, outil) : null;
+    if (!r || !r.crochet || !k || r.crochet !== k) return new Response("non", { status: 401 });
+    const brut = await req.text();
+    if (outil === "asana") {
+      /* poignée de main : Asana donne son secret de signature, on le renvoie tel quel */
+      const hs = req.headers.get("x-hook-secret");
+      if (hs) { await d.db.majReglage(u, outil, { hook_secret: hs }); return new Response("", { status: 200, headers: { "X-Hook-Secret": hs } }); }
+      if (r.hook_secret && (await hmac256(r.hook_secret, brut)) !== (req.headers.get("x-hook-signature") || "")) return new Response("signature", { status: 401 });
+    }
+    let o: any = {}; try { o = brut ? JSON.parse(brut) : {}; } catch { return new Response("", { status: 200 }); }
+    const ids = new Set<string>();
+    if (outil === "asana") for (const e of o.events || []) {
+      if (e.resource && e.resource.resource_type === "task" && e.resource.gid) ids.add(String(e.resource.gid));
+      else if (e.parent && e.parent.resource_type === "task" && e.parent.gid) ids.add(String(e.parent.gid));
+    }
+    else { const c = o.action && o.action.data && o.action.data.card; if (c && c.id) ids.add(String(c.id)); }
+    const fait: string[] = [];
+    for (const id of ids) { try { fait.push(await recevoir(r, id)); } catch (e) { console.error(e); } }
+    return json({ fait });
   }
 
   const outilDe = (o: unknown): Outil => { if (o === "asana" || o === "trello") return o; throw new Refus("outil", "Outil inconnu."); };
 
   return async (req: Request): Promise<Response> => {
     if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
+    const url = new URL(req.url);
+    if (url.searchParams.get("retour")) { try { return await retour(req, url); } catch (e) { console.error(e); return new Response("", { status: 200 }); } }
     if (req.method !== "POST") return json({ erreur: "methode", message: "POST seulement" }, 405);
     try {
       let corps: any = {}; try { corps = await req.json(); } catch { /* corps vide */ }
@@ -198,18 +304,26 @@ export function createHandler(d: Deps) {
       if (!q) return json({ erreur: "connexion", message: "Connecte-toi d'abord." }, 401);
       if (q.visiteur) return json({ erreur: "droits", message: "En lecture seule, pas d'envoi vers Asana ou Trello." }, 403);
       const action = corps.action;
-      if (action === "etat") return json({ fonction: FONCTION, outils: (await d.db.reglages(q.id)).map((r) => ({ outil: r.outil, cible_nom: r.cible_nom })) });
+      if (action === "etat") {
+        /* un outil relié avant le retour (ou dont le webhook a sauté) : on le branche ici */
+        const regs = await d.db.reglages(q.id), out = [];
+        for (const r of regs) { let retourOk = !!r.hook_id; if (!retourOk) retourOk = await brancher(r).catch(() => false); out.push({ outil: r.outil, cible_nom: r.cible_nom, retour: retourOk }); }
+        return json({ fonction: FONCTION, outils: out });
+      }
       if (action === "lister" || action === "relier" || action === "delier") {
         const outil = outilDe(corps.outil), ancien = await d.db.reglage(q.id, outil);
-        if (action === "delier") { await d.db.delier(q.id, outil); return json({ ok: true }); }
+        if (action === "delier") { if (ancien) await debrancher(ancien); await d.db.delier(q.id, outil); return json({ ok: true }); }
         const jeton = String(corps.jeton || "").trim() || (ancien ? ancien.jeton : "");
         if (action === "lister") return json({ choix: await lister(outil, jeton) });
         const choix = await lister(outil, jeton), c = choix.find((x) => x.id === corps.cible);
         if (!c) throw new Refus("cible", `Cette destination n'existe plus dans ${NOMS[outil]}.`);
         /* la première personne qui relie un outil installe le lien entre la base et la fonction */
         if (!(await d.db.conf())) await d.db.ecrireConf({ adresse: d.env("SUPABASE_URL").replace(/\/+$/, "") + "/functions/v1/export", secret: d.secret() });
-        await d.db.relier({ user_id: q.id, outil, jeton, cible: c.id, cible_nom: c.nom, site: String(corps.site || "").slice(0, 300), app: String(corps.app || "").slice(0, 60) });
-        return json({ outil, cible_nom: c.nom });
+        const nouveau: Reglage = { user_id: q.id, outil, jeton, cible: c.id, cible_nom: c.nom, site: String(corps.site || "").slice(0, 300), app: String(corps.app || "").slice(0, 60) };
+        if (ancien) await debrancher(ancien);
+        await d.db.relier(nouveau);
+        const retourOk = await brancher(nouveau).catch(() => false);
+        return json({ outil, cible_nom: c.nom, retour: retourOk });
       }
       if (action === "envoyer" || action === "arreter") {
         const outil = outilDe(corps.outil), f = await d.db.fiche(String(corps.item || ""));
@@ -219,7 +333,7 @@ export function createHandler(d: Deps) {
         if (!r) throw new Refus("outil", `Ton ${NOMS[outil]} n'est pas relié : Réglages, Mon profil.`);
         const deja = (await d.db.exports(f.id)).find((e) => e.outil === outil && e.user_id === q.id) || null;
         const w = (await ecrire(r, f, deja)) || (await ecrire(r, f, null));
-        const e: Export = { item: f.id, user_id: q.id, outil, ext_id: w!.ext_id, url: w!.url, erreur: "" };
+        const e: Export = { item: f.id, user_id: q.id, outil, ext_id: w!.ext_id, url: w!.url, erreur: "", origine: deja && deja.origine === "outil" ? "outil" : "appli" };
         await d.db.noter(e);
         return json(e);
       }
@@ -280,6 +394,10 @@ if (D && D.serve && !D.env.get("KPLAN_TEST")) {
       exports: async (item) => ok(await sb.from("exports").select("*").eq("item", item)) as Export[],
       noter: async (e) => { ok(await sb.from("exports").upsert({ ...e, maj: new Date().toISOString() })); },
       oublier: async (item, u, o) => { ok(await sb.from("exports").delete().eq("item", item).eq("user_id", u).eq("outil", o)); },
+      majReglage: async (u, o, patch) => { ok(await sb.from("outils").update(patch).eq("user_id", u).eq("outil", o)); },
+      exportExt: async (u, o, x) => ok(await sb.from("exports").select("*").eq("user_id", u).eq("outil", o).eq("ext_id", x).maybeSingle()) as Export | null,
+      importer: async (u, o, x, url, t, date) => ok(await sb.rpc("export_importer", { p_user: u, p_outil: o, p_ext: x, p_url: url, p_t: t, p_date: date })) as string | null,
+      majFiche: async (u, item, t, date, st) => { ok(await sb.rpc("export_maj", { p_user: u, p_item: item, p_t: t, p_date: date, p_st: st })); },
     },
   }));
 }

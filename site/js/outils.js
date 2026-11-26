@@ -17,7 +17,7 @@
     fn: async (c) => {
       await new Promise((ok) => setTimeout(ok, 350));
       if (c.action === "lister") return { choix: c.outil === "asana" ? [{ id: "p1", nom: "KEDGE · Plan de com" }, { id: "p2", nom: "KEDGE · Événements" }] : [{ id: "l1", nom: "Com PGE · À faire" }, { id: "l2", nom: "Com PGE · En cours" }] };
-      if (c.action === "relier") { const nom = (await demo.fn({ action: "lister", outil: c.outil })).choix.find((x) => x.id === c.cible).nom; S.actifs = [...S.actifs.filter((x) => x.outil !== c.outil), { outil: c.outil, cible_nom: nom }]; demo.garder(); return { outil: c.outil, cible_nom: nom }; }
+      if (c.action === "relier") { const nom = (await demo.fn({ action: "lister", outil: c.outil })).choix.find((x) => x.id === c.cible).nom; S.actifs = [...S.actifs.filter((x) => x.outil !== c.outil), { outil: c.outil, cible_nom: nom, retour: true }]; demo.garder(); return { outil: c.outil, cible_nom: nom, retour: true }; }
       if (c.action === "delier") { S.actifs = S.actifs.filter((x) => x.outil !== c.outil); S.lignes = S.lignes.filter((x) => !(x.outil === c.outil && x.user_id === KP.me().k)); demo.garder(); return { ok: true }; }
       if (c.action === "envoyer") { const l = { item: c.item, user_id: KP.me().k, outil: c.outil, url: c.outil === "asana" ? "https://app.asana.com/" : "https://trello.com/", erreur: "" }; S.lignes = [...S.lignes.filter((x) => !(x.item === c.item && x.outil === c.outil)), l]; demo.garder(); return l; }
       if (c.action === "arreter") { S.lignes = S.lignes.filter((x) => !(x.item === c.item && x.outil === c.outil && x.user_id === KP.me().k)); demo.garder(); return { ok: true }; }
@@ -68,10 +68,16 @@
   };
 
   /* ---------- Réglages, Mon profil : relier MON Asana ou MON Trello ---------- */
+  /* le retour : une tâche étiquetée « Plan de com » dans l'outil arrive dans le plan ; un outil relié avant se branche ici */
+  const brancherRetour = async () => {
+    try { const r = await O.fn({ action: "etat" }); (r.outils || []).forEach((o) => { const a = S.actifs.find((x) => x.outil === o.outil); if (a) a.retour = !!o.retour; }); KP.render(); } catch (e) {}
+  };
   O.reglages = () => {
+    if (!S.etatFait && S.actifs.some((a) => a.retour === false)) { S.etatFait = true; setTimeout(brancherRetour, 0); }
     const ligne = (outil) => { const a = S.actifs.find((x) => x.outil === outil);
+      const tip = `Étiquette « Plan de com » sur ${outil === "asana" ? "une tâche Asana" : "une carte Trello"} : elle arrive dans le plan`;
       return `<div class="tr"><span class="outil">${ic(outil)}<b>${NOMS[outil]}</b></span>
-        ${a ? `<span class="o-cible"><span class="ok-dot sm">${ic("check")}</span>${h(a.cible_nom)}</span>` : `<span class="muted">—</span>`}
+        ${a ? `<span class="o-cible"><span class="ok-dot sm">${ic("check")}</span><span class="o-nom">${h(a.cible_nom)}</span>${a.retour ? `<span class="o-retour" tabindex="0" data-tip="${h(tip)}" aria-label="${h(tip)}">${ic("tag")}Plan de com</span>` : ""}</span>` : `<span class="muted">—</span>`}
         <span class="o-do">${a ? `${KP.ib("edit", "Changer", "outil-relier", `data-k="${outil}"`)}${KP.ib("trash", "Délier", "outil-delier", `data-k="${outil}"`)}` : `<button type="button" class="btn quiet small" data-act="outil-relier" data-k="${outil}">Relier</button>`}</span></div>`; };
     if (KP.me().role === "lecteur") return "";
     return `<section class="set"><h2>Mon Asana, mon Trello</h2>
@@ -123,7 +129,7 @@
         } else {
           if (!sel.value) throw new Error(trello ? "Choisis une liste." : "Choisis un projet.");
           const r = await O.fn({ action: "relier", outil, jeton: f.dataset.jeton, cible: sel.value, site: location.origin + location.pathname, app: KP.marque ? KP.marque.titre : "" });
-          S.actifs = [...S.actifs.filter((x) => x.outil !== outil), { outil, cible_nom: r.cible_nom }].sort((x, y) => x.outil.localeCompare(y.outil));
+          S.actifs = [...S.actifs.filter((x) => x.outil !== outil), { outil, cible_nom: r.cible_nom, retour: !!r.retour }].sort((x, y) => x.outil.localeCompare(y.outil));
           d.close(); KP.render(); KP.toast(`${NOMS[outil]} relié`);
         }
       } catch (x) { err.textContent = x.message; err.hidden = false; }
