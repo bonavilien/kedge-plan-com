@@ -3506,7 +3506,7 @@ revoke execute on function public.outils_actifs() from public, anon;
 grant execute on function public.outils_actifs() to authenticated;
 
 -- une tâche étiquetée arrive : une seule fiche, même si l'outil prévient deux fois en même temps
-create function public.export_importer(p_user uuid, p_outil text, p_ext text, p_url text, p_t text, p_date date) returns uuid
+create or replace function public.export_importer(p_user uuid, p_outil text, p_ext text, p_url text, p_t text, p_date date) returns uuid
 language plpgsql security definer set search_path = public as $$
 declare v_p record; v_id uuid;
 begin
@@ -3527,11 +3527,13 @@ revoke execute on function public.export_importer(uuid, text, text, text, text, 
 grant execute on function public.export_importer(uuid, text, text, text, text, date) to service_role;
 
 -- l'outil a changé la tâche : titre, date ou état de la fiche, au nom de la personne ; rien d'autre ne passe
-create function public.export_maj(p_user uuid, p_item uuid, p_t text, p_date date, p_st text) returns void
+create or replace function public.export_maj(p_user uuid, p_item uuid, p_t text, p_date date, p_st text) returns void
 language plpgsql security definer set search_path = public as $$
 begin
   if not exists (select 1 from public.exports where user_id = p_user and item = p_item) then return; end if;
-  if p_st is not null and p_st not in ('planifie', 'diffuse') then return; end if;
+  if p_st is not null and p_st not in ('planifie', 'diffuse', 'retire') then return; end if;
+  -- « Annulé » seulement pour une fiche venue de l'outil, quand sa tâche y est supprimée (ou sa carte archivée)
+  if p_st = 'retire' and not exists (select 1 from public.exports where user_id = p_user and item = p_item and origine = 'outil') then return; end if;
   perform set_config('request.jwt.claim.sub', p_user::text, true);
   update public.items set
     t = coalesce(nullif(btrim(p_t), ''), t),

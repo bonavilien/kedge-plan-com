@@ -236,7 +236,14 @@ export function createHandler(d: Deps) {
   async function recevoir(r: Reglage, id: string): Promise<string> {
     const ex = await d.db.exportExt(r.user_id, r.outil, id);
     const t = await lire(r, id);
-    if (!t) { if (ex) await d.db.oublier(ex.item, r.user_id, r.outil); return "partie"; }
+    /* tâche supprimée (ou carte archivée) : une fiche venue de l'outil passe en « Annulé », une fiche envoyée depuis l'appli reste telle quelle */
+    if (!t || (ex && t.ferme)) {
+      if (!ex) return "rien";
+      const f = await d.db.fiche(ex.item);
+      if (ex.origine === "outil" && f && f.st !== "retire") await d.db.majFiche(r.user_id, f.id, null, null, "retire");
+      if (!t) await d.db.oublier(ex.item, r.user_id, r.outil);
+      return ex.origine === "outil" ? "annulee" : "partie";
+    }
     if (ex) {
       const f = await d.db.fiche(ex.item);
       if (!f || f.st === "retire") return "rien";

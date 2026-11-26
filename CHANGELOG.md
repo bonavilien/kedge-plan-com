@@ -7,6 +7,7 @@ Généré depuis `site/js/version.js` par `node scripts/version.mjs`. Ne pas mod
 - Dans ton Asana ou ton Trello, mets l'étiquette « Plan de com » sur une tâche : elle arrive dans le plan, « À confirmer », dans ton service
 - Ensuite, cocher la tâche passe l'action en « Diffusé », changer son échéance change la date, la renommer renomme l'action
 - Une tâche venue d'Asana ou de Trello garde sa description : l'appli n'y change que le titre, l'échéance et la coche
+- Supprimer la tâche dans Asana (ou archiver la carte Trello) passe l'action venue de l'outil en « Annulé »
 - Une action venue d'Asana ou de Trello porte le petit logo de l'outil dans le plan, et « Vient de l'Asana de Stéphane » sur sa fiche
 
 ## 2.9.3 · 2026-11-25

@@ -34,10 +34,17 @@ begin
   if r.t <> 'Vidéo du campus, longue' or r.date <> '2026-12-14' or r.flou <> '' or r.st <> 'diffuse' then raise exception 'mise à jour depuis l''outil : %', row_to_json(r); end if;
   perform public.export_maj(u, i, null, null, 'planifie');
   if (select st from public.items where id = i) <> 'planifie' then raise exception 'décochée : Prévu'; end if;
-  perform public.export_maj(u, i, null, null, 'retire');
-  if (select st from public.items where id = i) <> 'planifie' then raise exception 'l''outil ne peut pas annuler'; end if;
   -- une fiche qu'il n'a pas envoyée : rien
   insert into public.items (kind, t, date, svc) values ('action', 'Pas à lui', current_date, s) returning id into i2;
+  -- envoyée depuis l'appli (origine appli) : l'outil ne peut pas l'annuler
+  insert into public.exports (item, user_id, outil, ext_id, origine) values (i2, u, 'trello', 'c2', 'appli');
+  perform public.export_maj(u, i2, null, null, 'retire');
+  if (select st from public.items where id = i2) = 'retire' then raise exception 'une fiche envoyée depuis l''appli ne s''annule pas depuis l''outil'; end if;
+  delete from public.exports where item = i2;
+  -- venue de l'outil, tâche supprimée : « Annulé »
+  perform public.export_maj(u, i, null, null, 'retire');
+  if (select st from public.items where id = i) <> 'retire' then raise exception 'tâche supprimée : la fiche venue de l''outil passe en Annulé'; end if;
+  update public.items set st = 'planifie' where id = i;
   perform public.export_maj(u, i2, 'Volée', null, null);
   if (select t from public.items where id = i2) <> 'Pas à lui' then raise exception 'export_maj ne touche qu''aux fiches suivies par la personne'; end if;
   -- une fiche annulée ne bouge plus

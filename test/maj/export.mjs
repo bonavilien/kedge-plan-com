@@ -289,7 +289,12 @@ check(jourParis("2026-12-05T23:30:00.000Z") === "2026-12-06" && jourParis("2026-
   /* tâche effacée dans Asana : plus suivie */
   delete w.o.taches.x1;
   await w.webhook("asana", "u2", { events: [{ action: "deleted", resource: { gid: "x1", resource_type: "task" } }] });
-  check(!w.db.exports.some((x) => x.ext_id === "x1"), "tâche effacée dans Asana : plus suivie (la fiche reste)");
+  check(!w.db.exports.some((x) => x.ext_id === "x1") && nf.st === "retire" && w.db.maj.at(-1).u === "u2", "tâche venue d'Asana effacée : la fiche passe en « Annulé », au nom de Stéphane, plus suivie");
+  /* une fiche envoyée depuis l'appli, effacée dans Asana : elle reste telle quelle */
+  const e1 = await w.appel({ action: "envoyer", outil: "asana", item: "a1" }, "stephane");
+  delete w.o.taches[e1.o.ext_id];
+  await w.webhook("asana", "u2", { events: [{ action: "deleted", resource: { gid: e1.o.ext_id, resource_type: "task" } }] });
+  check(w.db.fiches.a1.st === "planifie" && !w.db.exports.some((x) => x.ext_id === e1.o.ext_id), "fiche envoyée depuis l'appli, effacée dans Asana : elle ne change pas, plus suivie");
 
   /* changer de projet : l'ancien webhook part, un nouveau arrive */
   const ancien = reg.hook_id;
@@ -318,6 +323,12 @@ check(jourParis("2026-12-05T23:30:00.000Z") === "2026-12-06" && jourParis("2026-
   w.o.cartes.y1.dueComplete = true;
   await w.webhook("trello", "u3", { action: { type: "updateCard", data: { card: { id: "y1" } } } });
   check(nf.st === "diffuse", "échéance cochée dans Trello : Diffusé");
+  w.o.cartes.y1.closed = true;
+  await w.webhook("trello", "u3", { action: { type: "updateCard", data: { card: { id: "y1" } } } });
+  check(nf.st === "retire", "carte venue de Trello archivée : « Annulé »");
+  delete w.o.cartes.y1;
+  await w.webhook("trello", "u3", { action: { type: "deleteCard", data: { card: { id: "y1" } } } });
+  check(nf.st === "retire" && !w.db.exports.some((x) => x.ext_id === "y1"), "puis supprimée : reste « Annulé », plus suivie");
   w.o.cartes.y2 = { name: "Archivée", labels: [{ name: "Plan de com" }], closed: true };
   check((await w.webhook("trello", "u3", { action: { type: "updateCard", data: { card: { id: "y2" } } } })).o.fait.join() === "rien", "carte archivée : pas importée");
   check((await w.webhook("trello", "u3", { action: { type: "updateCard", data: { card: { id: "y1" } } } }, { k: "x" })).status === 401, "Trello : adresse sans le bon jeton refusée");
