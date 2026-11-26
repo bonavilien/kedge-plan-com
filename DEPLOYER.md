@@ -111,6 +111,8 @@ Pour que chacun envoie une action dans son Asana ou son Trello d'un clic, et l'y
 
 Aucun secret à ranger dans Supabase : la clé se colle dans l'appli, et seule la fonction peut la relire.
 
+Dans l'autre sens, une tâche Asana ou une carte Trello qui porte l'étiquette « Plan de com » arrive dans le plan, « À confirmer » (Asana : dans le projet relié ; Trello : sur le tableau de la liste reliée). La pastille « Plan de com » à côté de l'outil, dans Mon profil, dit que ce retour est branché.
+
 ## Ensuite, au quotidien
 
 Quand une nouvelle version sort, un pilote va dans **Réglages**, **Version** : l'ancienne et la nouvelle version s'affichent avec leurs nouveautés. **Mettre à jour**, puis trois pastilles s'allument :

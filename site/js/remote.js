@@ -82,7 +82,7 @@
     const mine = ans.find((a) => a.key === "v2");
     let own = {}; try { own = mine ? JSON.parse(mine.val) : {}; } catch (e) {}
     const me = prof.find((p) => p.id === user.id) || {};
-    prefs[user.id] = { ...own, notif: { demandes: me.notif_demandes !== false, changements: me.notif_changements !== false, creations: !!me.notif_all } };
+    prefs[user.id] = { ...own, version: me.version || "", notif: { demandes: me.notif_demandes !== false, changements: me.notif_changements !== false, creations: !!me.notif_all } };
     const m = Object.fromEntries(meta.map((x) => [x.k, x.v]));
     const data = {
       v: 0, seq: 0, moi: user.id, people, prefs,
@@ -499,8 +499,10 @@
   /* Asana et Trello : ce qui est relié et les fiches envoyées se lisent dans la base ; le reste passe par la fonction « export » */
   const exporter = {
     lire: async () => {
-      const [actifs, lignes] = await Promise.all([soft(sb.rpc("outils_actifs"), null), soft(sb.from("exports").select("item,user_id,outil,url,erreur").eq("user_id", user.id), [])]);
-      return { base: actifs !== null, actifs: actifs || [], lignes };
+      /* mes envois, et les fiches venues de l'Asana ou du Trello de quelqu'un (tout le monde voit d'où elles viennent) */
+      const [actifs, lignes, venues] = await Promise.all([soft(sb.rpc("outils_actifs"), null), soft(sb.from("exports").select("item,user_id,outil,url,erreur").eq("user_id", user.id), []),
+        soft(sb.from("exports").select("item,user_id,outil,url").eq("origine", "outil"), [])]);
+      return { base: actifs !== null, actifs: actifs || [], lignes, venues };
     },
     fn: (corps) => fn("export", corps, ["La fonction export ne répond pas : pas de réseau, ou pas encore installée.", "La fonction export n'est pas encore installée dans Supabase.", "L'envoi a échoué"]),
   };

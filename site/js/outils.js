@@ -12,12 +12,12 @@
   /* démonstration : rien ne sort du navigateur */
   const DEMO = "kplan-outils-demo";
   const demo = {
-    lire: async () => { let o = {}; try { o = JSON.parse(localStorage.getItem(DEMO) || "{}"); } catch (e) {} return { base: true, actifs: o.actifs || [], lignes: o.lignes || [] }; },
+    lire: async () => { let o = {}; try { o = JSON.parse(localStorage.getItem(DEMO) || "{}"); } catch (e) {} return { base: true, actifs: o.actifs || [], lignes: o.lignes || [], venues: o.venues || [] }; },
     garder: () => { try { localStorage.setItem(DEMO, JSON.stringify({ actifs: S.actifs, lignes: S.lignes })); } catch (e) {} },
     fn: async (c) => {
       await new Promise((ok) => setTimeout(ok, 350));
       if (c.action === "lister") return { choix: c.outil === "asana" ? [{ id: "p1", nom: "KEDGE · Plan de com" }, { id: "p2", nom: "KEDGE · Événements" }] : [{ id: "l1", nom: "Com PGE · À faire" }, { id: "l2", nom: "Com PGE · En cours" }] };
-      if (c.action === "relier") { const nom = (await demo.fn({ action: "lister", outil: c.outil })).choix.find((x) => x.id === c.cible).nom; S.actifs = [...S.actifs.filter((x) => x.outil !== c.outil), { outil: c.outil, cible_nom: nom }]; demo.garder(); return { outil: c.outil, cible_nom: nom }; }
+      if (c.action === "relier") { const nom = (await demo.fn({ action: "lister", outil: c.outil })).choix.find((x) => x.id === c.cible).nom; S.actifs = [...S.actifs.filter((x) => x.outil !== c.outil), { outil: c.outil, cible_nom: nom, retour: true }]; demo.garder(); return { outil: c.outil, cible_nom: nom, retour: true }; }
       if (c.action === "delier") { S.actifs = S.actifs.filter((x) => x.outil !== c.outil); S.lignes = S.lignes.filter((x) => !(x.outil === c.outil && x.user_id === KP.me().k)); demo.garder(); return { ok: true }; }
       if (c.action === "envoyer") { const l = { item: c.item, user_id: KP.me().k, outil: c.outil, url: c.outil === "asana" ? "https://app.asana.com/" : "https://trello.com/", erreur: "" }; S.lignes = [...S.lignes.filter((x) => !(x.item === c.item && x.outil === c.outil)), l]; demo.garder(); return l; }
       if (c.action === "arreter") { S.lignes = S.lignes.filter((x) => !(x.item === c.item && x.outil === c.outil && x.user_id === KP.me().k)); demo.garder(); return { ok: true }; }
@@ -29,13 +29,25 @@
   const O = KP.outils = {
     get actifs() { return S.actifs; },
     async charge() {
-      try { const r = await api().lire(); S.base = r.base; S.actifs = r.actifs; S.lignes = r.lignes; } catch (e) { return; }
+      try { const r = await api().lire(); S.base = r.base; S.actifs = r.actifs; S.lignes = r.lignes; S.venues = r.venues || []; } catch (e) { return; }
       if (KP.render && KP.route) KP.render();
     },
     /* mes envois de cette fiche (les autres personnes ont les leurs, dans leurs outils) */
     de: (id) => S.lignes.filter((l) => l.item === id && (!l.user_id || l.user_id === KP.me().k)),
     fn: async (corps) => { try { const r = await api().fn(corps); S.absente = false; return r; } catch (e) { if (e.code === "absente") S.absente = true; throw e; } },
   };
+
+  /* ---------- d'où vient la fiche : l'Asana ou le Trello de quelqu'un ---------- */
+  O.venue = (id) => (S.venues || []).find((v) => v.item === id) || null;
+  /* « Vient de l'Asana de Stéphane », « Vient du Trello d'Aurélie » */
+  const DU = { asana: "de l'Asana", trello: "du Trello" };
+  const de = (nom) => (/^[aeiouyhàâéèêëîïôûü]/i.test(nom) ? "d'" : "de ") + nom;
+  const qui = (v) => (KP.person(v.user_id) || { nom: "quelqu'un" }).nom;
+  /* dans les listes : le petit repère de l'outil, son nom au survol */
+  O.marque = (it) => { const v = O.venue(it.id); if (!v) return ""; const t = `Vient ${DU[v.outil]} ${de(qui(v))}`; return `<span class="o-vient" data-tip="${h(t)}" aria-label="${h(t)}" role="img">${ic(v.outil)}</span>`; };
+  /* sur la fiche : une ligne sous le titre */
+  O.origine = (it) => { const v = O.venue(it.id); if (!v) return ""; const n = qui(v), d = de(n);
+    return `<p class="f-vient">${ic(v.outil)}<span>Vient ${DU[v.outil]} ${h(d.slice(0, d.length - n.length))}<b>${h(n)}</b></span>${v.url ? `<a class="link" href="${h(v.url)}" target="_blank" rel="noopener">Ouvrir</a>` : ""}</p>`; };
 
   /* ---------- sur la fiche : le bouton de la barre du haut ---------- */
   O.bouton = (it) => {
@@ -68,13 +80,19 @@
   };
 
   /* ---------- Réglages, Mon profil : relier MON Asana ou MON Trello ---------- */
+  /* le retour : une tâche étiquetée « Plan de com » dans l'outil arrive dans le plan ; un outil relié avant se branche ici */
+  const brancherRetour = async () => {
+    try { const r = await O.fn({ action: "etat" }); (r.outils || []).forEach((o) => { const a = S.actifs.find((x) => x.outil === o.outil); if (a) a.retour = !!o.retour; }); KP.render(); } catch (e) {}
+  };
   O.reglages = () => {
+    if (!S.etatFait && S.actifs.some((a) => a.retour === false)) { S.etatFait = true; setTimeout(brancherRetour, 0); }
     const ligne = (outil) => { const a = S.actifs.find((x) => x.outil === outil);
+      const tip = `Étiquette « Plan de com » sur ${outil === "asana" ? "une tâche Asana" : "une carte Trello"} : elle arrive dans le plan`;
       return `<div class="tr"><span class="outil">${ic(outil)}<b>${NOMS[outil]}</b></span>
-        ${a ? `<span class="o-cible"><span class="ok-dot sm">${ic("check")}</span>${h(a.cible_nom)}</span>` : `<span class="muted">—</span>`}
+        ${a ? `<span class="o-cible"><span class="ok-dot sm">${ic("check")}</span><span class="o-nom">${h(a.cible_nom)}</span>${a.retour ? `<span class="o-retour" tabindex="0" data-tip="${h(tip)}" aria-label="${h(tip)}">${ic("tag")}Plan de com</span>` : ""}</span>` : `<span class="muted">—</span>`}
         <span class="o-do">${a ? `${KP.ib("edit", "Changer", "outil-relier", `data-k="${outil}"`)}${KP.ib("trash", "Délier", "outil-delier", `data-k="${outil}"`)}` : `<button type="button" class="btn quiet small" data-act="outil-relier" data-k="${outil}">Relier</button>`}</span></div>`; };
     if (KP.me().role === "lecteur") return "";
-    return `<section class="set"><h2>Mon Asana, mon Trello</h2>
+    return `<section class="set"><h2>Mon Asana, mon Trello<button type="button" class="btn quiet small" data-act="guide" data-k="asana-trello">${ic("info")}Guide</button></h2>
       ${S.base ? "" : `<p class="muted">${ic("info")} Le script de base 0029 n'est pas encore passé.</p>`}
       <div class="tbl t-outils">${ligne("asana")}${ligne("trello")}</div>
       ${S.absente ? `<p class="muted">${ic("info")} La fonction <b>export</b> n'est pas encore installée dans Supabase.</p>` : ""}</section>`;
@@ -123,7 +141,7 @@
         } else {
           if (!sel.value) throw new Error(trello ? "Choisis une liste." : "Choisis un projet.");
           const r = await O.fn({ action: "relier", outil, jeton: f.dataset.jeton, cible: sel.value, site: location.origin + location.pathname, app: KP.marque ? KP.marque.titre : "" });
-          S.actifs = [...S.actifs.filter((x) => x.outil !== outil), { outil, cible_nom: r.cible_nom }].sort((x, y) => x.outil.localeCompare(y.outil));
+          S.actifs = [...S.actifs.filter((x) => x.outil !== outil), { outil, cible_nom: r.cible_nom, retour: !!r.retour }].sort((x, y) => x.outil.localeCompare(y.outil));
           d.close(); KP.render(); KP.toast(`${NOMS[outil]} relié`);
         }
       } catch (x) { err.textContent = x.message; err.hidden = false; }

@@ -2,6 +2,16 @@
 
 Généré depuis `site/js/version.js` par `node scripts/version.mjs`. Ne pas modifier à la main.
 
+## 2.10 · 2026-11-26
+
+- Une tâche Asana ou une carte Trello qui porte l'étiquette « Plan de com » est ajoutée au plan, avec l'état « À confirmer », dans le service de la personne
+- Les changements faits ensuite dans l'outil sont repris dans le plan : la coche donne « Diffusé », l'échéance donne la date et le nom donne le titre
+- La description d'une tâche venue d'Asana ou de Trello n'est pas modifiée par l'appli
+- Une action ajoutée depuis Asana ou Trello passe en « Annulé » si sa tâche est supprimée (ou sa carte archivée)
+- Le logo de l'outil indique dans le plan qu'une action vient d'Asana ou de Trello, et sa fiche précise de qui
+- Une fenêtre présente les nouveautés à la première ouverture de chaque nouvelle version
+- Un guide explique comment relier Asana ou Trello, depuis Réglages, Mon profil
+
 ## 2.9.3 · 2026-11-25
 
 - Un temps fort ne se diffuse pas : son dernier état s'appelle « Terminé » (les actions gardent « Diffusé »)

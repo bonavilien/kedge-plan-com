@@ -19,6 +19,7 @@ $D -Atc "select 'périodes ' || (select count(*) from public.periods) || ', mess
 $D -f test/db/premier-pilote.sql 2>&1 | grep -q "premier pilote : bon"
 $D -f test/db/messages-libres.sql 2>&1 | grep -q "messages libres : bon" || { $D -f test/db/messages-libres.sql; exit 1; }
 $D -f test/db/export.sql 2>&1 | grep -q "export Asana Trello : bon" || { $D -f test/db/export.sql; exit 1; }
+$D -f test/db/retour.sql 2>&1 | grep -q "retour Asana Trello : bon" || { $D -f test/db/retour.sql; exit 1; }
 if grep -v "^create extension" supabase/installation.sql | $D -f - > /dev/null 2>/tmp/kplan-second.log; then echo "un second collage aurait dû être refusé"; exit 1; fi
 grep -q "déjà installée" /tmp/kplan-second.log
 echo "Installation d'une copie : tout est bon ($n scripts, premier compte pilote, second collage refusé)"
