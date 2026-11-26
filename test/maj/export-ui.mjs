@@ -165,6 +165,19 @@ await p.locator(".t-outils").scrollIntoViewIfNeeded();
 await p.hover(".o-retour"); await p.waitForTimeout(500);
 await shot(p, "9-retour-etiquette", ".t-outils >> xpath=..");
 
+// ---------- d'où vient la fiche : l'Asana de Stéphane, vu par tout le monde ----------
+p = await open("pilote@example.com", { lignes: [{ item: I(3), user_id: U(3), outil: "asana", ext_id: "t9", url: "https://app.asana.com/0/p1/t9", erreur: "", origine: "outil" }] });
+await p.evaluate(() => KP.go({ screen: "plan", fiche: "" })); await p.waitForTimeout(200);
+const marque = p.locator(`.row:has([data-id="${I(3)}"]) .o-vient`).first();
+ok(await p.locator(".o-vient").count() >= 1 && (await p.locator(".o-vient").first().getAttribute("data-tip")) === "Vient de l'Asana de Stéphane", "plan : le repère Asana à côté du titre, « Vient de l'Asana de Stéphane » au survol");
+await p.locator(".o-vient").first().scrollIntoViewIfNeeded(); await p.locator(".o-vient").first().hover(); await p.waitForTimeout(600);
+await shot(p, "10-plan-repere", "#main");
+await fiche(p, I(3));
+ok((await p.locator("#fiche .f-vient").innerText()).includes("Vient de l'Asana de Stéphane") && (await p.locator("#fiche .f-vient a").getAttribute("href")) === "https://app.asana.com/0/p1/t9", "fiche : « Vient de l'Asana de Stéphane » et le lien Ouvrir");
+await shot(p, "11-fiche-origine", "#fiche");
+ok(await p.locator(btn).count() === 0, "pilote sans outil relié : pas de bouton, mais il voit d'où vient la fiche");
+ok(!p.errs.length, "aucune erreur dans la page" + (p.errs.length ? " : " + p.errs[0] : ""));
+
 await b.close();
 console.log(bad ? `${bad} échec(s)` : "Asana et Trello dans l'appli : tout est bon");
 process.exit(bad ? 1 : 0);

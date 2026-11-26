@@ -57,6 +57,7 @@
       <div class="f-body">
         <h2 class="sr" id="f-h">${h(it.t)}</h2>
         <textarea class="f-title" id="f-t" data-f="t" data-auto rows="1" aria-label="Titre" ${can ? "" : "readonly"}>${h(it.t)}</textarea>
+        ${KP.outils ? KP.outils.origine(it) : ""}
         ${flag(it)}
         <dl class="f-meta">${rows.map(([k, x]) => `<dt>${k}</dt><dd>${x}</dd>`).join("")}</dl>
         ${!reader && !it.annule && (can || u.role === "pilote") ? `<div class="f-actions"><button type="button" class="check" data-act="f-reunion" aria-pressed="${!!it.reunion}"><span class="box">${ic("check")}</span>À voir en réunion</button>${it.reunion ? `<button type="button" class="f-pq${it.pourquoi ? "" : " none"}" data-act="f-pourquoi" aria-label="${it.pourquoi ? "Changer la raison" : "Dire pourquoi"}">${ic("chat")}<span>${it.pourquoi ? h(it.pourquoi) : "Pourquoi ?"}</span></button>` : ""}</div>` : ""}

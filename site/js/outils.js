@@ -12,7 +12,7 @@
   /* démonstration : rien ne sort du navigateur */
   const DEMO = "kplan-outils-demo";
   const demo = {
-    lire: async () => { let o = {}; try { o = JSON.parse(localStorage.getItem(DEMO) || "{}"); } catch (e) {} return { base: true, actifs: o.actifs || [], lignes: o.lignes || [] }; },
+    lire: async () => { let o = {}; try { o = JSON.parse(localStorage.getItem(DEMO) || "{}"); } catch (e) {} return { base: true, actifs: o.actifs || [], lignes: o.lignes || [], venues: o.venues || [] }; },
     garder: () => { try { localStorage.setItem(DEMO, JSON.stringify({ actifs: S.actifs, lignes: S.lignes })); } catch (e) {} },
     fn: async (c) => {
       await new Promise((ok) => setTimeout(ok, 350));
@@ -29,13 +29,22 @@
   const O = KP.outils = {
     get actifs() { return S.actifs; },
     async charge() {
-      try { const r = await api().lire(); S.base = r.base; S.actifs = r.actifs; S.lignes = r.lignes; } catch (e) { return; }
+      try { const r = await api().lire(); S.base = r.base; S.actifs = r.actifs; S.lignes = r.lignes; S.venues = r.venues || []; } catch (e) { return; }
       if (KP.render && KP.route) KP.render();
     },
     /* mes envois de cette fiche (les autres personnes ont les leurs, dans leurs outils) */
     de: (id) => S.lignes.filter((l) => l.item === id && (!l.user_id || l.user_id === KP.me().k)),
     fn: async (corps) => { try { const r = await api().fn(corps); S.absente = false; return r; } catch (e) { if (e.code === "absente") S.absente = true; throw e; } },
   };
+
+  /* ---------- d'où vient la fiche : l'Asana ou le Trello de quelqu'un ---------- */
+  O.venue = (id) => (S.venues || []).find((v) => v.item === id) || null;
+  const deQui = (v) => `${NOMS[v.outil]} de ${(KP.person(v.user_id) || { nom: "quelqu'un" }).nom}`;
+  /* dans les listes : le petit repère de l'outil, son nom au survol */
+  O.marque = (it) => { const v = O.venue(it.id); if (!v) return ""; const t = "Vient de l'" + deQui(v); return `<span class="o-vient" data-tip="${h(t)}" aria-label="${h(t)}" role="img">${ic(v.outil)}</span>`; };
+  /* sur la fiche : une ligne sous le titre */
+  O.origine = (it) => { const v = O.venue(it.id); if (!v) return "";
+    return `<p class="f-vient">${ic(v.outil)}<span>Vient de l'${h(NOMS[v.outil])} de <b>${h((KP.person(v.user_id) || { nom: "quelqu'un" }).nom)}</b></span>${v.url ? `<a class="link" href="${h(v.url)}" target="_blank" rel="noopener">Ouvrir</a>` : ""}</p>`; };
 
   /* ---------- sur la fiche : le bouton de la barre du haut ---------- */
   O.bouton = (it) => {

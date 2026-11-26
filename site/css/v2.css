@@ -1724,3 +1724,11 @@ dialog.dlg.cb-dlg { width: min(720px, calc(100vw - 32px)); padding: 20px 22px 22
 .o-retour { display: inline-flex; align-items: center; gap: 5px; flex: none; margin-left: 4px; padding: 2px 9px 2px 7px; border-radius: 999px; font-size: 12.5px; font-weight: 600; background: var(--fill); color: var(--text2); position: relative; }
 .o-retour svg { width: 14px; height: 14px; }
 .t-outils .o-cible { overflow: visible; }
+/* d'où vient la fiche : Asana ou Trello de quelqu'un */
+.o-vient { display: inline-grid; place-items: center; width: 22px; height: 22px; margin-left: 6px; border-radius: 6px; background: var(--fill); color: var(--text2); position: relative; vertical-align: middle; flex: none; }
+.o-vient svg { width: 14px; height: 14px; }
+.f-vient { display: flex; align-items: center; gap: 8px; margin: 2px 0 10px; font-size: 14px; color: var(--text2); }
+.f-vient svg { width: 18px; height: 18px; flex: none; }
+.f-vient b { color: var(--text); font-weight: 600; }
+.f-vient .link { margin-left: auto; }
+.o-vient[data-tip]:hover::after, .o-vient[data-tip]:focus-visible::after { top: auto; bottom: calc(100% + 6px); }
