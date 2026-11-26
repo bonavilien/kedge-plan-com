@@ -2,6 +2,12 @@
 
 Généré depuis `site/js/version.js` par `node scripts/version.mjs`. Ne pas modifier à la main.
 
+## 2.11.1 · 2026-11-26
+
+- Messages de la fiche : chaque carte montre qui écrit, avec sa photo, puis une flèche vers le ou les destinataires
+- Un message envoyé à plusieurs personnes n'apparaît plus qu'une fois
+- Chaque réponse affiche le nom de la personne qui a répondu
+
 ## 2.11 · 2026-11-26
 
 - Le lien d'une fiche s'ouvre sans compte : on voit la fiche seule, en lecture, avec « Se connecter » en haut

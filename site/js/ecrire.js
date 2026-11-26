@@ -200,15 +200,31 @@
       : m.k === "ref" ? (() => { const ref = r.refs.find((y) => src.slice(y.at, y.end) === m.t); return ref ? `<button type="button" class="link" data-act="open" data-id="${ref.id}">${h(m.t)}</button>` : h(m.t); })()
       : h(m.t)).join("");
   };
-  const carte = (r, it) => {
-    const u = moi(), late = !r.fait && r.pour && r.pour < KP.TODAY, reader = u.role === "lecteur";
-    const pastille = !r.pour ? `<span class="ph-c info petit">${ic("bell")}pour info</span>` : `<span class="ph-c petit ${r.fait ? "ok" : late ? "retard" : "date"}" title="${h(KP.due(r))}">pour le ${h(date(r.pour))}</span>`;
+  /* 2.11.1 : un message envoyé à plusieurs personnes est rangé en une ligne par destinataire ; le fil les regroupe en une seule carte */
+  const groupes = (reqs) => {
+    const out = [];
+    reqs.forEach((r) => {
+      const g = out.find((x) => { const o = x[0]; return o.item === r.item && o.de === r.de && (o.txt || "") === (r.txt || "") && (o.pour || "") === (r.pour || "") && o.quoi === r.quoi && Math.abs((o.quand || 0) - (r.quand || 0)) < 5 * 60000 && !x.some((y) => y.a === r.a); });
+      if (g) g.push(r); else out.push([r]);
+    });
+    return out;
+  };
+  const noms = (l) => l.length > 1 ? l.slice(0, -1).join(", ") + " et " + l[l.length - 1] : l[0] || "";
+  /* une carte : qui écrit (photo + nom) → à qui, la date à droite ; le texte ; puis les réponses, chacune avec son auteur */
+  const carte = (g, it) => {
+    if (!Array.isArray(g)) g = [g];
+    const r = g[0], u = moi(), reader = u.role === "lecteur";
+    const attente = g.filter((x) => !x.fait), enCours = attente.map((x) => x.id).join(",");
+    const late = attente.length && r.pour && r.pour < KP.TODAY, fini = !attente.length;
+    const pastille = !r.pour ? "" : `<span class="ph-c petit ${fini ? "ok" : late ? "retard" : "date"}" title="${h(KP.due(r))}">pour le ${h(date(r.pour))}</span>`;
     const parle = r.txt && P.plat(r.txt).includes(P.plat(r.quoi)) || ["Autre", "Info"].includes(r.quoi);
-    const actions = r.fait ? `<div class="rep">${ic("check")}<span>${texte(r.rep || "Reçu", it)}</span></div>`
-      : r.de === u.k ? `<div class="req-do">${r.pour ? `<button type="button" class="link soft" data-act="relance" data-id="${r.id}">Relancer</button>` : ""}<span class="sp"></span>${r.pour ? KP.ib("edit", "Changer la date", "req-date", `data-id="${r.id}"`) : ""}${KP.ib("trash", "Retirer le message", "req-drop", `data-id="${r.id}"`)}</div>`
-      : r.pour && (KP.reqMine(r) || u.role === "pilote") && !reader ? `<button type="button" class="link" data-act="answer" data-id="${r.id}">Répondre</button>` : "";
-    return `<div class="ph-msg"><div class="ph-msg-h"><span class="ph-c qui petit">${h(KP.dest(r.a))}</span>${pastille}<span class="sp"></span><small class="muted">${h(KP.dest(r.de))}, ${h(KP.fmt.quand(r.quand))}</small></div>
-      <p>${parle ? "" : `<b>${h(r.quoi)}</b>${r.txt ? " · " : ""}`}${texte(r.txt, it)}</p>${actions}</div>`;
+    const reps = g.filter((x) => x.fait).map((x) => `<div class="rep">${KP.avatar(KP.person(x.a) || { k: x.a, nom: KP.dest(x.a) }, "av-s")}<span><b>${h(KP.dest(x.a))}</b> ${texte(x.rep || "Reçu", it)}</span></div>`).join("");
+    const aMoi = !reader && r.pour && attente.find((x) => KP.reqMine(x) || u.role === "pilote" && x.de !== u.k);
+    const actions = r.de === u.k && attente.length ? `<div class="req-do">${r.pour ? `<button type="button" class="link soft" data-act="relance" data-ids="${enCours}">Relancer</button>` : ""}<span class="sp"></span>${r.pour ? KP.ib("edit", "Changer la date", "req-date", `data-ids="${enCours}"`) : ""}${KP.ib("trash", "Retirer le message", "req-drop", `data-ids="${enCours}"`)}</div>`
+      : aMoi ? `<button type="button" class="link" data-act="answer" data-id="${aMoi.id}">Répondre</button>` : "";
+    const auteur = KP.person(r.de) || { k: r.de, nom: KP.dest(r.de) };
+    return `<div class="ph-msg"><div class="ph-msg-h">${KP.avatar(auteur, "av-s")}<b class="de">${h(KP.dest(r.de))}</b><span class="vers" aria-label="à">${ic("arrow")}</span><span class="a">${h(noms(g.map((x) => KP.dest(x.a))))}</span>${r.pour ? "" : `<span class="info" title="Pour info, sans réponse attendue" aria-label="pour info">${ic("bell")}</span>`}<span class="sp"></span><small class="muted">${h(KP.fmt.quand(r.quand))}</small></div>
+      <p>${parle ? "" : `<b>${h(r.quoi)}</b>${r.txt ? " · " : ""}`}${texte(r.txt, it)}</p>${pastille ? `<div class="ph-msg-f">${pastille}</div>` : ""}${reps}${actions}</div>`;
   };
 
   /* la base a refusé l'envoi (un destinataire refusé, plus de réseau…) : la phrase revient dans la ligne, rien n'est perdu */
@@ -220,5 +236,5 @@
     const it = cur(); if (it && it.id === d.id) monte($("fiche"), it, [d.txt.length, d.txt.length]);
   });
 
-  KP.ecrire = { html, monte, carte, texte, analyse, dernier: null };
+  KP.ecrire = { html, monte, carte, groupes, texte, analyse, dernier: null };
 })();

@@ -5,6 +5,7 @@
   KP.dest = (k) => (KP.person(k) || KP.service(k) || { nom: k }).nom;
   const mine = (r) => { const u = KP.me(); return r.a === u.k || (u.svc && r.a === u.svc) || (r.a === "chef" && u.role === "pilote"); };
   KP.reqMine = mine;
+  const lesReqs = (a) => String(a.dataset.ids || a.dataset.id || "").split(",").map((id) => store.reqs().find((x) => x.id === id)).filter(Boolean);
 
   KP.renderFiche = () => {
     /* 2.9 : la fiche d'un devis prend le même panneau (js/devis.js) */
@@ -61,8 +62,9 @@
         ${flag(it)}
         <dl class="f-meta">${rows.map(([k, x]) => `<dt>${k}</dt><dd>${x}</dd>`).join("")}</dl>
         ${!reader && !it.annule && (can || u.role === "pilote") ? `<div class="f-actions"><button type="button" class="check" data-act="f-reunion" aria-pressed="${!!it.reunion}"><span class="box">${ic("check")}</span>À voir en réunion</button>${it.reunion ? `<button type="button" class="f-pq${it.pourquoi ? "" : " none"}" data-act="f-pourquoi" aria-label="${it.pourquoi ? "Changer la raison" : "Dire pourquoi"}">${ic("chat")}<span>${it.pourquoi ? h(it.pourquoi) : "Pourquoi ?"}</span></button>` : ""}</div>` : ""}
-        ${reader || it.annule ? (reqs.length ? `<section class="f-sec msgs"><h3>Messages · ${reqs.length}</h3>${reqs.map((r) => KP.ecrire.carte(r, it)).join("")}</section>` : "")
-          : `<section class="f-sec msgs"><h3>Messages${reqs.length ? " · " + reqs.length : ""}</h3>${reqs.map((r) => KP.ecrire.carte(r, it)).join("")}${KP.ecrire.html(it)}</section>`}
+        ${(() => { const gs = KP.ecrire.groupes(reqs), fil = gs.map((g) => KP.ecrire.carte(g, it)).join("");
+          return reader || it.annule ? (gs.length ? `<section class="f-sec msgs"><h3>Messages · ${gs.length}</h3>${fil}</section>` : "")
+            : `<section class="f-sec msgs"><h3>Messages${gs.length ? " · " + gs.length : ""}</h3>${fil}${KP.ecrire.html(it)}</section>`; })()}
         ${par ? (() => { const ans = store.reqsOf(par.id).filter((q) => q.fait && q.rep && q.de !== q.a);   /* pas les rappels privés */
           return `<section class="f-sec from"><h3><i class="tfdot"></i>Vient du temps fort<button type="button" class="link" data-act="open" data-id="${par.id}">Ouvrir</button></h3>
             <p><b>${h(par.t)}</b> · ${h(KP.dateLong(par))}${par.lieu ? " · " + h(par.lieu) : ""}</p>
@@ -184,8 +186,9 @@
       d.addEventListener("click", (e) => { const pk = e.target.closest("[data-pick]"); if (pk) KP.datepick(pk, s.pour, (v) => { if (v && v < KP.TODAY) return KP.toast("Cette date est passée"); if (v) { s.pour = v; pk.querySelector("span:last-child").textContent = KP.fmt.courtMois(v); } }); });
       d.querySelector("form").addEventListener("submit", () => { const txt = new FormData(d.querySelector("form")).get("txt").trim(); if (!txt) return; if (old) { store.editReq(old.id, { txt, pour: s.pour }); KP.toast("Rappel modifié"); } else { store.ask({ item: it.id, a: KP.me().k, quoi: "Autre", txt, pour: s.pour }); KP.toast("Rappel noté"); } });
     },
-    "req-date": (a) => { const r = store.reqs().find((x) => x.id === a.dataset.id); if (r) KP.datepick(a, r.pour, (v) => { if (v && v < KP.TODAY) return KP.toast("Cette date est passée"); if (v && v !== r.pour) { store.editReq(r.id, { pour: v }); KP.toast(`Pour le ${KP.fmt.moyen(v)}`); } }); },
-    "req-drop": (a) => { const r = store.reqs().find((x) => x.id === a.dataset.id); if (!r) return; store.dropReq(r.id); KP.toast(r.a === r.de ? "Rappel effacé" : r.pour ? `Demande à ${KP.dest(r.a)} retirée` : `Message à ${KP.dest(r.a)} retiré`); },
-    relance: (a) => { const r = store.reqs().find((x) => x.id === a.dataset.id); if (r) store.relance(r.id); },
+    /* 2.11.1 : une carte peut porter le même message à plusieurs personnes (data-ids) */
+    "req-date": (a) => { const rs = lesReqs(a); if (rs.length) KP.datepick(a, rs[0].pour, (v) => { if (v && v < KP.TODAY) return KP.toast("Cette date est passée"); if (v && v !== rs[0].pour) { rs.forEach((r) => store.editReq(r.id, { pour: v })); KP.toast(`Pour le ${KP.fmt.moyen(v)}`); } }); },
+    "req-drop": (a) => { const rs = lesReqs(a); if (!rs.length) return; const r = rs[0], qui = rs.map((x) => KP.dest(x.a)), n = qui.length > 1 ? qui.slice(0, -1).join(", ") + " et " + qui[qui.length - 1] : qui[0]; rs.forEach((x) => store.dropReq(x.id)); KP.toast(r.a === r.de ? "Rappel effacé" : r.pour ? `Demande à ${n} retirée` : `Message à ${n} retiré`); },
+    relance: (a) => { lesReqs(a).forEach((r) => store.relance(r.id)); },
   });
 })();

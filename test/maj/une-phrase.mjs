@@ -33,7 +33,8 @@ const ecrire = async (p, s) => { await p.fill("#ph-t", ""); await p.click("#ph-t
 const apercu = (p) => p.$eval(".ph-apercu", (e) => e.innerText.replace(/\s*\n\s*/g, " | ").trim());
 const marks = (p) => p.$$eval(".ph-miroir mark", (e) => e.map((x) => x.className.split(" ")[0] + ":" + x.textContent));
 const reqs = (p, id) => p.evaluate((id) => KP.store.reqsOf(id).map((r) => ({ a: r.a, quoi: r.quoi, txt: r.txt, pour: r.pour, fait: r.fait, rep: r.rep })), id);
-const cartes = (p) => p.$$eval(".ph-msg", (e) => e.map((x) => x.innerText.replace(/\s*\n\s*/g, " | ")));
+/* 2.11.1 : « pour info » n'est plus écrit, c'est une cloche (aria-label) à côté des destinataires */
+const cartes = (p) => p.$$eval(".ph-msg", (e) => e.map((x) => (x.querySelector(".ph-msg-h .info") ? "pour info | " : "") + x.innerText.replace(/\s*\n\s*/g, " | ")));
 const snap = (p, n) => shots && p.screenshot({ path: `${shots}/${n}.png`, clip: { x: 900, y: 0, width: 540, height: 900 } });
 
 /* ---------- démo ---------- */
@@ -58,7 +59,7 @@ const snap = (p, n) => shots && p.screenshot({ path: `${shots}/${n}.png`, clip: 
   ok(rs.some((r) => r.a === "estelle" && r.quoi === "Visuels" && r.pour === "2026-12-04" && r.txt === "Tu peux m'envoyer des visuels pour vendredi dans 2 semaines ?"), "envoyé : une demande à Estelle, Visuels, pour le 4 décembre");
   ok((await p.evaluate(() => document.querySelector(".toast").innerText)).includes("Estelle reçoit une notification, puis un rappel la veille"), "le message dit la notification et le rappel la veille");
   ok(await p.inputValue("#ph-t") === "", "la ligne se vide après l'envoi");
-  ok((await cartes(p)).some((c) => c.startsWith("Estelle | pour le ven. 4 déc.")), "la demande apparaît dans le fil, avec sa date");
+  ok((await cartes(p)).some((c) => c.includes("Estelle") && c.includes("pour le ven. 4 déc.")), "la demande apparaît dans le fil, avec sa date");
 
   // une date qu'on ne voulait pas : un clic sur la pastille, et la phrase part pour info
   await ecrire(p, "@Estelle les visuels demain");
@@ -159,7 +160,7 @@ const snap = (p, n) => shots && p.screenshot({ path: `${shots}/${n}.png`, clip: 
   const carte = p.locator(".ph-msg", { hasText: "Le programme des conférences" });
   ok((await carte.locator(".rep").innerText()).includes("C'est ok, le programme est sur SharePoint"), "dans les messages de la fiche, la réponse s'affiche sous la demande");
   ok(await carte.locator(".rep a.link").count() === 1, "le lien de la réponse s'ouvre");
-  ok(await carte.locator(".rep").evaluate((e) => { const s = e.querySelector(":scope > span:not(.ic)"); return s.getBoundingClientRect().width > e.getBoundingClientRect().width * 0.8; }), "la réponse prend toute la largeur (le lien ne la coupe pas en colonnes)");
+  ok(await carte.locator(".rep").evaluate((e) => { const s = e.querySelector(":scope > span:not(.ic):not(.av)"); return s.getBoundingClientRect().width > e.getBoundingClientRect().width * 0.8; }), "la réponse prend toute la largeur (le lien ne la coupe pas en colonnes)");
   if (shots) await carte.screenshot({ path: `${shots}/5-reponse.png` });
   // plus de contacts : ni sur la fiche, ni sur le temps fort d'un relais, ni dans les Réglages
   ok(!(await p.locator("#fiche .f-sec h3", { hasText: "Contacts" }).count()), "la fiche n'a plus de section Contacts");

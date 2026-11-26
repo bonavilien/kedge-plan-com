@@ -1,6 +1,6 @@
 /* Plan de com KEDGE · V2 — pour que l'appli s'installe et s'ouvre sans réseau.
    Le réseau d'abord (on a toujours la dernière version), le cache en secours. */
-const VERSION = "2.11.0";
+const VERSION = "2.11.1";
 const CACHE = "kplan-v2-" + VERSION;
 const FILES = ["./", "index.html", "version.json", "manifest.webmanifest", "css/v2.css", "fonts/krc-serif.woff2", "assets/kedge-logo-blanc.png", "assets/road-to-7th.png", "assets/road-to-7th-symbole.png", "assets/road-to-7th-fond.svg", "icons/icon-192.png", "icons/favicon-32.png", "favicon.ico",
   "js/version.js", "js/couleurs.js", "js/icons.js", "js/data.js", "js/piques.js", "js/ui.js", "js/suggestions.js", "js/fiche.js", "js/phrase.js", "js/ecrire.js", "js/outils.js", "js/plan.js", "js/accueil.js", "js/resultats.js", "js/devis.js", "js/reunion.js", "js/nouveautes.js", "js/reglages.js", "js/app.js", "js/publique.js", "js/remote.js", "config.js", "vendor/supabase-2.117.3.js"];
