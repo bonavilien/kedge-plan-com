@@ -394,7 +394,7 @@
   /* le dernier compte connecté sur cet appareil : « Bonjour Julien », l'adresse déjà remplie */
   const DERNIER = "kplan-dernier";
   const dernier = () => { try { const d = JSON.parse(localStorage.getItem(DERNIER) || "null"); return d && d.email ? d : null; } catch (e) { return null; } };
-  function loginScreen(msg) {
+  function loginScreen(msg, opt = {}) {
     let el = document.getElementById("login");
     if (!el) { el = document.createElement("div"); el.id = "login"; el.className = "login"; document.body.appendChild(el); }
     /* avec le symbole de l'icône, il passe en fond animé et quitte le formulaire */
@@ -414,6 +414,7 @@
         <p class="login-err" role="alert">${h(msg || "")}</p>
         <button type="submit" class="lc-go"><span>Entrer</span>${ic("arrow")}</button>
         ${C.visiteur ? `<button type="button" class="link lc-visiteur" data-visiteur>Entrer en visiteur</button>` : ""}
+        ${opt.retour ? `<button type="button" class="link lc-visiteur lc-retour" data-retour>${ic("chevL")}Revenir à la fiche</button>` : ""}
       </form>
       <p class="login-ver">Version ${h(KP.versionLabel(KP.VERSION.n))}</p>`;
     if (fond) fetch(fond.replace(/symbole\.png$/, "fond.svg")).then((r) => (r.ok ? r.text() : "")).then((t) => { const d = el.querySelector(".login-fond"); if (d && t.startsWith("<svg")) d.innerHTML = t; }).catch(() => {});
@@ -422,6 +423,7 @@
     const autre = () => { const c = f.querySelector(".lc-moi"); if (c) c.remove(); champMail.hidden = false;
       const t = f.querySelector(".lc-tete"); if (t) t.innerHTML = `<h1>${h(app)}</h1>${st ? `<p class="lc-app"><span>${h(st)}</span></p>` : ""}`; /* 2.8.2 : plus de « Bonjour Stéphane » pour une autre adresse */ };
     f.querySelector("[data-autre]")?.addEventListener("click", () => { autre(); f.email.value = ""; f.email.focus(); });
+    f.querySelector("[data-retour]")?.addEventListener("click", () => { el.classList.add("sort"); setTimeout(() => el.remove(), 380); const b = document.querySelector("[data-pub-co]"); if (b) b.focus(); });
     f.querySelector("[data-visiteur]")?.addEventListener("click", () => { autre(); f.email.value = C.visiteur; f.password.focus(); });
     f.querySelector("[data-oeil]").addEventListener("click", (e) => {
       const b = e.currentTarget, vu = f.password.type === "password";
@@ -456,6 +458,7 @@
     /* l'écran de connexion s'efface par-dessus l'appli déjà affichée */
     const el = document.getElementById("login"); if (el) { el.classList.add("sort"); setTimeout(() => el.remove(), 380); }
     KP.hold = false;
+    if (KP.publique) KP.publique.retire();
     if (!location.hash) history.replaceState(null, "", "#/accueil");
     if (KP.parseRoute) KP.route = KP.parseRoute(); /* les périodes de la base remplacent celles de la démonstration */
     KP.render();
@@ -531,11 +534,27 @@
     reload,
   };
 
+  /* ---------- 2.11 : le lien d'une fiche, ouvert sans compte : la fiche seule, en lecture (script 0040) ---------- */
+  /* sans le script, ou pour une fiche qui n'existe plus, on retombe sur l'écran de connexion habituel */
+  async function publique() {
+    const id = KP.publique && KP.publique.idDe(location.hash);
+    if (!id) return false;
+    try {
+      const f = await run(sb.rpc("fiche_publique", { p_id: id }));
+      if (!f || !f.id || user) return false;
+      KP.publique.montre(f, () => loginScreen("", { retour: true }));
+      window.kpOuvrir && window.kpOuvrir();
+      return true;
+    } catch (e) { return false; }
+  }
+  /* un relais ou un temps fort ouvert depuis la fiche : on reste sans compte, on montre l'autre fiche */
+  window.addEventListener("hashchange", async () => { if (!user && document.getElementById("publique") && !document.getElementById("login") && !(await publique())) loginScreen(); });
+
   document.addEventListener("DOMContentLoaded", async () => {
     try {
       const { data } = await sb.auth.getSession();
       user = data.session ? data.session.user : null;
-      if (user) await start(); else loginScreen();
+      if (user) await start(); else if (!(await publique())) loginScreen();
     } catch (e) { console.error(e); loginScreen("Connexion impossible : " + (e.message || "pas de réseau ?")); }
   });
 })();

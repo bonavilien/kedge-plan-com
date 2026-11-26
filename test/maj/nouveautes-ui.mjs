@@ -33,7 +33,7 @@ const shot = async (p, name, sel) => { if (shots) await p.locator(sel).screensho
 // ---------- revenu après la 2.9.3 : la fenêtre Quoi de neuf ----------
 let p = await open("pilote@example.com", "2.9.3");
 ok(await p.locator("dialog.qn").isVisible(), "dernière visite en 2.9.3 : Quoi de neuf s'ouvre");
-ok(await p.locator("dialog.qn .qn-c").count() === 2, "deux nouveautés : Asana / Trello, partenariats payants");
+ok(await p.locator("dialog.qn .qn-c").count() === 3, "trois nouveautés : lien sans compte (2.11), Asana / Trello, partenariats payants");
 ok(await p.locator('dialog.qn [data-act="guide"]').count() === 1 && await p.locator('dialog.qn [data-act="qn-go"]').count() === 1, "un guide, un « Afficher »");
 await shot(p, "1-quoi-de-neuf", "dialog.qn");
 await p.click('dialog.qn [data-act="qn-go"]');
@@ -89,7 +89,7 @@ await shot(p, "7-guide-tel", "dialog.gd");
 const titres = async (p) => p.locator("dialog.qn .qn-tx b").allInnerTexts();
 p = await open("pilote@example.com", "2.4.0");
 let t = await titres(p);
-ok(t.length === 5 && t.includes("Budget par devis") && t[0] === "Synchronisation avec Asana et Trello", "chef revenu de la 2.4 : les 5 plus récentes, dont le budget");
+ok(t.length === 5 && t.includes("Budget par devis") && t[0] === "Lien d'une fiche sans compte" && t[1] === "Synchronisation avec Asana et Trello", "chef revenu de la 2.4 : les 5 plus récentes, dont le budget");
 await shot(p, "8-chef-depuis-2-4", "dialog.qn");
 await p.click('dialog.qn [data-act="qn-go"] >> nth=1'); await p.waitForTimeout(300);
 p = await open("presse@example.com", "2.4.0");
