@@ -2,6 +2,14 @@
 
 Généré depuis `site/js/version.js` par `node scripts/version.mjs`. Ne pas modifier à la main.
 
+## 2.11 · 2026-11-26
+
+- Le lien d'une fiche s'ouvre sans compte : on voit la fiche seule, en lecture, avec « Se connecter » en haut
+- Sans compte, la fiche montre le titre, la date, le service, les messages, l'état, le lieu, le temps fort, les relais et les liens SharePoint
+- La note, le budget, les messages, les rappels et les noms restent réservés aux comptes
+- Une fois connecté, la même adresse ouvre la fiche complète
+- Script 2.11_0040 à coller une fois dans Supabase ; sans lui, le lien mène à l'écran de connexion, comme avant
+
 ## 2.10.1 · 2026-11-26
 
 - La fenêtre des nouveautés ne se réaffiche plus au retour sur l'onglet : la version vue est enregistrée dans le profil dès l'ouverture

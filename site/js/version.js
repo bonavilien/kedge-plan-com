@@ -5,6 +5,9 @@
    (il met à jour version.json, sw.js et CHANGELOG.md, et vérifie que tout concorde). */
 window.KP = window.KP || {};
 window.KP.VERSIONS = [
+  { n: "2.11.0", date: "2026-11-26",
+    nouveau: [{ ic: "link", t: "Lien d'une fiche sans compte", d: "Une personne qui n'est pas connectée peut ouvrir le lien d'une fiche et la lire. Le bouton « Se connecter » reste en haut de la page.", pour: "edition" }],
+    notes: ["Le lien d'une fiche s'ouvre sans compte : on voit la fiche seule, en lecture, avec « Se connecter » en haut", "Sans compte, la fiche montre le titre, la date, le service, les messages, l'état, le lieu, le temps fort, les relais et les liens SharePoint", "La note, le budget, les messages, les rappels et les noms restent réservés aux comptes", "Une fois connecté, la même adresse ouvre la fiche complète", "Script 2.11_0040 à coller une fois dans Supabase ; sans lui, le lien mène à l'écran de connexion, comme avant"] },
   { n: "2.10.1", date: "2026-11-26", notes: ["La fenêtre des nouveautés ne se réaffiche plus au retour sur l'onglet : la version vue est enregistrée dans le profil dès l'ouverture"] },
   { n: "2.10.0", date: "2026-11-26",
     /* « nouveau » : ce que la fenêtre des nouveautés montre, en une ligne, avec où le trouver (go) ou un guide.
