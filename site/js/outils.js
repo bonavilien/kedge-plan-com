@@ -92,7 +92,7 @@
         ${a ? `<span class="o-cible"><span class="ok-dot sm">${ic("check")}</span><span class="o-nom">${h(a.cible_nom)}</span>${a.retour ? `<span class="o-retour" tabindex="0" data-tip="${h(tip)}" aria-label="${h(tip)}">${ic("tag")}Plan de com</span>` : ""}</span>` : `<span class="muted">—</span>`}
         <span class="o-do">${a ? `${KP.ib("edit", "Changer", "outil-relier", `data-k="${outil}"`)}${KP.ib("trash", "Délier", "outil-delier", `data-k="${outil}"`)}` : `<button type="button" class="btn quiet small" data-act="outil-relier" data-k="${outil}">Relier</button>`}</span></div>`; };
     if (KP.me().role === "lecteur") return "";
-    return `<section class="set"><h2>Mon Asana, mon Trello<button type="button" class="btn quiet small" data-act="guide" data-k="asana-trello">${ic("info")}Comment faire ?</button></h2>
+    return `<section class="set"><h2>Mon Asana, mon Trello<button type="button" class="btn quiet small" data-act="guide" data-k="asana-trello">${ic("info")}Guide</button></h2>
       ${S.base ? "" : `<p class="muted">${ic("info")} Le script de base 0029 n'est pas encore passé.</p>`}
       <div class="tbl t-outils">${ligne("asana")}${ligne("trello")}</div>
       ${S.absente ? `<p class="muted">${ic("info")} La fonction <b>export</b> n'est pas encore installée dans Supabase.</p>` : ""}</section>`;

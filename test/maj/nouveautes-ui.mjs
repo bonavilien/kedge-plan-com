@@ -34,11 +34,11 @@ const shot = async (p, name, sel) => { if (shots) await p.locator(sel).screensho
 let p = await open("pilote@example.com", "2.9.3");
 ok(await p.locator("dialog.qn").isVisible(), "dernière visite en 2.9.3 : Quoi de neuf s'ouvre");
 ok(await p.locator("dialog.qn .qn-c").count() === 2, "deux nouveautés : Asana / Trello, partenariats payants");
-ok(await p.locator('dialog.qn [data-act="guide"]').count() === 1 && await p.locator('dialog.qn [data-act="qn-go"]').count() === 1, "un guide, un « Montre-moi »");
+ok(await p.locator('dialog.qn [data-act="guide"]').count() === 1 && await p.locator('dialog.qn [data-act="qn-go"]').count() === 1, "un guide, un « Afficher »");
 await shot(p, "1-quoi-de-neuf", "dialog.qn");
 await p.click('dialog.qn [data-act="qn-go"]');
 await p.waitForTimeout(300);
-ok(await p.locator("dialog.qn").count() === 0 && await p.evaluate(() => KP.route.screen === "plan" && KP.route.type === "partenariat"), "Montre-moi : Le plan, filtré sur les partenariats payants");
+ok(await p.locator("dialog.qn").count() === 0 && await p.evaluate(() => KP.route.screen === "plan" && KP.route.type === "partenariat"), "Afficher : Le plan, filtré sur les partenariats payants");
 ok((await p.locator(".tools").innerText()).includes("Partenariats payants"), "le filtre Type affiche « Partenariats payants »");
 await shot(p, "2-plan-partenariats", "#main");
 ok(!p.errs.length, "aucune erreur" + (p.errs[0] ? " : " + p.errs[0] : ""));
@@ -62,7 +62,7 @@ ok(await p.locator("dialog.qn").count() === 0, "déjà sur cette version : rien"
 await p.evaluate(() => KP.go({ screen: "reglages", set: "profil" })); await p.waitForSelector(".t-outils");
 await p.click('[data-act="guide"][data-k="asana-trello"]'); await p.waitForSelector("dialog.gd");
 const vis = async (sel) => p.locator(`dialog.gd ${sel}`).evaluateAll((l) => l.filter((x) => x.offsetParent !== null).length);
-ok(await vis(".gd-a") > 0 && await vis(".gd-t") === 0, "Mon profil, « Comment faire ? » : le guide, version Asana");
+ok(await vis(".gd-a") > 0 && await vis(".gd-t") === 0, "Mon profil, « Guide » : le guide, version Asana");
 await p.waitForTimeout(400);
 ok(await p.locator("dialog.gd img").first().evaluate((i) => i.complete && i.naturalWidth > 0), "les captures se chargent");
 await shot(p, "3-guide-asana", "dialog.gd");

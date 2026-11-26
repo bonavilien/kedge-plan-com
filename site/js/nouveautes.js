@@ -16,7 +16,7 @@
   const carte = (x) => `<li class="qn-c">
       <span class="qn-ic">${ic(x.ic || "spark")}</span>
       <div class="qn-tx"><b>${h(x.t)}</b><span>${h(x.d)}</span></div>
-      <div class="qn-go">${x.go ? `<button type="button" class="btn quiet small" data-act="qn-go" data-go="${h(JSON.stringify(x.go))}">Montre-moi</button>` : ""}${x.guide ? `<button type="button" class="btn quiet small" data-act="guide" data-k="${h(x.guide)}">Le guide</button>` : ""}</div>
+      <div class="qn-go">${x.go ? `<button type="button" class="btn quiet small" data-act="qn-go" data-go="${h(JSON.stringify(x.go))}">Afficher</button>` : ""}${x.guide ? `<button type="button" class="btn quiet small" data-act="guide" data-k="${h(x.guide)}">Voir le guide</button>` : ""}</div>
     </li>`;
   N.cartes = (l) => `<ul class="qn-l">${l.map(carte).join("")}</ul>`;
   N.aller = (x) => { if (x && x.go) KP.go({ fiche: "", ...x.go }); };
@@ -30,10 +30,9 @@
   N.montrer = (l) => {
     if (document.querySelector("dialog.qn")) return;
     const d = KP.dialog(`<div class="qn-in">
-        <p class="qn-eye">${ic("spark")}Quoi de neuf</p>
-        <h2>${l.length > 1 ? "Ce qui a changé depuis ta dernière visite" : "Une nouveauté depuis ta dernière visite"}</h2>
+        <h2>${l.length > 1 ? "Nouveautés depuis ta dernière connexion" : "Nouveauté depuis ta dernière connexion"}</h2>
         ${N.cartes(l)}
-        <div class="foot"><a class="link soft" href="#/reglages/apropos" data-close>Toutes les nouveautés</a><button type="button" class="btn primary" data-close>C'est noté</button></div>
+        <div class="foot"><a class="link soft" href="#/reglages/apropos" data-close>Voir toutes les nouveautés</a><button type="button" class="btn primary" data-close>Fermer</button></div>
       </div>`, { cls: "qn" });
     d.addEventListener("click", (e) => { if (e.target.closest('[data-act="guide"], [data-act="qn-go"]')) d.close(); });
     if (KP.store && KP.store.tele) KP.store.tele("ecran", "quoi de neuf");
@@ -47,43 +46,43 @@
   const GUIDES = {
     "asana-trello": () => `
       <div class="gd-h">
-        <h2>Relier ton Asana ou ton Trello</h2>
-        <p class="muted">Tu travailles dans ton outil, le plan suit. Et l'inverse. Gratuit, 5 minutes, une seule fois.</p>
-        <div class="seg gd-seg" role="radiogroup" aria-label="Ton outil">
+        <h2>Relier Asana ou Trello au plan de com</h2>
+        <p class="muted">Une fois ton outil relié, les actions que tu envoies depuis le plan y sont créées, et les tâches marquées « Plan de com » sont ajoutées au plan. La version gratuite d'Asana ou de Trello suffit.</p>
+        <div class="seg gd-seg" role="radiogroup" aria-label="Outil">
           <label><input type="radio" name="gd-o" value="asana" checked>${ic("asana")}Asana</label>
           <label><input type="radio" name="gd-o" value="trello">${ic("trello")}Trello</label>
         </div>
       </div>
-      <p class="gd-p">Relier</p>
-      ${etape(1, "Ouvre ton profil", `<p>${ui("Réglages")}${chev}${ui("Mon profil")}${chev}${ui("Relier")}</p>${IMG("relier", "La section Mon Asana, mon Trello avec ses boutons Relier")}`)}
-      ${etape(2, `${A("Crée ta clé Asana")}${T("Crée ta clé et ton jeton Trello")}`, `
+      <p class="gd-p">Mise en place</p>
+      ${etape(1, "Ouvrir son profil", `<p>Dans ${ui("Réglages")}, ouvre ${ui("Mon profil")}, puis clique sur ${ui("Relier")} à côté de ton outil.</p>${IMG("relier", "La section Mon Asana, mon Trello avec ses boutons Relier")}`)}
+      ${etape(2, `${A("Créer une clé Asana")}${T("Créer une clé et un jeton Trello")}`, `
         <ol class="gd-l">
-          ${A(`<li>${ui(ic("external") + "Créer une clé Asana")} ouvre la page des clés d'Asana.</li><li>${ui("+ Create new token")}, nomme-la <b>Plan de com</b>, puis ${ui("Create token")}.</li><li>Copie la clé, colle-la, puis ${ui("Suivant")}.</li>`)}
-          ${T(`<li>${ui(ic("external") + "Ma clé Trello")} : ${ui("New")}, nomme-le <b>Plan de com</b>, choisis ton espace, puis ${ui("Create")}.</li><li>${ui("Generate a new API key")} : colle-la dans <b>Clé</b>.</li><li>${ui(ic("external") + "Mon jeton")} apparaît : ${ui("Autoriser")}, colle le jeton dans <b>Jeton</b>, puis ${ui("Suivant")}.</li>`)}
-        </ol>${A(IMG("asana-cle", "La fenêtre Asana avec la case Clé personnelle", "petit"))}${T(IMG("trello-cle", "La fenêtre Trello avec les cases Clé et Jeton", "petit"))}`)}
-      ${etape(3, `${A("Choisis ton projet")}${T("Choisis ta liste")}`, `<p>C'est là qu'arrivent tes envois. ${A("C'est aussi le projet")}${T("Son tableau est aussi celui")} où l'étiquette « Plan de com » fonctionne.</p>${A(IMG("asana-projet", "Le choix du projet", "petit"))}${T(IMG("trello-liste", "Le choix de la liste", "petit"))}`)}
-      ${etape(4, "C'est relié", `<p>La coche verte et la pastille <span class="gd-etiq">${ic("tag")}Plan de com</span> le confirment.</p>${A(IMG("asana-relie", "Asana relié"))}${T(IMG("trello-relie", "Trello relié"))}`)}
-      <p class="gd-p">Au quotidien</p>
-      ${etape(ic("calendar"), `Du plan vers ${A("Asana")}${T("Trello")}`, `<p>Sur une fiche, les deux flèches ${ui(ic("sync"))}. ${A("La tâche")}${T("La carte")} est créée chez toi, les flèches passent au vert.</p>${IMG("envoyer", "Le bouton aux deux flèches en vert sur une fiche", "petit")}`)}
-      ${etape(ic("tag"), `${A("D'Asana")}${T("De Trello")} vers le plan`, `
+          ${A(`<li>Clique sur ${ui(ic("external") + "Créer une clé Asana")} : la page des clés d'Asana s'ouvre dans un nouvel onglet.</li><li>Clique sur ${ui("+ Create new token")}, donne un nom à la clé (par exemple « Plan de com »), puis valide avec ${ui("Create token")}.</li><li>Copie la clé affichée, colle-la dans la fenêtre de l'appli et clique sur ${ui("Suivant")}.</li>`)}
+          ${T(`<li>Clique sur ${ui(ic("external") + "Ma clé Trello")}. Sur la page qui s'ouvre, clique sur ${ui("New")}, donne un nom (par exemple « Plan de com »), choisis ton espace de travail, puis clique sur ${ui("Create")}.</li><li>Clique sur ${ui("Generate a new API key")}, puis copie la clé dans le champ <b>Clé</b>.</li><li>Le lien ${ui(ic("external") + "Mon jeton")} apparaît alors. Clique dessus, accepte avec ${ui("Autoriser")}, copie le jeton dans le champ <b>Jeton</b>, puis clique sur ${ui("Suivant")}.</li>`)}
+        </ol>${A(IMG("asana-cle", "La fenêtre Asana avec le champ Clé personnelle", "petit"))}${T(IMG("trello-cle", "La fenêtre Trello avec les champs Clé et Jeton", "petit"))}`)}
+      ${etape(3, `${A("Choisir le projet")}${T("Choisir la liste")}`, `<p>${A("Les actions envoyées depuis le plan seront créées dans ce projet. L'étiquette « Plan de com » n'est prise en compte que pour les tâches de ce projet.")}${T("Les actions envoyées depuis le plan seront créées dans cette liste. L'étiquette « Plan de com » est prise en compte sur toutes les cartes du tableau qui contient cette liste.")}</p>${A(IMG("asana-projet", "Le choix du projet", "petit"))}${T(IMG("trello-liste", "Le choix de la liste", "petit"))}`)}
+      ${etape(4, "Vérifier la connexion", `<p>Une fois l'outil relié, une coche verte et la pastille <span class="gd-etiq">${ic("tag")}Plan de com</span> apparaissent à côté de son nom.</p>${A(IMG("asana-relie", "Asana relié, avec la coche verte et la pastille Plan de com"))}${T(IMG("trello-relie", "Trello relié, avec la coche verte et la pastille Plan de com"))}`)}
+      <p class="gd-p">Utilisation</p>
+      ${etape(ic("calendar"), `Envoyer une action vers ${A("Asana")}${T("Trello")}`, `<p>Sur la fiche d'une action, clique sur le bouton aux deux flèches ${ui(ic("sync"))}. ${A("La tâche est créée dans ton projet")}${T("La carte est créée dans ta liste")} et le bouton devient vert.</p>${IMG("envoyer", "Le bouton aux deux flèches, en vert, sur une fiche", "petit")}`)}
+      ${etape(ic("tag"), `Ajouter ${A("une tâche Asana")}${T("une carte Trello")} au plan`, `
         <ol class="gd-l">
-          ${A(`<li>Sur une tâche du projet relié : ${ui("⋯")}${chev}${ui("Ajouter des tags")}, tape <span class="gd-etiq">Plan de com</span>.</li>`)}
-          ${T(`<li>Sur une carte du tableau relié : ${ui("Étiquettes")}${chev}${ui("Créer une nouvelle étiquette")} <span class="gd-etiq">Plan de com</span>, puis coche-la sur les autres cartes.</li>`)}
-          <li>L'action arrive <span class="gd-st conf">À confirmer</span>, dans ton service, à l'échéance. Tout le monde voit d'où elle vient.</li>
+          ${A(`<li>Dans le projet relié, ajoute le tag <span class="gd-etiq">Plan de com</span> à la tâche (menu ${ui("⋯")}, puis ${ui("Ajouter des tags")}).</li>`)}
+          ${T(`<li>Dans le tableau relié, ouvre la carte, puis ${ui("Étiquettes")}. La première fois, crée une étiquette nommée <span class="gd-etiq">Plan de com</span> ; ensuite, il suffit de la cocher.</li>`)}
+          <li>L'action est ajoutée au plan avec l'état <span class="gd-st conf">À confirmer</span>, dans ton service et à la date d'échéance. Le logo de l'outil indique son origine.</li>
         </ol>${A(IMG("asana-plan", "Dans le plan, le logo Asana à côté du titre"))}${T(IMG("trello-plan", "Dans le plan, le logo Trello à côté du titre"))}
         ${A(IMG("asana-fiche", "Sur la fiche : Vient de l'Asana de…", "petit"))}${T(IMG("trello-fiche", "Sur la fiche : Vient du Trello de…", "petit"))}`)}
-      <p class="gd-p">Ensuite, tout suit</p>
+      <p class="gd-p">Ce qui est synchronisé</p>
       <table class="gd-tab">
-        <tr><td>${A("Cocher la tâche")}${T("Cocher l'échéance")}</td><td>${ic("sync")}</td><td><span class="gd-st diff">Diffusé</span></td></tr>
-        <tr><td>La décocher</td><td>${ic("sync")}</td><td><span class="gd-st prev">Prévu</span></td></tr>
-        <tr><td>L'échéance</td><td>${ic("sync")}</td><td>La date</td></tr>
-        <tr><td>Le nom</td><td>${ic("sync")}</td><td>Le titre</td></tr>
-        <tr><td>${A("Supprimer la tâche")}${T("Archiver ou supprimer la carte")}</td><td>${ic("arrow")}</td><td><span class="gd-st annu">Annulé</span> <small class="muted">si elle venait de chez toi</small></td></tr>
-        <tr class="muted"><td>La description</td><td></td><td>Jamais touchée</td></tr>
+        <tr><td>${A("Tâche cochée")}${T("Échéance cochée")}</td><td>${ic("sync")}</td><td><span class="gd-st diff">Diffusé</span></td></tr>
+        <tr><td>${A("Tâche décochée")}${T("Échéance décochée")}</td><td>${ic("sync")}</td><td><span class="gd-st prev">Prévu</span></td></tr>
+        <tr><td>Échéance</td><td>${ic("sync")}</td><td>Date</td></tr>
+        <tr><td>Nom</td><td>${ic("sync")}</td><td>Titre</td></tr>
+        <tr><td>${A("Tâche supprimée")}${T("Carte archivée ou supprimée")}</td><td>${ic("arrow")}</td><td><span class="gd-st annu">Annulé</span> <small class="muted">pour une action ajoutée depuis l'outil</small></td></tr>
+        <tr class="muted"><td>Description</td><td></td><td>Non modifiée par l'appli</td></tr>
       </table>
-      <details class="gd-q"><summary>L'étiquette ne fait rien ?</summary><p>${A("La tâche doit être dans le projet")}${T("La carte doit être dans le tableau")} choisi à l'étape 3, et la pastille « Plan de com » visible dans ton profil.</p></details>
-      <details class="gd-q"><summary>Qui voit ma clé ?</summary><p>Personne, même pas toi une fois collée.</p></details>
-      <details class="gd-q"><summary>Changer ou arrêter ?</summary><p>Dans ton profil : le crayon pour changer, la corbeille pour délier. Ce qui est déjà chez toi y reste.</p></details>`,
+      <details class="gd-q"><summary>L'étiquette n'a aucun effet</summary><p>Vérifie que ${A("la tâche se trouve dans le projet")}${T("la carte se trouve dans le tableau")} choisi à l'étape 3, et que la pastille « Plan de com » apparaît dans ton profil.</p></details>
+      <details class="gd-q"><summary>Qui peut voir ma clé ?</summary><p>Personne. Elle est enregistrée dans la base et n'est plus affichée une fois collée, y compris pour toi.</p></details>
+      <details class="gd-q"><summary>Changer de ${A("projet")}${T("liste")} ou arrêter la synchronisation</summary><p>Dans Mon profil, le crayon permet de changer de ${A("projet")}${T("liste")} et la corbeille de délier l'outil. Les ${A("tâches")}${T("cartes")} déjà créées restent dans ton outil.</p></details>`,
   };
   KP.guide = (k) => {
     const g = GUIDES[k]; if (!g) return;

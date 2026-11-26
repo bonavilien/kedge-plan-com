@@ -4,13 +4,13 @@ Généré depuis `site/js/version.js` par `node scripts/version.mjs`. Ne pas mod
 
 ## 2.10 · 2026-11-26
 
-- Dans ton Asana ou ton Trello, mets l'étiquette « Plan de com » sur une tâche : elle arrive dans le plan, « À confirmer », dans ton service
-- Ensuite, cocher la tâche passe l'action en « Diffusé », changer son échéance change la date, la renommer renomme l'action
-- Une tâche venue d'Asana ou de Trello garde sa description : l'appli n'y change que le titre, l'échéance et la coche
-- Supprimer la tâche dans Asana (ou archiver la carte Trello) passe l'action venue de l'outil en « Annulé »
-- Quoi de neuf : à la première ouverture d'une nouvelle version, une fenêtre montre ce qui a changé et où le trouver
-- Un guide pas à pas pour relier son Asana ou son Trello, dans Réglages, Mon profil
-- Une action venue d'Asana ou de Trello porte le petit logo de l'outil dans le plan, et « Vient de l'Asana de Stéphane » sur sa fiche
+- Une tâche Asana ou une carte Trello qui porte l'étiquette « Plan de com » est ajoutée au plan, avec l'état « À confirmer », dans le service de la personne
+- Les changements faits ensuite dans l'outil sont repris dans le plan : la coche donne « Diffusé », l'échéance donne la date et le nom donne le titre
+- La description d'une tâche venue d'Asana ou de Trello n'est pas modifiée par l'appli
+- Une action ajoutée depuis Asana ou Trello passe en « Annulé » si sa tâche est supprimée (ou sa carte archivée)
+- Le logo de l'outil indique dans le plan qu'une action vient d'Asana ou de Trello, et sa fiche précise de qui
+- Une fenêtre présente les nouveautés à la première ouverture de chaque nouvelle version
+- Un guide explique comment relier Asana ou Trello, depuis Réglages, Mon profil
 
 ## 2.9.3 · 2026-11-25
 
