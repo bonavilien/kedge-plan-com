@@ -5,6 +5,7 @@
    (il met à jour version.json, sw.js et CHANGELOG.md, et vérifie que tout concorde). */
 window.KP = window.KP || {};
 window.KP.VERSIONS = [
+  { n: "2.10.1", date: "2026-11-26", notes: ["La fenêtre des nouveautés ne se réaffiche plus au retour sur l'onglet : la version vue est enregistrée dans le profil dès l'ouverture"] },
   { n: "2.10.0", date: "2026-11-26",
     /* « nouveau » : ce que la fenêtre des nouveautés montre, en une ligne, avec où le trouver (go) ou un guide.
        pour : à qui la montrer. Absent = tout le monde ; « edition » = tous sauf les comptes en lecture seule ;
