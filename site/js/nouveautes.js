@@ -27,9 +27,15 @@
   N.aller = (x) => { if (x && x.go) KP.go({ fiche: "", ...x.go }); };
 
   /* la fenêtre, une fois par nouvelle version (même famille : une refonte aura sa propre présentation) */
+  /* déjà montrée pour cette version, sur cet appareil : on ne la remontre pas */
+  const CLE = "kplan-nouveautes-vues";
+  const dejaVue = () => { try { return localStorage.getItem(CLE) === KP.VERSION.n; } catch (e) { return N.vue === KP.VERSION.n; } };
+  const marquer = () => { N.vue = KP.VERSION.n; try { localStorage.setItem(CLE, KP.VERSION.n); } catch (e) {} };
   N.verifier = (avant) => {
+    if (N.vue === KP.VERSION.n || dejaVue()) return;
     if (!avant || num(avant)[0] !== num(KP.VERSION.n)[0] || !apres(KP.VERSION.n, avant)) return;
     const l = N.depuis(avant).slice(0, 5); if (!l.length) return;
+    marquer();
     setTimeout(() => N.montrer(l), 400);
   };
   N.montrer = (l) => {

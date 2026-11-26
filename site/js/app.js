@@ -79,7 +79,9 @@
     /* la couleur du projet, gardée aussi pour l'écran de connexion de cet appareil */
     const pj = store.projet(), pk = (pj.couleur || "") + "|" + (pj.sousTitre || "");
     if (pk !== lastPj) { lastPj = pk; KP.couleur.appliquer(pj.couleur); KP.couleur.retenir(pj); }
-    if (store.prefs().version !== KP.VERSION.n) { const avant = store.prefs().version; store.prefs().version = KP.VERSION.n; store.prefs().versionVue = Date.now(); if (KP.nouveautes) KP.nouveautes.verifier(avant); }
+    if (store.prefs().version !== KP.VERSION.n) { const avant = store.prefs().version; store.prefs().version = KP.VERSION.n; store.prefs().versionVue = Date.now(); if (KP.nouveautes) KP.nouveautes.verifier(avant);
+      /* 2.10.1 : enregistrer la version vue dans le profil tout de suite (sinon le rechargement au retour sur l'onglet la reperd) */
+      setTimeout(() => store.setPref("version", KP.VERSION.n), 0); }
     const t = store.prefs().theme; if (t === "light" || t === "dark") document.documentElement.dataset.theme = t; else delete document.documentElement.dataset.theme;
     const main = $("main"), top = main.scrollTop, act = document.activeElement, fid = act && act.id, sel = act && act.selectionStart, selF = act && act.selectionEnd, selD = act && act.selectionDirection;
     const frow = act && act.classList && act.classList.contains("open") && act.closest(".row") ? act.dataset.id : "";

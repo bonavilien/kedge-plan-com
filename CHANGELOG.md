@@ -2,6 +2,10 @@
 
 Généré depuis `site/js/version.js` par `node scripts/version.mjs`. Ne pas modifier à la main.
 
+## 2.10.1 · 2026-11-26
+
+- La fenêtre des nouveautés ne se réaffiche plus au retour sur l'onglet : la version vue est enregistrée dans le profil dès l'ouverture
+
 ## 2.10 · 2026-11-26
 
 - Une tâche Asana ou une carte Trello qui porte l'étiquette « Plan de com » est ajoutée au plan, avec l'état « À confirmer », dans le service de la personne

@@ -101,6 +101,17 @@ ok(await p.locator("dialog.qn").count() === 0, "compte visiteur (partagé) : auc
 await p.evaluate(() => KP.go({ screen: "reglages", set: "apropos" })); await p.waitForTimeout(200);
 ok(await p.locator(".qn-set").count() === 0, "visiteur : pas de « À découvrir » non plus");
 
+// ---------- 2.10.1 : revenir sur l'onglet ne remontre pas la fenêtre ----------
+p = await open("pilote@example.com", "2.9.3");
+ok(await p.locator("dialog.qn").isVisible(), "la fenêtre s'ouvre une première fois");
+await p.click('dialog.qn .btn.primary'); await p.waitForTimeout(800);
+ok(await p.evaluate(() => window.__fake.db.profiles.find((x) => x.chef).version) === await p.evaluate(() => KP.VERSION.n), "la version vue est enregistrée dans le profil");
+await p.evaluate(() => { Object.defineProperty(document, "hidden", { value: false, configurable: true }); document.dispatchEvent(new Event("visibilitychange")); });
+await p.waitForTimeout(1500);
+ok(await p.locator("dialog.qn").count() === 0, "retour sur l'onglet (rechargement) : pas de nouvelle fenêtre");
+await p.reload(); await p.waitForTimeout(2000);
+ok(await p.locator("dialog.qn").count() === 0, "page rechargée : pas de nouvelle fenêtre");
+
 await b.close();
 console.log(bad ? `${bad} échec(s)` : "Quoi de neuf et guides : tout est bon");
 process.exit(bad ? 1 : 0);
