@@ -97,9 +97,9 @@ t = await titres(p);
 ok(t.length === 5 && !t.includes("Budget par devis") && !t.includes("Suivi de l'outil") && t.includes("Barre de saisie sur l'accueil"), "service revenu de la 2.4 : pas de budget ni de suivi");
 await shot(p, "9-service-depuis-2-4", "dialog.qn");
 p = await open("lecteur@example.com", "2.4.0");
-t = await titres(p);
-ok(t.length >= 1 && !t.some((x) => /Asana|Barre|Photo|Demandes|Budget|Suivi/.test(x)) && t.includes("Partenariats médias payants"), "visiteur : seulement ce qu'il peut consulter");
-await shot(p, "10-visiteur-depuis-2-4", "dialog.qn");
+ok(await p.locator("dialog.qn").count() === 0, "compte visiteur (partagé) : aucune nouveauté");
+await p.evaluate(() => KP.go({ screen: "reglages", set: "apropos" })); await p.waitForTimeout(200);
+ok(await p.locator(".qn-set").count() === 0, "visiteur : pas de « À découvrir » non plus");
 
 await b.close();
 console.log(bad ? `${bad} échec(s)` : "Quoi de neuf et guides : tout est bon");

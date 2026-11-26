@@ -11,7 +11,8 @@
   /* à qui s'adresse une nouveauté : tout le monde, ceux qui modifient le plan, les chefs de projet, les administrateurs */
   const pourMoi = (x) => { const u = KP.me() || {};
     return !x.pour || (x.pour === "edition" ? u.role !== "lecteur" : x.pour === "chef" ? u.role === "pilote" : x.pour === "admin" ? !!u.admin : false); };
-  const toutes = () => KP.VERSIONS.filter((v) => v.nouveau).flatMap((v) => v.nouveau.map((x) => ({ ...x, n: v.n }))).filter(pourMoi);
+  /* le compte visiteur est partagé : on ne lui montre aucune nouveauté */
+  const toutes = () => (KP.me() || {}).role === "lecteur" ? [] : KP.VERSIONS.filter((v) => v.nouveau).flatMap((v) => v.nouveau.map((x) => ({ ...x, n: v.n }))).filter(pourMoi);
   /* ce qui est nouveau depuis la version « avant », pour cette personne (les plus récentes d'abord) */
   N.depuis = (avant) => toutes().filter((x) => apres(x.n, avant));
   /* les dernières, pour Réglages, Nouveautés et version */
