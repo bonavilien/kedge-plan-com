@@ -279,6 +279,17 @@ a.mini { text-decoration: none; grid-template-columns: 18px minmax(0, 1fr) 18px;
 .ph-msg-h { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 .ph-msg-h .sp { flex: 1; }
 .ph-msg-h small { font-size: 12.5px; }
+/* 2.11.1 : qui écrit → à qui. L'auteur en gras avec sa photo, une flèche, les destinataires ; une seule carte pour un message envoyé à plusieurs */
+.ph-msg-h .av.av-s { width: 22px; height: 22px; font-size: 11px; flex: none; }
+.ph-msg-h .de { font-weight: 700; font-size: 14px; }
+.ph-msg-h .vers { display: inline-flex; color: var(--text2); }
+.ph-msg-h .vers .ic, .ph-msg-h .vers svg { width: 14px; height: 14px; }
+.ph-msg-h .a { font-size: 14px; font-weight: 600; color: var(--text); }
+.ph-msg-h .info { display: inline-flex; color: var(--text2); }
+.ph-msg-h .info svg { width: 13px; height: 13px; }
+.ph-msg-f { display: flex; gap: 6px; }
+.ph-msg .rep .av.av-s { width: 20px; height: 20px; font-size: 10px; flex: none; align-self: flex-start; }
+.ph-msg .rep b { font-weight: 700; color: var(--text); margin-right: 4px; }
 .ph-msg p { margin: 0; overflow-wrap: anywhere; }
 .ph-msg .rep { display: flex; gap: 6px; align-items: baseline; color: var(--ok-ink); font-weight: 600; font-size: 14px; }
 .ph-msg .rep .ic { width: 15px; height: 15px; flex: none; align-self: flex-start; margin-top: 2px; }
