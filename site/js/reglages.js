@@ -100,6 +100,7 @@
         <p class="vbig">Version ${h(KP.versionLabel(v.n))} <small class="muted">du ${h(d(v.date))} · ${h(v.n)}</small></p>
         ${KP.embedded ? `<p class="muted">Aperçu de démonstration : les données restent dans ce navigateur.</p>` : `<p class="muted">Sur téléphone, l'appli s'installe depuis le menu du navigateur : « Ajouter à l'écran d'accueil ».</p>`}
       </section>
+      ${KP.nouveautes && KP.nouveautes.dernieres().length ? `<section class="set qn-set"><h2>À découvrir</h2>${KP.nouveautes.cartes(KP.nouveautes.dernieres())}</section>` : ""}
       <section class="set"><h2>Nouveautés</h2>
         ${KP.VERSIONS.map((x) => `<div class="rel"><b>${h(KP.versionLabel(x.n))}</b><small class="muted">${h(d(x.date))}</small><ul>${x.notes.map((n) => `<li>${h(n)}</li>`).join("")}</ul></div>`).join("")}
       </section>`;

@@ -82,7 +82,7 @@
     const mine = ans.find((a) => a.key === "v2");
     let own = {}; try { own = mine ? JSON.parse(mine.val) : {}; } catch (e) {}
     const me = prof.find((p) => p.id === user.id) || {};
-    prefs[user.id] = { ...own, notif: { demandes: me.notif_demandes !== false, changements: me.notif_changements !== false, creations: !!me.notif_all } };
+    prefs[user.id] = { ...own, version: me.version || "", notif: { demandes: me.notif_demandes !== false, changements: me.notif_changements !== false, creations: !!me.notif_all } };
     const m = Object.fromEntries(meta.map((x) => [x.k, x.v]));
     const data = {
       v: 0, seq: 0, moi: user.id, people, prefs,
